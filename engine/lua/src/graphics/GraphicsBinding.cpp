@@ -28,6 +28,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "haylen/math/Rect.hpp"
 #include "varn/async/Promise.h"
 #include "varn/dataview/DataViewModule.h"
 
@@ -92,11 +93,35 @@ void GraphicsBinding::pushImageTexture(lua_State* L) {
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
 }
 
-// Replaces every pixel of a dynamic texture with `texture:update(pixels)`, the RGBA bytes of the same size in a string or a data view, which the upload reads in place.
+// Replaces the pixels of a dynamic texture with `texture:update(pixels, {region})`, every RGBA byte of the texture in a string or a data view, which the upload reads in place, of which only the region, a rectangle in whole pixels, changed. Without a region every pixel changed.
 int GraphicsBinding::updateTexture(lua_State* L) {
     const haylen::graphics::Texture& texture = lua::Userdata::check<haylen::graphics::Texture>(L, 1);
-    const std::string_view pixels = lua::TypeConverter::readBytes(L, 2);
-    lua::Runtime::getEngine(L).getGraphics().updateTexture(texture, {reinterpret_cast<const std::uint8_t*>(pixels.data()), pixels.size()});
+    const std::string_view bytes = lua::TypeConverter::readBytes(L, 2);
+    const std::span pixels(reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size());
+    haylen::graphics::Device& device = lua::Runtime::getEngine(L).getGraphics();
+    if (lua_isnoneornil(L, 3)) {
+        device.updateTexture(texture, pixels);
+        return 0;
+    }
+
+    luaL_checktype(L, 3, LUA_TTABLE);
+    lua::Table::checkFields(L, 3, {kUpdateFields});
+    lua_getfield(L, 3, "region");
+    const bool changedPart = !lua_isnil(L, -1);
+    lua_pop(L, 1);
+    if (!changedPart) {
+        device.updateTexture(texture, pixels);
+        return 0;
+    }
+
+    haylen::math::Rect region;
+    lua::Table::readField(L, 3, "region", region);
+    const auto whole = [](float value) { return std::trunc(value) == value; };
+    if (!whole(region.x) || !whole(region.y) || !whole(region.width) || !whole(region.height)) {
+        throw std::invalid_argument("The region of \"texture:update\" must hold whole pixels.");
+    }
+
+    device.updateTexture(texture, pixels, {static_cast<int>(region.x), static_cast<int>(region.y), static_cast<int>(region.width), static_cast<int>(region.height)});
     return 0;
 }
 

@@ -15,6 +15,7 @@ class GraphicsBinding final {
   private:
     static constexpr std::array<std::string_view, 3> kTextureContentFields{"fill", "pixels", "dynamic"};
     static constexpr std::array<std::string_view, 1> kImageTextureFields{"dynamic"};
+    static constexpr std::array<std::string_view, 1> kUpdateFields{"region"};
 
     static int newRenderTarget(lua_State* L);
     static int newTexture(lua_State* L);

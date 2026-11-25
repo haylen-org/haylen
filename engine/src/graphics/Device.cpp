@@ -100,8 +100,10 @@ void Device::replaceTexture(const Texture& texture, const Image& image) {
     resource->height = image.getHeight();
     resource->tracked.setBytes(bytes);
 
+    // The region that waited for an upload belongs to the old image, so the new pixels go whole.
     if (resource->dynamic) {
-        state->stagePixels(resource, image.getPixels());
+        resource->stagedRegion = {0, 0, image.getWidth(), image.getHeight()};
+        state->stagePixels(resource, image.getPixels(), resource->stagedRegion);
     }
 }
 
@@ -256,6 +258,10 @@ Texture Device::createDynamicDistanceTexture(int width, int height, std::span<co
 }
 
 void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels) {
+    updateTexture(texture, pixels, {0, 0, texture.getWidth(), texture.getHeight()});
+}
+
+void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels, Region changed) {
     const std::shared_ptr<TextureResource>& resource = texture.getResource();
     if (!resource || !resource->dynamic) {
         throw std::logic_error("Only a dynamic texture changes its pixels in place.");
@@ -265,10 +271,15 @@ void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t>
         throw std::invalid_argument("The pixels do not match the size of the dynamic texture.");
     }
 
-    state->stagePixels(resource, pixels);
+    const bool inside = changed.x >= 0 && changed.y >= 0 && changed.width > 0 && changed.height > 0 && changed.x + changed.width <= resource->width && changed.y + changed.height <= resource->height;
+    if (!inside) {
+        throw std::invalid_argument("The region of a texture update must lie inside the dynamic texture and hold at least one pixel.");
+    }
+
+    state->stagePixels(resource, pixels, changed);
 }
 
-// Every texture uploads the last pixels it received, all of them in one hand-over to the GPU device before the passes of the frame.
+// Every texture uploads the region that changed since the last upload, from the last pixels it received, all of them in one hand-over to the GPU device before the passes of the frame.
 std::size_t Device::uploadTextures(std::span<const gpu::Device::ImageWrite> frameImages) {
     ++state->uploads;
     std::swap(state->changedTextures, state->uploadingTextures);
@@ -277,7 +288,7 @@ std::size_t Device::uploadTextures(std::span<const gpu::Device::ImageWrite> fram
     std::size_t bytes = 0;
     for (const std::weak_ptr<TextureResource>& changed : state->uploadingTextures) {
         if (std::shared_ptr<TextureResource> resource = changed.lock()) {
-            state->writes.push_back({.image = resource->image, .pixels = std::as_bytes(std::span(resource->staged))});
+            state->writes.push_back({.image = resource->image, .region = resource->stagedRegion, .pixels = std::as_bytes(std::span(resource->staged))});
             bytes += resource->staged.size();
             resource->pending = false;
             resource->uploadedAt = state->uploads;

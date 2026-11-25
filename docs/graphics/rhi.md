@@ -33,7 +33,7 @@ The [architecture guide](../core/architecture.md#layers) describes the platform 
 
 1. The platform layer starts a frame and calls `Player::frame`, which runs `Engine::frame`.
 2. Scripts and plugins record draws in `render` and `renderUi`. The renderer turns each draw into vertices or instances at once.
-3. `Renderer::endFrame` sorts the canvases, merges draws into batches and writes the data of the whole frame with `writeBuffer`. It sends the pixels of every changed dynamic texture in one `writeImages` call.
+3. `Renderer::endFrame` sorts the canvases, merges draws into batches and writes the data of the whole frame with `writeBuffer`. It sends the region that changed of every changed dynamic texture in one `writeImages` call.
 4. The renderer records its passes: offscreen passes for render targets, lights and effects first, then the pass into the swapchain. Each pass applies pipelines, bindings and uniforms and draws.
 5. `commit` submits the frame to the GPU and presents the swapchain.
 6. `graphics::Device::collectGarbage` hands the objects released during the frame to `destroy`, and `Device::processReads` starts the readbacks that scripts asked for.
@@ -90,7 +90,7 @@ Every device remembers what it sent last, so a binding, a pipeline or a value th
 Two calls bring data from the CPU into a frame:
 
 - `writeBuffer(buffer, offset, data)` writes part of a dynamic buffer at an offset that is a multiple of four bytes. A frame writes each part once, before a pass binds the buffer, and the buffer holds in that frame only what the frame wrote.
-- `writeImages(writes)` replaces the first mip level of dynamic images, every layer at once. A frame makes one call before its first pass, so the device stages every image before it copies any.
+- `writeImages(writes)` replaces a region of dynamic images, which are flat with one mip level, and keeps their other pixels. Each write names its image, its `Region` of whole pixels from the first row and column, and the pixels of the region alone, row after row without a gap. A frame makes one call before its first pass, with at most one write for each image, so the device stages every region before it copies any and no copy waits for another. Metal blits each region from its upload ring, Vulkan copies it from its staging ring into the image, which leaves its resting layout with its contents, Direct3D 12 copies it from upload memory at the footprint of its size, Direct3D 11 hands its box to the driver, which discards the old pixels only for a write of the whole image, OpenGL and OpenGL ES copy it from the pixel unpack buffer, and WebGL2 and WebGPU hand it to the browser.
 
 Each device moves this data through upload memory of its own for each frame in flight. That memory stays mapped where the API allows it, and it grows only when a frame needs more room, so a frame that writes what the frame before it wrote allocates nothing, even when the GPU falls behind. A device opens its frame, which waits for the frame in flight that used the same memory, before it stages any data. The engine tests check this with `test::AllocationTracker`.
 

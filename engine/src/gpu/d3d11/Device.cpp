@@ -486,7 +486,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     record.writtenFrame = frameNumber;
 }
 
-// Direct3D 11 copies no buffer into a texture, so the driver stages the pixels, and replacing a whole image of one subresource lets it hand the GPU a fresh copy instead of waiting for the frames that read the old one.
+// Direct3D 11 copies no buffer into a texture, so the driver stages the pixels of the box, and a write of the whole image lets it hand the GPU a fresh copy instead of waiting for the frames that read the old one.
 void Device::writeImages(std::span<const ImageWrite> writes) {
     openFrame();
 
@@ -496,23 +496,17 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        const std::size_t pixel = Formats::getBytesPerPixel(image.format);
-        const std::size_t row = static_cast<std::size_t>(image.width) * pixel;
-        const std::size_t slice = row * static_cast<std::size_t>(image.height);
-        if (write.pixels.size() != slice * static_cast<std::size_t>(image.layers)) {
+        const Region& region = write.region;
+        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
+        const std::size_t row = static_cast<std::size_t>(region.width) * Formats::getBytesPerPixel(image.format);
+        const std::size_t bytes = row * static_cast<std::size_t>(region.height);
+        if (!inside || write.pixels.size() != bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        const UINT flags = image.layers == 1 && image.mipLevels == 1 ? D3D11_COPY_DISCARD : 0U;
-        if (image.type == TextureType::Volume) {
-            context->UpdateSubresource1(image.resource.Get(), 0, nullptr, write.pixels.data(), static_cast<UINT>(row), static_cast<UINT>(slice), flags);
-            continue;
-        }
-
-        for (int layer = 0; layer < image.layers; ++layer) {
-            const UINT subresource = D3D11CalcSubresource(0, static_cast<UINT>(layer), static_cast<UINT>(image.mipLevels));
-            context->UpdateSubresource1(image.resource.Get(), subresource, nullptr, write.pixels.data() + static_cast<std::size_t>(layer) * slice, static_cast<UINT>(row), static_cast<UINT>(slice), flags);
-        }
+        const bool whole = region.width == image.width && region.height == image.height;
+        const D3D11_BOX box{.left = static_cast<UINT>(region.x), .top = static_cast<UINT>(region.y), .front = 0, .right = static_cast<UINT>(region.x + region.width), .bottom = static_cast<UINT>(region.y + region.height), .back = 1};
+        context->UpdateSubresource1(image.resource.Get(), 0, &box, write.pixels.data(), static_cast<UINT>(row), static_cast<UINT>(bytes), whole ? D3D11_COPY_DISCARD : 0U);
     }
 }
 

@@ -117,7 +117,7 @@ void TrueTypeFont::replace(std::vector<std::uint8_t> ttf) {
     cursorX = 1;
     cursorY = 1;
     rowHeight = 0;
-    dirty = false;
+    changed.reset();
     texture = device.createDynamicDistanceTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
     change(fresh);
 }
@@ -246,12 +246,13 @@ Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
         std::copy_n(field->distances.begin() + static_cast<std::ptrdiff_t>(row * width), width, atlas.begin() + static_cast<std::ptrdiff_t>((cursorY + row) * atlasWidth + cursorX));
     }
 
+    const graphics::Device::Region placed{cursorX, cursorY, width, height};
+    changed = changed ? changed->merged(placed) : placed;
     glyph.source = {static_cast<float>(cursorX), static_cast<float>(cursorY), static_cast<float>(width), static_cast<float>(height)};
     glyph.offset = {static_cast<float>(field->offsetX), static_cast<float>(field->offsetY)};
     glyph.visible = true;
     cursorX += width + 1;
     rowHeight = std::max(rowHeight, height);
-    dirty = true;
     return glyph;
 }
 
@@ -287,22 +288,22 @@ void TrueTypeFont::grow() {
     atlas = std::move(grown);
     atlasWidth = width;
     atlasHeight = height;
-    dirty = true;
+    changed = graphics::Device::Region{0, 0, width, height};
 }
 
-// The atlas changes in place, so draws that add glyphs during a frame upload it once, while a grown atlas becomes a new texture that the draws already made keep.
+// The atlas changes in place, so the glyphs that the draws of a frame add upload once, as the smallest region that holds them, while a grown atlas becomes a new texture that the draws already made keep.
 void TrueTypeFont::sync() {
-    if (!dirty) {
+    if (!changed) {
         return;
     }
 
     if (texture.getWidth() == atlasWidth && texture.getHeight() == atlasHeight) {
-        device.updateTexture(texture, std::span(reinterpret_cast<const std::uint8_t*>(atlas.data()), atlas.size() * sizeof(std::uint16_t)));
+        device.updateTexture(texture, std::span(reinterpret_cast<const std::uint8_t*>(atlas.data()), atlas.size() * sizeof(std::uint16_t)), *changed);
     } else {
         texture = device.createDynamicDistanceTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
     }
 
-    dirty = false;
+    changed.reset();
 }
 
 } // namespace haylen::text

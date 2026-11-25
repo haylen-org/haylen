@@ -300,7 +300,7 @@ void FrameSubmitter::castShadows() {
         state.shadowImage = state.getGpu().makeImage({.width = lighting2d::ShadowMap::kRowTexels, .height = state.shadowRows, .format = gpu::Device::PixelFormat::R32Float, .kind = gpu::Device::ImageKind::Dynamic, .label = "haylen-shadow-atlas"});
     }
 
-    state.shadowTexels.assign(static_cast<std::size_t>(state.shadowRows) * lighting2d::ShadowMap::kRowTexels, lighting2d::ShadowMap::kClear);
+    state.shadowTexels.assign(rows * lighting2d::ShadowMap::kRowTexels, lighting2d::ShadowMap::kClear);
     // clang-format off
     state.jobs.parallelFor(0, casts.size(), 1, [&](std::size_t begin, std::size_t end) {
         for (std::size_t index = begin; index < end; ++index) {
@@ -312,8 +312,9 @@ void FrameSubmitter::castShadows() {
     });
     // clang-format on
 
-    // The atlas goes to the GPU with the dynamic textures of the frame.
-    shadowWrite = gpu::Device::ImageWrite{.image = state.shadowImage, .pixels = std::as_bytes(std::span(state.shadowTexels))};
+    // The rows of the lights of the frame go to the GPU with the dynamic textures of the frame, and the rows past them, which no light of the frame samples, keep what they held.
+    const gpu::Device::Region region{0, 0, lighting2d::ShadowMap::kRowTexels, static_cast<int>(rows)};
+    shadowWrite = gpu::Device::ImageWrite{.image = state.shadowImage, .region = region, .pixels = std::as_bytes(std::span(state.shadowTexels))};
     state.stats.uploadedBytes += shadowWrite->pixels.size();
     state.stats.shadows = casts.size();
 }

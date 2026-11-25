@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -242,7 +243,7 @@ class Device {
         Dynamic,
     };
 
-    // A texture keeps the pixels it was made with, a dynamic image takes new pixels through `writeImages`, a render target is a color attachment of offscreen passes that draws sample later, and a depth stencil image is the depth and stencil attachment of offscreen passes.
+    // A texture keeps the pixels it was made with, a dynamic image is flat with one mip level and takes new pixels for regions of it through `writeImages`, a render target is a color attachment of offscreen passes that draws sample later, and a depth stencil image is the depth and stencil attachment of offscreen passes.
     enum class ImageKind : std::uint8_t {
         Texture,
         Dynamic,
@@ -552,9 +553,29 @@ class Device {
         friend bool operator==(const Bindings&, const Bindings&) = default;
     };
 
-    // New pixels for a dynamic image, which replace the pixels of its first mip level, every layer at once.
+    // A rectangle of the pixels of an image, from the first row and the first column of the pixels it was made with.
+    struct Region {
+        int x = 0;
+        int y = 0;
+        int width = 0;
+        int height = 0;
+
+        // The smallest region that holds both regions.
+        [[nodiscard]] constexpr Region merged(Region other) const noexcept {
+            const int left = std::min(x, other.x);
+            const int top = std::min(y, other.y);
+            const int right = std::max(x + width, other.x + other.width);
+            const int bottom = std::max(y + height, other.y + other.height);
+            return {left, top, right - left, bottom - top};
+        }
+
+        friend bool operator==(Region, Region) = default;
+    };
+
+    // New pixels for a region of a dynamic image, which replace the pixels of that region and keep the others. The pixels hold the rows of the region one after another, `region.width` pixels each with no gap between rows.
     struct ImageWrite {
         Image image{};
+        Region region{};
         std::span<const std::byte> pixels{};
     };
 
@@ -618,7 +639,7 @@ class Device {
     // Writes data into a dynamic buffer at an offset that is a multiple of 4, before the passes of the frame that read it. A frame may write several parts of one buffer, each at most once.
     virtual void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) = 0;
 
-    // Replaces the pixels of dynamic images, every image of a frame in one call before its first pass, so a device stages them all before it copies any of them.
+    // Replaces the pixels of regions of dynamic images, every image of a frame in one call before its first pass, so a device stages them all before it copies any of them. Each image takes at most one write in the call, whose region lies inside the image, so a device copies only the pixels that changed and no copy of the call waits for another.
     virtual void writeImages(std::span<const ImageWrite> writes) = 0;
 
     virtual void beginPass(const PassDesc& desc) = 0;

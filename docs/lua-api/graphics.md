@@ -60,7 +60,7 @@ Makes a `Texture` of `width` by `height` pixels from code. The table `options` i
 | --- | --- | --- | --- |
 | `fill` | Color | `'#FFFFFFFF'` | The color of every pixel when `pixels` is absent. |
 | `pixels` | string or data view | none | Raw RGBA bytes, four per pixel, row by row from the top, in a string or in a view of [`dataview`](https://github.com/varn-org/varn/blob/main/docs/lua-api/dataview.md). Its length must be `width * height * 4`, or the call raises `Image pixel data does not match its dimensions.`. |
-| `dynamic` | boolean | `false` | Makes a texture whose pixels change in place with [`texture:update(pixels)`](#textureupdatepixels), such as a minimap that code draws. |
+| `dynamic` | boolean | `false` | Makes a texture whose pixels change in place with [`texture:update(pixels, options)`](#textureupdatepixels-options), such as a minimap that code draws. |
 | `filter` | string | `'nearest'` | The `'nearest'` or `'linear'` sampling. |
 | `wrap` | string | `'clamp'` | The `'clamp'`, `'repeat'` or `'mirror'` addressing. |
 | `mipmaps` | boolean | `true` with the `'linear'` filter, `false` otherwise | Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, blended between them with the `'linear'` filter. A dynamic texture never has them, and one with `mipmaps = true` raises `A texture that changes in place has no mipmaps.`. |
@@ -150,9 +150,15 @@ print(texture.width, texture.height, texture.filter, texture.wrap, texture.mipma
 print(texture == assets.texture('sprites/knight/run.png', {filter = 'linear'}))
 ```
 
-### texture:update(pixels)
+### texture:update(pixels, options)
 
-Replaces every pixel of a texture made with `dynamic = true`. The value `pixels` holds raw RGBA bytes, four per pixel, row by row from the top, and its length is `width * height * 4`. It is a string or a [data view](platform.md#data-views), whose memory the upload reads in place, such as a frame that a plugin fills. Any other value raises `Bytes come as a string or a data view that was not released, not as a <type>.`. The texture keeps its size, and every draw of the frame shows the new pixels. A texture that changes several times in one frame sends only its last pixels, whole and once, before the frame draws, which `graphics2d.stats().uploadedBytes` counts. A texture that is not dynamic raises `Only a dynamic texture changes its pixels in place.`, and pixels of another length raise `The pixels do not match the size of the dynamic texture.`.
+Replaces the pixels of a texture made with `dynamic = true`. The value `pixels` holds every pixel of the texture as raw RGBA bytes, four per pixel, row by row from the top, and its length is `width * height * 4`. It is a string or a [data view](platform.md#data-views), whose memory the upload reads in place, such as a frame that a plugin fills. Any other value raises `Bytes come as a string or a data view that was not released, not as a <type>.`. The texture keeps its size, and every draw of the frame shows the new pixels.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `region` | rectangle | the whole texture | The part of the texture that changed since its last update, as `{x, y, width, height}` or a table with those fields, in whole pixels from the top left corner. Only the pixels of the region go to the GPU, so a sprite that a paint app adds to a big canvas sends only its own pixels. |
+
+A texture that changes several times in one frame sends once, before the frame draws, the smallest region that holds every change, taken from its last pixels, which `graphics2d.stats().uploadedBytes` counts. A texture that is not dynamic raises `Only a dynamic texture changes its pixels in place.`, and pixels of another length raise `The pixels do not match the size of the dynamic texture.`. A region outside the texture or without a pixel raises `The region of a texture update must lie inside the dynamic texture and hold at least one pixel.`, and a region of fractions of a pixel raises `The region of "texture:update" must hold whole pixels.`.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -172,6 +178,29 @@ scene.push({
         graphics2d.draw(minimap, 20, 20, {width = 64, height = 64})
     end,
 })
+```
+
+A paint app keeps the pixels of its canvas and names the region of each stroke, so the GPU receives only the pixels that the stroke covered.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local size = 128
+local white, black = string.char(255, 255, 255, 255), string.char(0, 0, 0, 255)
+local rows = {}
+for row = 1, size do
+    rows[row] = string.rep(white, size)
+end
+
+local canvas = graphics.newTexture(size, size, {dynamic = true, fill = '#FFFFFF'})
+
+local function paintRow(y, from, to)
+    local row = rows[y + 1]
+    rows[y + 1] = row:sub(1, from * 4) .. string.rep(black, to - from) .. row:sub(to * 4 + 1)
+    canvas:update(table.concat(rows), {region = {from, y, to - from, 1}})
+end
+
+paintRow(64, 32, 96)
 ```
 
 ## RenderTarget
@@ -1199,6 +1228,8 @@ These messages come from the functions and methods of the module.
 | `A render target has no mipmaps.` | A render target asked for mipmaps. |
 | `Only a dynamic texture changes its pixels in place.` | The method `texture:update` ran on a texture that is not dynamic. |
 | `The pixels do not match the size of the dynamic texture.` | The pixels of `texture:update` have another length. |
+| `The region of a texture update must lie inside the dynamic texture and hold at least one pixel.` | The option `region` of `texture:update` reaches past the texture or has no width or height. |
+| `The region of "texture:update" must hold whole pixels.` | The option `region` of `texture:update` has a fraction of a pixel. |
 | `The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.` | The bytes of `graphics.newTexture`, `graphics.decodeImage` or `graphics.decodeImageAsync` are not an image. |
 | `An image needs a width and a height of one pixel or more.` | The size of `graphics.newImage` is under one pixel. |
 | `The image of <width> by <height> pixels is too large. An image has at most 16384 pixels on a side.` | A side of `graphics.newImage` is longer than `graphics.maxImageSize()`. |

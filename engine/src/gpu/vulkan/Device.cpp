@@ -1328,17 +1328,20 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        const bool volume = record.type == TextureType::Volume;
-        const std::size_t bytes = std::size_t{static_cast<std::uint32_t>(record.width)} * static_cast<std::uint32_t>(record.height) * static_cast<std::uint32_t>(record.layers) * ImageInfo::getBytesPerPixel(record.pixelFormat);
-        if (write.pixels.size() != bytes) {
+        const Region& region = write.region;
+        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= record.width && region.y + region.height <= record.height;
+        const std::size_t bytes = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * ImageInfo::getBytesPerPixel(record.pixelFormat);
+        if (!inside || write.pixels.size() != bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
+        // The copy keeps the pixels outside the region, so the image leaves its resting layout with its contents.
         const UploadRing::Allocation source = staging.allocate(bytes, 16);
         std::memcpy(source.data, write.pixels.data(), bytes);
         sourceBuffers.push_back(source.buffer);
-        copyRegions.push_back({.bufferOffset = source.offset, .bufferRowLength = 0, .bufferImageHeight = 0, .imageSubresource = {.aspectMask = record.aspects, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = volume ? 1U : static_cast<std::uint32_t>(record.layers)}, .imageOffset = {}, .imageExtent = {static_cast<std::uint32_t>(record.width), static_cast<std::uint32_t>(record.height), volume ? static_cast<std::uint32_t>(record.layers) : 1U}});
-        imageBarriers.push_back({.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = record.image, .subresourceRange = {.aspectMask = record.aspects, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS}});
+        const VkImageSubresourceRange range{.aspectMask = record.aspects, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1};
+        copyRegions.push_back({.bufferOffset = source.offset, .bufferRowLength = 0, .bufferImageHeight = 0, .imageSubresource = {.aspectMask = record.aspects, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1}, .imageOffset = {region.x, region.y, 0}, .imageExtent = {static_cast<std::uint32_t>(region.width), static_cast<std::uint32_t>(region.height), 1U}});
+        imageBarriers.push_back(ImageLayouts::makeBarrier(record.image, range, record.restLayout, record.restLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
     }
 
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());

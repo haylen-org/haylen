@@ -331,7 +331,7 @@ TEST_P(Direct3DDeviceTest, RepeatsAFrameWithoutAllocatingAndMeasuresTheGpu) {
     // clang-format off
     const auto frame = [&] {
         device->writeBuffer(vertices, 0, std::as_bytes(std::span(corners)));
-        const Device::ImageWrite write{.image = dynamic, .pixels = std::as_bytes(std::span(pixels))};
+        const Device::ImageWrite write{.image = dynamic, .region = {0, 0, 4, 4}, .pixels = std::as_bytes(std::span(pixels))};
         device->writeImages(std::span(&write, 1));
         const Device::ColorAttachment color{.image = target};
         device->beginPass({.colors = std::span(&color, 1), .label = "haylen-test-frame"});

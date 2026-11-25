@@ -40,6 +40,9 @@ class Device final {
     // How many objects of one kind the GPU context holds, out of the room it preallocated for them.
     using Pool = gpu::Device::Pool;
 
+    // A rectangle of the pixels of a texture in whole pixels, from its top row and its left column.
+    using Region = gpu::Device::Region;
+
     explicit Device(std::unique_ptr<gpu::Device> device);
     ~Device();
 
@@ -65,10 +68,13 @@ class Device final {
     // Creates a dynamic texture of one channel of half floats, such as the signed distance field of a glyph atlas, which every GPU filters without the steps of a byte. Its `updateTexture` takes the bytes of the halves.
     [[nodiscard]] Texture createDynamicDistanceTexture(int width, int height, std::span<const std::uint16_t> distances, Texture::Options options = {});
 
-    // Replaces every pixel of a dynamic texture, keeping its size. The GPU only takes whole textures, so the device keeps the last pixels a texture received and sends each changed texture once per frame, however many updates it had.
+    // Replaces every pixel of a dynamic texture, keeping its size.
     void updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels);
 
-    // Sends the pixels of the dynamic textures that changed since the last upload and returns how many bytes they took, together with the images that the frame fills itself, such as the shadow atlas of the lights, since the GPU device takes the images of a frame in one call. The renderer calls it once per frame, before its passes.
+    // Takes every pixel of a dynamic texture, of which only the region changed since its last update, such as the place of a glyph that an atlas added. The device keeps the pixels of the region, and a texture that changes several times before the next upload sends once the smallest region that holds every change, from the pixels of its last update, so the GPU receives only the pixels that changed.
+    void updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels, Region changed);
+
+    // Sends the regions of the dynamic textures that changed since the last upload and returns how many bytes they took, together with the images that the frame fills itself, such as the shadow atlas of the lights, since the GPU device takes the images of a frame in one call. The renderer calls it once per frame, before its passes.
     std::size_t uploadTextures(std::span<const gpu::Device::ImageWrite> frameImages = {});
 
     // The name of the graphics API the device draws through, from `gpu::Device::kApiNames`: `metal`, `direct3D12`, `direct3D11`, `vulkan`, `openGl`, `openGlEs`, `webGl2`, `webGpu`, `port` for the device of a port, or `none` where nothing draws, such as the headless host of tests.

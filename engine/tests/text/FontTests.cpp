@@ -20,6 +20,7 @@
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "haylen/math/Rect.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
@@ -255,8 +256,8 @@ TEST(FontTest, GrowsTheAtlasWhenGlyphsDoNotFit) {
     }
 }
 
-// Every draw that adds glyphs hands the atlas to the device, and the frame sends it to the GPU once, in place.
-TEST(FontTest, UploadsItsAtlasOncePerFrameForTheGlyphsOfEveryDraw) {
+// Every draw that adds glyphs hands the atlas to the device, and the frame sends to the GPU once, in place, the smallest region that holds the glyphs of every draw.
+TEST(FontTest, UploadsOnlyTheRegionOfTheGlyphsThatTheDrawsOfAFrameAdded) {
     test::EngineFixture fixture;
     fixture.frames(1);
     const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
@@ -265,15 +266,35 @@ TEST(FontTest, UploadsItsAtlasOncePerFrameForTheGlyphsOfEveryDraw) {
     const graphics::Texture page = font.getPage(0);
     const std::uint64_t image = page.getResource()->image.id;
 
+    std::optional<math::Rect> added;
     for (const char* line : {"Harbor", "Lighthouse", "Quay 42", "Market", "Pier & dock", "Zephyr"}) {
-        (void)font.layout(line, {.size = 24.0F});
+        const std::shared_ptr<const text::Layout> layout = font.layout(line, {.size = 24.0F});
+        ASSERT_NE(layout, nullptr);
+        for (const text::Layout::Glyph& glyph : layout->glyphs) {
+            if (glyph.source.isEmpty()) {
+                continue;
+            }
+
+            added = added ? added->merged(glyph.source) : glyph.source;
+        }
+
         font.sync();
     }
 
     fixture.frames(1);
+    ASSERT_TRUE(added.has_value());
+    const auto regionBytes = static_cast<std::size_t>(added->width * added->height) * sizeof(std::uint16_t);
+    const std::size_t pageBytes = static_cast<std::size_t>(page.getWidth() * page.getHeight()) * sizeof(std::uint16_t);
     EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 1);
-    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, static_cast<std::size_t>(page.getWidth() * page.getHeight()) * sizeof(std::uint16_t));
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, regionBytes);
+    EXPECT_LT(regionBytes, pageBytes);
     EXPECT_EQ(font.getPage(0).getResource()->image.id, image);
+
+    // A frame that draws glyphs the atlas already holds sends nothing.
+    (void)font.layout("Harbor", {.size = 24.0F});
+    font.sync();
+    fixture.frames(1);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 0);
 }
 
 // A glyph wider than any texture of the device fails every time it is drawn, rather than drawing nothing after the first failure, and it fails before its distance field is computed.

@@ -63,6 +63,16 @@ TEST(GraphicsLuaTest, UpdatesDynamicTextures) {
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(1, 1, {dynamic = true, pixels = string.char(1, 2, 3, 4)}) return t.width"), "1");
     EXPECT_NE(fixture.lua("minimap:update('short')").find("The pixels do not match the size of the dynamic texture."), std::string::npos);
     EXPECT_NE(fixture.lua("graphics.newTexture(1, 1):update(string.char(1, 2, 3, 4))").find("Only a dynamic texture changes its pixels in place."), std::string::npos);
+
+    // A region says which pixels changed, and the frame sends only those.
+    fixture.frames(1);
+    fixture.runLua("minimap:update(string.rep(string.char(0, 0, 255, 255), 2), {region = {1, 0, 1, 1}})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, 4U);
+    EXPECT_EQ(fixture.lua("minimap:update(string.rep('\\0', 8), {region = {x = 0, y = 0, width = 2, height = 1}}) return 'ok'"), "ok");
+    EXPECT_NE(fixture.lua("minimap:update(string.rep('\\0', 8), {region = {1, 0, 2, 1}})").find("The region of a texture update must lie inside the dynamic texture and hold at least one pixel."), std::string::npos);
+    EXPECT_NE(fixture.lua("minimap:update(string.rep('\\0', 8), {region = {0.5, 0, 1, 1}})").find("The region of \"texture:update\" must hold whole pixels."), std::string::npos);
+    EXPECT_NE(fixture.lua("minimap:update(string.rep('\\0', 8), {area = {0, 0, 1, 1}})").find("Unknown option \"area\"."), std::string::npos);
 }
 
 // Images keep pixels on the CPU, decode and blit on the task pool, pack into atlases and become textures, and work on the pool never sees what Lua changes later.

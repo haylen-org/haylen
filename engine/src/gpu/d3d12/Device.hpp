@@ -246,6 +246,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getAttachment(ImageRecord& image, int mipLevel, int layer);
     void makeTextureView(ImageRecord& image);
     void stagePixels(const ImageRecord& image, std::span<const std::span<const std::byte>> levels);
+    void stageRegion(const ImageRecord& image, const Region& region, std::span<const std::byte> pixels);
     [[nodiscard]] Microsoft::WRL::ComPtr<ID3D12Resource> makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 size, D3D12_RESOURCE_STATES state, std::string_view label);
     [[nodiscard]] DescriptorRing* applyTables(const PipelineRecord& pipeline, const Bindings& bindings);
     [[nodiscard]] bool applyTable(std::size_t table, int parameter, std::span<const D3D12_CPU_DESCRIPTOR_HANDLE> handles);

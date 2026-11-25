@@ -99,9 +99,10 @@ const VectorAtlas::Entry& VectorAtlas::place(std::uint32_t image, int step, cons
     }
 
     const Entry entry{.page = index, .source = {static_cast<float>(page.cursorX), static_cast<float>(page.cursorY), static_cast<float>(width), static_cast<float>(height)}};
+    const graphics::Device::Region placed{page.cursorX, page.cursorY, width, height};
+    page.changed = page.changed ? page.changed->merged(placed) : placed;
     page.cursorX += width + 1;
     page.rowHeight = std::max(page.rowHeight, height);
-    page.dirty = true;
     page.rasters.emplace_back(image, step);
     return images[image].insert_or_assign(step, entry).first->second;
 }
@@ -160,11 +161,12 @@ void VectorAtlas::clearPage(std::size_t index, int side) {
     page.texture = device.createDynamicTexture(graphics::Image(side, side, page.pixels), {.filter = graphics::Texture::Filter::Linear});
 }
 
+// Each page sends only the region of the rasters that it took since the last upload.
 void VectorAtlas::stage() {
     for (Page& page : pages) {
-        if (page.dirty) {
-            device.updateTexture(page.texture, page.pixels);
-            page.dirty = false;
+        if (page.changed) {
+            device.updateTexture(page.texture, page.pixels, *page.changed);
+            page.changed.reset();
         }
     }
 }

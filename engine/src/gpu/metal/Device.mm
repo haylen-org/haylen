@@ -1008,8 +1008,10 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        const std::size_t expected = static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height) * static_cast<std::size_t>(image.layers) * Formats::getBytesPerPixel(image.format);
-        if (write.pixels.size() != expected) {
+        const Region& region = write.region;
+        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
+        const std::size_t expected = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * Formats::getBytesPerPixel(image.format);
+        if (!inside || write.pixels.size() != expected) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
@@ -1019,7 +1021,12 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     @autoreleasepool {
         const id<MTLBlitCommandEncoder> blit = [native->commands blitCommandEncoder];
         for (std::size_t index = 0; index < writes.size(); ++index) {
-            Native::copyLevel(blit, native->staged[index].buffer, native->staged[index].offset, native->requireImage(writes[index].image), 0);
+            const Native::ImageEntry& image = native->requireImage(writes[index].image);
+            const Region& region = writes[index].region;
+            const NSUInteger rowBytes = static_cast<NSUInteger>(region.width) * Formats::getBytesPerPixel(image.format);
+            const MTLSize size = MTLSizeMake(static_cast<NSUInteger>(region.width), static_cast<NSUInteger>(region.height), 1);
+            const MTLOrigin origin = MTLOriginMake(static_cast<NSUInteger>(region.x), static_cast<NSUInteger>(region.y), 0);
+            [blit copyFromBuffer:native->staged[index].buffer sourceOffset:native->staged[index].offset sourceBytesPerRow:rowBytes sourceBytesPerImage:rowBytes * size.height sourceSize:size toTexture:image.texture destinationSlice:0 destinationLevel:0 destinationOrigin:origin];
         }
 
         [blit endEncoding];

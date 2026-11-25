@@ -322,17 +322,38 @@ TEST_P(GpuTextureTest, SamplesTheNewPixelsOfDynamicImagesEachFrame) {
     const Device::Sampler sampler = makeSampler(kNearest);
     for (const math::Color color : {math::Color{1.0F, 0.0F, 0.0F, 1.0F}, math::Color{0.0F, 1.0F, 0.0F, 1.0F}, math::Color{0.0F, 0.0F, 1.0F, 1.0F}}) {
         const std::vector<std::byte> texels = fill(std::span(&color, 1), 4);
-        const std::array<Device::ImageWrite, 1> writes{{{.image = texture, .pixels = texels}}};
+        const std::array<Device::ImageWrite, 1> writes{{{.image = texture, .region = {0, 0, 2, 2}, .pixels = texels}}};
         device().writeImages(writes);
         EXPECT_TRUE(isNear(sample("textured", texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F}).at(0, 0), color)) << color.toHex();
     }
+}
+
+// A write of a region of a dynamic image replaces the pixels of the region and keeps the others, the way a glyph atlas sends only the glyphs it added.
+TEST_P(GpuTextureTest, KeepsThePixelsOutsideTheRegionThatAWriteReplaces) {
+    const Device::Image texture = makeImage({.width = 4, .height = 1, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-dynamic"});
+    const Device::Sampler sampler = makeSampler(kNearest);
+    const math::Color red{1.0F, 0.0F, 0.0F, 1.0F};
+    const math::Color green{0.0F, 1.0F, 0.0F, 1.0F};
+    const std::vector<std::byte> whole = fill(std::span(&red, 1), 4);
+    const std::array<Device::ImageWrite, 1> first{{{.image = texture, .region = {0, 0, 4, 1}, .pixels = whole}}};
+    device().writeImages(first);
+    EXPECT_TRUE(isNear(sample("textured", texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F}, 4, 1).at(3, 0), red));
+
+    const std::vector<std::byte> part = fill(std::span(&green, 1), 2);
+    const std::array<Device::ImageWrite, 1> second{{{.image = texture, .region = {2, 0, 2, 1}, .pixels = part}}};
+    device().writeImages(second);
+    const Pixels pixels = sample("textured", texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F}, 4, 1);
+    EXPECT_TRUE(isNear(pixels.at(0, 0), red));
+    EXPECT_TRUE(isNear(pixels.at(1, 0), red));
+    EXPECT_TRUE(isNear(pixels.at(2, 0), green));
+    EXPECT_TRUE(isNear(pixels.at(3, 0), green));
 }
 
 // Only a dynamic image takes new pixels, so a write into a render target is refused.
 TEST_P(GpuTextureTest, RefusesNewPixelsForImagesThatAreNotDynamic) {
     const Device::Image target = makeTarget(2, 2);
     const std::array<std::byte, 16> texels{};
-    const std::array<Device::ImageWrite, 1> writes{{{.image = target, .pixels = texels}}};
+    const std::array<Device::ImageWrite, 1> writes{{{.image = target, .region = {0, 0, 2, 2}, .pixels = texels}}};
     EXPECT_EQ(test::ContractRule::of([&] { (void)device().writeImages(writes); }), gpu::ContractError::Rule::ImageWrite);
 }
 
@@ -351,7 +372,7 @@ TEST_P(GpuTextureTest, SamplesEveryFormatThatDynamicImagesWrite) {
         }
 
         const Device::Image texture = makeImage({.width = 8, .height = 8, .format = format, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-dynamic"});
-        const std::array<Device::ImageWrite, 1> writes{{{.image = texture, .pixels = texels}}};
+        const std::array<Device::ImageWrite, 1> writes{{{.image = texture, .region = {0, 0, 8, 8}, .pixels = texels}}};
         device().writeImages(writes);
         math::Color expected = sampledColor(format);
         if (format == Device::PixelFormat::Rgba8Srgb) {

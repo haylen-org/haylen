@@ -107,7 +107,7 @@ class OpenGlDeviceTest : public OpenGlTest {
     void drawFrame() {
         const std::array<float, 4> offsets{0.0F, 0.0F, 0.25F, 0.0F};
         const std::array<std::byte, 16> pixels{};
-        const std::array<Device::ImageWrite, 1> writes{{{.image = image, .pixels = pixels}}};
+        const std::array<Device::ImageWrite, 1> writes{{{.image = image, .region = {0, 0, 2, 2}, .pixels = pixels}}};
         device->writeBuffer(instances, 0, std::as_bytes(std::span(offsets)));
         device->writeImages(writes);
 

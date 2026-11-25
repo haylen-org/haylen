@@ -4,11 +4,13 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/graphics/VectorImage.hpp"
@@ -75,7 +77,9 @@ class VectorAtlas final {
         int cursorY = 1;
         int rowHeight = 0;
         std::uint64_t frame = 0;
-        bool dirty = false;
+
+        // The smallest region of the page that holds the rasters placed since the last upload.
+        std::optional<graphics::Device::Region> changed{};
         std::vector<std::pair<std::uint32_t, int>> rasters{};
     };
 

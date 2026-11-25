@@ -683,14 +683,46 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        const direct3d::MipLevels::Level level = direct3d::MipLevels::describe(image.type, image.width, image.height, image.layers, image.format, 0);
-        if (write.pixels.size() != level.sliceBytes * level.layers) {
+        const Region& region = write.region;
+        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
+        const std::size_t bytes = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * Formats::getBytesPerPixel(image.format);
+        if (!inside || write.pixels.size() != bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        const std::array<std::span<const std::byte>, 1> levels{write.pixels};
-        stagePixels(image, levels);
+        stageRegion(image, region, write.pixels);
     }
+}
+
+// The pixels of a region go into upload memory at the footprint that Direct3D 12 lays out for a subresource of its size, and the transfer list copies them into the region of the first mip level of the image, which it moves out of its state and back.
+void Device::stageRegion(const ImageRecord& image, const Region& region, std::span<const std::byte> pixels) {
+    D3D12_RESOURCE_DESC desc = image.resource->GetDesc();
+    desc.Width = static_cast<UINT64>(region.width);
+    desc.Height = static_cast<UINT>(region.height);
+    desc.DepthOrArraySize = 1;
+    desc.MipLevels = 1;
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
+    UINT64 total = 0;
+    device->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total);
+
+    const std::size_t rowBytes = static_cast<std::size_t>(region.width) * Formats::getBytesPerPixel(image.format);
+    const UploadAllocator::Allocation staged = uploads->allocate(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+    for (int row = 0; row < region.height; ++row) {
+        std::memcpy(staged.data + static_cast<std::size_t>(row) * footprint.Footprint.RowPitch, pixels.data() + static_cast<std::size_t>(row) * rowBytes, rowBytes);
+    }
+
+    ID3D12GraphicsCommandList4& list = getTransferList();
+    const D3D12_RESOURCE_BARRIER toCopy = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_COPY_DEST);
+    list.ResourceBarrier(1, &toCopy);
+
+    footprint.Offset = staged.offset;
+    const D3D12_TEXTURE_COPY_LOCATION destination{.pResource = image.resource.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
+    D3D12_TEXTURE_COPY_LOCATION from{.pResource = staged.resource, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT};
+    from.PlacedFootprint = footprint;
+    list.CopyTextureRegion(&destination, static_cast<UINT>(region.x), static_cast<UINT>(region.y), 0, &from, nullptr);
+
+    const D3D12_RESOURCE_BARRIER toHome = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, image.home);
+    list.ResourceBarrier(1, &toHome);
 }
 
 std::unique_ptr<Device::SurfaceChain> Device::makeChain(const std::optional<Surface>& target) {

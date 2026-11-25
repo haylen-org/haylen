@@ -343,6 +343,13 @@ void Device::uploadLevel(const ImageRecord& record, int level, std::uintptr_t so
     }
 }
 
+// A dynamic image is flat with one mip level, whose region takes the pixels at the address or the offset into the pixel unpack buffer.
+void Device::uploadRegion(const ImageRecord& record, const Region& region, std::uintptr_t source) {
+    const Conversions::Pixel& pixel = record.pixel;
+    state.bindTexture(0, record.target, record.name);
+    gl.texSubImage2D(Gl::kTexture2d, 0, region.x, region.y, region.width, region.height, pixel.format, pixel.type, reinterpret_cast<const void*>(source));
+}
+
 void Device::checkImage(const ImageDesc& desc, const Conversions::Pixel& pixel) const {
     if (desc.width <= 0 || desc.height <= 0 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize || desc.layers < 1 || desc.mipLevels < 1 || desc.sampleCount < 1) {
         throw ContractError(ContractError::Rule::Image);
@@ -636,7 +643,10 @@ std::size_t Device::checkImageWrites(std::span<const ImageWrite> writes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        if (write.pixels.size() != getLevelBytes(record, 0)) {
+        const Region& region = write.region;
+        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= record.width && region.y + region.height <= record.height;
+        const std::size_t bytes = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * record.pixel.bytes;
+        if (!inside || write.pixels.size() != bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
@@ -658,7 +668,7 @@ void Device::uploadImagesFromMemory(std::span<const ImageWrite> writes) {
             pixels = staging;
         }
 
-        uploadLevel(record, 0, toAddress(pixels.data()));
+        uploadRegion(record, write.region, toAddress(pixels.data()));
     }
 }
 
@@ -675,7 +685,7 @@ void Device::uploadImagesThroughRing(std::span<const ImageWrite> writes, std::si
     state.bindBuffer(Gl::kPixelUnpackBuffer, ring->getBuffer());
     cursor = slice.offset;
     for (const ImageWrite& write : writes) {
-        uploadLevel(images.get(write.image.id), 0, cursor);
+        uploadRegion(images.get(write.image.id), write.region, cursor);
         cursor += UploadRing::align(write.pixels.size());
     }
 

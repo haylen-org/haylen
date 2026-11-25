@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <numbers>
@@ -15,6 +16,7 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include "core/EmbeddedFiles.hpp"
+#include "gpu/NullDevice.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Device.hpp"
@@ -243,6 +245,31 @@ TEST_F(BackendTest, ManagesFontsAndAppTextures) {
     });
     // clang-format on
     EXPECT_GE(getEngine().getRenderer2D().getStats().drawCalls, 1U);
+}
+
+// The atlas of the UI sends the GPU the box of the glyphs that a frame added to it, never the whole atlas again.
+TEST_F(BackendTest, UploadsOnlyTheBoxOfTheGlyphsThatTheAtlasAdded) {
+    fixture.frames(1);
+    // clang-format off
+    frame([&] {
+        beginWindow("text", {0.0F, 0.0F});
+        ImGui::TextUnformatted("A");
+        ImGui::End();
+    });
+    // clang-format on
+    const std::size_t created = fixture.host().getGpu().getLastFrame().imageWriteBytes;
+    ASSERT_GT(created, 0U);
+
+    // clang-format off
+    frame([&] {
+        beginWindow("text", {0.0F, 0.0F});
+        ImGui::TextUnformatted("Quixotic jazz");
+        ImGui::End();
+    });
+    // clang-format on
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 1);
+    EXPECT_GT(fixture.host().getGpu().getLastFrame().imageWriteBytes, 0U);
+    EXPECT_LT(fixture.host().getGpu().getLastFrame().imageWriteBytes, created);
 }
 
 // A child window draws at its place among the items of its parent, so what the parent draws after it, such as the GUIs above a scroll, covers it.

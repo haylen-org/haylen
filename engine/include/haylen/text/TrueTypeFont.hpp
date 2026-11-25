@@ -3,16 +3,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <unordered_map>
 #include <vector>
 
+#include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/text/Font.hpp"
-
-namespace haylen::graphics {
-class Device;
-}
 
 namespace haylen::text {
 
@@ -89,7 +87,9 @@ class TrueTypeFont final : public Font {
     int cursorX = 1;
     int cursorY = 1;
     int rowHeight = 0;
-    bool dirty = false;
+
+    // The smallest region of the atlas that holds the glyphs added since the last upload.
+    std::optional<graphics::Device::Region> changed;
 };
 
 } // namespace haylen::text

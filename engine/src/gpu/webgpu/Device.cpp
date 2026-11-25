@@ -657,7 +657,21 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        writeLevel(image.texture, 0, image.width, image.height, image.layers, image.format, write.pixels);
+        const Region& region = write.region;
+        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
+        const std::size_t rowBytes = static_cast<std::size_t>(region.width) * ImageInfo::getBytesPerPixel(image.format);
+        if (!inside || write.pixels.size() != rowBytes * static_cast<std::size_t>(region.height)) {
+            throw ContractError(ContractError::Rule::ImageWrite);
+        }
+
+        WGPUTexelCopyTextureInfo destination = WGPU_TEXEL_COPY_TEXTURE_INFO_INIT;
+        destination.texture = image.texture;
+        destination.origin = {.x = static_cast<std::uint32_t>(region.x), .y = static_cast<std::uint32_t>(region.y), .z = 0};
+        WGPUTexelCopyBufferLayout layout = WGPU_TEXEL_COPY_BUFFER_LAYOUT_INIT;
+        layout.bytesPerRow = static_cast<std::uint32_t>(rowBytes);
+        layout.rowsPerImage = static_cast<std::uint32_t>(region.height);
+        const WGPUExtent3D extent{.width = static_cast<std::uint32_t>(region.width), .height = static_cast<std::uint32_t>(region.height), .depthOrArrayLayers = 1};
+        wgpuQueueWriteTexture(queue, &destination, write.pixels.data(), write.pixels.size(), &layout, &extent);
     }
 }
 

@@ -38,7 +38,7 @@ class NullDeviceTest : public ::testing::Test {
 TEST_F(NullDeviceTest, WritesTheImagesOfAFrameInOneCallBeforeItsPasses) {
     NullDevice device;
     const Device::Image image = makeDynamic(device);
-    const std::array<Device::ImageWrite, 1> writes{{{.image = image, .pixels = pixels}}};
+    const std::array<Device::ImageWrite, 1> writes{{{.image = image, .region = {0, 0, 2, 2}, .pixels = pixels}}};
     device.writeImages(writes);
     EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(writes); }), gpu::ContractError::Rule::ImageWrite);
     device.commit();
@@ -52,9 +52,34 @@ TEST_F(NullDeviceTest, WritesTheImagesOfAFrameInOneCallBeforeItsPasses) {
     device.writeImages(writes);
 
     const Device::Image texture = device.makeImage({.width = 2, .height = 2, .levels = std::array<std::span<const std::byte>, 1>{pixels}, .label = "texture"});
-    const std::array<Device::ImageWrite, 1> fixed{{{.image = texture, .pixels = pixels}}};
+    const std::array<Device::ImageWrite, 1> fixed{{{.image = texture, .region = {0, 0, 2, 2}, .pixels = pixels}}};
     device.commit();
     EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(fixed); }), gpu::ContractError::Rule::ImageWrite);
+}
+
+// A write replaces a region inside its image with the pixels of that region alone, and each image takes one write in a call, so no copy of the call waits for another.
+TEST_F(NullDeviceTest, WritesOneRegionInsideEachDynamicImage) {
+    NullDevice device;
+    const Device::Image image = makeDynamic(device);
+    const std::span<const std::byte> texel = std::span(pixels).first(4);
+    const std::array<Device::ImageWrite, 1> part{{{.image = image, .region = {1, 0, 1, 1}, .pixels = texel}}};
+    device.writeImages(part);
+    device.commit();
+    EXPECT_EQ(device.getLastFrame().imageWriteBytes, texel.size());
+
+    const std::array<Device::Region, 4> outside{{{2, 0, 1, 1}, {-1, 0, 1, 1}, {0, 1, 1, 2}, {0, 0, 0, 1}}};
+    for (const Device::Region region : outside) {
+        const std::array<Device::ImageWrite, 1> writes{{{.image = image, .region = region, .pixels = texel}}};
+        EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(writes); }), gpu::ContractError::Rule::ImageWrite) << region.x << ", " << region.y;
+        device.commit();
+    }
+
+    const std::array<Device::ImageWrite, 1> tooFewPixels{{{.image = image, .region = {0, 0, 2, 1}, .pixels = texel}}};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(tooFewPixels); }), gpu::ContractError::Rule::ImageWrite);
+    device.commit();
+
+    const std::array<Device::ImageWrite, 2> twice{{{.image = image, .region = {0, 0, 1, 1}, .pixels = texel}, {.image = image, .region = {1, 1, 1, 1}, .pixels = texel}}};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(twice); }), gpu::ContractError::Rule::ImageWrite);
 }
 
 // The device holds room for a bounded number of objects of each kind, like a real one, and reports it.

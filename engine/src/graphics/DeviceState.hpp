@@ -73,8 +73,8 @@ struct DeviceState {
     // Creates a texture whose pixels change in place, and keeps its first pixels for the next upload.
     [[nodiscard]] Texture createDynamicTexture(int width, int height, gpu::Device::PixelFormat format, std::span<const std::uint8_t> pixels, Texture::Options options);
 
-    // Keeps the pixels of a dynamic texture for the next upload, replacing the ones it kept before.
-    void stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels);
+    // Keeps the pixels of the region of a dynamic texture that changed for the next upload, out of every pixel of the texture. A texture that already waits for an upload keeps the smallest region that holds both changes, from the newer pixels.
+    void stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels, gpu::Device::Region changed);
 
   private:
     // The samples a linear texture with mipmaps takes along the longer side of the footprint of a pixel, so a texture drawn much smaller along one side than the other, such as the middle of a nine-slice squeezed into a narrow button, keeps the detail of its other side.

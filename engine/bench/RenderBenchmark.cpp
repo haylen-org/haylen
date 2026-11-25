@@ -12,11 +12,13 @@
 #include <map>
 #include <memory>
 #include <new>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include "core/EmbeddedFiles.hpp"
 #include "haylen/2d/animation/AtlasBuilder.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/Glass.hpp"
@@ -27,6 +29,7 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Scene.hpp"
+#include "haylen/core/Utf8.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/graphics/Device.hpp"
@@ -38,6 +41,7 @@
 #include "haylen/text/Font.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
+#include "haylen/text/TrueTypeFont.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Placement.hpp"
 #include "platform/headless/HeadlessHost.hpp"
@@ -320,6 +324,23 @@ class RenderBenchmark final {
                 std::format_to(std::back_inserter(changing), "Score {} of player {}", current.getClock().getFrameIndex() * 7 + static_cast<std::uint64_t>(index), index);
                 renderer.drawText(*current.getDefaultFont(), changing, {static_cast<float>(index % 5) * 380.0F, static_cast<float>(index / 5) * 26.0F}, {.size = 20.0F});
             }
+        });
+
+        // Every frame draws a character that the font has not drawn before, as text that shows new characters does, so its atlas sends the GPU the region of one glyph.
+        const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
+        text::TrueTypeFont font(engine.getGraphics(), std::vector<std::uint8_t>(data.begin(), data.end()));
+        char32_t next = U'!';
+        std::string character;
+        measure(engine, gpu, "Text, a new glyph every frame", [&font, &next, &character](core::Engine& current) {
+            while (next < U'\U0000FFFF' && !font.hasGlyph(next)) {
+                ++next;
+            }
+
+            character.clear();
+            core::Utf8::append(character, next++);
+            graphics2d::Renderer& renderer = current.getRenderer2D();
+            renderer.beginScreen();
+            renderer.drawText(font, character, {20.0F, 20.0F}, {.size = 32.0F});
         });
         // clang-format on
     }

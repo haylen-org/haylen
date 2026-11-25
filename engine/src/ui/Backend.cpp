@@ -1235,6 +1235,20 @@ const graphics::Texture* Backend::findTexture(ImTextureID id) const {
     return found != atlasTextures.end() ? &found->second : nullptr;
 }
 
+// ImGui gathers the changes of an atlas since the last frame in one box, which is all the GPU receives. The pixels of an atlas of colors are the texture as it is, and an atlas of coverage expands into colors first.
+void Backend::updateAtlas(ImTextureData& texture) {
+    const graphics::Texture& atlas = atlasTextures.at(texture.TexID);
+    const ImTextureRect& box = texture.UpdateRect;
+    const graphics::Device::Region changed{box.x, box.y, box.w, box.h};
+    if (texture.Format == ImTextureFormat_RGBA32) {
+        const std::span pixels(static_cast<const std::uint8_t*>(texture.GetPixels()), static_cast<std::size_t>(texture.GetSizeInBytes()));
+        device.updateTexture(atlas, pixels, changed);
+        return;
+    }
+
+    device.updateTexture(atlas, toImage(texture).getPixels(), changed);
+}
+
 void Backend::updateTextures(ImDrawData& data) {
     if (data.Textures == nullptr) {
         return;
@@ -1250,7 +1264,7 @@ void Backend::updateTextures(ImDrawData& data) {
             break;
         }
         case ImTextureStatus_WantUpdates:
-            device.updateTexture(atlasTextures.at(texture->TexID), toImage(*texture).getPixels());
+            updateAtlas(*texture);
             texture->SetStatus(ImTextureStatus_OK);
             break;
         case ImTextureStatus_WantDestroy:

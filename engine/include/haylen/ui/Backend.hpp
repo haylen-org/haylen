@@ -398,6 +398,7 @@ class Backend final {
     void releaseTravelledTouch();
     void releaseLiftedTouch();
     void yieldFocusToPress();
+    void updateAtlas(ImTextureData& texture);
     void updateTextures(ImDrawData& data);
     static void collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists);
     void drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists);

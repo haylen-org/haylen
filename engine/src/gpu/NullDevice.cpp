@@ -447,18 +447,29 @@ void NullDevice::writeImages(std::span<const ImageWrite> writes) {
 
     imagesWritten = true;
 
-    for (const ImageWrite& write : writes) {
-        const ImageDesc& image = getImage(write.image);
+    for (auto write = writes.begin(); write != writes.end(); ++write) {
+        const ImageDesc& image = getImage(write->image);
         if (image.kind != ImageKind::Dynamic) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        if (write.pixels.size() != ImageInfo::getLevelBytes(image, 0)) {
+        const Region& region = write->region;
+        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
+        if (!inside) {
+            throw ContractError(ContractError::Rule::ImageWrite);
+        }
+
+        const std::size_t bytes = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * ImageInfo::getBytesPerPixel(image.format);
+        if (write->pixels.size() != bytes) {
+            throw ContractError(ContractError::Rule::ImageWrite);
+        }
+
+        if (std::any_of(writes.begin(), write, [image = write->image](const ImageWrite& earlier) { return earlier.image == image; })) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
         ++currentFrame.imageWrites;
-        currentFrame.imageWriteBytes += write.pixels.size();
+        currentFrame.imageWriteBytes += write->pixels.size();
     }
 }
 

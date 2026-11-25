@@ -427,6 +427,48 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
     EXPECT_THROW((void)device.createDynamicTexture(1 << 20, 1 << 20, math::Color::white()), std::invalid_argument);
 }
 
+// A texture of which only a region changed keeps the pixels of that region alone and sends them, and the changes before one upload send the smallest region that holds them all, from the newest pixels.
+TEST(DeviceTest, UploadsOnlyTheRegionOfADynamicTextureThatChanged) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    const gpu::NullDevice& gpu = fixture.host().getGpu();
+    const graphics::Texture texture = device.createDynamicTexture(4, 4, math::Color::white());
+    fixture.frames(1);
+
+    std::vector<std::uint8_t> pixels(64);
+    for (std::size_t index = 0; index < pixels.size(); ++index) {
+        pixels[index] = static_cast<std::uint8_t>(index);
+    }
+
+    device.updateTexture(texture, pixels, {1, 2, 2, 1});
+    const std::vector<std::uint8_t> row{36, 37, 38, 39, 40, 41, 42, 43};
+    EXPECT_EQ(texture.getResource()->staged, row);
+    fixture.frames(1);
+    EXPECT_EQ(gpu.getLastFrame().imageWrites, 1);
+    EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 8U);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().uploadedBytes, 8U);
+
+    device.updateTexture(texture, pixels, {0, 0, 1, 1});
+    pixels[60] = 200;
+    device.updateTexture(texture, pixels, {3, 3, 1, 1});
+    EXPECT_EQ(texture.getResource()->stagedRegion, (graphics::Device::Region{0, 0, 4, 4}));
+    EXPECT_EQ(texture.getResource()->staged, pixels);
+    fixture.frames(1);
+    EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 64U);
+
+    // A texture that takes a new size while a region waits sends its new pixels whole.
+    device.updateTexture(texture, pixels, {2, 2, 2, 2});
+    device.replaceTexture(texture, graphics::Image(2, 1, math::Color::white()));
+    EXPECT_EQ(texture.getResource()->stagedRegion, (graphics::Device::Region{0, 0, 2, 1}));
+    fixture.frames(1);
+    EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 8U);
+
+    const std::vector<std::uint8_t> small(8);
+    EXPECT_THROW(device.updateTexture(texture, small, {1, 0, 2, 1}), std::invalid_argument);
+    EXPECT_THROW(device.updateTexture(texture, small, {0, 0, 0, 1}), std::invalid_argument);
+    EXPECT_THROW(device.updateTexture(texture, small, {-1, 0, 1, 1}), std::invalid_argument);
+}
+
 TEST(DeviceTest, ReportsAFullTexturePool) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();

@@ -1,5 +1,7 @@
 #include "graphics/DeviceState.hpp"
 
+#include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <utility>
 
@@ -83,17 +85,27 @@ Texture DeviceState::createDynamicTexture(int width, int height, gpu::Device::Pi
     resource->format = format;
     resource->dynamic = true;
     resource->graveyard = graveyard;
-    stagePixels(resource, pixels);
+    stagePixels(resource, pixels, {0, 0, width, height});
     return Texture(std::move(resource));
 }
 
-void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels) {
-    if (!resource->pending) {
+void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels, gpu::Device::Region changed) {
+    if (resource->pending) {
+        changed = changed.merged(resource->stagedRegion);
+    } else {
         resource->pending = true;
         changedTextures.push_back(resource);
     }
 
-    resource->staged.assign(pixels.begin(), pixels.end());
+    const std::size_t pixelBytes = gpu::ImageInfo::getBytesPerPixel(resource->format);
+    const std::size_t imageRow = static_cast<std::size_t>(resource->width) * pixelBytes;
+    const std::size_t regionRow = static_cast<std::size_t>(changed.width) * pixelBytes;
+    resource->stagedRegion = changed;
+    resource->staged.resize(regionRow * static_cast<std::size_t>(changed.height));
+    for (int row = 0; row < changed.height; ++row) {
+        const std::size_t from = static_cast<std::size_t>(changed.y + row) * imageRow + static_cast<std::size_t>(changed.x) * pixelBytes;
+        std::copy_n(pixels.begin() + static_cast<std::ptrdiff_t>(from), regionRow, resource->staged.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(row) * regionRow));
+    }
 }
 
 std::size_t DeviceState::getImageBytes(int width, int height, gpu::Device::PixelFormat format) {

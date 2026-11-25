@@ -19,6 +19,7 @@ set(HAYLEN_TEST_SOURCES
   2d/graphics/RendererStateTests.cpp
   2d/graphics/RendererTests.cpp
   2d/graphics/TextPainterTests.cpp
+  2d/graphics/VectorAtlasTests.cpp
   2d/lighting/Lighting2DTests.cpp
   2d/navigation/CrowdTests.cpp
   2d/navigation/Navigation2DTests.cpp

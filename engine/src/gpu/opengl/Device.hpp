@@ -183,6 +183,7 @@ class Device final : public gpu::Device {
     void uploadImagesFromMemory(std::span<const ImageWrite> writes);
     void uploadImagesThroughRing(std::span<const ImageWrite> writes, std::size_t total);
     void uploadLevel(const ImageRecord& record, int level, std::uintptr_t source);
+    void uploadRegion(const ImageRecord& record, const Region& region, std::uintptr_t source);
     [[nodiscard]] std::size_t getLevelBytes(const ImageRecord& record, int level) const noexcept;
     [[nodiscard]] FramebufferCache::Attachment toAttachment(Image image, int mipLevel, int layer);
     [[nodiscard]] Gl::Uint getSingleFramebuffer(Image image, std::string_view label);
