@@ -1,4 +1,4 @@
-package {{IDENTIFIER}}
+package {{PACKAGE}}
 
 import android.app.Application
 import dev.haylen.HaylenBridge

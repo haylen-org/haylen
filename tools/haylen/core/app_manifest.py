@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from haylen.core.app_category import AppCategory
+from haylen.core.app_identifier import AppIdentifier
 from haylen.core.app_kind import AppKind
 from haylen.core.cpp_sources import CppSources
 from haylen.core.errors.invalid_manifest import InvalidManifest
@@ -11,12 +12,13 @@ from haylen.core.frozen import Frozen
 from haylen.core.repository import Repository
 from haylen.core.schema_validator import SchemaValidator
 from haylen.native.native_library import NativeLibrary
+from haylen.platforms.product_folders import ProductFolders
 from haylen.plugins.plugin_reference import PluginReference
 
 
 @dataclass(frozen=True)
 class AppManifest:
-    """The `haylen.json` of an app, read and checked once against its schema: the identity of the app, its category, its kind, its C++ code, its native libraries, its plugins and the sections of its generated projects. The engine reads the same file from the package, and the tooling never writes another manifest next to it."""
+    """The `haylen.json` of an app, read and checked once against its schema: the identity of the app, its category, its kind, its C++ code, its native libraries, its plugins and the sections of its generated projects. The engine reads the same file from the package. An app without an identifier takes the one that `AppIdentifier` generates, which the package carries in a copy of `haylen.json` in the build folder of the app, so the engine reads the same identity as the tooling, and the tooling never writes into the app folder."""
 
     FILE = "haylen.json"
     # The name and the version of an app that names none, the same ones that the engine reads from such a `haylen.json`, and the name in the one-word form of executables, files and packages.
@@ -28,6 +30,7 @@ class AppManifest:
     document: Mapping[str, object]
     name: str
     identifier: str
+    identifier_generated: bool
     version: str
     build: int
     category: AppCategory | None
@@ -79,7 +82,8 @@ class AppManifest:
             folder=folder.resolve(),
             document=Frozen.freeze(document),
             name=document.get("name") or AppManifest.DEFAULT_NAME,
-            identifier=document["identifier"],
+            identifier=document.get("identifier") or AppIdentifier.generate(folder),
+            identifier_generated="identifier" not in document,
             version=document.get("version", AppManifest.DEFAULT_VERSION),
             build=document.get("build", 1),
             category=AppCategory(document["category"]) if "category" in document else None,
@@ -98,6 +102,30 @@ class AppManifest:
     @property
     def path(self) -> Path:
         return self.folder / AppManifest.FILE
+
+    def require_identifier(self, reason: str) -> str:
+        """Returns the identifier that `haylen.json` names, or fails for a step that a generated identifier cannot serve with the reason of the step."""
+        if not self.identifier_generated:
+            return self.identifier
+        raise InvalidManifest(
+            f'{reason}, and `{self.origin}` names no "identifier". Add "identifier" to it with a reverse domain identifier of yours, such as "com.example.game".',
+            origin=self.origin,
+        )
+
+    def package_manifest(self) -> Path:
+        """Returns the `haylen.json` that the package of the app carries: the file of the app folder, or for an app without an identifier a copy in the build folder of the app with the generated identifier first, so every line keeps its number. The copy is written only when it changes, so its time tells the development server when the app changed it."""
+        if not self.identifier_generated:
+            return self.path
+        text = self.path.read_text(encoding="utf-8")
+        start = text.index("{") + 1
+        entry = json.dumps({"identifier": self.identifier})[1:-1]
+        separator = ", " if self.document else ""
+        copy = ProductFolders.app_folder(self.folder) / AppManifest.FILE
+        written = f"{text[:start]}{entry}{separator}{text[start:]}"
+        if not copy.is_file() or copy.read_text(encoding="utf-8") != written:
+            copy.parent.mkdir(parents=True, exist_ok=True)
+            copy.write_text(written, encoding="utf-8")
+        return copy
 
     @property
     def origin(self) -> str:

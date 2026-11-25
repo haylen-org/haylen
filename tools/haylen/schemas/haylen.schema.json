@@ -4,10 +4,9 @@
     "description": "The manifest of a Haylen app, which the tooling and the engine read.",
     "type": "object",
     "additionalProperties": false,
-    "required": ["identifier"],
     "properties": {
         "name": {"type": ["string", "null"], "description": "The name that people read, \"Haylen App\" when it is missing, empty or null."},
-        "identifier": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*(\\.[A-Za-z][A-Za-z0-9-]*)+$", "description": "The reverse domain identifier, such as \"com.example.game\"."},
+        "identifier": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*(\\.[A-Za-z][A-Za-z0-9-]*)+$", "description": "The reverse domain identifier, such as \"com.example.game\", which every Release build, app for a device and store package needs. An app without one takes an identifier that the tooling generates for its folder."},
         "version": {"type": "string", "pattern": "^\\d+(\\.\\d+){0,2}$", "description": "The version that people see, one to three numbers separated by dots, \"1.0.0\" when it is missing."},
         "build": {"type": "integer", "minimum": 1, "maximum": 2100000000, "description": "The build number, which grows with every upload of the app."},
         "category": {"enum": ["game", "entertainment", "education", "productivity", "utility", "graphics", "music", "video", "social", "developer"], "description": "The category that the stores and the app menus of every platform show the app in, which an app without one leaves out of every generated project: \"game\", \"entertainment\", \"education\", \"productivity\", \"utility\", \"graphics\", \"music\", \"video\", \"social\" or \"developer\"."},

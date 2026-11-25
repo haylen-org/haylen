@@ -1,4 +1,5 @@
 import json
+import re
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 from types import MappingProxyType
@@ -9,6 +10,7 @@ from haylen.core.app_category import AppCategory
 from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.errors.invalid_manifest import InvalidManifest
+from haylen.core.project_resolver import ProjectResolver
 from haylen.core.repository import Repository
 from haylen.native.cmake_app import CMakeApp
 from haylen.platforms.build_product import BuildProduct
@@ -122,6 +124,17 @@ class DesktopProjectTest:
         assert not LinuxEntries.has_categories(entry)
         assert metainfo.find("categories") is None
         assert "set(HAYLEN_APP_DEBIAN_SECTION [[misc]])" in (project / "app.cmake").read_text(encoding="utf-8")
+
+    def test_a_release_build_needs_an_identifier_of_the_developer_while_a_debug_build_takes_the_generated_one(self, fixture: DesktopFixture):
+        app = fixture.app({"identifier": None}, "notes")
+        project = self.prepare(fixture, app, "linux")
+        generated = AppManifest.load(app).identifier
+        assert f"set(HAYLEN_APP_IDENTIFIER [[{generated}]])" in (project / "app.cmake").read_text(encoding="utf-8")
+        staged = DesktopFixture.folders(fixture.resolve(app, "linux")).package / AppManifest.FILE
+        assert json.loads(staged.read_text(encoding="utf-8"))["identifier"] == generated
+
+        with pytest.raises(InvalidManifest, match=re.escape(f'{ProjectResolver.RELEASE_IDENTIFIER}, and `{AppManifest.load(app).origin}` names no "identifier".')):
+            fixture.resolve(app, "linux", Configuration.RELEASE)
 
     def test_the_linux_installer_stops_an_app_whose_desktop_entry_lists_no_categories(self, fixture: DesktopFixture):
         app = fixture.app({}, "notes")

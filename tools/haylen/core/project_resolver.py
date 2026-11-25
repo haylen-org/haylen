@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from haylen.core.app_manifest import AppManifest
+from haylen.core.configuration import Configuration
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.frozen import Frozen
@@ -39,8 +40,13 @@ class ProjectResolver:
     plugins: PluginResolver
     sdks: SdkSelector
 
+    # Why a Release build needs the identifier that `haylen.json` names.
+    RELEASE_IDENTIFIER = "A Release build ships the protected release of the app, whose content keys are kept per identifier"
+
     def resolve(self, request: ProductRequest) -> ResolvedProduct:
         app = self.plugins.app
+        if request.configuration is Configuration.RELEASE:
+            app.require_identifier(ProjectResolver.RELEASE_IDENTIFIER)
         target = self.registry.target(request.target)
         description = target.description
         if app.kind not in description.kinds:
@@ -56,7 +62,7 @@ class ProjectResolver:
         minimum = ProjectResolver.minimum_system_version(app, sections, resolved.contributions, description.platform)
         graphics = tuple(app.section("window").get("graphicsApis", ()))
         native = ProjectResolver.native_libraries(app, resolved.contributions, description.platform)
-        package = PackageLayout.of(app.folder, {plugin.id: plugin.folder for plugin in resolved.plugins}, app.runs_lua)
+        package = PackageLayout.of_app(app, {plugin.id: plugin.folder for plugin in resolved.plugins})
         permissions = Frozen.freeze({permission: plugin.id for plugin in resolved.plugins for permission in plugin.manifest.permissions})
         settings = Frozen.freeze({name: {key: value for key, value in section.items() if key != "minimumSystemVersion"} for name, section in sections.items()})
 

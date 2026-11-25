@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 
+from haylen.core.app_manifest import AppManifest
+
 
 @dataclass(frozen=True)
 class PackageLayout:
@@ -20,15 +22,21 @@ class PackageLayout:
     folder: Path
     plugins: Mapping[str, Path]
     lua: bool
+    manifest: Path
 
     @staticmethod
     def of(folder: Path, plugins: Mapping[str, Path], lua: bool) -> PackageLayout:
-        return PackageLayout(folder, MappingProxyType(dict(plugins)), lua)
+        return PackageLayout(folder, MappingProxyType(dict(plugins)), lua, folder / PackageLayout.MANIFEST)
+
+    @staticmethod
+    def of_app(app: AppManifest, plugins: Mapping[str, Path]) -> PackageLayout:
+        """The layout of the package of an app, whose `haylen.json` carries the identity that the tooling resolved for it."""
+        return PackageLayout(app.folder, MappingProxyType(dict(plugins)), app.runs_lua, app.package_manifest())
 
     @property
     def roots(self) -> list[tuple[str, Path]]:
         """The package path of every file and folder of the package with where it lies on disk."""
-        roots = [(PackageLayout.MANIFEST, self.folder / PackageLayout.MANIFEST), (PackageLayout.CONTENT, self.folder / PackageLayout.CONTENT)]
+        roots = [(PackageLayout.MANIFEST, self.manifest), (PackageLayout.CONTENT, self.folder / PackageLayout.CONTENT)]
         if self.lua:
             roots.append((PackageLayout.SOURCE, self.folder / PackageLayout.SOURCE))
         for identifier, plugin in self.plugins.items():

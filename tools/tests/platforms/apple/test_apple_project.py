@@ -2,6 +2,7 @@ import re
 
 import pytest
 
+from haylen.core.app_manifest import AppManifest
 from haylen.core.errors.invalid_contribution import InvalidContribution
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.errors.unsupported_target import UnsupportedTarget
@@ -175,6 +176,16 @@ class AppleProjectTest:
         unsigned = apple.app({}, "unsigned")
         with pytest.raises(InvalidManifest, match=re.escape('"platforms.apple.team"')):
             apple.prepare(unsigned, "ios")
+
+    def test_only_an_app_for_a_device_needs_an_identifier_of_the_developer(self, apple):
+        app = apple.app({"identifier": None, "platforms": {"apple": {"team": "ABCDE12345"}}})
+        generated = AppManifest.load(app).identifier
+        for target in ("ios-simulator", "macos", "catalyst"):
+            prepared = apple.prepare(app, target)
+            assert f"HAYLEN_BUNDLE_IDENTIFIER = {generated}" in (prepared.folders.project / AppleProject.CONFIG).read_text(encoding="utf-8"), target
+        for target in ("ios", "tvos", "visionos"):
+            with pytest.raises(InvalidManifest, match=re.escape(f'Signing an app for a device of "{target}" needs an identifier that Apple registers for your team, and')):
+                apple.prepare(app, target)
 
     def test_simulators_and_this_mac_sign_ad_hoc(self, apple):
         app = apple.app({})

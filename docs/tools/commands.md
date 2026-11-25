@@ -50,10 +50,10 @@ Creates an app in a folder that does not exist or is empty: `haylen.json`, the l
 | `--kind` | `lua`. The value `cpp` makes an app whose C++ code compiles against the engine SDK. |
 | `--category` | None, so the app names no category. The category that the stores and the app menus show the app in: `game`, `entertainment`, `education`, `productivity`, `utility`, `graphics`, `music`, `video`, `social` or `developer`, as [category](distribution.md#category) maps them. |
 | `--name` | The display name, made from the folder name. |
-| `--identifier` | `com.example.<folder>`. |
+| `--identifier` | None, so the app takes the identifier that the tooling generates for its folder until a Release build, a device or a store needs one of yours, as [identifier](distribution.md#identifier) describes. |
 | `--orientation` | `landscape`. |
 
-Result: `folder`, `name`, `identifier`, `kind` and `category`, which is `null` without one.
+Result: `folder`, `name`, `identifier`, `kind` and `category`, where `identifier` and `category` are `null` when the command names none.
 
 ### app prepare
 
@@ -277,7 +277,7 @@ Contributions  2
   webModule  native-demo  {"path": "web/native-demo.js"}
 ```
 
-Result: `app`, `backend`, `identity` and `targets`. The `app` holds `folder`, `name`, `identifier`, `version`, `build`, `category`, which is `null` without one, and `kind`. The `targets` hold one entry per architecture, with `target`, `targetName`, `platform`, `kind`, `engineConfiguration`, `sdk`, `minimumSystemVersion`, `plugins`, `contributions`, `settings`, `nativeLibraries` and `permissions`. The `minimumSystemVersion` holds `value`, `origin` and `justification`, and each contribution holds `type`, `fields`, `owners` and `origins`. The `settings` hold each key of each section with its `value` and its `origin`, such as `haylen.json at platforms.apple.team`.
+Result: `app`, `backend`, `identity` and `targets`. The `app` holds `folder`, `name`, `identifier`, `identifierGenerated`, which is `true` for an identifier that the tooling generated, `version`, `build`, `category`, which is `null` without one, and `kind`. The `targets` hold one entry per architecture, with `target`, `targetName`, `platform`, `kind`, `engineConfiguration`, `sdk`, `minimumSystemVersion`, `plugins`, `contributions`, `settings`, `nativeLibraries` and `permissions`. The `minimumSystemVersion` holds `value`, `origin` and `justification`, and each contribution holds `type`, `fields`, `owners` and `origins`. The `settings` hold each key of each section with its `value` and its `origin`, such as `haylen.json at platforms.apple.team`.
 
 ## Machine and SDKs
 

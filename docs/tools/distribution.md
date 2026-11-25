@@ -247,6 +247,17 @@ Type `help` to list the commands of the app, with how to type each one in a colu
 
 The `name` of `haylen.json` is the name that people read: the title of the window, the label of the launcher, the display name of the bundle and the entries of the menus. It is optional. An app without a `name`, or with an empty or `null` one, is `Haylen App` in the engine and in every generated project alike. The one-word names of an app, such as the executable of a desktop and its packages, come from the app folder in lowercase dash-case, and a folder name without letters or digits gives `haylen-app`.
 
+## Identifier
+
+The `identifier` of `haylen.json` is the reverse domain identifier of the app, such as `com.example.skygarden`. It is the bundle identifier on Apple platforms, the application id on Android, the name of the desktop entry on Linux and the folder where the engine keeps the storage of the app. It is optional while the app runs on this machine. An app without it takes an identifier that the tooling generates for its folder: `local.`, the letters and digits of the folder name and eight hexadecimal digits of the hash of the absolute path of the folder, such as `local.skygarden3fa9c1d2`. The domain `local` belongs to no one, and the hash keeps two app folders from ever sharing an identifier, so two apps never replace each other on a device or share their storage.
+
+The generated identifier is a valid bundle identifier and Android application id. The package of the app carries it in a copy of `haylen.json` in the build folder of the app, with the identifier as its first key and every other line in its place, so the engine, the storage and every local target take it: this Mac, the desktops, the simulators, the emulator and the browser. The tooling never writes into the app folder, and the command `haylen project inspect` shows the identifier with `identifierGenerated`.
+
+The steps that need an identifier of the developer stop an app without one with a sentence that says to add `identifier` to `haylen.json`:
+
+- Signing an app for a device of iOS, tvOS or visionOS, since Apple registers the identifier for the team that signs it.
+- Every Release build, every package and every command of `haylen content` that reads the keys, since the content keys of an app are kept per identifier, so no two apps share them.
+
 ## Version and build number
 
 Every platform takes two numbers from `haylen.json`. The `version`, such as `1.2.0`, is the version that people see in the stores, and it is `1.0.0` when `haylen.json` gives none, as the engine reads it too. The `build` is a whole number that grows with every upload of the app, such as 1, 2 and 3, and it starts at 1 when `haylen.json` gives none. The `build` is the only source of every build number of the app, so nothing derives one from the version, and no setting of a section sets one of its own.
@@ -855,7 +866,7 @@ The tooling keeps two kinds of templates:
 - The app templates of `templates/`, which `haylen new` copies once into a new app: `templates/common` with `haylen.json`, the logo, the bridge handlers of every platform under `native/` and the `.gitignore`, `.editorconfig` and `.clang-format` of an app repository, then `templates/lua` with `source/main.lua` or `templates/cpp` with `src/App.cpp`, whose files replace a common file of the same path. The template of plugins, `templates/plugin`, is what `haylen plugin new` copies.
 - The backend templates, which live with their backend under `tools/haylen/platforms/<backend>/template/` and are inputs of every preparation: the Info.plist files, launch screens, asset catalogs, `main.m` and bridging header of the Apple apps, the Gradle project, asset pack module and native CMake project of Android, the page files of the web, and the CMake projects with their resources of Windows and Linux. An app replaces one of their files through `files`, and never edits them.
 
-A new app holds no platform project. The command `new` writes the name, the identifier, the category and the orientation into `haylen.json`, gives the window the name as its title, names the application class of Android after the identifier and, for `portrait`, turns the window and the design resolution upright. A C++ app also gets `"kind": "cpp"` and `"cpp": {"sources": ["src"]}`.
+A new app holds no platform project. The command `new` writes the name, the orientation and, when the command names them, the identifier and the category into `haylen.json`, gives the window the name as its title, puts the application class of Android in the package of the identifier, or in the package `app` without one, and, for `portrait`, turns the window and the design resolution upright. A C++ app also gets `"kind": "cpp"` and `"cpp": {"sources": ["src"]}`.
 
 ### The bridge example
 

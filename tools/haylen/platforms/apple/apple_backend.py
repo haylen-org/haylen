@@ -64,8 +64,11 @@ class AppleBackend(PlatformBackend):
         return AppleTargets.named(product.target_name)
 
     def prepare(self, product: ResolvedProduct, folders: ProductFolders) -> PreparedProject:
-        """Generates the project, with the protected release and its bootstrap in Release, which the content tool builds every time, since the keys of the app and the release it follows are no inputs of the preparation."""
-        project = AppleProject(self.context, product, AppleBackend.target_of(product), folders)
+        """Generates the project, with the protected release and its bootstrap in Release, which the content tool builds every time, since the keys of the app and the release it follows are no inputs of the preparation. An app for a device names its identifier, which Apple registers for the team that signs it."""
+        target = AppleBackend.target_of(product)
+        if target.device:
+            product.app.require_identifier(f'Signing an app for a device of "{target.name}" needs an identifier that Apple registers for your team')
+        project = AppleProject(self.context, product, target, folders)
         preparation = Preparation(product, folders, AppleBackend.NAME, AppleBackend.VERSION, AppleProject.TEMPLATE)
         current = product.configuration is Configuration.DEBUG and preparation.is_current()
         if current and (project.xcode_project / "project.pbxproj").is_file():

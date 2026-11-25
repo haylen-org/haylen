@@ -110,14 +110,19 @@ class CommandsTest:
         release = parser.parse_args(["app", "build", str(app), "--target", "fake", "--config", "Release", "--previous-release", str(shipped)])
         assert Arguments.request(release, session, release.previous_release).previous_release == shipped.resolve()
 
-    def test_a_new_app_names_a_category_only_when_the_command_gives_one(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    def test_a_new_app_names_a_category_and_an_identifier_only_when_the_command_gives_them(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         session = CommandsTest.session(ToolingFixture(tmp_path), monkeypatch)
         notes = CommandsTest.run(session, ["new", str(tmp_path / "notes")])
-        puzzle = CommandsTest.run(session, ["new", str(tmp_path / "puzzle"), "--category", "game"])
+        puzzle = CommandsTest.run(session, ["new", str(tmp_path / "puzzle"), "--category", "game", "--identifier", "com.example.puzzle"])
 
-        assert (notes["category"], puzzle["category"]) == (None, "game")
-        assert "category" not in json.loads((tmp_path / "notes" / "haylen.json").read_text(encoding="utf-8"))
-        assert list(json.loads((tmp_path / "puzzle" / "haylen.json").read_text(encoding="utf-8")))[:6] == ["name", "identifier", "version", "build", "category", "description"]
+        assert (notes["category"], notes["identifier"], puzzle["category"], puzzle["identifier"]) == (None, None, "game", "com.example.puzzle")
+        plain = json.loads((tmp_path / "notes" / "haylen.json").read_text(encoding="utf-8"))
+        assert "category" not in plain and "identifier" not in plain
+        assert plain["platforms"]["android"]["applicationClass"] == "app.App"
+        assert (tmp_path / "notes" / "native" / "android" / "App.kt").read_text(encoding="utf-8").startswith("package app\n")
+        named = json.loads((tmp_path / "puzzle" / "haylen.json").read_text(encoding="utf-8"))
+        assert list(named)[:6] == ["name", "identifier", "version", "build", "category", "description"]
+        assert named["platforms"]["android"]["applicationClass"] == "com.example.puzzle.App"
 
     def test_content_publishes_to_the_channel_that_the_engine_follows_by_default(self):
         parser, _ = Application.parser()

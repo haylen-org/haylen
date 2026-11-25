@@ -52,6 +52,7 @@ class ResolvedProduct:
                 "folder": str(self.app.folder),
                 "name": self.app.name,
                 "identifier": self.app.identifier,
+                "identifierGenerated": self.app.identifier_generated,
                 "version": self.app.version,
                 "build": self.app.build,
                 "category": self.app.category.value if self.app.category is not None else None,

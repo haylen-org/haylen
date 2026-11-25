@@ -26,7 +26,7 @@ class AppZipCommand(Command):
         app = AppManifest.load(Arguments.app_folder(arguments))
         source = PluginSource(app.folder, PluginLock.load(app.folder), session.context.process, session.terminal)
         loaded = PluginResolver(app, source).load(Configuration.DEBUG)
-        layout = PackageLayout.of(app.folder, {manifest.id: manifest.folder for _, manifest in loaded}, app.runs_lua)
+        layout = PackageLayout.of_app(app, {manifest.id: manifest.folder for _, manifest in loaded})
         output = Path(arguments.output).expanduser().resolve()
         layout.zip(output)
         session.terminal.success(f"Zipped the package of `{Repository.shown(app.folder)}` into `{Repository.shown(output)}`.")

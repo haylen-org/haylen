@@ -28,13 +28,23 @@ class NewCommand(Command):
             help="The category that the stores and the app menus show the app in. An app without one leaves it out of every generated project.",
         )
         parser.add_argument("--name", help="The display name, from the folder name by default.")
-        parser.add_argument("--identifier", help='The reverse domain identifier, "com.example.<folder>" by default.')
+        parser.add_argument(
+            "--identifier",
+            help="The reverse domain identifier. An app without one takes an identifier that the tooling generates for its folder, until a Release build, a device or a store needs one of yours.",
+        )
         parser.add_argument("--orientation", default="landscape", choices=["landscape", "portrait", "any"], help='The orientation of the app, "landscape" by default.')
 
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         folder = Path(arguments.folder).expanduser().resolve()
         kind = AppKind(arguments.kind)
         manifest = AppScaffold.create(folder, kind, AppCategory(arguments.category) if arguments.category else None, arguments.name, arguments.identifier, arguments.orientation)
-        session.terminal.success(f'Created the {AppScaffold.KIND_WORDS[kind]} app "{manifest.name}" with the identifier "{manifest.identifier}" in `{Repository.shown(folder)}`.')
+        words = AppScaffold.KIND_WORDS[kind]
+        if manifest.identifier_generated:
+            session.terminal.success(
+                f'Created the {words} app "{manifest.name}" in `{Repository.shown(folder)}`. It runs as "{manifest.identifier}" on this machine until "identifier" of "haylen.json" names one.'
+            )
+        else:
+            session.terminal.success(f'Created the {words} app "{manifest.name}" with the identifier "{manifest.identifier}" in `{Repository.shown(folder)}`.')
         session.terminal.info(f'Run it with "haylen app run {Repository.shown(folder)}".')
-        return {"folder": str(folder), "name": manifest.name, "identifier": manifest.identifier, "kind": kind.value, "category": manifest.category.value if manifest.category is not None else None}
+        identifier = None if manifest.identifier_generated else manifest.identifier
+        return {"folder": str(folder), "name": manifest.name, "identifier": identifier, "kind": kind.value, "category": manifest.category.value if manifest.category is not None else None}

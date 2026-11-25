@@ -23,6 +23,8 @@ class ProtectedReleases:
     BOOTSTRAP_FILE = "HaylenBootstrap.cpp"
     # The bootstrap holds the sealed keys of the app, so only its owner reads it.
     BOOTSTRAP_MODE = 0o600
+    # Why the keys of an app need the identifier that `haylen.json` names.
+    KEYS_IDENTIFIER = "The content keys of an app are kept per identifier, so no two apps share them"
 
     def __init__(self, context: ToolingContext, tool: ContentTool) -> None:
         self.context = context
@@ -43,7 +45,7 @@ class ProtectedReleases:
 
     def keys(self, app: AppManifest) -> Path:
         """Returns the key folder of an app, creating its keys on the machine of the developer the first time."""
-        return KeyFolder.of(app.identifier, self.context.environment).ensure(self.tool)
+        return KeyFolder.of(app.require_identifier(ProtectedReleases.KEYS_IDENTIFIER), self.context.environment).ensure(self.tool)
 
     def build(self, source: ReleasePackage, profile: str, previous: Path | None = None) -> ProtectedRelease:
         """Builds the protected release of a package for a content profile and warns when it is larger than the store of the profile accepts. The release follows the one that `previous` names, such as the release that shipped last, which continuous integration keeps, or else the last release of the build folder."""
@@ -130,7 +132,7 @@ class ProtectedReleases:
 
     def inspection(self, source: ReleasePackage) -> ReleaseInspection:
         """Returns the inspection of the built products of a package, which knows the keys of the app."""
-        return ReleaseInspection(source, KeyFolder.of(source.app.identifier, self.context.environment).secrets())
+        return ReleaseInspection(source, KeyFolder.of(source.app.require_identifier(ProtectedReleases.KEYS_IDENTIFIER), self.context.environment).secrets())
 
     def verify(self, app: AppManifest, release: Path) -> str:
         """Authenticates every chunk of a release and returns the report of the tool."""

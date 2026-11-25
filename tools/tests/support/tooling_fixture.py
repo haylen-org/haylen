@@ -42,7 +42,9 @@ class ToolingFixture:
         if document.get("kind") != "cpp" or document.get("cpp", {}).get("lua", False):
             (folder / "source").mkdir(exist_ok=True)
             (folder / "source" / "main.lua").write_text("print('hello')\n", encoding="utf-8")
-        manifest = {"name": "Test App", "identifier": "com.haylen.tests", "version": "1.0.0", **document}
+        # A key whose value is None stays out of the manifest.
+        defaults = {"name": "Test App", "identifier": "com.haylen.tests", "version": "1.0.0", **document}
+        manifest = {key: value for key, value in defaults.items() if value is not None}
         (folder / AppManifest.FILE).write_text(json.dumps(manifest, indent=4), encoding="utf-8")
         return folder
 

@@ -6,6 +6,7 @@ from haylen.cli.command import Command
 from haylen.cli.command_session import CommandSession
 from haylen.cli.content_arguments import ContentArguments
 from haylen.content.key_folder import KeyFolder
+from haylen.content.protected_releases import ProtectedReleases
 from haylen.core.app_manifest import AppManifest
 from haylen.core.repository import Repository
 
@@ -22,6 +23,6 @@ class ContentKeysCommand(Command):
         app = AppManifest.load(Arguments.app_folder(arguments))
         report = ContentArguments.releases(session).show_keys(app, arguments.rotate)
         lines = ContentArguments.report(session, report)
-        folder = KeyFolder.of(app.identifier, session.context.environment).folder
+        folder = KeyFolder.of(app.require_identifier(ProtectedReleases.KEYS_IDENTIFIER), session.context.environment).folder
         session.terminal.info(f"The keys of the app live in `{Repository.shown(folder)}`.")
         return {"folder": str(folder), "report": lines}
