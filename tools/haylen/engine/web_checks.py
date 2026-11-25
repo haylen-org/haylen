@@ -68,6 +68,9 @@ class WebChecks:
     # The text input check: a press and a release that arrive at once on each field of a sheet, by a finger of a phone or by the mouse of a desktop, and keys typed right after them, which must reach the field pressed, also the second field while the first one edits.
     TEXT_INPUT_STEPS = ["ready", "the first field took the keys", "the second field took the keys"]
     TEXT_INPUT_BROWSERS = {"touch": "emulates a phone with a touch screen", "mouse": "clicks with the mouse of a desktop"}
+    # The gamepads check: two gamepads of the Gamepad API that press different buttons take a slot each, the second one keeps its slot while the first one is gone, and the first one takes its slot again once it connects again, with the runtime on the page and in the Worker mode.
+    GAMEPADS_STEPS = ["ready", "connected two gamepads", "told two gamepads apart", "kept the other in its slot", "reconnected in its place", "pressed again in its place"]
+    GAMEPADS_MODES = {"page": "runs the app on the page", "worker": "runs the app in the Worker mode"}
     # The fullscreen check: each promise settles once the window reports its mode, and a change that a newer one replaces fails with the code `denied`.
     FULLSCREEN_STEPS = ["ready", "entered", "heard", "left", "replaced", "replacing", "ends windowed"]
     # The orientation check: a phone held in portrait shows the turn screen of the page over an app that takes landscape while the app runs on, the screen goes away once the phone turns, and the lock of the app replaces the orientation of `haylen.json`.
@@ -169,6 +172,7 @@ class WebChecks:
             "screens": self.screens,
             "canvas": self.canvas,
             "textInput": self.text_input,
+            "gamepads": self.gamepads,
             "loading": self.loading,
         }
         reports = {}
@@ -304,6 +308,18 @@ class WebChecks:
                 WebChecks.check_steps(report, WebChecks.TEXT_INPUT_STEPS, f"The page of the text input check in a browser that {browser}")
         self.context.terminal.success(
             "A tap of a finger and a click of the mouse whose press and release arrived at once started the editing of the field they pressed, also while another field edited, and the keys typed right after them reached that field."
+        )
+
+    def gamepads(self, api: str | None) -> None:
+        site = self.site(WebChecks.DATA / "web-gamepads")
+        with ServedSite(site) as served:
+            for mode, browser in WebChecks.GAMEPADS_MODES.items():
+                query = WebChecks.query(api, *([WebChecks.WORKER_HOSTING] if mode == "worker" else []))
+                self.context.terminal.step(f"Running the gamepads check of the web in a headless browser that {browser}")
+                report = self.drive("gamepads-check.mjs", (), "the gamepads check of the web", served.page(query))
+                WebChecks.check_steps(report, WebChecks.GAMEPADS_STEPS, f"The page of the gamepads check in a browser that {browser}")
+        self.context.terminal.success(
+            "Two gamepads of the Gamepad API took a slot each, the second one kept its slot while the first one was gone, and the first one took its slot again once it connected again, with the runtime on the page and in the Worker mode."
         )
 
     def fullscreen(self, api: str | None) -> None:

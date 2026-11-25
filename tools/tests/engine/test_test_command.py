@@ -133,8 +133,8 @@ class TestCommandTest:
 
     def test_the_shards_of_the_checks_of_the_web_run_each_check_once(self, tmp_path, monkeypatch):
         ran = []
-        for name in ("error_screen", "wake_lock", "fullscreen", "orientation", "plugins", "editor", "memory", "screens", "canvas", "text_input", "loading"):
+        for name in ("error_screen", "wake_lock", "fullscreen", "orientation", "plugins", "editor", "memory", "screens", "canvas", "text_input", "gamepads", "loading"):
             monkeypatch.setattr(WebChecks, name, lambda self, api, name=name: ran.append(name) or {})
         for index in (1, 2):
             TestCommandTest.run(tmp_path, "--target", "web", "--shard", f"{index}/2")
-        assert ran == ["error_screen", "fullscreen", "plugins", "memory", "canvas", "loading", "wake_lock", "orientation", "editor", "screens", "text_input"]
+        assert ran == ["error_screen", "fullscreen", "plugins", "memory", "canvas", "gamepads", "wake_lock", "orientation", "editor", "screens", "text_input", "loading"]
