@@ -4,13 +4,13 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 3 / not set · **Next ID:** KB-307
+**Active WIP:** 4 / not set · **Next ID:** KB-307
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
-| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | — | — | — | — | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | — | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
 | **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
 | **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
@@ -25,7 +25,6 @@
 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 | — | — | — | — | — |
 | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | — | — | — | — | — |
-| **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | — | — | — | — | — |
 | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | — | — | — | — | — |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
@@ -7846,10 +7845,11 @@ O playground do site, que edita e roda apps no navegador sem backend pelo runtim
 <a name="kb-305"></a>
 ### KB-305 — No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json
 
-- **Status:** todo
+- **Status:** doing
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
+- **Progress:** A causa está achada: ao fechar uma janela, o SDL escreve no canvas um tamanho CSS de 1 pixel em toda densidade diferente de 1, mesmo num canvas que a página dimensiona. Quando o WebGPU não começa e a engine abre a janela do WebGL2, o SDL acha esse estilo, trata o canvas como não dimensionado pela página e grava nele o tamanho de `window` do `haylen.json` para sempre. Por isso só quebra com densidade 2 ou mais depois de reabrir a janela, como na troca para o WebGL2. A correção é um patch pequeno do SDL que só desfaz um tamanho CSS que o próprio SDL escreveu, já conferida localmente com o canvas enchendo a página e acompanhando a mudança de tamanho. Falta o teste de página e o commit.
 
 #### Description
 
