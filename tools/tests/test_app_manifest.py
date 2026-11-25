@@ -101,9 +101,11 @@ class AppManifestTest:
         assert not AppManifest.load(without).runs_lua
         assert AppManifest.load(scripted).runs_lua
 
+        assert AppManifest.load(without).warnings == ()
         (without / "source").mkdir()
-        with pytest.raises(InvalidManifest, match=re.escape("runs no Lua, so nothing runs the Lua modules of")):
-            AppManifest.load(without)
+        manifest = AppManifest.load(without)
+        assert not manifest.runs_lua
+        assert manifest.warnings == (f'The C++ app `{manifest.origin}` runs no Lua, so the Lua files of `{Repository.shown(without / "source")}` do not run. Set "cpp.lua" to true in it to run them.',)
 
     def test_a_lua_app_has_no_cpp_section(self, tmp_path):
         app = ToolingFixture(tmp_path).app({"cpp": {"sources": ["src"]}})

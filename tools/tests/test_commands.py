@@ -227,6 +227,21 @@ class CommandsTest:
         described = CommandsTest.run(CommandsTest.session(fixture, monkeypatch, structured=True), ["project", "inspect", str(app), "--target", "fake"])
         assert described["targets"][0]["settings"] == {"fake": {"signing": {"value": "team", "origin": origin}}}
 
+    def test_a_cpp_app_without_lua_runs_and_warns_once_about_its_lua_files(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        fixture.sdk()
+        app = fixture.app({"kind": "cpp", "cpp": {"sources": ["src"]}})
+        (app / "src").mkdir()
+        (app / "source").mkdir()
+
+        monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
+        session = CommandSession(fixture.context, False)
+        session.registry = fixture.registry()
+        resolved = session.pipeline.resolve(ProductRequest(app, "fake", Configuration.DEBUG, Configuration.RELEASE, None), build_sdk=False)
+        assert not resolved.app.runs_lua
+        assert fixture.output.getvalue().count('"cpp.lua"') == 1
+        assert 'Set "cpp.lua" to true in it to run them.' in fixture.output.getvalue()
+
     def test_the_doctor_says_that_a_pinned_tool_not_downloaded_yet_comes_with_the_first_build(self):
         missing = {"name": "Gradle", "version": "9.8.2", "path": None, "problem": None}
         found = {"name": "cmake", "version": "cmake version 4.4.3", "path": "/opt/homebrew/bin/cmake", "problem": None}

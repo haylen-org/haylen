@@ -39,6 +39,8 @@ class AppManifest:
     native: tuple[NativeLibrary, ...]
     plugins: tuple[PluginReference, ...]
     platforms: Mapping[str, Mapping[str, object]]
+    # What the app may not mean, which the pipeline of a command shows once.
+    warnings: tuple[str, ...]
 
     @staticmethod
     def is_app(folder: Path) -> bool:
@@ -71,11 +73,9 @@ class AppManifest:
             )
 
         cpp = CppSources.parse(document["cpp"], folder, origin) if "cpp" in document else None
+        warnings = []
         if kind is AppKind.CPP and not cpp.lua and (folder / "source").exists():
-            raise InvalidManifest(
-                f'The C++ app `{origin}` runs no Lua, so nothing runs the Lua modules of `{Repository.shown(folder / "source")}`. Set "cpp.lua" to true to run them, or remove the folder.',
-                origin=origin,
-            )
+            warnings.append(f'The C++ app `{origin}` runs no Lua, so the Lua files of `{Repository.shown(folder / "source")}` do not run. Set "cpp.lua" to true in it to run them.')
         native = tuple(NativeLibrary.parse(name, entry, folder, "app", origin) for name, entry in document.get("native", {}).items())
         plugins = tuple(PluginReference.parse(identifier, entry) for identifier, entry in document.get("plugins", {}).items())
         return AppManifest(
@@ -92,6 +92,7 @@ class AppManifest:
             native=native,
             plugins=plugins,
             platforms=Frozen.freeze(document.get("platforms", {})),
+            warnings=tuple(warnings),
         )
 
     @property

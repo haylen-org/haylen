@@ -84,7 +84,7 @@ A Lua app runs its Lua modules in the Lua player, which links the Lua layer of t
 | Part | A C++ app without Lua | A C++ app with `cpp.lua` |
 | --- | --- | --- |
 | The Lua layer | Not linked, so the binary holds no Lua, no Lua module of Varn, no module reload and no Lua debugger. | Linked as `haylen::lua`, or `HaylenLua.xcframework` on Apple platforms, and its application runs Lua through a `haylen::lua::Application`. |
-| The package | `haylen.json`, `content/` and the `plugin.json` of every plugin. A `source/` folder in the app stops the resolution, since nothing would run it. | Also `source/` and the Lua modules of every plugin, as in a Lua app. |
+| The package | `haylen.json`, `content/` and the `plugin.json` of every plugin. A `source/` folder in the app stays out of the package, and every command warns once that its Lua files do not run and that `cpp.lua` set to `true` runs them. | Also `source/` and the Lua modules of every plugin, as in a Lua app. |
 | Hot reload in development | The files of `content/`, `haylen.json` and the shaders, which the engine reloads in place. | Also the Lua modules, which reload in place with the state of the app. |
 | The developer tools | The developer console with the commands of the engine and of the app, the statistics, the inspector of the UI, the debug drawings and GPU captures. | The same, with the Lua debugger on the port of `--debugger-port`. |
 

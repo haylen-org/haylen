@@ -55,6 +55,8 @@ class AppPipeline:
 
     def resolve_with_sdk(self, request: ProductRequest, build_sdk: bool) -> ResolvedProduct:
         app = AppManifest.load(request.app_folder)
+        for warning in app.warnings:
+            self.context.terminal.warning(warning)
         try:
             return self.resolver(app).resolve(request)
         except IncompatibleSdk:
