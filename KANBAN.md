@@ -9,7 +9,7 @@
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
-| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
 | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
 | **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
@@ -348,10 +348,10 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - None
 
 <a name="kb-003"></a>
-### KB-003 — Tiny Island refeito com arte própria
+### KB-003 — Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop
 
 - **Status:** doing
-- **Type:** feature
+- **Type:** test
 - **Priority:** low
 - **Complexity:** 5
 - **Progress:** iOS e tvOS passam (`4eb1974e1`). O macOS, o Mac Catalyst e a conferência de fechar o player rodam no job `apple-mac-ui` da próxima execução completa da CI. Na execução completa 45507380483 o job `Mac UI tests` falhou nos cinco testes de texto do Mac: o XCUITest espera 60 s em cada ação porque o app nunca fica ocioso para ele, o método de entrada japonês não pode ser escolhido na máquina da CI (erro `-50`) e o executor de testes não tem permissão para salvar as capturas na pasta do build. Na execução completa 45524929771, com as correções (`60117e57c`, `ce14dcb11`, `1a4de6479`), o XCUITest acha o app do Mac ocioso entre os quadros e 4 dos 5 testes de texto do Mac passaram, de 10 a 34 s cada; o teste do método de entrada japonês ainda falha, porque o texto composto não aparece depois do Return, e por isso os passos do Mac Catalyst e do Tiny Island não rodaram.
@@ -359,19 +359,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Description
 
-Tiny Island refeito com arte própria: guerreiro, arqueiro, lanceiro e mago jogáveis, inimigos variados, ovelhas que dão comida, ataques com efeitos e a fogueira de partículas igual no menu e no jogo. Existe: o jogo em `samples/games/tiny-island`, conferido na web com WebGPU e WebGL2, no emulador Android e no player headless. Falta: conferir nos simuladores de iOS e tvOS, no Mac Catalyst, no macOS e no player desktop, com o teste de UI `ui-tests/apple/StartTests.swift`.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
-
-Andamento: a execução do Tiny Island nos simuladores de iOS e tvOS começou num stream de estabilização. O macOS, o Mac Catalyst e o player de desktop rodam na nuvem ou na CI, porque nenhuma janela de app abre no Mac do dono.
-
-Andamento: os testes de início do Tiny Island passam no simulador do iPhone 17e e no do Apple TV (commit `4eb1974e1`). Faltam o macOS, o Mac Catalyst e o player de desktop, que esperam a decisão do dono sobre os executores de testes de UI na CI e na nuvem.
-
-Decisão do dono: o macOS, o Mac Catalyst e o player de desktop rodam no runner macOS da CI, pelo mesmo executor do KB-013.
+O Tiny Island já está pronto, com a arte própria do projeto: guerreiro, arqueiro, lanceiro e mago jogáveis, inimigos variados, ovelhas que dão comida, ataques com efeitos e a fogueira de partículas igual no menu e no jogo. Ele está conferido na web com WebGPU e WebGL2, no emulador Android, no player sem cabeça e nos simuladores do iPhone e do Apple TV pelo teste de UI `ui-tests/apple/StartTests.swift`. Falta só conferir o jogo no macOS, no Mac Catalyst e no player de desktop, pelo mesmo teste de UI e pela conferência de fechar o player, no runner macOS da CI e pelo mesmo executor do [KB-013](#kb-013), porque nenhuma janela de app abre no Mac do dono.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [ ] Os passos do Tiny Island no macOS e no Mac Catalyst e a conferência de fechar o player passam no job `Mac UI tests` de uma execução completa da CI.
 
 #### Attachments
 
