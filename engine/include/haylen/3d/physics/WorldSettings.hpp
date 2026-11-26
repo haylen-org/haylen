@@ -40,7 +40,7 @@ struct WorldSettings {
     // The keys of the settings, as `haylen.json` and the options of a world name them.
     static constexpr std::array<std::string_view, 17> kKeys{"gravity", "collisionSteps", "velocitySteps", "positionSteps", "sleepEnabled", "timeBeforeSleep", "sleepVelocity", "speculativeContactDistance", "penetrationSlop", "restitutionThreshold", "maxBodies", "maxBodyPairs", "maxContactConstraints", "threads", "temporaryMemory", "interpolate", "enhancedInternalEdgeRemoval"};
 
-    // Reads the `physics3d` section of `haylen.json` over these settings and checks them. Throws `std::invalid_argument` with a sentence that names the key as `haylen.json` writes it, such as `physics3d.velocitySteps`.
+    // Reads the `physics3d` section of `haylen.json` over these settings and checks them, leaving its `categories` to `CollisionCategories`. Throws `std::invalid_argument` with a sentence that names the key as `haylen.json` writes it, such as `physics3d.velocitySteps`.
     void readSection(const core::Json& section);
 
     // Throws `std::invalid_argument` for a value out of its range, with a sentence that names the setting with the prefix and the place, such as `physics3d.` and ` in "haylen.json"`, or neither.

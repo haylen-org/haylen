@@ -16,6 +16,7 @@ void Physics3DPlugin::start(core::Engine& engine) {
     const int workers = static_cast<int>(engine.getJobs().getWorkerCount());
     defaults.threads = std::clamp(workers, 1, kDefaultThreads);
     defaults.readSection(engine.getConfig().physics3d);
+    categories.readSection(engine.getConfig().physics3d);
     backends.add(std::make_unique<physics3d::jolt::Backend>());
 }
 

@@ -64,6 +64,8 @@ class Simulation final : public physics3d::Simulation {
     [[nodiscard]] math::Box getBodyBounds(BodyId id) const override;
     [[nodiscard]] std::shared_ptr<const physics3d::Shape> getBodyShape(BodyId id) const override;
     void setBodyShape(BodyId id, const std::shared_ptr<const physics3d::Shape>& value) override;
+    [[nodiscard]] CollisionFilter getBodyFilter(BodyId id) const override;
+    void setBodyFilter(BodyId id, const CollisionFilter& value) override;
     [[nodiscard]] std::size_t getChildCount(BodyId id) const override;
     std::size_t addChild(BodyId id, const physics3d::Shape::Child& child) override;
     void removeChild(BodyId id, std::size_t index) override;
@@ -73,6 +75,11 @@ class Simulation final : public physics3d::Simulation {
     // The physics system, which the bodies, shapes and constraints of the world live in.
     [[nodiscard]] JPH::PhysicsSystem& getSystem() noexcept {
         return system;
+    }
+
+    // The layers of the bodies, which the filters of queries read.
+    [[nodiscard]] Layers& getLayers() noexcept {
+        return layers;
     }
 
   private:
@@ -115,6 +122,10 @@ class Simulation final : public physics3d::Simulation {
     [[nodiscard]] static JPH::EAllowedDOFs toJolt(const Body::MotionLocks& value) noexcept;
     [[nodiscard]] static Body::MotionLocks fromJolt(JPH::EAllowedDOFs value) noexcept;
     [[nodiscard]] JPH::EActivation activationOf(BodyId id) const;
+
+    // Gives the body the layer of its filter in the part of the broad phase that its type and sensor take.
+    void applyLayer(BodyId id, const CollisionFilter& filter);
+    [[nodiscard]] static Layers::Part partOf(Body::Type type, bool sensor) noexcept;
 
     Layers layers;
     JPH::PhysicsSystem system;

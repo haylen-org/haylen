@@ -287,4 +287,25 @@ TEST(Physics3DLuaTest, RefusesBodiesThatTheirOptionsDoNotSuitAndHandlesThatOutli
     EXPECT_EQ(fixture.lua("local ok, message = pcall(function() return stranger.mass end) return message:match('The 3D.*')"), "The 3D physics world of the body was destroyed.");
 }
 
+TEST(Physics3DLuaTest, FiltersCollisionsByTheCategoriesOfHaylenJson) {
+    test::LuaFixture fixture({{"haylen.json", R"({"name": "Layers", "identifier": "com.haylen.layers", "physics3d": {"categories": ["ground", "player", "ghost"]}})"}});
+    // clang-format off
+    fixture.runLua(R"(
+        physics3d = require('haylen.physics3d')
+        world = physics3d.newWorld()
+        crate = physics3d.newBox({1, 1, 1})
+        world:createBody({type = 'static', shape = physics3d.newBox({40, 1, 40}), position = {0, -0.5, 0}, category = 'ground'})
+        hero = world:createBody({shape = crate, position = {-3, 1, 0}, category = 'player', mask = {'ground', 'player'}})
+        ghost = world:createBody({shape = crate, position = {3, 1, 0}, category = 'ghost', mask = 'player'})
+        for i = 1, 90 do world:step(1 / 60) end
+    )");
+    // clang-format on
+
+    EXPECT_EQ(fixture.lua("return string.format('%s %s %d %d %d', tostring(hero.y > 0.4), tostring(ghost.y < -1), hero.category, hero.mask, physics3d.category('ghost'))"), "true true 2 3 4");
+    EXPECT_EQ(fixture.lua("return table.concat(physics3d.categories(), ',')"), "ground,player,ghost");
+    EXPECT_EQ(fixture.lua("hero.group = -2 hero.mask = 0xFFFFFFFF return hero.group .. ' ' .. hero.mask"), "-2 4294967295");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() hero.category = 'water' end) return message:match('No 3D.*')"), "No 3D collision category is named \"water\". The categories of \"physics3d.categories\" in \"haylen.json\" are \"ground\", \"player\", \"ghost\".");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() hero.mask = -1 end) return message:match('The option.*')"), "The option \"mask\" of a 3D body takes the names of categories or whole numbers of 32 bits.");
+}
+
 } // namespace haylen::lua::physics3d

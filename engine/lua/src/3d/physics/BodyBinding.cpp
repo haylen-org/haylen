@@ -2,7 +2,9 @@
 
 #include <cstddef>
 #include <format>
+#include <limits>
 #include <optional>
+#include <stdexcept>
 
 #include "3d/physics/Physics3DBinding.hpp"
 #include "3d/physics/ShapeBinding.hpp"
@@ -13,6 +15,7 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "haylen/plugins/Physics3DPlugin.hpp"
 
 namespace haylen::lua::physics3d {
 
@@ -100,7 +103,49 @@ Body::Options BodyBinding::readOptions(lua_State* L, int index) {
     lua::Table::readField(L, index, "collideWithStatic", options.collideWithStatic);
     lua::Table::readField(L, index, "enhancedInternalEdgeRemoval", options.enhancedInternalEdgeRemoval);
     lua::Table::readField(L, index, "enabled", options.enabled);
+    if (lua_getfield(L, index, "category") != LUA_TNIL) {
+        options.filter.category = readCategories(L, -1, "category");
+    }
+
+    lua_pop(L, 1);
+    if (lua_getfield(L, index, "mask") != LUA_TNIL) {
+        options.filter.mask = readCategories(L, -1, "mask");
+    }
+
+    lua_pop(L, 1);
+    lua::Table::readField(L, index, "group", options.filter.group);
     return options;
+}
+
+std::uint32_t BodyBinding::readBits(lua_State* L, int index, std::string_view option) {
+    if (lua_type(L, index) == LUA_TSTRING) {
+        return lua::Runtime::getEngine(L).getPlugin<haylen::plugins::Physics3DPlugin>().getCategories().getBit(lua_tostring(L, index));
+    }
+
+    int whole = 0;
+    const lua_Integer bits = lua_tointegerx(L, index, &whole);
+    if (whole == 0 || bits < 0 || bits > static_cast<lua_Integer>(std::numeric_limits<std::uint32_t>::max())) {
+        throw std::invalid_argument(std::format("The option \"{}\" of a 3D body takes the names of categories or whole numbers of 32 bits.", option));
+    }
+
+    return static_cast<std::uint32_t>(bits);
+}
+
+std::uint32_t BodyBinding::readCategories(lua_State* L, int index, std::string_view option) {
+    const int value = lua_absindex(L, index);
+    if (lua_type(L, value) != LUA_TTABLE) {
+        return readBits(L, value, option);
+    }
+
+    std::uint32_t bits = 0;
+    const auto count = static_cast<lua_Integer>(lua_rawlen(L, value));
+    for (lua_Integer item = 1; item <= count; ++item) {
+        lua_rawgeti(L, value, item);
+        bits |= readBits(L, -1, option);
+        lua_pop(L, 1);
+    }
+
+    return bits;
 }
 
 void BodyBinding::pushDataSlot(lua_State* L, std::uint32_t id) {
@@ -153,6 +198,45 @@ int BodyBinding::getLocks(lua_State* L) {
 int BodyBinding::setLocks(lua_State* L) {
     Body& body = check(L, 1);
     body.setMotionLocks(readLocks(L, 3));
+    return 0;
+}
+
+int BodyBinding::getCategory(lua_State* L) {
+    lua_pushinteger(L, static_cast<lua_Integer>(check(L, 1).getFilter().category));
+    return 1;
+}
+
+int BodyBinding::setCategory(lua_State* L) {
+    Body& body = check(L, 1);
+    haylen::physics3d::CollisionFilter filter = body.getFilter();
+    filter.category = readCategories(L, 3, "category");
+    body.setFilter(filter);
+    return 0;
+}
+
+int BodyBinding::getMask(lua_State* L) {
+    lua_pushinteger(L, static_cast<lua_Integer>(check(L, 1).getFilter().mask));
+    return 1;
+}
+
+int BodyBinding::setMask(lua_State* L) {
+    Body& body = check(L, 1);
+    haylen::physics3d::CollisionFilter filter = body.getFilter();
+    filter.mask = readCategories(L, 3, "mask");
+    body.setFilter(filter);
+    return 0;
+}
+
+int BodyBinding::getGroup(lua_State* L) {
+    lua::Stack::push(L, check(L, 1).getFilter().group);
+    return 1;
+}
+
+int BodyBinding::setGroup(lua_State* L) {
+    Body& body = check(L, 1);
+    haylen::physics3d::CollisionFilter filter = body.getFilter();
+    filter.group = lua::Stack::read<int>(L, 3);
+    body.setFilter(filter);
     return 0;
 }
 
@@ -306,7 +390,7 @@ int BodyBinding::equal(lua_State* L) {
 }
 
 void BodyBinding::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedBody>(L).function("setTransform", &lua::Binding::native<&setTransform>).function("moveTo", &lua::Binding::native<&moveTo>).function("applyForce", &lua::Binding::native<&applyForce>).function("applyImpulse", &lua::Binding::native<&applyImpulse>).function("applyTorque", &lua::Binding::native<&applyTorque>).function("applyAngularImpulse", &lua::Binding::native<&applyAngularImpulse>).function("velocityAt", &lua::Binding::native<&velocityAt>).function("resetMass", &lua::Binding::native<&resetMass>).function("addChild", &lua::Binding::native<&addChild>).function("removeChild", &lua::Binding::native<&removeChild>).function("setChildTransform", &lua::Binding::native<&setChildTransform>).function("renderTransform", &lua::Binding::native<&renderTransform>).function("destroy", &lua::Binding::native<&destroy>).property("valid", &isValid).property("world", &getWorld).liveAccessor<&ScriptedBody::getPosition, &ScriptedBody::setPosition>("position").liveAccessor<&ScriptedBody::getRotation, &ScriptedBody::setRotation>("rotation").liveAccessor<&ScriptedBody::getLinearVelocity, &ScriptedBody::setLinearVelocity>("linearVelocity").liveAccessor<&ScriptedBody::getAngularVelocity, &ScriptedBody::setAngularVelocity>("angularVelocity").property("x", &lua::Binding::native<&getAxis<0>>, &lua::Binding::native<&setAxis<0>>).property("y", &lua::Binding::native<&getAxis<1>>, &lua::Binding::native<&setAxis<1>>).property("z", &lua::Binding::native<&getAxis<2>>, &lua::Binding::native<&setAxis<2>>).property("type", &lua::Binding::native<&get<&Body::getType>>, &lua::Binding::native<&set<&Body::setType, Body::Type>>).property("motionQuality", &lua::Binding::native<&get<&Body::getMotionQuality>>, &lua::Binding::native<&set<&Body::setMotionQuality, Body::MotionQuality>>).property("locks", &lua::Binding::native<&getLocks>, &lua::Binding::native<&setLocks>).property("mass", &lua::Binding::native<&get<&Body::getMass>>, &lua::Binding::native<&set<&Body::setMass, float>>).property("inertia", &lua::Binding::native<&get<&Body::getInertia>>, &lua::Binding::native<&set<&Body::setInertia, haylen::math::Vec3>>).property("centerOfMass", &lua::Binding::native<&get<&Body::getCenterOfMass>>, &lua::Binding::native<&set<&Body::setCenterOfMass, haylen::math::Vec3>>).property("worldCenter", &lua::Binding::native<&get<&Body::getWorldCenter>>).property("linearDamping", &lua::Binding::native<&get<&Body::getLinearDamping>>, &lua::Binding::native<&set<&Body::setLinearDamping, float>>).property("angularDamping", &lua::Binding::native<&get<&Body::getAngularDamping>>, &lua::Binding::native<&set<&Body::setAngularDamping, float>>).property("gravityScale", &lua::Binding::native<&get<&Body::getGravityScale>>, &lua::Binding::native<&set<&Body::setGravityScale, float>>).property("maxLinearSpeed", &lua::Binding::native<&get<&Body::getMaxLinearSpeed>>, &lua::Binding::native<&set<&Body::setMaxLinearSpeed, float>>).property("maxAngularSpeed", &lua::Binding::native<&get<&Body::getMaxAngularSpeed>>, &lua::Binding::native<&set<&Body::setMaxAngularSpeed, float>>).property("friction", &lua::Binding::native<&get<&Body::getFriction>>, &lua::Binding::native<&set<&Body::setFriction, float>>).property("restitution", &lua::Binding::native<&get<&Body::getRestitution>>, &lua::Binding::native<&set<&Body::setRestitution, float>>).property("frictionCombine", &lua::Binding::native<&get<&Body::getFrictionCombine>>, &lua::Binding::native<&set<&Body::setFrictionCombine, Body::CombineRule>>).property("restitutionCombine", &lua::Binding::native<&get<&Body::getRestitutionCombine>>, &lua::Binding::native<&set<&Body::setRestitutionCombine, Body::CombineRule>>).property("sleepEnabled", &lua::Binding::native<&get<&Body::isSleepEnabled>>, &lua::Binding::native<&set<&Body::setSleepEnabled, bool>>).property("awake", &lua::Binding::native<&get<&Body::isAwake>>, &lua::Binding::native<&set<&Body::setAwake, bool>>).property("sensor", &lua::Binding::native<&get<&Body::isSensor>>, &lua::Binding::native<&set<&Body::setSensor, bool>>).property("collideWithStatic", &lua::Binding::native<&get<&Body::isCollidingWithStatic>>, &lua::Binding::native<&set<&Body::setCollideWithStatic, bool>>).property("enhancedInternalEdgeRemoval", &lua::Binding::native<&get<&Body::hasEnhancedInternalEdgeRemoval>>, &lua::Binding::native<&set<&Body::setEnhancedInternalEdgeRemoval, bool>>).property("enabled", &lua::Binding::native<&get<&Body::isEnabled>>, &lua::Binding::native<&set<&Body::setEnabled, bool>>).property("shape", &lua::Binding::native<&getShape>, &lua::Binding::native<&setShape>).property("bounds", &lua::Binding::native<&get<&Body::getBounds>>).property("childCount", &lua::Binding::native<&getChildCount>).property("data", &lua::Binding::native<&getData>, &lua::Binding::native<&setData>).meta("__eq", &equal).install();
+    lua::ClassBuilder<ScriptedBody>(L).function("setTransform", &lua::Binding::native<&setTransform>).function("moveTo", &lua::Binding::native<&moveTo>).function("applyForce", &lua::Binding::native<&applyForce>).function("applyImpulse", &lua::Binding::native<&applyImpulse>).function("applyTorque", &lua::Binding::native<&applyTorque>).function("applyAngularImpulse", &lua::Binding::native<&applyAngularImpulse>).function("velocityAt", &lua::Binding::native<&velocityAt>).function("resetMass", &lua::Binding::native<&resetMass>).function("addChild", &lua::Binding::native<&addChild>).function("removeChild", &lua::Binding::native<&removeChild>).function("setChildTransform", &lua::Binding::native<&setChildTransform>).function("renderTransform", &lua::Binding::native<&renderTransform>).function("destroy", &lua::Binding::native<&destroy>).property("valid", &isValid).property("world", &getWorld).liveAccessor<&ScriptedBody::getPosition, &ScriptedBody::setPosition>("position").liveAccessor<&ScriptedBody::getRotation, &ScriptedBody::setRotation>("rotation").liveAccessor<&ScriptedBody::getLinearVelocity, &ScriptedBody::setLinearVelocity>("linearVelocity").liveAccessor<&ScriptedBody::getAngularVelocity, &ScriptedBody::setAngularVelocity>("angularVelocity").property("x", &lua::Binding::native<&getAxis<0>>, &lua::Binding::native<&setAxis<0>>).property("y", &lua::Binding::native<&getAxis<1>>, &lua::Binding::native<&setAxis<1>>).property("z", &lua::Binding::native<&getAxis<2>>, &lua::Binding::native<&setAxis<2>>).property("type", &lua::Binding::native<&get<&Body::getType>>, &lua::Binding::native<&set<&Body::setType, Body::Type>>).property("motionQuality", &lua::Binding::native<&get<&Body::getMotionQuality>>, &lua::Binding::native<&set<&Body::setMotionQuality, Body::MotionQuality>>).property("locks", &lua::Binding::native<&getLocks>, &lua::Binding::native<&setLocks>).property("mass", &lua::Binding::native<&get<&Body::getMass>>, &lua::Binding::native<&set<&Body::setMass, float>>).property("inertia", &lua::Binding::native<&get<&Body::getInertia>>, &lua::Binding::native<&set<&Body::setInertia, haylen::math::Vec3>>).property("centerOfMass", &lua::Binding::native<&get<&Body::getCenterOfMass>>, &lua::Binding::native<&set<&Body::setCenterOfMass, haylen::math::Vec3>>).property("worldCenter", &lua::Binding::native<&get<&Body::getWorldCenter>>).property("linearDamping", &lua::Binding::native<&get<&Body::getLinearDamping>>, &lua::Binding::native<&set<&Body::setLinearDamping, float>>).property("angularDamping", &lua::Binding::native<&get<&Body::getAngularDamping>>, &lua::Binding::native<&set<&Body::setAngularDamping, float>>).property("gravityScale", &lua::Binding::native<&get<&Body::getGravityScale>>, &lua::Binding::native<&set<&Body::setGravityScale, float>>).property("maxLinearSpeed", &lua::Binding::native<&get<&Body::getMaxLinearSpeed>>, &lua::Binding::native<&set<&Body::setMaxLinearSpeed, float>>).property("maxAngularSpeed", &lua::Binding::native<&get<&Body::getMaxAngularSpeed>>, &lua::Binding::native<&set<&Body::setMaxAngularSpeed, float>>).property("friction", &lua::Binding::native<&get<&Body::getFriction>>, &lua::Binding::native<&set<&Body::setFriction, float>>).property("restitution", &lua::Binding::native<&get<&Body::getRestitution>>, &lua::Binding::native<&set<&Body::setRestitution, float>>).property("frictionCombine", &lua::Binding::native<&get<&Body::getFrictionCombine>>, &lua::Binding::native<&set<&Body::setFrictionCombine, Body::CombineRule>>).property("restitutionCombine", &lua::Binding::native<&get<&Body::getRestitutionCombine>>, &lua::Binding::native<&set<&Body::setRestitutionCombine, Body::CombineRule>>).property("sleepEnabled", &lua::Binding::native<&get<&Body::isSleepEnabled>>, &lua::Binding::native<&set<&Body::setSleepEnabled, bool>>).property("awake", &lua::Binding::native<&get<&Body::isAwake>>, &lua::Binding::native<&set<&Body::setAwake, bool>>).property("sensor", &lua::Binding::native<&get<&Body::isSensor>>, &lua::Binding::native<&set<&Body::setSensor, bool>>).property("collideWithStatic", &lua::Binding::native<&get<&Body::isCollidingWithStatic>>, &lua::Binding::native<&set<&Body::setCollideWithStatic, bool>>).property("enhancedInternalEdgeRemoval", &lua::Binding::native<&get<&Body::hasEnhancedInternalEdgeRemoval>>, &lua::Binding::native<&set<&Body::setEnhancedInternalEdgeRemoval, bool>>).property("enabled", &lua::Binding::native<&get<&Body::isEnabled>>, &lua::Binding::native<&set<&Body::setEnabled, bool>>).property("category", &lua::Binding::native<&getCategory>, &lua::Binding::native<&setCategory>).property("mask", &lua::Binding::native<&getMask>, &lua::Binding::native<&setMask>).property("group", &lua::Binding::native<&getGroup>, &lua::Binding::native<&setGroup>).property("shape", &lua::Binding::native<&getShape>, &lua::Binding::native<&setShape>).property("bounds", &lua::Binding::native<&get<&Body::getBounds>>).property("childCount", &lua::Binding::native<&getChildCount>).property("data", &lua::Binding::native<&getData>, &lua::Binding::native<&setData>).meta("__eq", &equal).install();
 }
 
 } // namespace haylen::lua::physics3d

@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "haylen/3d/physics/Body.hpp"
+#include "haylen/3d/physics/CollisionFilter.hpp"
 #include "haylen/3d/physics/Shape.hpp"
 #include "haylen/3d/physics/WorldSettings.hpp"
 #include "haylen/3d/physics/WorldStats.hpp"
@@ -85,6 +86,9 @@ class Simulation {
     [[nodiscard]] virtual math::Vec3 getVelocityAt(BodyId id, math::Vec3 point) const = 0;
     virtual void pushBody(BodyId id, Body::Push which, math::Vec3 value, std::optional<math::Vec3> point) = 0;
     [[nodiscard]] virtual math::Box getBodyBounds(BodyId id) const = 0;
+
+    [[nodiscard]] virtual CollisionFilter getBodyFilter(BodyId id) const = 0;
+    virtual void setBodyFilter(BodyId id, const CollisionFilter& value) = 0;
 
     // The shape the body took, or its own copy of a mutable compound.
     [[nodiscard]] virtual std::shared_ptr<const Shape> getBodyShape(BodyId id) const = 0;

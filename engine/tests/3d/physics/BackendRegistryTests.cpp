@@ -170,6 +170,12 @@ class BackendRegistryTest : public ::testing::Test {
             void collectActiveBodies(std::vector<BodyId>& ids) const override {
                 ids.clear();
             }
+            [[nodiscard]] CollisionFilter getBodyFilter(BodyId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setBodyFilter(BodyId, const CollisionFilter&) override {
+                throw std::logic_error(kNoBodies);
+            }
 
           private:
             static constexpr const char* kNoBodies = "The recording backend holds no bodies.";

@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "haylen/3d/physics/BackendRegistry.hpp"
+#include "haylen/3d/physics/CollisionCategories.hpp"
 #include "haylen/3d/physics/Shape.hpp"
 #include "haylen/3d/physics/World.hpp"
 #include "haylen/3d/physics/WorldSettings.hpp"
@@ -54,6 +55,11 @@ class Physics3DPlugin final : public Plugin {
         return defaults;
     }
 
+    // The names of the collision categories of `physics3d.categories` in `haylen.json`.
+    [[nodiscard]] const physics3d::CollisionCategories& getCategories() const noexcept {
+        return categories;
+    }
+
     // Makes a world with the selected backend on the job system of the engine, which the plugin follows while it lives. Throws as `physics3d::World` does.
     [[nodiscard]] std::shared_ptr<physics3d::World> createWorld(const physics3d::WorldSettings& settings);
 
@@ -68,6 +74,7 @@ class Physics3DPlugin final : public Plugin {
     core::Engine* running = nullptr;
     physics3d::BackendRegistry backends;
     physics3d::WorldSettings defaults;
+    physics3d::CollisionCategories categories;
     LiveObjects<physics3d::World> worlds;
 };
 

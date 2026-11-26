@@ -37,6 +37,8 @@ The section `physics3d` of `haylen.json` gives the settings that every world of 
 }
 ```
 
+The list `categories` of the section names the collision categories of the app, as the section [Who collides with whom](#who-collides-with-whom) explains.
+
 Most settings change while the world lives, such as the gravity, the solver passes and sleeping. The limits stay for the life of the world, since the world reserves their memory when it is made: `maxBodies`, `maxBodyPairs`, `maxContactConstraints`, `threads` and `temporaryMemory`.
 
 ## Steps
@@ -219,6 +221,30 @@ ship:addChild(physics3d.newBox({4, 0.2, 1}), {2.5, 0, 0})
 ### Handles
 
 A body in Lua and in C++ is a handle, which stays cheap to copy. A handle knows when its body is gone, and when its world is gone, even after a new world takes the place of the old one in the engine, so code that keeps a body it should not keep fails with a clear sentence instead of moving another body.
+
+
+## Who collides with whom
+
+Every body has a category, a mask and a group, which together are its collision filter. Two bodies collide when the category of each one shares a bit with the mask of the other. A filter belongs to the whole body, so every part of its shape collides the same way, and a body whose parts should collide differently is several bodies held by a fixed joint.
+
+The list `categories` of the section `physics3d` of `haylen.json` names up to 32 categories, one for each bit, and the options and properties of bodies take the names.
+
+```json
+{
+    "physics3d": {
+        "categories": ["ground", "player", "enemy", "pickup"]
+    }
+}
+```
+
+```lua
+world:createBody({shape = hero, category = 'player', mask = {'ground', 'enemy', 'pickup'}})
+world:createBody({shape = coin, category = 'pickup', mask = 'player', sensor = true})
+```
+
+The group decides before the category and the mask. Bodies that share a negative group never collide, such as the parts of one ragdoll or one vehicle, while each ragdoll takes a group of its own so the ragdolls still hit each other. Bodies that share a positive group always collide, even when their masks leave each other out.
+
+The world keeps bodies that never move, bodies that move and sensors apart, so bodies that never move never test each other, and a sensor never tests another sensor. A query of the world, such as a ray, finds only the bodies whose category shares a bit with the mask of the query.
 
 ## Smooth drawing between fixed steps
 

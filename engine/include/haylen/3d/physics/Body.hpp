@@ -8,6 +8,7 @@
 #include <string_view>
 #include <utility>
 
+#include "haylen/3d/physics/CollisionFilter.hpp"
 #include "haylen/3d/physics/Shape.hpp"
 #include "haylen/math/Box.hpp"
 #include "haylen/math/Quat.hpp"
@@ -84,6 +85,7 @@ class Body final {
         bool collideWithStatic = false;
         std::optional<bool> enhancedInternalEdgeRemoval{};
         bool enabled = true;
+        CollisionFilter filter{};
 
         // Throws `std::invalid_argument` with a sentence that names the option for a value that is not finite or out of its range, a shape of another backend than `backend` and a shape or locks that do not suit the type.
         void validate(std::string_view backend) const;
@@ -231,6 +233,10 @@ class Body final {
     // A body that is not enabled leaves the simulation with its state, so nothing touches it and it moves nowhere until it is enabled again.
     [[nodiscard]] bool isEnabled() const;
     void setEnabled(bool value);
+
+    // The filter belongs to the whole body, so every part of its shape collides the same way.
+    [[nodiscard]] CollisionFilter getFilter() const;
+    void setFilter(const CollisionFilter& value);
 
     // Replaces the shape and takes the mass of the new shape unless the mass was set. Throws `std::invalid_argument` as `World::createBody` does for the shape.
     [[nodiscard]] std::shared_ptr<const Shape> getShape() const;

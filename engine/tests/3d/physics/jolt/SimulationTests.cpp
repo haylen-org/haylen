@@ -4,6 +4,9 @@
 
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
+#include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 
 #include <memory>
@@ -12,6 +15,7 @@
 
 #include "3d/physics/jolt/Layers.hpp"
 #include "3d/physics/jolt/Library.hpp"
+#include "3d/physics/jolt/QueryFilter.hpp"
 #include "3d/physics/jolt/Simulation.hpp"
 #include "3d/physics/jolt/StepAllocator.hpp"
 #include "haylen/3d/physics/WorldSettings.hpp"
@@ -34,7 +38,7 @@ class SimulationTest : public ::testing::Test {
     static void addGround(Simulation& simulation) {
         JPH::BoxShapeSettings shape(JPH::Vec3(50.0F, 0.5F, 50.0F));
         shape.SetEmbedded();
-        const JPH::BodyCreationSettings ground(shape.Create().Get(), JPH::RVec3(0.0F, -0.5F, 0.0F), JPH::Quat::sIdentity(), JPH::EMotionType::Static, Layers::getStaticLayer());
+        const JPH::BodyCreationSettings ground(shape.Create().Get(), JPH::RVec3(0.0F, -0.5F, 0.0F), JPH::Quat::sIdentity(), JPH::EMotionType::Static, simulation.getLayers().getLayer({}, Layers::Part::Static));
         simulation.getSystem().GetBodyInterface().CreateAndAddBody(ground, JPH::EActivation::DontActivate);
     }
 
@@ -42,7 +46,7 @@ class SimulationTest : public ::testing::Test {
     static JPH::BodyID addBox(Simulation& simulation, JPH::RVec3 position) {
         JPH::BoxShapeSettings shape(JPH::Vec3(kHalfBox, kHalfBox, kHalfBox));
         shape.SetEmbedded();
-        const JPH::BodyCreationSettings box(shape.Create().Get(), position, JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic, Layers::getMovingLayer());
+        const JPH::BodyCreationSettings box(shape.Create().Get(), position, JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic, simulation.getLayers().getLayer({}, Layers::Part::Moving));
         return simulation.getSystem().GetBodyInterface().CreateAndAddBody(box, JPH::EActivation::Activate);
     }
 
@@ -142,6 +146,27 @@ TEST_F(SimulationTest, StepsAPileOfMovingBoxesWithoutAllocating) {
 
     EXPECT_EQ(tracker.getTotal(), 0U);
     EXPECT_EQ(simulation.getStats().activeBodies, 40);
+}
+
+// A ray down through a box above the ground finds the box with a filter that takes its category, and the ground below it with one that does not.
+TEST_F(SimulationTest, FindsWithAQueryOnlyTheBodiesWhoseCategoryItsMaskTakes) {
+    Simulation simulation({}, nullptr);
+    addGround(simulation);
+    JPH::BoxShapeSettings shape(JPH::Vec3(0.5F, 0.5F, 0.5F));
+    shape.SetEmbedded();
+    const JPH::ObjectLayer crates = simulation.getLayers().getLayer({.category = 1U << 4}, Layers::Part::Static);
+    const JPH::BodyCreationSettings crate(shape.Create().Get(), JPH::RVec3(0.0F, 2.0F, 0.0F), JPH::Quat::sIdentity(), JPH::EMotionType::Static, crates);
+    simulation.getSystem().GetBodyInterface().CreateAndAddBody(crate, JPH::EActivation::DontActivate);
+
+    const JPH::RRayCast ray(JPH::RVec3(0.0F, 10.0F, 0.0F), JPH::Vec3(0.0F, -20.0F, 0.0F));
+    const QueryFilter findsCrates(simulation.getLayers(), {.mask = 1U << 4});
+    const QueryFilter skipsCrates(simulation.getLayers(), {.mask = ~(1U << 4)});
+    JPH::RayCastResult hit;
+    ASSERT_TRUE(simulation.getSystem().GetNarrowPhaseQuery().CastRay(ray, hit, {}, findsCrates));
+    EXPECT_NEAR(hit.mFraction * 20.0F, 7.5F, 1.0e-3F);
+    hit = {};
+    ASSERT_TRUE(simulation.getSystem().GetNarrowPhaseQuery().CastRay(ray, hit, {}, skipsCrates));
+    EXPECT_NEAR(hit.mFraction * 20.0F, 10.0F, 1.0e-3F);
 }
 
 TEST_F(SimulationTest, AllocatesWhatAStepNeedsBeyondItsTemporaryMemoryAndRecordsIt) {

@@ -6,20 +6,22 @@ from haylen.core.repository import Repository
 
 
 class EngineAppKeysTest:
-    """The engine reads the runtime keys of `haylen.json`, the Lua layer reads its `lua` section, the 3D physics plugin reads the `physics3d` section with the keys of `WorldSettings.hpp` and the tooling validates the whole file, so the keys that `AppConfig.cpp`, `Config.cpp` and `WorldSettings.hpp` take in each section are the keys of the schema in the same section, and the top level holds the keys of the engine and the sections of the Lua layer."""
+    """The engine reads the runtime keys of `haylen.json`, the Lua layer reads its `lua` section, the 3D physics plugin reads the `physics3d` section with the keys of `WorldSettings.hpp` and the key of `CollisionCategories.hpp` and the tooling validates the whole file, so the keys that `AppConfig.cpp`, `Config.cpp`, `WorldSettings.hpp` and `CollisionCategories.hpp` take in each section are the keys of the schema in the same section, and the top level holds the keys of the engine and the sections of the Lua layer."""
 
     SOURCES = (Repository.ENGINE / "src" / "core" / "AppConfig.cpp", Repository.ENGINE / "lua" / "src" / "runtime" / "Config.cpp")
     TOP_LEVEL = re.compile(r"AppConfig::kKeys\{([^}]*)\}")
     KNOWN_KEYS = re.compile(r'requireKnownKeys\(\w+, \{([^}]*)\}, "((?:[^"\\]|\\.)*)"')
     WORLD_SETTINGS = Repository.ENGINE / "include" / "haylen" / "3d" / "physics" / "WorldSettings.hpp"
     WORLD_KEYS = re.compile(r"kKeys\{([^}]*)\}")
+    COLLISION_CATEGORIES = Repository.ENGINE / "include" / "haylen" / "3d" / "physics" / "CollisionCategories.hpp"
+    CATEGORIES_KEY = re.compile(r'kKey = "([A-Za-z]+)"')
     SECTION = re.compile(r'^the \\"([a-zA-Z.]+)\\" section of')
     # The sections that the tooling alone reads, which the engine checks only for their types.
     TOOLING_SECTIONS = ("cpp", "platforms")
 
     @staticmethod
     def engine_sections() -> dict[tuple[str, ...], set[str]]:
-        """Returns the keys that each `requireKnownKeys` of `AppConfig.cpp` and `Config.cpp` takes, by the path of its section in the schema, with the top level of `AppConfig::kKeys`, the sections that the Lua layer reads and the `physics3d` section of `WorldSettings::kKeys`."""
+        """Returns the keys that each `requireKnownKeys` of `AppConfig.cpp` and `Config.cpp` takes, by the path of its section in the schema, with the top level of `AppConfig::kKeys`, the sections that the Lua layer reads and the `physics3d` section of `WorldSettings::kKeys` with `CollisionCategories::kKey`."""
         sections: dict[tuple[str, ...], set[str]] = {}
         layer_sections: set[str] = set()
         for index, source in enumerate(EngineAppKeysTest.SOURCES):
@@ -33,7 +35,10 @@ class EngineAppKeysTest:
         sections[("properties",)] = set(re.findall(r'"([A-Za-z][A-Za-z0-9]*)"', top_level.group(1))) | layer_sections
         world_keys = EngineAppKeysTest.WORLD_KEYS.search(EngineAppKeysTest.WORLD_SETTINGS.read_text(encoding="utf-8"))
         assert world_keys, "The file WorldSettings.hpp defines no WorldSettings::kKeys."
-        sections[("properties", "physics3d", "properties")] = set(re.findall(r'"([A-Za-z0-9]+)"', world_keys.group(1)))
+        categories_key = EngineAppKeysTest.CATEGORIES_KEY.search(EngineAppKeysTest.COLLISION_CATEGORIES.read_text(encoding="utf-8"))
+        assert categories_key, "The file CollisionCategories.hpp defines no CollisionCategories::kKey."
+        world_section = set(re.findall(r'"([A-Za-z0-9]+)"', world_keys.group(1)))
+        sections[("properties", "physics3d", "properties")] = world_section | {categories_key.group(1)}
         return sections
 
     @staticmethod

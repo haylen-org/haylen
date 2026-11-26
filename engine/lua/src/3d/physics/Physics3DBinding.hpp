@@ -88,6 +88,8 @@ class Physics3DBinding final {
 
     static int newWorld(lua_State* L);
     static int getBackends(lua_State* L);
+    static int getCategory(lua_State* L);
+    static int getCategories(lua_State* L);
     static int open(lua_State* L);
 };
 

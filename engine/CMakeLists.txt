@@ -223,6 +223,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/3d/physics/Backend.cpp
   src/3d/physics/BackendRegistry.cpp
   src/3d/physics/Body.cpp
+  src/3d/physics/CollisionCategories.cpp
   src/3d/physics/Shape.cpp
   src/3d/physics/World.cpp
   src/3d/physics/WorldSettings.cpp
@@ -231,6 +232,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/3d/physics/jolt/Layers.cpp
   src/3d/physics/jolt/Library.cpp
   src/3d/physics/jolt/Materials.cpp
+  src/3d/physics/jolt/QueryFilter.cpp
   src/3d/physics/jolt/Shape.cpp
   src/3d/physics/jolt/ShapeBuilder.cpp
   src/3d/physics/jolt/Simulation.cpp

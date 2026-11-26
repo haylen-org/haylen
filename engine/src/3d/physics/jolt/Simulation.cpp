@@ -227,7 +227,7 @@ std::optional<Simulation::BodyId> Simulation::createBody(const Body::Options& op
 
     const JPH::RefConst<JPH::Shape> shape = getJoltShape(record);
     const bool moving = options.type != Body::Type::Static;
-    JPH::BodyCreationSettings creation(shape, Converter::toJolt(options.position), Converter::toJolt(options.rotation), toJolt(options.type), moving ? Layers::getMovingLayer() : Layers::getStaticLayer());
+    JPH::BodyCreationSettings creation(shape, Converter::toJolt(options.position), Converter::toJolt(options.rotation), toJolt(options.type), layers.getLayer(options.filter, partOf(options.type, options.sensor)));
     creation.mAllowDynamicOrKinematic = true;
     creation.mLinearVelocity = Converter::toJolt(options.linearVelocity);
     creation.mAngularVelocity = Converter::toJolt(options.angularVelocity);
@@ -303,7 +303,7 @@ void Simulation::setBodyType(BodyId id, Body::Type value) {
     }
 
     interface.SetMotionType(body, toJolt(value), moving ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
-    interface.SetObjectLayer(body, moving ? Layers::getMovingLayer() : Layers::getStaticLayer());
+    applyLayer(id, getBodyFilter(id));
     applyMass(id);
 }
 
@@ -509,6 +509,7 @@ void Simulation::setBodyFlag(BodyId id, Body::Flag which, bool value) {
         return;
     case Body::Flag::Sensor:
         body.SetIsSensor(value);
+        applyLayer(id, getBodyFilter(id));
         return;
     case Body::Flag::CollideWithStatic:
         body.SetCollideKinematicVsNonDynamic(value);
@@ -583,6 +584,29 @@ void Simulation::pushBody(BodyId id, Body::Push which, math::Vec3 value, std::op
 
 math::Box Simulation::getBodyBounds(BodyId id) const {
     return Converter::fromJolt(getBody(id).GetWorldSpaceBounds());
+}
+
+Layers::Part Simulation::partOf(Body::Type type, bool sensor) noexcept {
+    if (sensor) {
+        return Layers::Part::Sensor;
+    }
+
+    return type == Body::Type::Static ? Layers::Part::Static : Layers::Part::Moving;
+}
+
+void Simulation::applyLayer(BodyId id, const CollisionFilter& filter) {
+    const JPH::Body& body = getBody(id);
+    const JPH::ObjectLayer layer = layers.getLayer(filter, partOf(getBodyType(id), body.IsSensor()));
+    system.GetBodyInterfaceNoLock().SetObjectLayer(body.GetID(), layer);
+}
+
+CollisionFilter Simulation::getBodyFilter(BodyId id) const {
+    return layers.getFilter(getBody(id).GetObjectLayer());
+}
+
+void Simulation::setBodyFilter(BodyId id, const CollisionFilter& value) {
+    applyLayer(id, value);
+    wake(id);
 }
 
 std::shared_ptr<const physics3d::Shape> Simulation::getBodyShape(BodyId id) const {

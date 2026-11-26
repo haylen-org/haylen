@@ -1,5 +1,7 @@
 #include "haylen/3d/physics/WorldSettings.hpp"
 
+#include "haylen/3d/physics/CollisionCategories.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -61,7 +63,7 @@ void WorldSettings::readSection(const core::Json& section) {
     }
 
     for (const auto& [key, value] : section.items()) {
-        if (std::ranges::find(kKeys, key) == kKeys.end()) {
+        if (std::ranges::find(kKeys, key) == kKeys.end() && key != CollisionCategories::kKey) {
             throw std::invalid_argument(std::format("Unknown key \"{}\" in the \"physics3d\" section of \"haylen.json\".", key));
         }
     }

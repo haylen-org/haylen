@@ -520,6 +520,14 @@ void Body::setEnabled(bool value) {
     checkedWorld().getSimulation().setBodyFlag(id, Flag::Enabled, value);
 }
 
+CollisionFilter Body::getFilter() const {
+    return checkedWorld().getSimulation().getBodyFilter(id);
+}
+
+void Body::setFilter(const CollisionFilter& value) {
+    checkedWorld().getSimulation().setBodyFilter(id, value);
+}
+
 std::shared_ptr<const Shape> Body::getShape() const {
     return checkedWorld().getSimulation().getBodyShape(id);
 }

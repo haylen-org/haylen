@@ -19,6 +19,9 @@ class BodyBinding final {
   public:
     static void install(lua_State* L);
 
+    // Reads the bits of categories at the stack index: an integer of 32 bits, the name of a category of `physics3d.categories` in `haylen.json`, or a list of both, whose bits join.
+    [[nodiscard]] static std::uint32_t readCategories(lua_State* L, int index, std::string_view option);
+
     // Reads the options table at the stack index.
     [[nodiscard]] static haylen::physics3d::Body::Options readOptions(lua_State* L, int index);
 
@@ -26,9 +29,10 @@ class BodyBinding final {
     [[nodiscard]] static haylen::physics3d::Body& check(lua_State* L, int index);
 
   private:
-    static constexpr std::array<std::string_view, 25> kOptionFields{"type", "shape", "position", "rotation", "linearVelocity", "angularVelocity", "motionQuality", "locks", "mass", "inertia", "centerOfMass", "linearDamping", "angularDamping", "gravityScale", "maxLinearSpeed", "maxAngularSpeed", "friction", "restitution", "frictionCombine", "restitutionCombine", "sleepEnabled", "sensor", "collideWithStatic", "enhancedInternalEdgeRemoval", "enabled"};
+    static constexpr std::array<std::string_view, 28> kOptionFields{"type", "shape", "position", "rotation", "linearVelocity", "angularVelocity", "motionQuality", "locks", "mass", "inertia", "centerOfMass", "linearDamping", "angularDamping", "gravityScale", "maxLinearSpeed", "maxAngularSpeed", "friction", "restitution", "frictionCombine", "restitutionCombine", "sleepEnabled", "sensor", "collideWithStatic", "enhancedInternalEdgeRemoval", "enabled", "category", "mask", "group"};
     static constexpr std::array<std::string_view, 6> kLockFields{"x", "y", "z", "rotationX", "rotationY", "rotationZ"};
 
+    [[nodiscard]] static std::uint32_t readBits(lua_State* L, int index, std::string_view option);
     [[nodiscard]] static haylen::physics3d::Body::MotionLocks readLocks(lua_State* L, int index);
     static void pushLocks(lua_State* L, const haylen::physics3d::Body::MotionLocks& locks);
 
@@ -55,6 +59,12 @@ class BodyBinding final {
     static int getWorld(lua_State* L);
     static int getLocks(lua_State* L);
     static int setLocks(lua_State* L);
+    static int getCategory(lua_State* L);
+    static int setCategory(lua_State* L);
+    static int getMask(lua_State* L);
+    static int setMask(lua_State* L);
+    static int getGroup(lua_State* L);
+    static int setGroup(lua_State* L);
     static int getShape(lua_State* L);
     static int setShape(lua_State* L);
     static int getData(lua_State* L);

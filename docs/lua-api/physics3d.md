@@ -16,6 +16,8 @@ Every distance and position is in meters, every speed in meters per second, ever
 | --- | --- |
 | [`physics3d.newWorld(options)`](#physics3dnewworldoptions) | A [`PhysicsWorld3D`](#physicsworld3d) |
 | [`physics3d.backends()`](#physics3dbackends) | The names of the registered backends |
+| [`physics3d.category(name)`](#physics3dcategoryname) | The bit of a collision category |
+| [`physics3d.categories()`](#physics3dcategories) | The names of the collision categories |
 | [`physics3d.newSphere(radius, options)`](#physics3dnewsphereradius-options) | A [`Shape3D`](#shape3d) |
 | [`physics3d.newBox(size, options)`](#physics3dnewboxsize-options) | A `Shape3D` |
 | [`physics3d.newCapsule(height, radius, options)`](#physics3dnewcapsuleheight-radius-options) | A `Shape3D` |
@@ -71,6 +73,18 @@ Returns the names of the registered backends in alphabetical order, such as `{'j
 ```lua
 print(table.concat(require('haylen.physics3d').backends(), ', ')) -- jolt
 ```
+
+### physics3d.category(name)
+
+Returns the bit of a category that `physics3d.categories` of `haylen.json` names, 1 for the first name, 2 for the second, 4 for the third and so on. A name that the list lacks raises a sentence with the names it has.
+
+```lua
+local player = physics3d.category('player')
+```
+
+### physics3d.categories()
+
+Returns the names of the categories of `physics3d.categories` in `haylen.json`, in the order of their bits.
 
 ## PhysicsWorld3D
 
@@ -199,6 +213,9 @@ Makes a body and returns it. The table `options` needs `shape`, and every other 
 | `collideWithStatic` | boolean | `false` | Whether a kinematic body or a sensor also meets static and kinematic bodies, such as a trigger that finds the walls. |
 | `enhancedInternalEdgeRemoval` | boolean | the world option | Whether the body slides smoothly over the edges inside a mesh, which costs a little time. |
 | `enabled` | boolean | `true` | Whether the body takes part in the simulation. |
+| `category` | string, integer or list | `1` | The categories of the body: the name of a category of `physics3d.categories`, an integer of 32 bits or a list of both. |
+| `mask` | string, integer or list | every category | The categories the body collides with, in the forms of `category`. |
+| `group` | integer | `0` | Bodies of the same positive group always collide and bodies of the same negative group never do, whatever their categories and masks. |
 
 ```lua
 local physics3d = require('haylen.physics3d')
@@ -320,6 +337,8 @@ Destroys the body. Destroying a destroyed body does nothing.
 | `sleepEnabled` | boolean | read and write | The option `sleepEnabled`. |
 | `awake` | boolean | read and write | Whether the body is awake. Writing `true` wakes it and `false` sends it to sleep. |
 | `sensor`, `collideWithStatic`, `enhancedInternalEdgeRemoval`, `enabled` | boolean | read and write | The options of the same names. |
+| `category`, `mask` | integer | read and write | The options of the same names, read as integers and written in any of their forms. |
+| `group` | integer | read and write | The option `group`. |
 | `shape` | Shape3D | read and write | The shape, or the own copy of a mutable compound. A new shape gives the body its mass unless the mass was set. |
 | `bounds` | Box | read | The box that holds the body in the world. |
 | `childCount` | integer | read | The children of the own mutable compound of the body. |
@@ -342,8 +361,11 @@ tween.to(door, 0.8, {rotation = m.fromAxisAngle(m.up(), math.pi / 2)}, {ease = '
 | `Only a dynamic 3D body takes forces.` and the other sentences that start with `Only a dynamic` | A push of a static or kinematic body. |
 | `The 3D physics world holds "maxBodies" bodies already.` and the rest of its sentence | A world that holds `maxBodies`. |
 | `The 3D physics body was destroyed.` | A member of a destroyed body. |
+| `No 3D collision category is named "<name>".` and the rest of its sentence | A name that `physics3d.categories` of `haylen.json` lacks. |
+| `The option "mask" of a 3D body takes the names of categories or whole numbers of 32 bits.` | A category or mask that is neither. |
 | `The 3D physics world of the body was destroyed.` | A member of a body whose world was destroyed. |
 | `The shape of a 3D body was made by the 3D physics backend "<name>", and the world takes only shapes of its own backend "<name>".` | A shape of another backend. |
+
 
 ## Shape3D
 
