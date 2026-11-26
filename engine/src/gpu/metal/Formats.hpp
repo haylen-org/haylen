@@ -33,6 +33,7 @@ class Formats final {
     [[nodiscard]] static MTLSamplerAddressMode toAddressMode(gpu::Device::Wrap wrap) noexcept;
     [[nodiscard]] static MTLSamplerBorderColor toBorderColor(gpu::Device::BorderColor color) noexcept;
     [[nodiscard]] static MTLLoadAction toLoadAction(gpu::Device::Load load) noexcept;
+    [[nodiscard]] static MTLMultisampleDepthResolveFilter toDepthResolveFilter(gpu::Device::DepthResolve mode) noexcept;
     [[nodiscard]] static MTLClearColor toClearColor(math::Color color) noexcept;
 };
 

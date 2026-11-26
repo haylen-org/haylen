@@ -210,7 +210,7 @@ LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, co
     }
 
     if (canvas.isLit() && !targets.light.isValid()) {
-        targets.light = state.device.getState().createRenderTarget(width, height, state.lightFormat, {.filter = graphics::Texture::Filter::Linear});
+        targets.light = state.device.getState().createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear}, {.colors = {state.lightFormat}});
     }
 
     if (canvas.isLit() && !canvas.uniformLighting && !targets.info.isValid()) {
@@ -496,7 +496,7 @@ void FrameSubmitter::renderFields(const Canvas& canvas) {
     for (std::size_t index = canvas.metaballBegin; index < canvas.metaballEnd; ++index) {
         const MetaballDraw& draw = state.metaballs[index];
         beginOffscreenPass(state.fields[draw.field], math::Color::transparent());
-        state.getGpu().applyPipeline(state.getPipeline(Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Additive), graphics::PassTarget::Offscreen));
+        state.getGpu().applyPipeline(state.getPipeline(Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Additive), graphics::PassTarget::Offscreen, passLayout));
         applyUniforms(matrix, graphics::BlendMode::Type::Additive, state.fields[draw.field].getSize());
         applyDraw(0, {}, getTextureForm(kernel));
 
@@ -591,7 +591,7 @@ void FrameSubmitter::renderLights(const Canvas& canvas, const LitTargets& target
 
         const Program shaded = shadowed ? Program::ShadowedLight : Program::Light;
         const Program program = uniform ? (shadowed ? Program::ShadowedUniformLight : Program::UniformLight) : shaded;
-        state.getGpu().applyPipeline(state.getPipeline(program, static_cast<std::uint8_t>(light.blend), graphics::PassTarget::LightMap));
+        state.getGpu().applyPipeline(state.getPipeline(program, static_cast<std::uint8_t>(light.blend), graphics::PassTarget::LightMap, passLayout));
         gpu::Device::Bindings bindings;
         bindings.vertexBuffers[0] = state.quad;
         bindings.vertexBuffers[1] = state.lightBuffer;
@@ -686,9 +686,7 @@ void FrameSubmitter::renderSwapchain() {
         endPass();
     }
 
-    state.getGpu().beginPass({.load = gpu::Device::Load::Clear, .clear = clear, .label = "haylen-swapchain-pass"});
-    passOpen = true;
-    ++state.stats.passes;
+    openPass({.load = gpu::Device::Load::Clear, .clear = clear, .label = "haylen-swapchain-pass"}, {});
 
     if (imaged) {
         drawScreenImage(pass);
@@ -704,15 +702,13 @@ void FrameSubmitter::renderSwapchain() {
 // Each presented image covers the largest area of its aspect that fits in the middle of its surface, sampled from its pixels as they are when it fits them one to one.
 void FrameSubmitter::renderPresentations() {
     for (const Presentation& presentation : state.presentations) {
-        state.getGpu().beginPass({.load = gpu::Device::Load::Clear, .clear = presentation.clear.withAlpha(1.0F), .label = "haylen-presentation-pass", .surface = presentation.surface});
-        passOpen = true;
-        ++state.stats.passes;
+        openPass({.load = gpu::Device::Load::Clear, .clear = presentation.clear.withAlpha(1.0F), .label = "haylen-presentation-pass", .surface = presentation.surface}, {});
 
         const math::Vec2 image = presentation.target.getSize();
         const float fit = std::min(presentation.size.x / image.x, presentation.size.y / image.y);
         const math::Vec2 shown{std::round(image.x * fit), std::round(image.y * fit)};
         state.getGpu().applyViewport({std::round((presentation.size.x - shown.x) * 0.5F), std::round((presentation.size.y - shown.y) * 0.5F), shown.x, shown.y});
-        state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Swapchain));
+        state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Swapchain, passLayout));
         gpu::Device::Bindings bindings;
         bindings.textures[RendererState::kFilterSource] = presentation.target.getTexture().getResource()->image;
         bindings.samplers[0] = state.device.getState().getSampler({.filter = shown == image ? graphics::Texture::Filter::Nearest : graphics::Texture::Filter::Linear});
@@ -728,7 +724,7 @@ void FrameSubmitter::renderPresentations() {
 
 void FrameSubmitter::drawScreenImage(graphics::PassTarget pass) {
     state.getGpu().applyViewport({0.0F, 0.0F, state.screenImage.getSize().x, state.screenImage.getSize().y});
-    state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), pass));
+    state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), pass, passLayout));
     gpu::Device::Bindings bindings;
     bindings.textures[RendererState::kFilterSource] = state.screenImage.getTexture().getResource()->image;
     bindings.samplers[0] = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Nearest});
@@ -778,11 +774,22 @@ void FrameSubmitter::drawFinal(const Canvas& canvas, graphics::PassTarget pass) 
     drawPostMaterial(canvas.postShade + canvas.options.postProcess->materials.size() - 1, targets.post[canvas.postImage].getTexture(), pass);
 }
 
-// A pass without a clear color keeps what the target holds, such as a canvas that goes on after a group read what lies below it.
+// A pass without a clear color keeps what the target holds, such as a canvas that goes on after a group read what lies below it. A pass draws into the first color of a render target, into its samples when it has several, which resolve into its texture as the pass ends and stay for a later pass unless the target is memoryless, and leaves its other colors and its depth as they are.
 void FrameSubmitter::beginOffscreenPass(const graphics::RenderTarget& renderTarget, std::optional<math::Color> clear) {
-    const gpu::Device::ColorAttachment attachment{.image = renderTarget.getTexture().getResource()->image, .load = clear ? gpu::Device::Load::Clear : gpu::Device::Load::Keep, .clear = clear.value_or(math::Color::transparent())};
-    state.getGpu().beginPass({.colors = std::span(&attachment, 1), .label = "haylen-offscreen-pass"});
+    const graphics::RenderTargetResource& target = *renderTarget.getResource();
+    gpu::Device::ColorAttachment attachment{.image = target.getColorAttachment(0), .load = clear ? gpu::Device::Load::Clear : gpu::Device::Load::Keep, .clear = clear.value_or(math::Color::transparent())};
+    if (!target.samples.empty()) {
+        attachment.store = target.options.memoryless ? gpu::Device::Store::Discard : gpu::Device::Store::Store;
+        attachment.resolve = target.textures.front().getResource()->image;
+    }
+
+    openPass({.colors = std::span(&attachment, 1), .label = "haylen-offscreen-pass"}, {.color = target.textures.front().getResource()->format, .samples = target.options.samples});
+}
+
+void FrameSubmitter::openPass(const gpu::Device::PassDesc& desc, const graphics::PassLayout& layout) {
+    state.getGpu().beginPass(desc);
     passOpen = true;
+    passLayout = layout;
     ++state.stats.passes;
 }
 
@@ -799,9 +806,7 @@ void FrameSubmitter::beginFilterPass(const graphics::RenderTarget& destination, 
     }
 
     const gpu::Device::ColorAttachment attachment{.image = destination.getTexture().getResource()->image, .load = gpu::Device::Load::DontCare};
-    state.getGpu().beginPass({.colors = std::span(&attachment, 1), .label = "haylen-region-pass"});
-    passOpen = true;
-    ++state.stats.passes;
+    openPass({.colors = std::span(&attachment, 1), .label = "haylen-region-pass"}, {});
 }
 
 // The info image starts with the light mask 1 and the layer 0 of draws that set neither, so lights reach the background like such a draw.
@@ -812,9 +817,7 @@ void FrameSubmitter::beginLitPass(const LitTargets& targets, math::Color clear) 
         {.image = targets.surface.getTexture().getResource()->image, .clear = math::Color(0.5F, 0.5F, 0.0F, 0.0F)},
         {.image = targets.info.getTexture().getResource()->image, .clear = math::Color(static_cast<float>(kBackgroundLightMask) / 255.0F, static_cast<float>(kBackgroundLayer + 128) / 255.0F, 0.0F, 0.0F)},
     }};
-    state.getGpu().beginPass({.colors = attachments, .label = "haylen-lit-scene-pass"});
-    passOpen = true;
-    ++state.stats.passes;
+    openPass({.colors = attachments, .label = "haylen-lit-scene-pass"}, {});
 }
 
 void FrameSubmitter::endPass() {
@@ -836,7 +839,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
     // A canvas without distortion, chromatic aberration, bloom, blur or a lookup texture takes the program without those steps, and one without lighting also the program without the light map.
     const bool effects = distorts || blooms || grades || stage != Stage::Whole || post.chromaticAberration > 0.0F;
     const Program program = effects ? Program::Composite : (lit ? Program::LitComposite : Program::PlainComposite);
-    state.getGpu().applyPipeline(state.getPipeline(program, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
+    state.getGpu().applyPipeline(state.getPipeline(program, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass, passLayout));
     gpu::Device::Bindings bindings;
     bindings.textures[RendererState::kCompositeScene] = viewOf(image);
     bindings.textures[RendererState::kCompositeLight] = viewOf(lit ? targets.light : image);
@@ -871,7 +874,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
 void FrameSubmitter::filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step, const std::optional<math::Rect>& region, bool keeps) {
     const math::Vec2 size = source.getSize();
     beginFilterPass(destination, region, keeps);
-    state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen));
+    state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen, passLayout));
     if (region) {
         state.getGpu().applyScissor(*region);
     }
@@ -895,7 +898,7 @@ void FrameSubmitter::filter(const graphics::RenderTarget& source, const graphics
 
 void FrameSubmitter::copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, const std::optional<math::Rect>& region, bool keeps) {
     beginFilterPass(destination, region, keeps);
-    state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen));
+    state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen, passLayout));
     if (region) {
         state.getGpu().applyScissor(*region);
     }
@@ -963,7 +966,7 @@ std::optional<math::Rect> FrameSubmitter::getChainRegion(const std::optional<mat
 void FrameSubmitter::drawPostMaterial(std::size_t shadeIndex, const graphics::Texture& image, graphics::PassTarget pass) {
     const Shade& shade = state.shades[shadeIndex];
     const graphics::TextureResource& resource = *image.getResource();
-    state.getGpu().applyPipeline(state.getMaterialPipeline(*shade.material, Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
+    state.getGpu().applyPipeline(state.getMaterialPipeline(*shade.material, Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass, passLayout));
     applyUniforms(gpu::SurfaceTurn::turnClip(projection(math::Transform2D::identity(), {1.0F, 1.0F}), state.getGpu().getPassTurns()), graphics::BlendMode::Type::Premultiplied, image.getSize());
     applyDraw(0, {}, getTextureForm(resource));
     applyShade(shade, pass, Program::Sprite, graphics::BlendMode::Type::Premultiplied);
@@ -1067,7 +1070,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
 
         if (command.program == Program::ImageBlend || command.program == Program::Metaball) {
             // These apply their own pipeline, uniforms and clip, so the next command applies them again.
-            state.getGpu().applyPipeline(state.getPipeline(command.program, static_cast<std::uint8_t>(command.blend), pass));
+            state.getGpu().applyPipeline(state.getPipeline(command.program, static_cast<std::uint8_t>(command.blend), pass, passLayout));
             applyClip(canvas, command.clip, passRect);
             applyShade(shade, pass, command.program, command.blend);
 
@@ -1083,7 +1086,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
         }
 
         const auto blend = static_cast<std::uint8_t>(command.blend);
-        const gpu::Device::Pipeline pipeline = shade.material != nullptr ? state.getMaterialPipeline(*shade.material, command.program, blend, pass) : state.getPipeline(command.program, blend, pass);
+        const gpu::Device::Pipeline pipeline = shade.material != nullptr ? state.getMaterialPipeline(*shade.material, command.program, blend, pass, passLayout) : state.getPipeline(command.program, blend, pass, passLayout);
         const bool fresh = pipeline.id != currentPipeline.id;
         if (fresh) {
             state.getGpu().applyPipeline(pipeline);
@@ -1214,7 +1217,7 @@ void FrameSubmitter::drawBackdrop(const Canvas& canvas, const Command& command, 
     copy(targets.scene, targets.backdrop);
     beginOffscreenPass(targets.scene, std::nullopt);
     state.getGpu().applyViewport(passRect);
-    state.getGpu().applyPipeline(state.getPipeline(Program::Backdrop, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen));
+    state.getGpu().applyPipeline(state.getPipeline(Program::Backdrop, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen, passLayout));
     applyClip(canvas, command.clip, passRect);
 
     const BlendDraw& draw = state.blends[command.first];
@@ -1410,7 +1413,7 @@ void FrameSubmitter::drawGlass(const Canvas& canvas, const Command& command, con
     const Shade& shade = state.shades[command.shade];
     const auto blend = static_cast<std::uint8_t>(command.blend);
     const graphics::PassTarget pass = graphics::PassTarget::Offscreen;
-    state.getGpu().applyPipeline(shade.material != nullptr ? state.getMaterialPipeline(*shade.material, Program::Glass, blend, pass) : state.getPipeline(Program::Glass, blend, pass));
+    state.getGpu().applyPipeline(shade.material != nullptr ? state.getMaterialPipeline(*shade.material, Program::Glass, blend, pass, passLayout) : state.getPipeline(Program::Glass, blend, pass, passLayout));
     applyClip(canvas, command.clip, passRect);
     const graphics::TextureResource& behind = *targets.image.getTexture().getResource();
     applyUniforms(matrix, command.blend, passRect.getSize());

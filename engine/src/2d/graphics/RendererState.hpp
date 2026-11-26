@@ -36,6 +36,7 @@
 #include "2d/graphics/TextPainter.hpp"
 #include "2d/graphics/VectorAtlas.hpp"
 #include "2d/lighting/ShadowMap.hpp"
+#include "graphics/PassLayout.hpp"
 #include "graphics/PassTarget.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "haylen/2d/graphics/DrawOrder.hpp"
@@ -127,7 +128,7 @@ struct RendererState {
 
     // The packages of the programs of the renderer, read from the engine when it starts, and their pipelines.
     std::vector<graphics::Shader> packages;
-    std::unordered_map<std::uint32_t, gpu::Device::Pipeline> pipelines;
+    std::unordered_map<std::uint64_t, gpu::Device::Pipeline> pipelines;
     gpu::Device::PixelFormat lightFormat = gpu::Device::PixelFormat::Rgba8;
 
     // One row of the shadow atlas per shadowed light of the frame, written every frame that draws lights.
@@ -283,6 +284,7 @@ struct RendererState {
 
     // Throws when a draw would sample the image its canvas draws into, which no GPU can read and write in one pass.
     void requireReadable(const graphics::TextureResource* texture);
+    static void requireColors(const graphics::TextureResource* texture);
 
     // Opens a fade over the open fades with the edges of the rectangle that fade, and closes the last one.
     void pushFade(const math::Rect& rect, const Renderer::Fade& value);
@@ -324,10 +326,10 @@ struct RendererState {
     [[nodiscard]] static gpu::Device::Blend blendState(graphics::BlendMode::Type mode) noexcept;
 
     // Returns the pipeline of a program, blend mode and pass target, creating it on first use. The light program takes the blend of the light instead.
-    [[nodiscard]] gpu::Device::Pipeline getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target);
+    [[nodiscard]] gpu::Device::Pipeline getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& layout);
 
     // Returns the pipeline of a material for the program it replaces, which lives with the material's shader, and the program with its bind slots.
-    [[nodiscard]] gpu::Device::Pipeline getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target);
+    [[nodiscard]] gpu::Device::Pipeline getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& layout);
     [[nodiscard]] const graphics::ShaderResource::Compiled& getMaterialProgram(MaterialResource& material, Program program, graphics::PassTarget target);
 
     // Grows a stream buffer to hold at least the needed number of elements.
@@ -380,7 +382,7 @@ struct RendererState {
     static const std::array<Input, 1> kQuadInputs;
 
     [[nodiscard]] const graphics::ShaderResource::Compiled& getProgram(Program program, bool lit);
-    [[nodiscard]] static std::uint32_t pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target) noexcept;
+    [[nodiscard]] static std::uint64_t pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& layout) noexcept;
     [[nodiscard]] static gpu::Device::Blend lightBlend(std::uint8_t blend) noexcept;
     [[nodiscard]] static const char* materialProgramName(Program program, graphics::PassTarget target);
 
@@ -394,10 +396,10 @@ struct RendererState {
     [[nodiscard]] std::uint32_t pushShade(Shade shade, const Material& material);
     [[nodiscard]] static Layout describeLayout(Program program);
     [[nodiscard]] static std::span<const Input> getPairedInputs(Program program) noexcept;
-    [[nodiscard]] Targets describeTargets(std::uint8_t blend, graphics::PassTarget target) const;
+    [[nodiscard]] Targets describeTargets(std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& layout) const;
 
     // Makes a pipeline of a program of a package with the layout of a program of the renderer and the colors of a pass target.
-    [[nodiscard]] gpu::Device::Pipeline makePipeline(const graphics::ShaderResource& package, std::string_view programName, gpu::Device::Program made, Program program, std::uint8_t blend, graphics::PassTarget target, std::string_view label);
+    [[nodiscard]] gpu::Device::Pipeline makePipeline(const graphics::ShaderResource& package, std::string_view programName, gpu::Device::Program made, Program program, std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& layout, std::string_view label);
 };
 
 } // namespace haylen::graphics2d

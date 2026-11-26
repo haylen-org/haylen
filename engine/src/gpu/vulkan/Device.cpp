@@ -8,6 +8,7 @@
 #include <format>
 #include <limits>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -15,6 +16,7 @@
 #include "gpu/DriverIssues.hpp"
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/ProgramSlots.hpp"
 #include "gpu/SamplerRules.hpp"
 #include "gpu/vulkan/Context.hpp"
@@ -135,6 +137,19 @@ void Device::fillCapabilities() {
     capabilities.cubeArrays = context->getEnabledFeatures().imageCubeArray == VK_TRUE;
     capabilities.depthLayers = true;
     capabilities.imageViews = true;
+
+    // The resolves of depth take every depth format by the modes that the GPU reports for them, and transient images take no memory on a GPU with memory that it allocates only as the tiles of a pass need it.
+    for (const auto& [name, mode] : kDepthResolveNames) {
+        const auto modeBit = static_cast<VkResolveModeFlags>(Conversions::toResolveMode(mode));
+        if ((context->getDepthResolveModes() & modeBit) != 0) {
+            capabilities.depthResolves |= static_cast<std::uint8_t>(1U << static_cast<unsigned>(mode));
+        }
+    }
+
+    const VkPhysicalDeviceMemoryProperties* memory = nullptr;
+    vmaGetMemoryProperties(context->getAllocator(), &memory);
+    const std::span<const VkMemoryType> memoryTypes = std::span(memory->memoryTypes).first(memory->memoryTypeCount);
+    capabilities.memorylessAttachments = std::ranges::any_of(memoryTypes, [](const VkMemoryType& type) { return (type.propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) != 0; });
 
     // Every Vulkan device binds storage buffers and reads the arguments of indirect draws, and a uniform block reads at most the range of one uniform buffer descriptor.
     capabilities.storageBuffers = true;
@@ -940,15 +955,16 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     const VkSampleCountFlagBits samples = Conversions::toSampleCount(desc.sampleCount);
     const VkPhysicalDeviceLimits& limits = context->getProperties().limits;
     const bool attachment = desc.kind == ImageKind::RenderTarget || desc.kind == ImageKind::DepthStencil;
-    const bool sampled = samples == VK_SAMPLE_COUNT_1_BIT || (((depth ? limits.sampledImageDepthSampleCounts : limits.sampledImageColorSampleCounts) & static_cast<VkSampleCountFlags>(samples)) != 0);
+    const bool sampled = !desc.transient && (samples == VK_SAMPLE_COUNT_1_BIT || (((depth ? limits.sampledImageDepthSampleCounts : limits.sampledImageColorSampleCounts) & static_cast<VkSampleCountFlags>(samples)) != 0));
 
-    VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    // A transient image is an attachment alone, which Vulkan allows to live in memory that the GPU allocates only as its tiles need it, so it takes no use of copies or sampling. Every other image is copied into as it starts.
+    VkImageUsageFlags usage = desc.transient ? VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT : VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     if (sampled) {
         usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
     }
 
     if (desc.kind == ImageKind::RenderTarget) {
-        usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        usage |= desc.transient ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     } else if (desc.kind == ImageKind::DepthStencil) {
         usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
@@ -997,7 +1013,8 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         record.restLayout = depth ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
 
-    const VmaAllocationCreateInfo memory{.flags = 0, .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
+    const VmaMemoryUsage placement = desc.transient && capabilities.memorylessAttachments ? VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED : VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    const VmaAllocationCreateInfo memory{.flags = 0, .usage = placement, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
     ReleaseQueue::Hold imageRoom = releases.hold();
     Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &record.image, &record.allocation, nullptr), std::format("make the image \"{}\"", desc.label));
     imageRoom.keep();
@@ -1008,6 +1025,11 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
             ReleaseQueue::Hold viewRoom = releases.hold();
             record.sampleView = makeSampleView(record, {.type = desc.type, .baseMipLevel = 0, .mipLevels = desc.mipLevels, .baseLayer = 0, .layers = desc.layers, .label = desc.label});
             viewRoom.keep();
+        }
+
+        // A transient image holds nothing between passes, so it stays undefined until a pass clears it or draws into it from undefined contents.
+        if (desc.transient) {
+            return {images.add(std::move(record))};
         }
 
         if (!ensureFrame()) {
@@ -1742,11 +1764,14 @@ void Device::generateMipmaps(Image image) {
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, ImageLayouts::getStages(record.restLayout), 0, 0, nullptr, 0, nullptr, 1, &toRest);
 }
 
-// A swapchain pass that keeps the contents of the swapchain pass right before it goes on drawing in the same rendering, so its depth, stencil and multisampled color stay. Labels name the commands inside the rendering of their pass. The pass opens once its rendering began, so a pass that fails to begin leaves no pass open.
+// A swapchain pass that keeps the contents of the swapchain pass right before it goes on drawing in the same rendering, so its depth, stencil and multisampled color stay. Labels name the commands inside the rendering of their pass. The device checks the attachments of an offscreen pass before it records anything, and the pass opens once its rendering began, so a pass that fails to begin leaves no pass open.
 void Device::beginPass(const PassDesc& desc) {
     if (pass.open) {
         throw ContractError(ContractError::Rule::PassOrder);
     }
+
+    const bool toSwapchain = desc.colors.empty() && !desc.depthStencil;
+    const PassRules::Extent extent = toSwapchain ? PassRules::Extent{} : PassRules::check(desc, capabilities, [this](Image image) -> const ImageRules::Description& { return images.get(image.id).description; });
 
     pass.skipped = false;
     pass.labeled = false;
@@ -1759,7 +1784,6 @@ void Device::beginPass(const PassDesc& desc) {
 
     resetDrawState();
 
-    const bool toSwapchain = desc.colors.empty() && !desc.depthStencil;
     pass.swapchain = toSwapchain;
     const bool continues = toSwapchain && swapchainRendering && renderingSurface == desc.surface && desc.load == Load::Keep;
     if (!continues) {
@@ -1770,7 +1794,7 @@ void Device::beginPass(const PassDesc& desc) {
         beginSwapchainPass(desc);
     } else if (!toSwapchain) {
         pass.turns = 0;
-        beginOffscreenPass(desc);
+        beginOffscreenPass(desc, extent);
     }
 
     swapchainRendering = false;
@@ -1836,6 +1860,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     if (multisampled) {
         color.resolveView = swapchain.getView(imageIndex);
         color.resolveFormat = swapchain.getFormat();
+        color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
     }
 
     target.depth = {.view = swapchain.getDepthView(), .format = swapchain.getDepthFormat(), .samples = swapchain.getSamples(), .load = load, .store = VK_ATTACHMENT_STORE_OP_DONT_CARE, .stencilLoad = load, .stencilStore = VK_ATTACHMENT_STORE_OP_DONT_CARE};
@@ -1843,36 +1868,28 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     beginRendering(target);
 }
 
-void Device::beginOffscreenPass(const PassDesc& desc) {
-    if (desc.colors.size() > kMaxColorTargets) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    PassTarget target{.colorCount = static_cast<std::uint32_t>(desc.colors.size())};
+void Device::beginOffscreenPass(const PassDesc& desc, const PassRules::Extent& extent) {
+    PassTarget target{.colorCount = static_cast<std::uint32_t>(desc.colors.size()), .extent = {static_cast<std::uint32_t>(extent.width), static_cast<std::uint32_t>(extent.height)}};
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
-        ImageRecord& record = requireAttachment(attachment.image, ImageKind::RenderTarget);
+        ImageRecord& record = images.get(attachment.image.id);
         AttachmentTarget& color = target.colors[index];
         color = {.view = getAttachmentView(record, attachment.mipLevel, attachment.layer), .format = record.format, .samples = record.samples, .load = Conversions::toLoad(attachment.load), .store = Conversions::toStore(attachment.store)};
         color.clear.color = {{attachment.clear.r, attachment.clear.g, attachment.clear.b, attachment.clear.a}};
-        addTransition(record, attachment.mipLevel, attachment.layer, attachment.load == Load::Keep);
-
-        if (index == 0) {
-            const ImageInfo::Extent level = record.description.getLevelExtent(attachment.mipLevel);
-            target.extent = {static_cast<std::uint32_t>(level.width), static_cast<std::uint32_t>(level.height)};
-        }
+        addTransition(record, attachment.mipLevel, attachment.layer, attachment.load == Load::Keep, false);
 
         if (attachment.resolve.isValid()) {
-            ImageRecord& resolve = requireAttachment(attachment.resolve, ImageKind::RenderTarget);
+            ImageRecord& resolve = images.get(attachment.resolve.id);
             color.resolveView = getAttachmentView(resolve, attachment.resolveMipLevel, attachment.resolveLayer);
             color.resolveFormat = resolve.format;
-            addTransition(resolve, attachment.resolveMipLevel, attachment.resolveLayer, false);
+            color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+            addTransition(resolve, attachment.resolveMipLevel, attachment.resolveLayer, false, false);
         }
     }
 
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
-        ImageRecord& record = requireAttachment(attachment.image, ImageKind::DepthStencil);
+        ImageRecord& record = images.get(attachment.image.id);
         target.hasDepth = true;
         target.depth = {.view = getAttachmentView(record, attachment.mipLevel, attachment.layer), .format = record.format, .samples = record.samples, .load = Conversions::toLoad(attachment.depthLoad), .store = Conversions::toStore(attachment.depthStore), .stencilLoad = Conversions::toLoad(attachment.stencilLoad), .stencilStore = Conversions::toStore(attachment.stencilStore)};
         target.depth.clear.depthStencil = {.depth = attachment.clearDepth, .stencil = attachment.clearStencil};
@@ -1883,11 +1900,16 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         }
 
         const bool keeps = attachment.depthLoad == Load::Keep || attachment.stencilLoad == Load::Keep;
-        addTransition(record, attachment.mipLevel, attachment.layer, keeps);
+        const bool resolves = attachment.resolve.isValid();
+        addTransition(record, attachment.mipLevel, attachment.layer, keeps, resolves);
 
-        if (desc.colors.empty()) {
-            const ImageInfo::Extent level = record.description.getLevelExtent(attachment.mipLevel);
-            target.extent = {static_cast<std::uint32_t>(level.width), static_cast<std::uint32_t>(level.height)};
+        // The depth resolves into its image when the pass ends, whatever the pass keeps of the multisampled depth.
+        if (resolves) {
+            ImageRecord& resolve = images.get(attachment.resolve.id);
+            target.depth.resolveView = getAttachmentView(resolve, attachment.resolveMipLevel, attachment.resolveLayer);
+            target.depth.resolveFormat = resolve.format;
+            target.depth.resolveMode = Conversions::toResolveMode(attachment.resolveMode);
+            addTransition(resolve, attachment.resolveMipLevel, attachment.resolveLayer, false, true);
         }
     }
 
@@ -1897,35 +1919,31 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     VkPipelineStageFlags after = 0;
     for (std::size_t index = 0; index < pass.transitionCount; ++index) {
         const Transition& transition = pass.transitions[index];
-        imageBarriers.push_back(ImageLayouts::makeBarrier(transition.image, transition.range, transition.restLayout, transition.fromLayout, transition.attachmentLayout));
+        VkImageMemoryBarrier& barrier = imageBarriers.emplace_back(ImageLayouts::makeBarrier(transition.image, transition.range, transition.restLayout, transition.fromLayout, transition.attachmentLayout));
+        barrier.dstAccessMask = transition.access;
         before |= ImageLayouts::getStages(transition.restLayout);
-        after |= ImageLayouts::getStages(transition.attachmentLayout);
+        after |= transition.stages;
     }
 
     vk.vkCmdPipelineBarrier(frames[frameIndex].graphics, before, after, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
     beginRendering(target);
 }
 
-// An attachment is an image of its kind and never a view, since a pass names the mip level and the layer of the image itself.
-Device::ImageRecord& Device::requireAttachment(Image image, ImageKind kind) {
-    ImageRecord& record = images.get(image.id);
-    if (record.description.isView() || record.description.kind != kind) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    return record;
-}
-
-// An attachment whose contents the pass discards leaves its resting layout as undefined, which spares the GPU keeping them. Only the mip level and the layer that the pass draws into leave it, or the whole mip level of a volume, so the pass samples the others where they rest.
-void Device::addTransition(const ImageRecord& record, int mipLevel, int layer, bool keeps) {
+// An attachment whose contents the pass discards leaves its resting layout as undefined, which spares the GPU keeping them. Only the mip level and the layer that the pass draws into leave it, or the whole mip level of a volume, so the pass samples the others where they rest. A depth attachment that the pass resolves, or resolves into, is used in the stage of color attachments too, where Vulkan runs every resolve.
+void Device::addTransition(const ImageRecord& record, int mipLevel, int layer, bool keeps, bool resolvesDepth) {
     const bool depth = (record.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) != 0;
     const bool volume = record.description.type == TextureType::Volume;
+    const VkImageLayout attachmentLayout = depth ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    const VkPipelineStageFlags resolveStages = resolvesDepth ? ImageLayouts::kResolveStages : 0U;
+    const VkAccessFlags resolveAccesses = resolvesDepth ? ImageLayouts::kResolveAccesses : 0U;
     pass.transitions[pass.transitionCount++] = {
         .image = record.image,
         .range = {.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(mipLevel), .levelCount = 1, .baseArrayLayer = volume ? 0U : static_cast<std::uint32_t>(layer), .layerCount = 1},
-        .attachmentLayout = depth ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .attachmentLayout = attachmentLayout,
         .fromLayout = keeps ? record.restLayout : VK_IMAGE_LAYOUT_UNDEFINED,
         .restLayout = record.restLayout,
+        .stages = ImageLayouts::getStages(attachmentLayout) | resolveStages,
+        .access = ImageLayouts::getAccess(attachmentLayout) | resolveAccesses,
     };
 }
 
@@ -1933,10 +1951,6 @@ VkImageView Device::getAttachmentView(ImageRecord& record, int mipLevel, int lay
     const auto found = std::ranges::find_if(record.attachmentViews, [mipLevel, layer](const AttachmentView& view) { return view.mipLevel == mipLevel && view.layer == layer; });
     if (found != record.attachmentViews.end()) {
         return found->view;
-    }
-
-    if (mipLevel < 0 || mipLevel >= record.description.mipLevels || layer < 0 || layer >= record.description.getLevelExtent(mipLevel).depth) {
-        throw ContractError(ContractError::Rule::PassAttachments);
     }
 
     const VkImageViewCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .pNext = nullptr, .flags = 0, .image = record.image, .viewType = VK_IMAGE_VIEW_TYPE_2D, .format = record.format, .components = {}, .subresourceRange = {.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(mipLevel), .levelCount = 1, .baseArrayLayer = static_cast<std::uint32_t>(layer), .layerCount = 1}};
@@ -1958,11 +1972,13 @@ void Device::beginRendering(const PassTarget& target) {
         std::array<VkRenderingAttachmentInfo, kMaxColorTargets> colors{};
         for (std::uint32_t index = 0; index < target.colorCount; ++index) {
             const AttachmentTarget& color = target.colors[index];
-            colors[index] = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .pNext = nullptr, .imageView = color.view, .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .resolveMode = color.resolveView != VK_NULL_HANDLE ? VK_RESOLVE_MODE_AVERAGE_BIT : VK_RESOLVE_MODE_NONE, .resolveImageView = color.resolveView, .resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .loadOp = color.load, .storeOp = color.store, .clearValue = color.clear};
+            colors[index] = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .pNext = nullptr, .imageView = color.view, .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .resolveMode = color.resolveMode, .resolveImageView = color.resolveView, .resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .loadOp = color.load, .storeOp = color.store, .clearValue = color.clear};
         }
 
+        // The depth resolves by its mode, and the stencil by none, since a pass resolves the depth of formats without stencil alone.
         const AttachmentTarget& depth = target.depth;
-        const VkRenderingAttachmentInfo depthInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .pNext = nullptr, .imageView = depth.view, .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .resolveMode = VK_RESOLVE_MODE_NONE, .resolveImageView = VK_NULL_HANDLE, .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED, .loadOp = depth.load, .storeOp = depth.store, .clearValue = depth.clear};
+        const VkImageLayout depthResolveLayout = depth.resolveView != VK_NULL_HANDLE ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+        const VkRenderingAttachmentInfo depthInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .pNext = nullptr, .imageView = depth.view, .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .resolveMode = depth.resolveMode, .resolveImageView = depth.resolveView, .resolveImageLayout = depthResolveLayout, .loadOp = depth.load, .storeOp = depth.store, .clearValue = depth.clear};
         const VkRenderingAttachmentInfo stencilInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .pNext = nullptr, .imageView = depth.view, .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .resolveMode = VK_RESOLVE_MODE_NONE, .resolveImageView = VK_NULL_HANDLE, .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED, .loadOp = depth.stencilLoad, .storeOp = depth.stencilStore, .clearValue = depth.clear};
         const bool stencil = target.hasDepth && Conversions::hasStencil(depth.format);
         const VkRenderingInfo info{.sType = VK_STRUCTURE_TYPE_RENDERING_INFO, .pNext = nullptr, .flags = 0, .renderArea = area, .layerCount = 1, .viewMask = 0, .colorAttachmentCount = target.colorCount, .pColorAttachments = colors.data(), .pDepthAttachment = target.hasDepth ? &depthInfo : nullptr, .pStencilAttachment = stencil ? &stencilInfo : nullptr};
@@ -1970,7 +1986,7 @@ void Device::beginRendering(const PassTarget& target) {
         return;
     }
 
-    // The attachments of a render pass come in the order of its creation: the colors, the images that resolve them and the depth and stencil image.
+    // The attachments of a render pass come in the order of its creation: the colors, the images that resolve them, the depth and stencil image and the image that resolves its depth.
     RenderPassCache::PassKey key{.colorCount = target.colorCount};
     std::array<VkImageView, RenderPassCache::kMaxViews> views{};
     std::array<VkClearValue, RenderPassCache::kMaxViews> clears{};
@@ -1995,6 +2011,11 @@ void Device::beginRendering(const PassTarget& target) {
         key.depth = {.format = depth.format, .samples = depth.samples, .load = depth.load, .store = depth.store, .stencilLoad = depth.stencilLoad, .stencilStore = depth.stencilStore};
         views[count] = depth.view;
         clears[count++] = depth.clear;
+        if (depth.resolveView != VK_NULL_HANDLE) {
+            key.depthResolve = depth.resolveFormat;
+            key.depthResolveMode = depth.resolveMode;
+            views[count++] = depth.resolveView;
+        }
     }
 
     const VkRenderPass renderPass = renderPasses.getRenderPass(key);
@@ -2032,8 +2053,9 @@ void Device::endPass() {
     VkPipelineStageFlags after = 0;
     for (std::size_t index = 0; index < pass.transitionCount; ++index) {
         const Transition& transition = pass.transitions[index];
-        imageBarriers.push_back(ImageLayouts::makeBarrier(transition.image, transition.range, transition.attachmentLayout, transition.attachmentLayout, transition.restLayout));
-        before |= ImageLayouts::getStages(transition.attachmentLayout);
+        VkImageMemoryBarrier& barrier = imageBarriers.emplace_back(ImageLayouts::makeBarrier(transition.image, transition.range, transition.attachmentLayout, transition.attachmentLayout, transition.restLayout));
+        barrier.srcAccessMask = transition.access & ImageLayouts::kWrites;
+        before |= transition.stages;
         after |= ImageLayouts::getStages(transition.restLayout);
     }
 
@@ -2375,6 +2397,8 @@ void Device::bindResources() {
                 throw ContractError(ContractError::Rule::Bindings);
             }
 
+            ImageRules::checkSampled(image->description);
+
             descriptorImages[next] = {.sampler = VK_NULL_HANDLE, .imageView = image->sampleView, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
             descriptorWrites.push_back({.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .pNext = nullptr, .dstSet = VK_NULL_HANDLE, .dstBinding = texture.binding, .dstArrayElement = 0, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .pImageInfo = &descriptorImages[next++], .pBufferInfo = nullptr, .pTexelBufferView = nullptr});
         }
@@ -2452,16 +2476,8 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     }
 
     const ImageRecord& record = images.get(image.id);
-    const ImageRules::Description& description = record.description;
-    if (description.isView() || description.kind != ImageKind::RenderTarget || record.samples != VK_SAMPLE_COUNT_1_BIT) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    if (width < 1 || height < 1 || width > description.width || height > description.height) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    return std::make_unique<CopyReadback>(readbacks.start(ReadbackQueue::ImageSource{.image = record.image, .layout = record.restLayout, .width = width, .height = height, .format = description.format}));
+    ImageRules::checkReadback(record.description, width, height);
+    return std::make_unique<CopyReadback>(readbacks.start(ReadbackQueue::ImageSource{.image = record.image, .layout = record.restLayout, .width = width, .height = height, .format = record.description.format}));
 }
 
 // The copy goes to the queue after the frames that the device committed, so it reads what they left in the buffer.

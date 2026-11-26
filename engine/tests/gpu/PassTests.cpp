@@ -157,6 +157,148 @@ TEST_P(GpuPassTest, ResolvesMultisampledTargets) {
     device().destroy(pipeline);
 }
 
+// Multisampled color and depth that live only inside their pass test depth there and resolve their color, whether the device keeps them in the memory of its tiles or in images of their own.
+TEST_P(GpuPassTest, DrawsIntoTransientAttachmentsWithinTheirPass) {
+    const Device::PixelFormat depthFormat = capabilities().getFormat(Device::PixelFormat::Depth24Stencil8).render ? Device::PixelFormat::Depth24Stencil8 : Device::PixelFormat::Depth32FloatStencil8;
+    if ((capabilities().getFormat(Device::PixelFormat::Rgba8).sampleCounts & 4U) == 0 || (capabilities().getFormat(depthFormat).sampleCounts & 4U) == 0) {
+        GTEST_SKIP() << "The device draws into no color and depth of four samples.";
+    }
+
+    const Device::Image samples = makeImage({.width = kSize, .height = kSize, .sampleCount = 4, .kind = Device::ImageKind::RenderTarget, .transient = true, .label = "haylen-test-transient-color"});
+    const Device::Image depth = makeImage({.width = kSize, .height = kSize, .sampleCount = 4, .format = depthFormat, .kind = Device::ImageKind::DepthStencil, .transient = true, .label = "haylen-test-transient-depth"});
+    const Device::Image resolved = makeTarget(kSize, kSize);
+    const std::array<Device::ColorTarget, 1> formats{};
+    const Device::Pipeline pipeline = makePlanePipeline(formats, {.format = depthFormat, .depthCompare = Device::CompareFunction::Less, .depthWrite = true}, 4);
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = samples, .load = Device::Load::Clear, .store = Device::Store::Discard, .clear = math::Color::black(), .resolve = resolved}}};
+
+    // The near plane covers the left half, so the far plane drawn after it shows only on the right half.
+    device().beginPass({.colors = colors, .depthStencil = Device::DepthStencilAttachment{.image = depth, .depthLoad = Device::Load::Clear, .depthStore = Device::Store::Discard, .clearDepth = 1.0F, .stencilLoad = Device::Load::DontCare}});
+    device().applyPipeline(pipeline);
+    device().applyViewport({0.0F, 0.0F, static_cast<float>(kSize) / 2.0F, static_cast<float>(kSize)});
+    drawPlane({0.0F, 0.0F, 1.0F, 1.0F}, 0.25F);
+    device().applyViewport({0.0F, 0.0F, static_cast<float>(kSize), static_cast<float>(kSize)});
+    drawPlane({1.0F, 0.0F, 0.0F, 1.0F}, 0.5F);
+    device().endPass();
+    device().commit();
+
+    const Pixels pixels = read(resolved, kSize, kSize);
+    EXPECT_TRUE(isNear(pixels.at(1, 4), {0.0F, 0.0F, 1.0F, 1.0F}));
+    EXPECT_TRUE(isNear(pixels.at(6, 4), {1.0F, 0.0F, 0.0F, 1.0F}));
+}
+
+// A multisampled depth resolves into a depth image of one sample by each mode the device has: the pixels that every sample of a triangle covers take its depth, the pixels it misses keep the clear, and on its edge the smallest of the samples is the triangle and the largest is the clear.
+TEST_P(GpuPassTest, ResolvesDepthByEachModeOfTheDevice) {
+    if (capabilities().depthResolves == 0) {
+        GTEST_SKIP() << "The graphics API of the device resolves no depth.";
+    }
+
+    const Device::PixelFormat format = capabilities().getFormat(Device::PixelFormat::Depth32Float).render ? Device::PixelFormat::Depth32Float : Device::PixelFormat::Depth16;
+    if ((capabilities().getFormat(format).sampleCounts & 4U) == 0 || (capabilities().getFormat(Device::PixelFormat::Rgba8).sampleCounts & 4U) == 0) {
+        GTEST_SKIP() << "The device draws into no color and depth of four samples.";
+    }
+
+    const Device::Image samples = makeImage({.width = kSize, .height = kSize, .sampleCount = 4, .kind = Device::ImageKind::RenderTarget, .transient = true, .label = "haylen-test-depth-resolve-color"});
+    const Device::Image depthSamples = makeImage({.width = kSize, .height = kSize, .sampleCount = 4, .format = format, .kind = Device::ImageKind::DepthStencil, .transient = true, .label = "haylen-test-depth-resolve-samples"});
+    const Device::Image resolvedColor = makeTarget(kSize, kSize);
+    const std::array<Device::ColorTarget, 1> formats{};
+    const Device::Pipeline drawing = device().makePipeline({.program = program("color"), .buffers = std::array<Device::VertexBufferLayout, 1>{{{.stride = 28}}}, .attributes = std::array<Device::VertexAttribute, 2>{{{.location = attribute("color", "position"), .format = Device::VertexFormat::Float3}, {.location = attribute("color", "color0"), .offset = 12, .format = Device::VertexFormat::Float4}}}, .colors = formats, .depthStencil = {.format = format, .depthCompare = Device::CompareFunction::Always, .depthWrite = true}, .sampleCount = 4, .label = "haylen-test-depth-resolve"});
+
+    // The triangle covers the half of the target below its diagonal at the depth 0.25, which the API stores as 0.25 or 0.625, both nearer than the reference of the lookup.
+    const std::array<float, 21> vertices{-1.0F, -1.0F, 0.25F, 1.0F, 1.0F, 1.0F, 1.0F, 1.0F, -1.0F, 0.25F, 1.0F, 1.0F, 1.0F, 1.0F, -1.0F, 1.0F, 0.25F, 1.0F, 1.0F, 1.0F, 1.0F};
+    const Device::Buffer triangle = device().makeBuffer({.data = std::as_bytes(std::span(vertices)), .usage = {.vertex = true}, .label = "haylen-test-triangle"});
+    const std::array<float, 8> uniforms{0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 1.0F, 1.0F, 1.0F};
+    const Device::Image target = makeTarget(kSize, kSize);
+    const Device::Pipeline sampling = device().makePipeline({.program = program("shadow"), .colors = formats, .label = "haylen-test-shadow"});
+    const Device::Sampler sampler = device().makeSampler({.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest, .compare = Device::CompareFunction::LessEqual});
+    const std::array<float, 4> lookup{0.0F, 0.0F, 0.8F, 1.0F};
+
+    std::array<int, Device::kDepthResolveNames.size()> nearEdges{};
+    for (const auto& [name, mode] : Device::kDepthResolveNames) {
+        if (!capabilities().hasDepthResolve(mode)) {
+            continue;
+        }
+
+        const Device::Image resolved = makeImage({.width = kSize, .height = kSize, .format = format, .kind = Device::ImageKind::DepthStencil, .label = "haylen-test-resolved-depth"});
+        const std::array<Device::ColorAttachment, 1> colors{{{.image = samples, .store = Device::Store::Discard, .clear = math::Color::black(), .resolve = resolvedColor}}};
+        device().beginPass({.colors = colors, .depthStencil = Device::DepthStencilAttachment{.image = depthSamples, .clearDepth = 1.0F, .resolve = resolved, .resolveMode = mode}});
+        device().applyPipeline(drawing);
+        Device::Bindings drawn;
+        drawn.vertexBuffers[0] = triangle;
+        device().applyBindings(drawn);
+        device().applyUniforms(0, std::as_bytes(std::span(uniforms)));
+        device().draw(0, 3, 1);
+        device().endPass();
+
+        // A pixel lies behind the reference, and draws white, only where the resolve kept the depth of the clear.
+        const std::array<Device::ColorAttachment, 1> lookups{{{.image = target}}};
+        device().beginPass({.colors = lookups});
+        device().applyPipeline(sampling);
+        Device::Bindings bindings;
+        bindings.textures[0] = resolved;
+        bindings.samplers[0] = sampler;
+        device().applyBindings(bindings);
+        device().applyUniforms(0, std::as_bytes(std::span(lookup)));
+        device().draw(0, 3, 1);
+        device().endPass();
+        device().commit();
+
+        const Pixels pixels = read(target, kSize, kSize);
+        EXPECT_TRUE(isNear(pixels.at(1, 6), math::Color::black())) << name;
+        EXPECT_TRUE(isNear(pixels.at(6, 1), math::Color::white())) << name;
+        for (int index = 0; index < kSize; ++index) {
+            nearEdges[static_cast<std::size_t>(mode)] += pixels.at(index, index).r < 0.5F ? 1 : 0;
+        }
+    }
+
+    if (capabilities().hasDepthResolve(Device::DepthResolve::Min) && capabilities().hasDepthResolve(Device::DepthResolve::Max)) {
+        EXPECT_GT(nearEdges[static_cast<std::size_t>(Device::DepthResolve::Min)], nearEdges[static_cast<std::size_t>(Device::DepthResolve::Max)]) << "No pixel on the edge of the triangle resolves its samples apart.";
+    }
+
+    device().destroy(sampler);
+    device().destroy(sampling);
+    device().destroy(triangle);
+    device().destroy(drawing);
+}
+
+// A pipeline with alpha to coverage writes a draw into as many samples of each pixel as its alpha covers, so a plane of half alpha resolves to about half its color over black, while the same plane without it covers every sample.
+TEST_P(GpuPassTest, CoversTheSamplesThatTheAlphaOfADrawCovers) {
+    if ((capabilities().getFormat(Device::PixelFormat::Rgba8).sampleCounts & 4U) == 0) {
+        GTEST_SKIP() << "The device draws into no render target of four samples.";
+    }
+
+    const Device::Image samples = makeTarget(kSize, kSize, Device::PixelFormat::Rgba8, 4);
+    const Device::Image resolved = makeTarget(kSize, kSize);
+    const std::array<Device::ColorTarget, 1> formats{};
+    for (const bool coverage : {true, false}) {
+        const Device::Pipeline pipeline = device().makePipeline({.program = program("plane"), .colors = formats, .sampleCount = 4, .alphaToCoverage = coverage, .label = "haylen-test-coverage"});
+        const std::array<Device::ColorAttachment, 1> colors{{{.image = samples, .store = Device::Store::Discard, .clear = math::Color::black(), .resolve = resolved}}};
+        device().beginPass({.colors = colors});
+        device().applyPipeline(pipeline);
+        device().applyViewport({0.0F, 0.0F, static_cast<float>(kSize), static_cast<float>(kSize)});
+        drawPlane({1.0F, 1.0F, 1.0F, 0.5F});
+        device().endPass();
+        device().commit();
+
+        const Pixels pixels = read(resolved, kSize, kSize);
+        float sum = 0.0F;
+        for (int y = 0; y < kSize; ++y) {
+            for (int x = 0; x < kSize; ++x) {
+                sum += pixels.at(x, y).r;
+            }
+        }
+
+        const float average = sum / static_cast<float>(kSize * kSize);
+        if (coverage) {
+            EXPECT_GT(average, 0.25F);
+            EXPECT_LT(average, 0.75F);
+        } else {
+            EXPECT_GT(average, 0.99F);
+        }
+
+        device().destroy(pipeline);
+    }
+}
+
 // A pass draws into a mip level and a layer of a render target, which a draw samples back.
 TEST_P(GpuPassTest, DrawsIntoMipLevelsAndLayers) {
     const Device::Image layered = makeImage({.type = Device::TextureType::Array, .width = kSize, .height = kSize, .layers = 2, .mipLevels = 2, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-layered"});

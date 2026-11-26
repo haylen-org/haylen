@@ -204,6 +204,26 @@ TEST_F(MaterialTest, DrawsWithAShaderThatNeverSamplesItsTexture) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
+// A texture of a material of the sample type depth takes the depth texture of a render target and no texture of colors, and a texture of colors takes no depth texture.
+TEST_F(MaterialTest, TakesDepthTexturesOnlyInTexturesOfTheSampleTypeDepth) {
+    const std::vector<std::uint8_t> bytes = test::MaterialShaders::compile("fog", test::MaterialShaders::kFogSource);
+    test::EngineFixture fixture({{"content/shaders/fog.shader", std::string(bytes.begin(), bytes.end())}});
+    graphics::Device& device = fixture.engine().getGraphics();
+    const graphics::RenderTarget scene = device.createRenderTarget(4, 4, {}, {.depthFormat = gpu::Device::PixelFormat::Depth32Float, .depthTexture = true});
+    graphics2d::Material fog(fixture.engine().getAssets().shader("shaders/fog.shader"));
+    EXPECT_NO_THROW(fog.setTexture("scene_depth", scene.getDepthTexture()));
+
+    try {
+        fog.setTexture("scene_depth", scene.getTexture());
+        FAIL() << "A texture of the sample type depth took a texture of colors.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_NE(std::string(error.what()).find("takes the depth texture of a render target."), std::string::npos) << error.what();
+    }
+
+    graphics2d::Material tint(graphics::Shader::parse(test::MaterialShaders::tint()));
+    EXPECT_THROW(tint.setTexture("mask_texture", scene.getDepthTexture()), std::invalid_argument);
+}
+
 // A material samples a texture of the kind that its shader declares, a white texture of that kind while it has none, and a draw shows flat textures alone.
 TEST_F(MaterialTest, SamplesTexturesOfTheKindThatItsShaderDeclares) {
     const std::vector<std::uint8_t> bytes = test::MaterialShaders::compile("sky", test::MaterialShaders::kSkySource);

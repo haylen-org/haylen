@@ -12,6 +12,7 @@
 
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/SamplerRules.hpp"
 #include "gpu/d3d12/BufferReadback.hpp"
 #include "gpu/d3d12/ImageReadback.hpp"
@@ -169,6 +170,14 @@ void Device::readCapabilities() {
     capabilities.storageBuffers = true;
     capabilities.indirectBuffers = true;
     capabilities.maxUniformBlockSize = static_cast<std::size_t>(D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT) * 16;
+
+    // A pass resolves its depth through `ResolveSubresourceRegion`, which the first tier of programmable sample positions brings and which takes the smallest or the largest of the samples of every depth format, since Direct3D 12 has no resolve of the first sample.
+    D3D12_FEATURE_DATA_D3D12_OPTIONS2 options{};
+    if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &options, sizeof(options))) && options.ProgrammableSamplePositionsTier >= D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_1) {
+        const unsigned smallest = 1U << static_cast<unsigned>(DepthResolve::Min);
+        const unsigned largest = 1U << static_cast<unsigned>(DepthResolve::Max);
+        capabilities.depthResolves = static_cast<std::uint8_t>(smallest | largest);
+    }
 
     // Images sample through the view of their format, depth images draw through the view of their depth, the draws of `MipmapGenerator` generate the mip levels of a color format that the GPU draws into and filters, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
     for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
@@ -1105,6 +1114,7 @@ void Device::beginPass(const PassDesc& desc) {
     }
 
     openFrame();
+    pass.depthResolution = {};
     pass.endBarrierCount = 0;
 
     // The ranges of the tables promise that what their descriptors point to stays as it is while a table is set, and a pass may draw into an image that a table of an earlier pass still points to, so each pass sets its tables again.
@@ -1161,32 +1171,21 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     setViewportAndScissor(chain.swapchain->getSize().width, chain.swapchain->getSize().height);
 }
 
-// The subresources that the pass draws and resolves into leave the state that shaders read for the pass, the two planes of a depth stencil image with a stencil each, and the barriers that bring them back wait for its end, so its draws sample the other mip levels and layers of the same images. A multisampled attachment resolves as its render pass ends, which tile GPUs do without writing the samples back to memory.
+// The subresources that the pass draws and resolves into leave the state that shaders read for the pass, the two planes of a depth stencil image with a stencil each, and the barriers that bring them back wait for its end, so its draws sample the other mip levels and layers of the same images. A multisampled color resolves as its render pass ends, which tile GPUs do without writing the samples back to memory, and a multisampled depth that resolves keeps its samples past the render pass for `resolveDepth`, whatever its store says.
 void Device::beginOffscreenPass(const PassDesc& desc) {
-    if (desc.colors.size() > kMaxColorTargets) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
+    const PassRules::Extent extent = PassRules::check(desc, capabilities, [this](Image image) -> const ImageRules::Description& { return images.get(image.id).description; });
 
     std::array<D3D12_RESOURCE_BARRIER, kMaxPassBarriers> barriers{};
     UINT barrierCount = 0;
     std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, kMaxColorTargets> colors{};
-    int width = 0;
-    int height = 0;
 
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
         ImageRecord& image = images.get(attachment.image.id);
         const ImageRules::Description& target = image.description;
-        if (target.isView() || target.kind != ImageKind::RenderTarget) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
         const UINT subresource = getSubresource(target, attachment.mipLevel, attachment.layer);
         barriers[barrierCount++] = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_RENDER_TARGET, subresource);
         pass.endBarriers[pass.endBarrierCount++] = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, image.home, subresource);
-        const ImageInfo::Extent extent = target.getLevelExtent(attachment.mipLevel);
-        width = extent.width;
-        height = extent.height;
 
         D3D12_RENDER_PASS_RENDER_TARGET_DESC& color = colors[index];
         color.cpuDescriptor = getAttachment(image, attachment.mipLevel, attachment.layer);
@@ -1213,20 +1212,14 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& image = images.get(attachment.image.id);
         const ImageRules::Description& target = image.description;
-        if (target.isView() || target.kind != ImageKind::DepthStencil) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
         const bool stencil = ImageInfo::hasStencil(target.format);
+        const bool resolves = attachment.resolve.isValid();
+        const D3D12_RESOURCE_STATES ended = resolves ? D3D12_RESOURCE_STATE_RESOLVE_SOURCE : D3D12_RESOURCE_STATE_DEPTH_WRITE;
         for (UINT plane = 0; plane < (stencil ? 2U : 1U); ++plane) {
             const UINT subresource = getSubresource(target, attachment.mipLevel, attachment.layer, plane);
             barriers[barrierCount++] = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_DEPTH_WRITE, subresource);
-            pass.endBarriers[pass.endBarrierCount++] = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, image.home, subresource);
+            pass.endBarriers[pass.endBarrierCount++] = makeTransition(image.resource.Get(), ended, image.home, subresource);
         }
-
-        const ImageInfo::Extent extent = target.getLevelExtent(attachment.mipLevel);
-        width = width > 0 ? width : extent.width;
-        height = height > 0 ? height : extent.height;
 
         const auto access = [](Load load) { return load == Load::Clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : (load == Load::Keep ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD); };
         const auto ending = [](Store store) { return store == Store::Store ? D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD; };
@@ -1234,15 +1227,35 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         depth.cpuDescriptor = getAttachment(image, attachment.mipLevel, attachment.layer);
         depth.DepthBeginningAccess.Type = access(attachment.depthLoad);
         depth.DepthBeginningAccess.Clear.ClearValue = clear;
-        depth.DepthEndingAccess.Type = ending(attachment.depthStore);
+        depth.DepthEndingAccess.Type = resolves ? D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE : ending(attachment.depthStore);
         depth.StencilBeginningAccess.Type = stencil ? access(attachment.stencilLoad) : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS;
         depth.StencilBeginningAccess.Clear.ClearValue = clear;
         depth.StencilEndingAccess.Type = stencil ? ending(attachment.stencilStore) : D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS;
+
+        // The rules let only a depth format without stencil resolve, by the smallest or the largest of its samples, so the depth plane alone resolves, through the format that samples the typeless images.
+        if (resolves) {
+            const ImageRecord& resolve = images.get(attachment.resolve.id);
+            const UINT resolved = getSubresource(resolve.description, attachment.resolveMipLevel, attachment.resolveLayer);
+            pass.endBarriers[pass.endBarrierCount++] = makeTransition(resolve.resource.Get(), D3D12_RESOURCE_STATE_RESOLVE_DEST, resolve.home, resolved);
+            const UINT samples = getSubresource(target, attachment.mipLevel, attachment.layer);
+            const D3D12_RESOLVE_MODE mode = attachment.resolveMode == DepthResolve::Max ? D3D12_RESOLVE_MODE_MAX : D3D12_RESOLVE_MODE_MIN;
+            pass.depthResolution = {.samples = image.resource.Get(), .samplesSubresource = samples, .image = resolve.resource.Get(), .subresource = resolved, .home = resolve.home, .format = Formats::getViewFormat(target.format), .mode = mode};
+        }
     }
 
     commands->ResourceBarrier(barrierCount, barriers.data());
     commands->BeginRenderPass(static_cast<UINT>(desc.colors.size()), colors.data(), desc.depthStencil ? &depth : nullptr, D3D12_RENDER_PASS_FLAG_NONE);
-    setViewportAndScissor(width, height);
+    setViewportAndScissor(extent.width, extent.height);
+}
+
+// Direct3D 12 resolves a depth through `ResolveSubresourceRegion`, which runs outside render passes, so the depth resolves once the render pass ended, from the samples that it kept, and the end barriers of the pass return both images to their states.
+void Device::resolveDepth() {
+    const DepthResolution& resolution = pass.depthResolution;
+    const D3D12_RESOURCE_BARRIER source = makeTransition(resolution.samples, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_RESOLVE_SOURCE, resolution.samplesSubresource);
+    const D3D12_RESOURCE_BARRIER destination = makeTransition(resolution.image, resolution.home, D3D12_RESOURCE_STATE_RESOLVE_DEST, resolution.subresource);
+    const std::array<D3D12_RESOURCE_BARRIER, 2> toResolve{source, destination};
+    commands->ResourceBarrier(static_cast<UINT>(toResolve.size()), toResolve.data());
+    commands->ResolveSubresourceRegion(resolution.image, resolution.subresource, 0, 0, resolution.samples, resolution.samplesSubresource, nullptr, resolution.format, resolution.mode);
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE Device::getAttachment(ImageRecord& image, int mipLevel, int layer) {
@@ -1453,7 +1466,9 @@ DescriptorRing* Device::applyTables(const PipelineRecord& pipeline, const Bindin
     for (std::size_t stage = 0; stage < 2; ++stage) {
         const RootSignatures::Table& textures = pipeline.layout.textures[stage];
         for (std::size_t index = 0; index < textures.slots.size(); ++index) {
-            handles[index] = images.get(bindings.textures[static_cast<std::size_t>(textures.slots[index])].id).view;
+            const ImageRecord& image = images.get(bindings.textures[static_cast<std::size_t>(textures.slots[index])].id);
+            ImageRules::checkSampled(image.description);
+            handles[index] = image.view;
         }
 
         if (textures.parameter >= 0 && !applyTable(stage, textures.parameter, std::span(handles).first(textures.slots.size()))) {
@@ -1558,6 +1573,10 @@ void Device::endPass() {
 
     if (!skipping) {
         commands->EndRenderPass();
+
+        if (pass.depthResolution.samples != nullptr) {
+            resolveDepth();
+        }
 
         if (pass.endBarrierCount > 0) {
             commands->ResourceBarrier(pass.endBarrierCount, pass.endBarriers.data());
@@ -1760,11 +1779,8 @@ void Device::attachSurface(const Surface& target) {
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
     const ImageRules::Description& description = record.description;
-    if (description.isView() || description.kind != ImageKind::RenderTarget || description.sampleCount > 1 || description.type == TextureType::Volume) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    if (width <= 0 || height <= 0 || width > description.width || height > description.height) {
+    ImageRules::checkReadback(description, width, height);
+    if (description.type == TextureType::Volume) {
         throw ContractError(ContractError::Rule::Readback);
     }
 

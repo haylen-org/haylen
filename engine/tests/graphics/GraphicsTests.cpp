@@ -240,6 +240,64 @@ TEST(DeviceTest, KeepsMipmapsOfLinearTexturesByDefault) {
     EXPECT_TRUE(graphics::Image::decodeFor(png, {}).getMipmaps().empty());
 }
 
+// A render target holds a texture for each of its colors, the samples that resolve into them, and a depth that it keeps as a texture or as an attachment alone, and the samples and the depth of a memoryless target take no memory on a device whose tiles hold them.
+TEST(DeviceTest, MakesRenderTargetsOfSeveralColorsADepthAndSamples) {
+    graphics::Device device(std::make_unique<gpu::NullDevice>());
+    const graphics::RenderTarget plain = device.createRenderTarget(8, 4);
+    EXPECT_EQ(plain.getColorCount(), 1U);
+    EXPECT_EQ(plain.getOptions().samples, 1);
+    EXPECT_FALSE(plain.getDepthTexture().isValid());
+
+    const graphics::RenderTarget scene = device.createRenderTarget(8, 4, {.filter = graphics::Texture::Filter::Linear}, {.colors = {gpu::Device::PixelFormat::Rgba16Float, gpu::Device::PixelFormat::Rgba8}, .depthFormat = gpu::Device::PixelFormat::Depth32Float, .samples = 4, .depthTexture = true, .depthResolve = gpu::Device::DepthResolve::Max});
+    ASSERT_EQ(scene.getColorCount(), 2U);
+    EXPECT_EQ(scene.getTexture(0).getFormat(), gpu::Device::PixelFormat::Rgba16Float);
+    EXPECT_EQ(scene.getTexture(1).getFormat(), gpu::Device::PixelFormat::Rgba8);
+    EXPECT_EQ(scene.getTexture(1).getOptions().filter, graphics::Texture::Filter::Linear);
+    ASSERT_TRUE(scene.getDepthTexture().isValid());
+    EXPECT_EQ(scene.getDepthTexture().getFormat(), gpu::Device::PixelFormat::Depth32Float);
+    EXPECT_EQ(scene.getDepthTexture().getOptions().filter, graphics::Texture::Filter::Nearest);
+    EXPECT_THROW((void)scene.getTexture(2), std::out_of_range);
+
+    const std::size_t color = 8 * 4 * 8;
+    const std::size_t samples = (8 * 4 * 8 * 4) + (8 * 4 * 4 * 4);
+    const graphics::RenderTarget kept = device.createRenderTarget(8, 4, {}, {.colors = {gpu::Device::PixelFormat::Rgba16Float}, .depthFormat = gpu::Device::PixelFormat::Depth32Float, .samples = 4});
+    EXPECT_EQ(kept.getTexture().getResource()->tracked.getBytes(), color + samples);
+    const graphics::RenderTarget memoryless = device.createRenderTarget(8, 4, {}, {.colors = {gpu::Device::PixelFormat::Rgba16Float}, .depthFormat = gpu::Device::PixelFormat::Depth32Float, .samples = 4, .memoryless = true});
+    EXPECT_EQ(memoryless.getTexture().getResource()->tracked.getBytes(), color);
+}
+
+// A render target refuses what the device cannot draw, with a sentence that names the format, the samples or the depth resolve and the graphics API.
+TEST(DeviceTest, RefusesRenderTargetsThatTheDeviceCannotDraw) {
+    gpu::Device::Capabilities capabilities = gpu::NullDevice::getDefaultCapabilities();
+    capabilities.depthResolves = 1U << static_cast<unsigned>(gpu::Device::DepthResolve::Min);
+    graphics::Device device(std::make_unique<gpu::NullDevice>(gpu::Device::Language::None, capabilities, gpu::Device::Api::Direct3D12));
+    // clang-format off
+    const auto refusal = [&device](const graphics::RenderTarget::Options& attachments) {
+        try {
+            (void)device.createRenderTarget(4, 4, {}, attachments);
+        } catch (const std::invalid_argument& error) {
+            return std::string(error.what());
+        }
+
+        return std::string("made");
+    };
+    // clang-format on
+
+    EXPECT_EQ(refusal({.colors = {}}), "A render target has from 1 to 4 colors, not 0.");
+    EXPECT_EQ(refusal({.colors = std::vector<gpu::Device::PixelFormat>(5, gpu::Device::PixelFormat::Rgba8)}), "A render target has from 1 to 4 colors, not 5.");
+    EXPECT_EQ(refusal({.samples = 3}), "The samples of a render target are a power of two from 1, not 3.");
+    EXPECT_EQ(refusal({.colors = {gpu::Device::PixelFormat::Bc7}}), "The graphics API \"direct3D12\" of this device draws into no color of the format \"bc7\". Make the render target in a format whose \"render\" its format support holds.");
+    EXPECT_EQ(refusal({.colors = {gpu::Device::PixelFormat::Rgba32Float}}), "The graphics API \"direct3D12\" of this device samples the format \"rgba32Float\" only without filtering, and the textures of a render target filter. Make the render target in a format that the device filters, as its format support tells.");
+    EXPECT_EQ(refusal({.colors = {gpu::Device::PixelFormat::Rgba8, gpu::Device::PixelFormat::R32Float}, .samples = 4}), "The graphics API \"direct3D12\" of this device samples the format \"r32Float\" only without filtering, and the textures of a render target filter. Make the render target in a format that the device filters, as its format support tells.");
+    EXPECT_EQ(refusal({.samples = 128}), "The graphics API \"direct3D12\" of this device takes no 128 samples of the format \"rgba8\". Use one of the \"sampleCounts\" of its format support.");
+    EXPECT_EQ(refusal({.depthFormat = gpu::Device::PixelFormat::Rgba8}), "The graphics API \"direct3D12\" of this device draws into no depth of the format \"rgba8\". Name a depth format whose \"render\" its format support holds.");
+    EXPECT_EQ(refusal({.depthTexture = true}), "A render target keeps a depth texture only with a \"depthFormat\".");
+    EXPECT_EQ(refusal({.depthFormat = gpu::Device::PixelFormat::Depth24Stencil8, .samples = 4, .depthTexture = true, .depthResolve = gpu::Device::DepthResolve::Min}), "A render target of several samples keeps a depth texture only of a depth format without stencil, which \"depth24Stencil8\" has.");
+    EXPECT_EQ(refusal({.depthFormat = gpu::Device::PixelFormat::Depth16, .samples = 4, .depthTexture = true}), "The graphics API \"direct3D12\" of this device resolves no depth by \"sampleZero\". Name a \"depthResolve\" of the \"depthResolves\" of \"graphics.capabilities()\", or keep no depth texture.");
+    EXPECT_EQ(refusal({.depthFormat = gpu::Device::PixelFormat::Depth16, .samples = 4, .depthTexture = true, .depthResolve = gpu::Device::DepthResolve::Min}), "made");
+    EXPECT_EQ(refusal({.depthFormat = gpu::Device::PixelFormat::Depth24Stencil8, .samples = 4}), "made");
+}
+
 TEST(ImageTest, TurnsRenderedPixelsIntoStraightColorsAndPngFiles) {
     // Two rows of one pixel each, stored bottom row first: a red at half alpha, premultiplied, under an opaque blue.
     const graphics::Image image = graphics::Image::fromRendered({0, 0, 255, 255, 128, 0, 0, 128}, 1, 2, true);

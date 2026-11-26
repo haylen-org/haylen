@@ -208,11 +208,50 @@ std::size_t DeviceState::getImageBytes(int width, int height, gpu::Device::Pixel
     return gpu::ImageInfo::getRegionBytes(format, width, height);
 }
 
-RenderTarget DeviceState::createRenderTarget(int width, int height, gpu::Device::PixelFormat format, Texture::Options options) {
+// Each color takes a texture of one sample and, when the target has several, the samples that resolve into it, and a depth takes the texture that draws sample when the target keeps it, with the samples that resolve into it, or else an attachment alone. The first texture counts the bytes of the attachments that no texture holds, which take no memory where the device keeps the transient images of a memoryless target in its tiles.
+RenderTarget DeviceState::createRenderTarget(int width, int height, Texture::Options options, const RenderTarget::Options& attachments) {
     options.mipmaps = false;
     options = settle(options);
+    auto resource = std::make_shared<RenderTargetResource>();
+    resource->options = attachments;
+    resource->graveyard = graveyard;
+    const bool multisampled = attachments.samples > 1;
+    std::size_t attachmentBytes = 0;
+    for (const gpu::Device::PixelFormat format : attachments.colors) {
+        resource->textures.push_back(createTargetTexture(width, height, format, gpu::Device::ImageKind::RenderTarget, options));
+        if (multisampled) {
+            resource->samples.push_back(gpu->makeImage({.width = width, .height = height, .sampleCount = attachments.samples, .format = format, .kind = gpu::Device::ImageKind::RenderTarget, .transient = attachments.memoryless, .label = "haylen-render-target-samples"}));
+            attachmentBytes += getImageBytes(width, height, format) * static_cast<std::size_t>(attachments.samples);
+        }
+    }
+
+    if (attachments.depthFormat) {
+        const gpu::Device::PixelFormat format = *attachments.depthFormat;
+        if (attachments.depthTexture) {
+            Texture::Options sampling = options;
+            sampling.filter = Texture::Filter::Nearest;
+            sampling.anisotropy = 1;
+            resource->depthTexture = createTargetTexture(width, height, format, gpu::Device::ImageKind::DepthStencil, settle(sampling));
+        }
+
+        if (multisampled || !attachments.depthTexture) {
+            resource->depth = gpu->makeImage({.width = width, .height = height, .sampleCount = attachments.samples, .format = format, .kind = gpu::Device::ImageKind::DepthStencil, .transient = attachments.memoryless, .label = "haylen-render-target-depth"});
+            attachmentBytes += getImageBytes(width, height, format) * static_cast<std::size_t>(attachments.samples);
+        }
+    }
+
+    if (attachments.memoryless && gpu->getCapabilities().memorylessAttachments) {
+        attachmentBytes = 0;
+    }
+
+    TextureResource& first = *resource->textures.front().getResource();
+    first.tracked.setBytes(getImageBytes(width, height, first.format) + attachmentBytes);
+    return RenderTarget(std::move(resource));
+}
+
+Texture DeviceState::createTargetTexture(int width, int height, gpu::Device::PixelFormat format, gpu::Device::ImageKind kind, Texture::Options options) {
     auto texture = std::make_shared<TextureResource>(TextureResource::targets);
-    texture->image = gpu->makeImage({.width = width, .height = height, .format = format, .kind = gpu::Device::ImageKind::RenderTarget, .label = "haylen-render-target"});
+    texture->image = gpu->makeImage({.width = width, .height = height, .format = format, .kind = kind, .label = "haylen-render-target"});
     texture->tracked.setBytes(getImageBytes(width, height, format));
     texture->sampler = getSampler(options);
     texture->width = width;
@@ -222,10 +261,7 @@ RenderTarget DeviceState::createRenderTarget(int width, int height, gpu::Device:
     texture->format = format;
     texture->flipped = !gpu->getCapabilities().originTopLeft;
     texture->graveyard = graveyard;
-
-    auto resource = std::make_shared<RenderTargetResource>();
-    resource->texture = Texture(std::move(texture));
-    return RenderTarget(std::move(resource));
+    return Texture(std::move(texture));
 }
 
 } // namespace haylen::graphics

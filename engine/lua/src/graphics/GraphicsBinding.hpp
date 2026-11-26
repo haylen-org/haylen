@@ -26,6 +26,7 @@ class GraphicsBinding final {
     static constexpr std::array<std::string_view, 5> kViewFields{"kind", "mipLevel", "mipLevels", "layer", "layers"};
     static constexpr std::array<std::string_view, 4> kBufferFields{"data", "usage", "update", "label"};
     static constexpr std::array<std::string_view, 3> kCopyFields{"sourceOffset", "offset", "size"};
+    static constexpr std::array<std::string_view, 6> kTargetFields{"colors", "depthFormat", "samples", "depthTexture", "depthResolve", "memoryless"};
 
     static int newBuffer(lua_State* L);
     [[nodiscard]] static haylen::graphics::Buffer::Usage readUsage(lua_State* L, int index);
@@ -38,6 +39,9 @@ class GraphicsBinding final {
     static int readBufferAsync(lua_State* L);
 
     static int newRenderTarget(lua_State* L);
+
+    // Reads the attachments that the options of a render target at the index name besides the sampling of its textures.
+    [[nodiscard]] static haylen::graphics::RenderTarget::Options readTargetOptions(lua_State* L, int index);
     static int newTexture(lua_State* L);
     static void pushDataTexture(lua_State* L, int width, int height);
 
@@ -83,6 +87,12 @@ class GraphicsBinding final {
     static int targetTexture(lua_State* L);
     static int targetWidth(lua_State* L);
     static int targetHeight(lua_State* L);
+    static int targetTextures(lua_State* L);
+    static int targetDepthTexture(lua_State* L);
+    static int targetColors(lua_State* L);
+    static int targetDepthFormat(lua_State* L);
+    static int targetSamples(lua_State* L);
+    static int targetMemoryless(lua_State* L);
 
     static int shaderName(lua_State* L);
     static int shaderUniforms(lua_State* L);

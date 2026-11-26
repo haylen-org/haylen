@@ -661,13 +661,20 @@ TEST_F(NullDeviceTest, RefusesToKeepTheColorOfAMultisampledWindowAcrossAnOffscre
     device.commit();
 }
 
-// A read copies a whole render target of one sample, between passes, and hands its pixels over once.
-TEST_F(NullDeviceTest, ReadsWholeRenderTargetsOfOneSample) {
+// A read copies a region of a render target of one sample from its first row and column, within the target, between passes, and hands its pixels over once.
+TEST_F(NullDeviceTest, ReadsRegionsOfRenderTargetsOfOneSample) {
     NullDevice device;
     const Device::Image target = device.makeImage({.width = 4, .height = 2, .kind = Device::ImageKind::RenderTarget, .label = "target"});
     const Device::Image samples = device.makeImage({.width = 4, .height = 2, .sampleCount = 4, .kind = Device::ImageKind::RenderTarget, .label = "samples"});
     EXPECT_EQ(test::ContractRule::of([&] { (void)device.readImage(samples, 4, 2); }), gpu::ContractError::Rule::Readback);
-    EXPECT_EQ(test::ContractRule::of([&] { (void)device.readImage(target, 2, 2); }), gpu::ContractError::Rule::Readback);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.readImage(target, 5, 2); }), gpu::ContractError::Rule::Readback);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.readImage(target, 0, 2); }), gpu::ContractError::Rule::Readback);
+    const std::unique_ptr<Device::Readback> region = device.readImage(target, 2, 1);
+    EXPECT_FALSE(region->poll().has_value());
+    const std::optional<std::vector<std::uint8_t>> regionRead = region->poll();
+    ASSERT_TRUE(regionRead.has_value());
+    EXPECT_EQ(regionRead->size(), 2U * 1U * 4U);
+
     const std::unique_ptr<Device::Readback> copy = device.readImage(target, 4, 2);
     EXPECT_FALSE(copy->poll().has_value());
     const std::optional<std::vector<std::uint8_t>> read = copy->poll();
@@ -916,6 +923,100 @@ TEST_F(NullDeviceTest, SamplesTheMipLevelsAndLayersThatThePassDoesNotReach) {
     EXPECT_EQ(test::ContractRule::of([&] { device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
     device.endPass();
     device.commit();
+}
+
+// A transient image is a flat attachment of one mip level whose pass clears it or leaves it undefined and discards it, and which no draw samples, no view shows, no resolve reaches and no readback reads.
+TEST_F(NullDeviceTest, KeepsNothingOfTransientImagesPastTheirPass) {
+    NullDevice device;
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::Dynamic, .transient = true}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .mipLevels = 2, .kind = Device::ImageKind::RenderTarget, .transient = true}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.type = Device::TextureType::Array, .width = 4, .height = 4, .layers = 2, .kind = Device::ImageKind::RenderTarget, .transient = true}); }), gpu::ContractError::Rule::Image);
+
+    const Device::Image samples = device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .kind = Device::ImageKind::RenderTarget, .transient = true, .label = "samples"});
+    const Device::Image depth = device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .format = Device::PixelFormat::Depth24Stencil8, .kind = Device::ImageKind::DepthStencil, .transient = true, .label = "depth"});
+    const Device::Image color = device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::RenderTarget, .label = "color"});
+    const Device::Image scratch = device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::RenderTarget, .transient = true, .label = "scratch"});
+
+    const std::array<Device::ColorAttachment, 1> resolved{{{.image = samples, .load = Device::Load::Clear, .store = Device::Store::Discard, .resolve = color}}};
+    EXPECT_NO_THROW(device.beginPass({.colors = resolved, .depthStencil = Device::DepthStencilAttachment{.image = depth, .depthLoad = Device::Load::DontCare}}));
+    device.endPass();
+
+    const std::array<Device::ColorAttachment, 1> kept{{{.image = samples, .load = Device::Load::Keep, .store = Device::Store::Discard, .resolve = color}}};
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.colors = kept}); }), gpu::ContractError::Rule::PassAttachments);
+    const std::array<Device::ColorAttachment, 1> stored{{{.image = samples, .store = Device::Store::Store, .resolve = color}}};
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.colors = stored}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.colors = resolved, .depthStencil = Device::DepthStencilAttachment{.image = depth, .depthStore = Device::Store::Store}}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.colors = resolved, .depthStencil = Device::DepthStencilAttachment{.image = depth, .stencilLoad = Device::Load::Keep}}); }), gpu::ContractError::Rule::PassAttachments);
+
+    const Device::Image multisampled = device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .kind = Device::ImageKind::RenderTarget, .label = "multisampled"});
+    const std::array<Device::ColorAttachment, 1> intoTransient{{{.image = multisampled, .resolve = scratch}}};
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.colors = intoTransient}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeView({.image = scratch}); }), gpu::ContractError::Rule::View);
+    device.commit();
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.readImage(scratch, 4, 4); }), gpu::ContractError::Rule::Readback);
+
+    const std::array<Device::TextureBinding, 1> slots{{{.slot = 0}}};
+    const std::array<Device::SamplerBinding, 1> samplers{{{.slot = 0}}};
+    const std::array<Device::ColorTarget, 1> targets{};
+    const Device::Pipeline pipeline = device.makePipeline({.program = device.makeProgram({.textures = slots, .samplers = samplers, .label = "sampled"}), .colors = targets, .label = "sampled"});
+    Device::Bindings bindings;
+    bindings.textures[0] = scratch;
+    bindings.samplers[0] = device.makeSampler({});
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = color}}};
+    device.beginPass({.colors = colors});
+    device.applyPipeline(pipeline);
+    EXPECT_EQ(test::ContractRule::of([&] { device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
+    device.endPass();
+    device.commit();
+}
+
+// A multisampled depth of a format without stencil resolves into a depth stencil image of one sample of its format and size, by a mode the device has, which the pass does not sample.
+TEST_F(NullDeviceTest, ResolvesDepthByTheModesOfTheDevice) {
+    Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
+    capabilities.depthResolves = 1U << static_cast<unsigned>(Device::DepthResolve::SampleZero);
+    NullDevice device(Device::Language::None, capabilities);
+    const Device::Image samples = device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "samples"});
+    const Device::Image depth = device.makeImage({.type = Device::TextureType::Array, .width = 8, .height = 8, .layers = 2, .mipLevels = 2, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "depth"});
+    EXPECT_NO_THROW(device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = samples, .resolve = depth, .resolveMipLevel = 1, .resolveLayer = 1}}));
+    device.endPass();
+
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = samples, .resolve = depth, .resolveMipLevel = 1, .resolveMode = Device::DepthResolve::Max}}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = samples, .resolve = depth}}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = samples, .resolve = depth, .resolveMipLevel = 1, .resolveLayer = 2}}); }), gpu::ContractError::Rule::PassAttachments);
+
+    const Device::Image single = device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "single"});
+    const Device::Image other = device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Depth16, .kind = Device::ImageKind::DepthStencil, .label = "other"});
+    const Device::Image color = device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::R32Float, .kind = Device::ImageKind::RenderTarget, .label = "color"});
+    const Device::Image stencilSamples = device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .format = Device::PixelFormat::Depth32FloatStencil8, .kind = Device::ImageKind::DepthStencil, .label = "stencil samples"});
+    const Device::Image stencil = device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Depth32FloatStencil8, .kind = Device::ImageKind::DepthStencil, .label = "stencil"});
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = single, .resolve = single}}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = samples, .resolve = other}}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = samples, .resolve = color}}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = stencilSamples, .resolve = stencil}}); }), gpu::ContractError::Rule::PassAttachments);
+
+    const std::array<Device::TextureBinding, 1> slots{{{.slot = 0, .sampleType = Device::SampleType::Depth}}};
+    const std::array<Device::SamplerBinding, 1> samplers{{{.slot = 0, .type = Device::SamplerType::NonFiltering}}};
+    const std::array<Device::ColorTarget, 1> targets{{{.format = Device::PixelFormat::R32Float}}};
+    const Device::Pipeline pipeline = device.makePipeline({.program = device.makeProgram({.textures = slots, .samplers = samplers, .label = "depth"}), .colors = targets, .depthStencil = {.format = Device::PixelFormat::Depth32Float}, .sampleCount = 4, .label = "depth"});
+    const Device::Image colorSamples = device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .format = Device::PixelFormat::R32Float, .kind = Device::ImageKind::RenderTarget, .label = "color samples"});
+    const Device::Image resolved = device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "resolved"});
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = colorSamples, .resolve = color}}};
+    Device::Bindings bindings;
+    bindings.textures[0] = resolved;
+    bindings.samplers[0] = device.makeSampler({.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest});
+    device.beginPass({.colors = colors, .depthStencil = Device::DepthStencilAttachment{.image = samples, .resolve = resolved}});
+    device.applyPipeline(pipeline);
+    EXPECT_EQ(test::ContractRule::of([&] { device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
+    device.endPass();
+    device.commit();
+
+    Device::Capabilities lacking = NullDevice::getDefaultCapabilities();
+    lacking.depthResolves = 0;
+    NullDevice without(Device::Language::None, lacking);
+    const Device::Image lackingSamples = without.makeImage({.width = 4, .height = 4, .sampleCount = 4, .format = Device::PixelFormat::Depth16, .kind = Device::ImageKind::DepthStencil, .label = "samples"});
+    const Device::Image lackingDepth = without.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Depth16, .kind = Device::ImageKind::DepthStencil, .label = "depth"});
+    EXPECT_EQ(test::ContractRule::of([&] { without.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = lackingSamples, .resolve = lackingDepth}}); }), gpu::ContractError::Rule::PassAttachments);
+    without.commit();
 }
 
 } // namespace haylen::gpu

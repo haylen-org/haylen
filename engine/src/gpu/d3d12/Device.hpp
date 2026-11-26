@@ -21,6 +21,7 @@
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/d3d12/BufferArena.hpp"
 #include "gpu/d3d12/DescriptorHeap.hpp"
 #include "gpu/d3d12/DescriptorRing.hpp"
@@ -128,7 +129,7 @@ class Device final : public gpu::Device {
     static constexpr UINT kUniformAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
     static constexpr D3D12_RESOURCE_STATES kShaderResource = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     static constexpr std::size_t kTables = 4;
-    // A pass moves each color attachment and the image it resolves into, and both planes of a depth stencil image.
+    // A pass moves each color attachment and the image it resolves into, and both planes of a depth stencil image or the one plane of a depth image and the image it resolves into.
     static constexpr std::size_t kMaxPassBarriers = (kMaxColorTargets * 2) + 2;
 
     // Buffers rest in the common state, from which each list promotes them to what it does with them, and to which they return when the list ends. A buffer holds a range of a block of the arena at the offset of the range, or a resource of its own when it is large, takes part in copies, is storage or is dynamic. A buffer that the list of the passes writes, a dynamic buffer or the destination of copies, goes from the state that list gave it to the copy and on to the read states of its usages around each write, so the list keeps the state of the buffer for the frame that `stateFrame` numbers.
@@ -224,8 +225,20 @@ class Device final : public gpu::Device {
         bool promoted = false;
     };
 
-    // What the open pass does when it ends: the barriers that return its attachments to their states, and the storage that its render pass reads for the resolves.
+    // The depth that a pass resolves once its render pass ended, from a subresource of its multisampled depth image into a subresource of an image of one sample, which rests in the state `home`. A pass that resolves no depth names no samples.
+    struct DepthResolution {
+        ID3D12Resource* samples = nullptr;
+        UINT samplesSubresource = 0;
+        ID3D12Resource* image = nullptr;
+        UINT subresource = 0;
+        D3D12_RESOURCE_STATES home = kShaderResource;
+        DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+        D3D12_RESOLVE_MODE mode = D3D12_RESOLVE_MODE_MIN;
+    };
+
+    // What the open pass does when it ends: the depth it resolves, the barriers that return its attachments to their states, and the storage that its render pass reads for the resolves.
     struct PassState {
+        DepthResolution depthResolution{};
         std::array<D3D12_RESOURCE_BARRIER, kMaxPassBarriers> endBarriers{};
         UINT endBarrierCount = 0;
         std::array<D3D12_RENDER_PASS_ENDING_ACCESS_RESOLVE_SUBRESOURCE_PARAMETERS, kMaxColorTargets> resolves{};
@@ -274,6 +287,7 @@ class Device final : public gpu::Device {
     void rebuildSwapchainPipelines();
     void beginSwapchainPass(const PassDesc& desc);
     void beginOffscreenPass(const PassDesc& desc);
+    void resolveDepth();
     void setViewportAndScissor(int width, int height);
     [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getAttachment(ImageRecord& image, int mipLevel, int layer);
     [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE makeTextureView(ID3D12Resource& resource, const ImageRules::Description& description);

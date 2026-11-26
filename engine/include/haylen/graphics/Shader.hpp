@@ -52,6 +52,7 @@ class Shader final {
         std::string name;
         int slot = 0;
         gpu::Device::TextureType type = gpu::Device::TextureType::Flat;
+        gpu::Device::SampleType sampleType = gpu::Device::SampleType::Float;
     };
 
     Shader() = default;

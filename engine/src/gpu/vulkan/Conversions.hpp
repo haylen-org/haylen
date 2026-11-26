@@ -34,6 +34,7 @@ class Conversions final {
     [[nodiscard]] static VkImageViewType toViewType(Device::TextureType type) noexcept;
     [[nodiscard]] static VkAttachmentLoadOp toLoad(Device::Load load) noexcept;
     [[nodiscard]] static VkAttachmentStoreOp toStore(Device::Store store) noexcept;
+    [[nodiscard]] static VkResolveModeFlagBits toResolveMode(Device::DepthResolve mode) noexcept;
     [[nodiscard]] static VkSampleCountFlagBits toSampleCount(int count) noexcept;
     [[nodiscard]] static VkIndexType toIndexType(Device::IndexType type) noexcept;
     [[nodiscard]] static std::size_t getIndexSize(Device::IndexType type) noexcept;

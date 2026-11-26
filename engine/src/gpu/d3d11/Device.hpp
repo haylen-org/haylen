@@ -21,6 +21,7 @@
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/d3d11/DynamicRing.hpp"
 #include "gpu/d3d11/FrameTimer.hpp"
 #include "gpu/direct3d/DebugMessages.hpp"

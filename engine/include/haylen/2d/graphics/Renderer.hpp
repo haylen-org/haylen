@@ -350,6 +350,7 @@ class Renderer final {
 
     static void validatePostProcess(const CanvasOptions& options);
     static void checkViewport(const Camera& camera);
+    void requireBlendedColor(const graphics::RenderTarget& target) const;
 
     [[nodiscard]] static std::vector<std::uint8_t> radialFalloff(int size);
     [[nodiscard]] static std::vector<std::uint8_t> metaballKernel(int size);

@@ -77,7 +77,9 @@ class Device final {
 
     // Creates a texture of its type from its levels in their format, which keeps mipmaps when it brings more than one level and `mipmaps` is not `false`. A texture that brings its first level alone with `mipmaps` set to `true` keeps the smaller levels that the GPU generates from it, in a format whose mipmaps the device generates. Throws `std::invalid_argument` for a format that is no format of textures, a type or a size that the device lacks, sides that hold no whole blocks, levels of another count or size, or a format that the device does not sample, filter or generate mipmaps of, with a sentence that names what is wrong and the graphics API.
     [[nodiscard]] Texture createTexture(const TextureData& data, Texture::Options options = {});
-    [[nodiscard]] RenderTarget createRenderTarget(int width, int height, Texture::Options options = {});
+
+    // Creates a render target of the size with the attachments that the render target options name, whose textures sample as the texture options say. Throws `std::invalid_argument` for a size the device lacks, mipmaps, no color or more than four, a color format that the device does not draw into or filter, a format that is no depth format for the depth, a sample count that a format does not take, or a kept depth that the device does not sample or resolve, with a sentence that names what is wrong and the graphics API.
+    [[nodiscard]] RenderTarget createRenderTarget(int width, int height, Texture::Options options = {}, const RenderTarget::Options& attachments = {});
 
     // Creates a buffer of the size, which starts with zeros, or one that starts with the data and takes its size, for what the options name. Throws `std::invalid_argument` for a buffer without a size or a usage, for usages that the device lacks or that no buffer combines, such as a uniform buffer that is also a vertex buffer, for an immutable buffer without data or that copies reach, and for a stream buffer that copies reach, with a sentence that names the buffer.
     [[nodiscard]] Buffer createBuffer(std::size_t size, const Buffer::Options& options);
@@ -205,6 +207,9 @@ class Device final {
     void validateShape(const TextureData& data) const;
     [[nodiscard]] static std::vector<std::uint8_t> fillLayers(const TextureData& shape, math::Color fill);
     void validateView(const Texture& texture, const TextureView& view) const;
+    void validateAttachments(const RenderTarget::Options& attachments) const;
+    void validateSamples(gpu::Device::PixelFormat format, int samples) const;
+    [[nodiscard]] static std::string_view getDepthResolveName(gpu::Device::DepthResolve mode) noexcept;
     [[nodiscard]] static std::string_view getFormatName(gpu::Device::PixelFormat format) noexcept;
 
     std::unique_ptr<DeviceState> state;

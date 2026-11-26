@@ -74,6 +74,8 @@ Returns a table of what the GPU device of this app can do, as the [RHI guide](..
 | `originTopLeft` | boolean | Whether the first row of a render target is its top row. It is `false` on OpenGL, OpenGL ES and WebGL2. |
 | `depthRange` | string | The range of depth of clip space, as [`graphics.depthRange()`](#graphicsdepthrange) returns it. |
 | `independentBlend` | boolean | Whether each color target of a draw takes a blend of its own. |
+| `depthResolves` | list of strings | The ways a render target of several samples resolves its kept depth on this device, from `'sampleZero'`, `'min'` and `'max'`, or an empty list where the graphics API resolves no depth. |
+| `memorylessAttachments` | boolean | Whether the samples and the depth of a memoryless render target take no memory, as on the tile GPUs of phones and Apple silicon Macs. |
 | `gpuTiming` | boolean | Whether the device measures the time the GPU takes for a frame, which [`debug.stats()`](debug.md#debugstats) reports. |
 | `maxAnisotropy` | integer | The most samples of anisotropic filtering that the option `anisotropy` of a texture takes, 1 on a device without anisotropic filtering. |
 | `maxLodBias` | number | The largest bias of the level of detail that the option `lodBias` takes in either direction, 0 on a device whose samplers take no bias, such as Metal, OpenGL ES, WebGL2 and WebGPU. |
@@ -439,17 +441,39 @@ end)
 
 ## RenderTarget
 
-A `RenderTarget` is a texture on the GPU that canvases draw into, such as a minimap, a mirror or a captured frame. Draw into it with `graphics2d.beginTarget` or `graphics2d.beginCapture`, and draw its picture with `target.texture`. Two target values compare equal with `==` when they refer to the same target.
+A `RenderTarget` is an image on the GPU that canvases draw into, such as a minimap, a mirror or a captured frame. Draw into it with `graphics2d.beginTarget` or `graphics2d.beginCapture`, and draw its picture with `target.texture`. A target holds up to four colors, a depth with or without stencil, and several samples for each pixel that resolve into its textures, which a scene of a renderer of 3D takes. Canvases draw into its first color, as the [rendering guide](../graphics/rendering.md#render-targets) explains. Two target values compare equal with `==` when they refer to the same target.
 
 ### graphics.newRenderTarget(width, height, options)
 
-Makes a `RenderTarget` of `width` by `height` pixels. The table `options` takes `filter`, `'nearest'` by default or `'linear'`, and `wrap`, `'clamp'` by default, `'repeat'` or `'mirror'`. A render target has no mipmaps, so `mipmaps = true` raises `A render target has no mipmaps.`. A size of 0 or less raises `Texture dimensions must be positive.`, and a size above [`graphics.maxTextureSize()`](#graphicsmaxtexturesize) raises `Texture dimensions exceed the device limit.`.
+Makes a `RenderTarget` of `width` by `height` pixels. The table `options` takes the sampling of its textures and its attachments:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `filter` | string | `'nearest'` | The filter of its textures, `'nearest'` or `'linear'`. |
+| `wrap` | string | `'clamp'` | The wrap of its textures, `'clamp'`, `'repeat'` or `'mirror'`. |
+| `colors` | list of strings | `{'rgba8'}` | The pixel format of each color, from one to four, each a format whose [`graphics.formatSupport`](#graphicsformatsupportformat) has `render` and `filter`, such as `'rgba16Float'` for colors brighter than white. |
+| `depthFormat` | string | none | A depth format that adds a depth attachment: `'depth16'`, `'depth32Float'`, `'depth24Stencil8'` or `'depth32FloatStencil8'`. |
+| `samples` | integer | `1` | The samples of each pixel, one of the `sampleCounts` of every format of the target. With more than one, each pass draws into the samples and resolves them into the textures when it ends, so edges come out smooth. |
+| `depthTexture` | boolean | `false` | Keeps the depth as `target.depthTexture`, which a material texture of the sample type `depth` reads. A target of several samples resolves it from a format without stencil. |
+| `depthResolve` | string | `'sampleZero'` | How a target of several samples resolves its kept depth: `'sampleZero'`, the depth of the first sample, `'min'`, the nearest, or `'max'`, the farthest. It is one of the `depthResolves` of [`graphics.capabilities()`](#graphicscapabilities). |
+| `memoryless` | boolean | `false` | Keeps the samples and a depth without a texture only inside each pass. On GPUs with `memorylessAttachments` they take no memory, since the GPU holds them in its tiles. Every canvas clears them, and a glass cannot draw into a memoryless target of several samples, since it reads what its canvas drew before it. |
+
+A render target has no mipmaps, so `mipmaps = true` raises `A render target has no mipmaps.`. A size of 0 or less raises `Texture dimensions must be positive.`, and a size above [`graphics.maxTextureSize()`](#graphicsmaxtexturesize) raises `Texture dimensions exceed the device limit.`. A format, a sample count or a depth resolve that the device lacks raises a sentence that names it and the graphics API.
 
 ```lua
 local graphics = require('haylen.graphics')
 
 local target = graphics.newRenderTarget(320, 180, {filter = 'linear'})
 print(target.width, target.height, target.texture.width)
+
+local samples = graphics.formatSupport('rgba16Float').sampleCounts
+local scene = graphics.newRenderTarget(640, 360, {
+    colors = {'rgba16Float', 'rgba8'},
+    depthFormat = 'depth32Float',
+    samples = samples[#samples],
+    memoryless = true,
+})
+print(#scene.textures, scene.samples, scene.depthFormat)
 ```
 
 ### Properties
@@ -458,7 +482,13 @@ print(target.width, target.height, target.texture.width)
 | --- | --- | --- | --- |
 | `width` | integer | read | Width in pixels. |
 | `height` | integer | read | Height in pixels. |
-| `texture` | Texture | read | The texture to draw the target with. It holds colors premultiplied by their alpha, so draw it with `blend = 'premultiplied'` wherever it is not fully opaque. |
+| `texture` | Texture | read | The texture of the first color, to draw the target with. A canvas leaves colors premultiplied by their alpha there, so draw it with `blend = 'premultiplied'` wherever it is not fully opaque. |
+| `textures` | list of Textures | read | The texture of each color, the first one first. |
+| `depthTexture` | Texture or nil | read | The texture of the depth of a target with `depthTexture`, and `nil` otherwise. |
+| `colors` | list of strings | read | The pixel format of each color. |
+| `depthFormat` | string or nil | read | The depth format, or `nil` for a target without depth. |
+| `samples` | integer | read | The samples of each pixel. |
+| `memoryless` | boolean | read | Whether the samples and a depth without a texture live only inside each pass. |
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1460,6 +1490,16 @@ These messages come from the functions and methods of the module.
 | `Image pixel data does not match its dimensions.` | The `pixels` of `graphics.newTexture` have another length than `width * height * 4`. |
 | `A texture that changes in place has no mipmaps.` | A dynamic texture asked for mipmaps. |
 | `A render target has no mipmaps.` | A render target asked for mipmaps. |
+| `A render target has from 1 to 4 colors, not <count>.` | The list `colors` of a render target is empty or holds more than four formats. |
+| `The samples of a render target are a power of two from 1, not <samples>.` | The `samples` of a render target are not 1, 2, 4, 8 or a larger power of two. |
+| `The graphics API "<api>" of this device draws into no color of the format "<format>". ...` | A color format of a render target is a depth or compressed format, or one the device does not draw into. |
+| `The graphics API "<api>" of this device samples the format "<format>" only without filtering, and the textures of a render target filter. ...` | A color format of a render target is one the device does not filter. |
+| `The graphics API "<api>" of this device takes no <samples> samples of the format "<format>". ...` | A format of a render target does not take its `samples`. |
+| `The graphics API "<api>" of this device draws into no depth of the format "<format>". ...` | The `depthFormat` of a render target is no depth format the device draws into. |
+| `A render target keeps a depth texture only with a "depthFormat".` | A render target asked for `depthTexture` without a depth. |
+| `The graphics API "<api>" of this device samples no depth of the format "<format>", so a render target keeps no depth texture of it.` | The kept depth of a render target is in a format the device does not sample. |
+| `A render target of several samples keeps a depth texture only of a depth format without stencil, which "<format>" has.` | A multisampled render target keeps a depth with stencil. |
+| `The graphics API "<api>" of this device resolves no depth by "<mode>". ...` | The `depthResolve` of a multisampled render target with a kept depth is not one of the `depthResolves` of the device. |
 | `Only a dynamic texture changes its pixels in place.` | The method `texture:update` ran on a texture that is not dynamic. |
 | `The pixels do not match the size of the dynamic texture.` | The pixels of `texture:update` have another length. |
 | `The region of a texture update must lie inside the dynamic texture and hold at least one pixel.` | The option `region` of `texture:update` reaches past the texture or has no width or height. |

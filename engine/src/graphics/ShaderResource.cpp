@@ -327,7 +327,7 @@ void ShaderResource::readMaterialBindings(const ProgramInfo& program) {
 
     for (const TextureInfo& texture : program.textures) {
         if (std::ranges::find(kEngineTextures, texture.name) == kEngineTextures.end() && std::ranges::find(textures, texture.name, &Shader::TextureSlot::name) == textures.end()) {
-            textures.push_back({.name = texture.name, .slot = texture.slot, .type = texture.type});
+            textures.push_back({.name = texture.name, .slot = texture.slot, .type = texture.type, .sampleType = texture.sampleType});
         }
     }
 }

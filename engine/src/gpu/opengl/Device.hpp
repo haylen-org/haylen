@@ -17,6 +17,7 @@
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/opengl/Context.hpp"
 #include "gpu/opengl/Conversions.hpp"
 #include "gpu/opengl/DebugOutput.hpp"

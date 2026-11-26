@@ -8,6 +8,7 @@
 
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/ProgramSlots.hpp"
 #include "gpu/SamplerRules.hpp"
 #include "gpu/webgpu/BufferReadback.hpp"
@@ -76,7 +77,7 @@ Device::~Device() {
     }
 }
 
-// WebGPU renders and samples every uncompressed color format of the RHI, while 32-bit floats filter and blend only with their features, `Rg11B10Float` renders only with its own, and the depth format with a 32-bit float and stencil exists only with its own. Each family of compressed formats samples with its feature, and WebGPU has no HDR profile of ASTC. Shaders write the storage formats of its core as storage images. Its attachments take one or four samples, except the 32-bit floats, which WebGPU resolves into no image, so they take one. A cube takes faces as large as a flat image, and the core of WebGPU has cube arrays and views of ranges of mip levels and layers. The formats that render and filter generate their mip levels through the draws of `MipmapGenerator`. The core of WebGPU binds storage buffers and draws with indirect arguments, and a uniform block holds what one binding of the adapter reads, at most what the uniform ring takes for a block.
+// WebGPU renders and samples every uncompressed color format of the RHI, while 32-bit floats filter and blend only with their features, `Rg11B10Float` renders only with its own, and the depth format with a 32-bit float and stencil exists only with its own. Each family of compressed formats samples with its feature, and WebGPU has no HDR profile of ASTC. Shaders write the storage formats of its core as storage images. Its attachments take one or four samples, except the 32-bit floats, which WebGPU resolves into no image, so they take one. A cube takes faces as large as a flat image, and the core of WebGPU has cube arrays and views of ranges of mip levels and layers. The formats that render and filter generate their mip levels through the draws of `MipmapGenerator`. The core of WebGPU binds storage buffers and draws with indirect arguments, and a uniform block holds what one binding of the adapter reads, at most what the uniform ring takes for a block. WebGPU resolves no depth, and a transient image is an attachment of its own memory.
 gpu::Device::Capabilities Device::describeCapabilities(const Connection& connection) {
     const WGPULimits& limits = connection.getLimits();
     Capabilities result;
@@ -89,6 +90,8 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
     result.imageViews = true;
     result.originTopLeft = true;
     result.independentBlend = true;
+    result.depthResolves = 0;
+    result.memorylessAttachments = false;
     result.gpuTiming = connection.hasFeature(WGPUFeatureName_TimestampQuery);
     result.maxAnisotropy = 16;
     result.storageBuffers = true;
@@ -222,7 +225,7 @@ void Device::writeLevel(WGPUTexture texture, int level, int width, int height, i
     wgpuQueueWriteTexture(queue, &destination, pixels.data(), bytes, &layout, &extent);
 }
 
-// A dynamic image or a render target of more than one mip level whose format generates them is drawn into by the passes of `MipmapGenerator`, which sample its levels too.
+// A dynamic image or a render target of more than one mip level whose format generates them is drawn into by the passes of `MipmapGenerator`, which sample its levels too. A transient image is an attachment alone, which nothing samples or copies.
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     const ImageRules::Description description = ImageRules::check(desc, capabilities);
     const bool generatesMipmaps = desc.mipLevels > 1 && capabilities.getFormat(desc.format).mipmaps;
@@ -242,10 +245,10 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         descriptor.usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst | (generatesMipmaps ? WGPUTextureUsage_RenderAttachment : WGPUTextureUsage_None);
         break;
     case ImageKind::RenderTarget:
-        descriptor.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | (desc.sampleCount == 1 ? WGPUTextureUsage_CopySrc : WGPUTextureUsage_None);
+        descriptor.usage = WGPUTextureUsage_RenderAttachment | (desc.transient ? WGPUTextureUsage_None : WGPUTextureUsage_TextureBinding | (desc.sampleCount == 1 ? WGPUTextureUsage_CopySrc : WGPUTextureUsage_None));
         break;
     case ImageKind::DepthStencil:
-        descriptor.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding;
+        descriptor.usage = WGPUTextureUsage_RenderAttachment | (desc.transient ? WGPUTextureUsage_None : WGPUTextureUsage_TextureBinding);
         break;
     }
 
@@ -885,21 +888,13 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
 }
 
 void Device::beginOffscreenPass(const PassDesc& desc) {
-    if (desc.colors.size() > kMaxColorTargets) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
+    const PassRules::Extent extent = PassRules::check(desc, capabilities, [this](Image image) -> const ImageRules::Description& { return images.get(image.id).description; });
 
     std::array<WGPURenderPassColorAttachment, kMaxColorTargets> colors{};
-    passWidth = 0;
-    passHeight = 0;
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
         ImageRecord& image = images.get(attachment.image.id);
         ImageRecord* resolve = attachment.resolve.isValid() ? &images.get(attachment.resolve.id) : nullptr;
-        if (image.description.isView() || image.description.kind != ImageKind::RenderTarget || (resolve != nullptr && resolve->description.isView())) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
         colors[index] = WGPU_RENDER_PASS_COLOR_ATTACHMENT_INIT;
         colors[index].view = getAttachmentView(image, attachment.mipLevel, attachment.layer);
         colors[index].depthSlice = image.description.type == TextureType::Volume ? static_cast<std::uint32_t>(attachment.layer) : WGPU_DEPTH_SLICE_UNDEFINED;
@@ -907,21 +902,12 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         colors[index].loadOp = Conversion::toLoad(attachment.load);
         colors[index].storeOp = Conversion::toStore(attachment.store);
         colors[index].clearValue = Conversion::toColor(attachment.clear);
-
-        if (index == 0) {
-            passWidth = std::max(1, image.description.width >> attachment.mipLevel);
-            passHeight = std::max(1, image.description.height >> attachment.mipLevel);
-        }
     }
 
     WGPURenderPassDepthStencilAttachment depth = WGPU_RENDER_PASS_DEPTH_STENCIL_ATTACHMENT_INIT;
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& image = images.get(attachment.image.id);
-        if (image.description.isView() || image.description.kind != ImageKind::DepthStencil) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
         depth.view = getAttachmentView(image, attachment.mipLevel, attachment.layer);
         depth.depthLoadOp = Conversion::toLoad(attachment.depthLoad);
         depth.depthStoreOp = Conversion::toStore(attachment.depthStore);
@@ -930,11 +916,6 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
             depth.stencilLoadOp = Conversion::toLoad(attachment.stencilLoad);
             depth.stencilStoreOp = Conversion::toStore(attachment.stencilStore);
             depth.stencilClearValue = attachment.clearStencil;
-        }
-
-        if (desc.colors.empty()) {
-            passWidth = std::max(1, image.description.width >> attachment.mipLevel);
-            passHeight = std::max(1, image.description.height >> attachment.mipLevel);
         }
     }
 
@@ -945,6 +926,8 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     descriptor.depthStencilAttachment = desc.depthStencil ? &depth : nullptr;
     descriptor.timestampWrites = timer ? timer->nextPass() : nullptr;
     pass = wgpuCommandEncoderBeginRenderPass(encoder, &descriptor);
+    passWidth = extent.width;
+    passHeight = extent.height;
 }
 
 // A swapchain pass of a frame without a canvas to draw into records nothing, while a call outside any pass breaks the contract.
@@ -1165,6 +1148,7 @@ WGPUBindGroup Device::makeImageGroup(const ProgramRecord& program, const BindGro
             throw ContractError(ContractError::Rule::Bindings);
         }
 
+        ImageRules::checkSampled(image->description);
         WGPUBindGroupEntry entry = WGPU_BIND_GROUP_ENTRY_INIT;
         entry.binding = static_cast<std::uint32_t>(texture.binding);
         entry.textureView = image->sampled;
@@ -1461,16 +1445,8 @@ void Device::removeSurface(int surface) {
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
-    const ImageRules::Description& description = record.description;
-    if (description.isView() || description.kind != ImageKind::RenderTarget || description.sampleCount != 1) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    if (width <= 0 || height <= 0 || width > description.width || height > description.height) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    return std::make_unique<ImageReadback>(device, queue, record.texture, description.format, width, height);
+    ImageRules::checkReadback(record.description, width, height);
+    return std::make_unique<ImageReadback>(device, queue, record.texture, record.description.format, width, height);
 }
 
 std::unique_ptr<gpu::Device::Readback> Device::readBuffer(Buffer buffer, std::size_t offset, std::size_t size) {

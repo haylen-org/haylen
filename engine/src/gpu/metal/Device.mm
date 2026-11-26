@@ -24,6 +24,7 @@
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/ProgramSlots.hpp"
 #include "gpu/SamplerRules.hpp"
 #include "gpu/metal/BufferReadback.hpp"
@@ -274,7 +275,7 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     passDesc = [MTLRenderPassDescriptor new];
 }
 
-// Every Metal GPU samples and draws into every uncompressed format of the contract, with `Depth24Stencil8` as `Depth32FloatStencil8`, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats. A blit generates the mip levels of every color format that the GPU draws into and filters. Every Metal GPU makes texture views of ranges of levels and slices, also as 2D arrays of the faces of cubes, while cube arrays need the A11 and later or a Mac, which the families Apple4 and Mac2 hold. The sizes and the samples follow the feature set tables of Metal: volumes of 2048 pixels on a side, cubes as large as flat images, and the sample counts the GPU takes for every format, except that a format of 32 bit floats resolves only on a GPU that filters it. Apple GPUs sample the ETC2, EAC and ASTC formats, with the HDR profile of ASTC from the A13 and M1 on, and the GPUs that report it sample the BC formats, which every Mac and the iPads of the M1 on do. Shaders write the uncompressed color formats as storage images, and the sRGB one only on Apple GPUs. Shaders of every Metal GPU read and write buffers, the GPUs from the A9 on draw with indirect arguments, and a uniform block reads any range of a buffer, so it holds as many bytes as the largest buffer. A GPU outside the Apple families is the GPU of an Intel Mac, which takes images of 16384 pixels, draws with indirect arguments and blends, filters and resolves every format.
+// Every Metal GPU samples and draws into every uncompressed format of the contract, with `Depth24Stencil8` as `Depth32FloatStencil8`, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats. A blit generates the mip levels of every color format that the GPU draws into and filters. Every Metal GPU makes texture views of ranges of levels and slices, also as 2D arrays of the faces of cubes, while cube arrays need the A11 and later or a Mac, which the families Apple4 and Mac2 hold. The sizes and the samples follow the feature set tables of Metal: volumes of 2048 pixels on a side, cubes as large as flat images, and the sample counts the GPU takes for every format, except that a format of 32 bit floats resolves only on a GPU that filters it. Apple GPUs sample the ETC2, EAC and ASTC formats, with the HDR profile of ASTC from the A13 and M1 on, and the GPUs that report it sample the BC formats, which every Mac and the iPads of the M1 on do. Shaders write the uncompressed color formats as storage images, and the sRGB one only on Apple GPUs. Shaders of every Metal GPU read and write buffers, the GPUs from the A9 on draw with indirect arguments, and a uniform block reads any range of a buffer, so it holds as many bytes as the largest buffer. A GPU outside the Apple families is the GPU of an Intel Mac, which takes images of 16384 pixels, draws with indirect arguments and blends, filters and resolves every format. The tables give the MSAA depth resolve, with the first sample, the smallest or the largest of each pixel, to the families Apple3 and Mac2, which covers every depth format without stencil, and transient images take the memoryless storage of the GPUs with tile memory.
 gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     Capabilities made;
     const bool apple = [metal supportsFamily:MTLGPUFamilyApple1];
@@ -285,6 +286,12 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     made.cubeArrays = [metal supportsFamily:MTLGPUFamilyApple4] || !apple;
     made.depthLayers = true;
     made.imageViews = true;
+    made.memorylessAttachments = hasTileMemory(metal);
+    if ([metal supportsFamily:MTLGPUFamilyApple3] || !apple) {
+        for (const auto& [name, mode] : kDepthResolveNames) {
+            made.depthResolves |= static_cast<std::uint8_t>(1U << static_cast<unsigned>(mode));
+        }
+    }
 
     std::uint8_t counts = 1;
     for (const int samples : {2, 4, 8}) {
@@ -588,6 +595,13 @@ MTLTextureDescriptor* Device::Native::describeImage(const ImageDesc& desc) const
     made.sampleCount = static_cast<NSUInteger>(desc.sampleCount);
     made.storageMode = MTLStorageModePrivate;
     made.usage = desc.kind == ImageKind::RenderTarget || desc.kind == ImageKind::DepthStencil ? MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget : MTLTextureUsageShaderRead;
+
+    // Nothing samples a transient image, which lives in the memory of the tiles of its pass on a GPU that has it.
+    if (desc.transient) {
+        made.storageMode = capabilities.memorylessAttachments ? MTLStorageModeMemoryless : MTLStorageModePrivate;
+        made.usage = MTLTextureUsageRenderTarget;
+    }
+
     return made;
 }
 
@@ -1248,6 +1262,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     pass.depthAttachment.loadAction = depthLoad;
     pass.depthAttachment.storeAction = MTLStoreActionDontCare;
     pass.depthAttachment.clearDepth = desc.clearDepth;
+    pass.depthAttachment.resolveTexture = nil;
     pass.stencilAttachment.texture = chain.getDepthTexture();
     pass.stencilAttachment.level = 0;
     pass.stencilAttachment.slice = 0;
@@ -1264,17 +1279,14 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     }
 }
 
+// The attachments pass their rules before the swapchain pass that waits ends, so a refused pass leaves the device as it was.
 void Device::beginOffscreenPass(const PassDesc& desc) {
+    const PassRules::Extent extent = PassRules::check(desc, native->capabilities, [this](Image image) -> const ImageRules::Description& { return native->requireImage(image).description; });
+
     native->swapchainPass = false;
     endPendingPass();
 
-    if (desc.colors.size() > kMaxColorTargets) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
     MTLRenderPassDescriptor* pass = native->passDesc;
-    int width = 0;
-    int height = 0;
     for (std::size_t index = 0; index < kMaxColorTargets; ++index) {
         MTLRenderPassColorAttachmentDescriptor* color = pass.colorAttachments[index];
         color.texture = nil;
@@ -1286,12 +1298,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
 
         const ColorAttachment& attachment = desc.colors[index];
         const Native::ImageEntry& image = native->requireImage(attachment.image);
-        const ImageRules::Description& described = image.description;
-        if (described.isView() || described.kind != ImageKind::RenderTarget) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
-        const bool volume = described.type == TextureType::Volume;
+        const bool volume = image.description.type == TextureType::Volume;
         color.texture = image.texture;
         color.level = static_cast<NSUInteger>(attachment.mipLevel);
         color.slice = volume ? 0 : static_cast<NSUInteger>(attachment.layer);
@@ -1300,33 +1307,20 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         color.clearColor = Formats::toClearColor(attachment.clear);
         color.storeAction = attachment.store == Store::Store ? MTLStoreActionStore : MTLStoreActionDontCare;
         if (attachment.resolve.isValid()) {
-            const Native::ImageEntry& resolve = native->requireImage(attachment.resolve);
-            if (resolve.description.isView()) {
-                throw ContractError(ContractError::Rule::PassAttachments);
-            }
-
-            color.resolveTexture = resolve.texture;
+            color.resolveTexture = native->requireImage(attachment.resolve).texture;
             color.resolveLevel = static_cast<NSUInteger>(attachment.resolveMipLevel);
             color.resolveSlice = static_cast<NSUInteger>(attachment.resolveLayer);
             color.resolveDepthPlane = 0;
             color.storeAction = attachment.store == Store::Store ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionMultisampleResolve;
         }
-
-        const ImageInfo::Extent extent = described.getLevelExtent(attachment.mipLevel);
-        width = extent.width;
-        height = extent.height;
     }
 
     pass.depthAttachment.texture = nil;
+    pass.depthAttachment.resolveTexture = nil;
     pass.stencilAttachment.texture = nil;
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         const Native::ImageEntry& image = native->requireImage(attachment.image);
-        const ImageRules::Description& described = image.description;
-        if (described.isView() || described.kind != ImageKind::DepthStencil) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
         const auto level = static_cast<NSUInteger>(attachment.mipLevel);
         const auto slice = static_cast<NSUInteger>(attachment.layer);
         pass.depthAttachment.texture = image.texture;
@@ -1335,7 +1329,16 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         pass.depthAttachment.loadAction = Formats::toLoadAction(attachment.depthLoad);
         pass.depthAttachment.storeAction = attachment.depthStore == Store::Store ? MTLStoreActionStore : MTLStoreActionDontCare;
         pass.depthAttachment.clearDepth = attachment.clearDepth;
-        if (ImageInfo::hasStencil(described.format)) {
+        if (attachment.resolve.isValid()) {
+            pass.depthAttachment.resolveTexture = native->requireImage(attachment.resolve).texture;
+            pass.depthAttachment.resolveLevel = static_cast<NSUInteger>(attachment.resolveMipLevel);
+            pass.depthAttachment.resolveSlice = static_cast<NSUInteger>(attachment.resolveLayer);
+            pass.depthAttachment.resolveDepthPlane = 0;
+            pass.depthAttachment.depthResolveFilter = Formats::toDepthResolveFilter(attachment.resolveMode);
+            pass.depthAttachment.storeAction = attachment.depthStore == Store::Store ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionMultisampleResolve;
+        }
+
+        if (ImageInfo::hasStencil(image.description.format)) {
             pass.stencilAttachment.texture = image.texture;
             pass.stencilAttachment.level = level;
             pass.stencilAttachment.slice = slice;
@@ -1343,16 +1346,10 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
             pass.stencilAttachment.storeAction = attachment.stencilStore == Store::Store ? MTLStoreActionStore : MTLStoreActionDontCare;
             pass.stencilAttachment.clearStencil = attachment.clearStencil;
         }
-
-        if (desc.colors.empty()) {
-            const ImageInfo::Extent extent = described.getLevelExtent(attachment.mipLevel);
-            width = extent.width;
-            height = extent.height;
-        }
     }
 
     @autoreleasepool {
-        native->encoder.begin([native->commands renderCommandEncoderWithDescriptor:pass], width, height);
+        native->encoder.begin([native->commands renderCommandEncoderWithDescriptor:pass], extent.width, extent.height);
     }
 
     if (native->labels && !desc.label.empty()) {
@@ -1430,7 +1427,9 @@ void Device::applyBindings(const Bindings& bindings) {
     const Native::ProgramEntry& program = native->requireProgram(native->applied.program);
     native->bufferBlocks = native->bindUniformBuffers(program, bindings);
     for (const Native::ResourceSlot& texture : program.textures) {
-        native->encoder.setTexture(texture.stage, native->requireImage(bindings.textures[texture.slot]).texture, texture.binding);
+        const Native::ImageEntry& image = native->requireImage(bindings.textures[texture.slot]);
+        ImageRules::checkSampled(image.description);
+        native->encoder.setTexture(texture.stage, image.texture, texture.binding);
     }
 
     for (const Native::ResourceSlot& sampler : program.samplers) {
@@ -1822,20 +1821,8 @@ void Device::removeSurface(int surface) {
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const Native::ImageEntry& entry = native->requireImage(image);
-    const ImageRules::Description& described = entry.description;
-    if (described.isView() || described.kind != ImageKind::RenderTarget) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    if (described.sampleCount > 1) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    if (width <= 0 || height <= 0 || width > described.width || height > described.height) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    return std::make_unique<ImageReadback>(native->queue, entry.texture, described.format, width, height);
+    ImageRules::checkReadback(entry.description, width, height);
+    return std::make_unique<ImageReadback>(native->queue, entry.texture, entry.description.format, width, height);
 }
 
 // A stream buffer is never a copy source, so the buffer holds its bytes from its start.

@@ -118,25 +118,32 @@ void Context::createDevice() {
     };
     // clang-format on
 
-    // Dynamic rendering is part of Vulkan 1.3, and before it an extension that needs the resolve of depth and the second version of render passes, which Vulkan 1.2 holds.
     std::vector<const char*> extensions;
     swapchain = has(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     if (swapchain) {
         extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     }
 
-    bool renderingExtension = false;
-    if (apiVersion < VK_API_VERSION_1_3 && has(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
-        const bool before12 = apiVersion < VK_API_VERSION_1_2;
-        renderingExtension = !before12 || (has(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME) && has(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME));
-        if (renderingExtension && before12) {
-            extensions.push_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
-            extensions.push_back(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
-        }
+    // The resolves of depth and the second version of render passes that they need are part of Vulkan 1.2, and extensions before it.
+    const bool before12 = apiVersion < VK_API_VERSION_1_2;
+    const bool resolveExtensions = before12 && has(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME) && has(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+    if (resolveExtensions) {
+        extensions.push_back(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
+    }
 
-        if (renderingExtension) {
-            extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
-        }
+    const bool canResolveDepth = !before12 || resolveExtensions;
+    if (canResolveDepth) {
+        VkPhysicalDeviceDepthStencilResolveProperties resolveProperties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES, .pNext = nullptr, .supportedDepthResolveModes = 0, .supportedStencilResolveModes = 0, .independentResolveNone = VK_FALSE, .independentResolve = VK_FALSE};
+        VkPhysicalDeviceProperties2 described{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &resolveProperties, .properties = {}};
+        vkGetPhysicalDeviceProperties2(physicalDevice, &described);
+        depthResolveModes = resolveProperties.supportedDepthResolveModes;
+    }
+
+    // Dynamic rendering is part of Vulkan 1.3, and before it an extension that needs the resolve of depth.
+    const bool renderingExtension = apiVersion < VK_API_VERSION_1_3 && canResolveDepth && has(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+    if (renderingExtension) {
+        extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
     }
 
     // The display timing of a swapchain tells when the display showed each present on the monotonic clock, which is the steady clock of the engine on Linux and Android alone.

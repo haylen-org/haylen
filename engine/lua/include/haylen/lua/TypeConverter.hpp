@@ -662,6 +662,16 @@ template <> struct EnumNames<haylen::gpu::Device::PixelFormat> {
     }
 };
 
+template <> struct EnumNames<haylen::gpu::Device::DepthResolve> {
+    static std::optional<haylen::gpu::Device::DepthResolve> fromName(std::string_view name) {
+        const auto found = std::ranges::find(haylen::gpu::Device::kDepthResolveNames, name, &std::pair<std::string_view, haylen::gpu::Device::DepthResolve>::first);
+        return found != haylen::gpu::Device::kDepthResolveNames.end() ? std::optional(found->second) : std::nullopt;
+    }
+    static std::string_view name(haylen::gpu::Device::DepthResolve value) {
+        return std::ranges::find(haylen::gpu::Device::kDepthResolveNames, value, &std::pair<std::string_view, haylen::gpu::Device::DepthResolve>::second)->first;
+    }
+};
+
 template <> struct EnumNames<haylen::math::Mat4::DepthRange> {
     static std::optional<haylen::math::Mat4::DepthRange> fromName(std::string_view name) {
         return haylen::math::Mat4::depthRangeFromName(name);

@@ -15,6 +15,7 @@
 #include "gpu/DriverIssues.hpp"
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/ProgramSlots.hpp"
 #include "gpu/SamplerRules.hpp"
 #include "gpu/opengl/BufferReadback.hpp"
@@ -172,6 +173,11 @@ void Device::readCapabilities() {
     capabilities.originTopLeft = false;
     capabilities.depthRange = features.clipControl ? math::Mat4::DepthRange::ZeroToOne : math::Mat4::DepthRange::NegativeOneToOne;
     capabilities.independentBlend = features.drawBuffersIndexed;
+
+    // OpenGL resolves depth through blits in a manner of the driver that no mode of the contract names, and keeps no attachment in the memory of tiles, so a transient image is an ordinary one that its passes invalidate.
+    capabilities.depthResolves = 0;
+    capabilities.memorylessAttachments = false;
+
     capabilities.gpuTiming = timer.isAvailable();
 
     // Every flavour makes and samples images of every uncompressed format and of the compressed families its version or extensions hold, and OpenGL ES and WebGL2 draw into float formats and filter 32-bit floats only with their extensions. The levels that `glGenerateMipmap` fills take a color format that the context both draws into and filters, which OpenGL ES and WebGL2 ask for.
@@ -960,36 +966,17 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
 }
 
 void Device::beginOffscreenPass(const PassDesc& desc) {
-    if (desc.colors.size() > kMaxColorTargets) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
+    const PassRules::Extent extent = PassRules::check(desc, capabilities, [this](Image image) -> const ImageRules::Description& { return images.get(image.id).description; });
+    pass.width = extent.width;
+    pass.height = extent.height;
 
     FramebufferCache::Key key{.colorCount = desc.colors.size()};
     bool srgb = false;
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& color = desc.colors[index];
-        const ImageRecord& record = images.get(color.image.id);
-        const ImageRules::Description& image = record.description;
-        if (image.isView() || image.kind != ImageKind::RenderTarget) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
-        if (color.resolve.isValid()) {
-            const ImageRules::Description& resolve = images.get(color.resolve.id).description;
-            if (image.sampleCount == 1 || resolve.isView() || resolve.sampleCount != 1) {
-                throw ContractError(ContractError::Rule::PassAttachments);
-            }
-        }
-
         key.colors[index] = toAttachment(color.image, color.mipLevel, color.layer);
         pass.colors[index] = color;
-        srgb = srgb || record.pixel.srgb;
-
-        if (index == 0) {
-            const ImageInfo::Extent level = image.getLevelExtent(color.mipLevel);
-            pass.width = level.width;
-            pass.height = level.height;
-        }
+        srgb = srgb || images.get(color.image.id).pixel.srgb;
     }
 
     pass.colorCount = desc.colors.size();
@@ -997,19 +984,10 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.depthStencil) {
         const DepthStencilAttachment& depthStencil = *desc.depthStencil;
         const ImageRecord& record = images.get(depthStencil.image.id);
-        if (record.description.isView() || record.description.kind != ImageKind::DepthStencil || (depthStencil.layer > 0 && !capabilities.depthLayers)) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
         key.depthStencil = toAttachment(depthStencil.image, depthStencil.mipLevel, depthStencil.layer);
         key.stencil = record.pixel.stencil;
         pass.depthStencil = depthStencil;
         pass.stencil = record.pixel.stencil;
-        if (desc.colors.empty()) {
-            const ImageInfo::Extent level = record.description.getLevelExtent(depthStencil.mipLevel);
-            pass.width = level.width;
-            pass.height = level.height;
-        }
     }
 
     pass.framebuffer = framebuffers.get(key, desc.label);
@@ -1208,6 +1186,7 @@ void Device::applyBindings(const Bindings& bindings) {
     const std::span<const ShaderProgram::Unit> units = applied->shader->getUnits();
     for (std::size_t unit = 0; unit < units.size(); ++unit) {
         const ImageRecord& image = images.get(bindings.textures[units[unit].texture].id);
+        ImageRules::checkSampled(image.description);
         if (image.target != units[unit].target) {
             throw ContractError(ContractError::Rule::Bindings);
         }
@@ -1539,15 +1518,7 @@ void Device::attachSurface(const Surface& surface) {
 
 std::unique_ptr<Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
-    const ImageRules::Description& description = record.description;
-    if (description.isView() || description.kind != ImageKind::RenderTarget || description.sampleCount != 1) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    if (width <= 0 || height <= 0 || width > description.width || height > description.height) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
+    ImageRules::checkReadback(record.description, width, height);
     const Gl::Uint framebuffer = getSingleFramebuffer(image, 0, 0, "haylen-readback");
     return std::make_unique<PixelReadback>(context, framebuffer, width, height, record.pixel.floating || record.pixel.halfFloating || record.pixel.packedFloating);
 }

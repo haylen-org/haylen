@@ -38,7 +38,7 @@ VkAccessFlags ImageLayouts::getAccess(VkImageLayout layout) noexcept {
 }
 
 VkAccessFlags ImageLayouts::getWrites(VkImageLayout layout) noexcept {
-    return getAccess(layout) & (VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
+    return getAccess(layout) & kWrites;
 }
 
 VkImageMemoryBarrier ImageLayouts::makeBarrier(VkImage image, const VkImageSubresourceRange& range, VkImageLayout rest, VkImageLayout from, VkImageLayout to) noexcept {

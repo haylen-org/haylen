@@ -22,6 +22,7 @@
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/webgpu/BindGroupCache.hpp"
 #include "gpu/webgpu/Connection.hpp"
 #include "gpu/webgpu/FrameTimer.hpp"

@@ -433,6 +433,19 @@ VkAttachmentStoreOp Conversions::toStore(Device::Store store) noexcept {
     return store == Device::Store::Store ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
 }
 
+VkResolveModeFlagBits Conversions::toResolveMode(Device::DepthResolve mode) noexcept {
+    switch (mode) {
+    case Device::DepthResolve::SampleZero:
+        return VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+    case Device::DepthResolve::Min:
+        return VK_RESOLVE_MODE_MIN_BIT;
+    case Device::DepthResolve::Max:
+        return VK_RESOLVE_MODE_MAX_BIT;
+    }
+
+    return VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+}
+
 VkSampleCountFlagBits Conversions::toSampleCount(int count) noexcept {
     switch (count) {
     case 2:

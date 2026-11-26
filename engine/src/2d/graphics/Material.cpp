@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "2d/graphics/MaterialResource.hpp"
+#include "gpu/ImageInfo.hpp"
 
 namespace haylen::graphics2d {
 
@@ -105,6 +106,11 @@ void Material::setTexture(std::string_view name, graphics::Texture texture) {
 
     if (texture.isValid() && texture.getType() != slot->type) {
         throw std::invalid_argument(std::format("The texture \"{}\" of the shader \"{}\" takes a texture of the kind \"{}\", not \"{}\".", name, state.shader.getName(), graphics::Texture::typeName(slot->type), graphics::Texture::typeName(texture.getType())));
+    }
+
+    const bool depthSlot = slot->sampleType == gpu::Device::SampleType::Depth;
+    if (texture.isValid() && depthSlot != gpu::ImageInfo::isDepth(texture.getFormat())) {
+        throw std::invalid_argument(std::format("The texture \"{}\" of the shader \"{}\" takes {}.", name, state.shader.getName(), depthSlot ? "the depth texture of a render target" : "a texture of colors, not the depth texture of a render target"));
     }
 
     state.textures.insert_or_assign(std::string(name), std::move(texture));

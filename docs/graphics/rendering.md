@@ -473,7 +473,7 @@ Kept meshes, `graphics2d::Mesh`, hold their vertices in C++ between draws. A def
 
 Rectangles, lines and sprites keep hard edges. So rectangles that share an edge tile without a seam, and lines on whole pixels stay crisp.
 
-The `sampleCount` of `haylen.json` multisamples only the window. Render targets, captures and the images of lit and post-processed canvases have one sample, so no edge of the engine depends on it.
+The `sampleCount` of `haylen.json` multisamples only the window. A render target has the samples that its options name, as [render targets](#render-targets) explain, while the images of lit and post-processed canvases have one sample, so no edge of the engine depends on samples.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -834,6 +834,41 @@ scene.push({
     end,
 })
 ```
+
+## Render targets
+
+A render target, `graphics::RenderTarget`, is an image on the GPU that passes draw into and draws sample later, which `graphics.newRenderTarget` makes and `graphics::Device::createRenderTarget` in C++. Besides the filter and wrap of its textures, its options name its attachments, `graphics::RenderTarget::Options` in C++:
+
+- Up to four colors, each in a pixel format that the device draws into and filters, such as `rgba16Float` for light brighter than white. Each color has its texture, and the first one is `target.texture`.
+- An optional depth, with or without stencil, which a renderer of 3D tests its draws against. With `depthTexture` the target keeps it as a texture that a material reads through a texture of the sample type `depth`, such as the depth of a scene for fog or soft particles.
+- Several samples for each pixel, which give smooth edges to everything the target draws. Each pass draws into the samples and resolves them into the textures of one sample when it ends. A kept depth of several samples resolves by `depthResolve`: the depth of the first sample, the nearest of them or the farthest of them, as the device offers.
+- `memoryless`, which keeps the samples and a depth without a texture only inside each pass. Phones and Apple silicon Macs draw a pass in tiles of fast memory on the chip, so on them such attachments take no memory at all, and the samples of a target of 1920 by 1080 pixels at four samples save about 33 MB. Elsewhere they are ordinary images that each pass clears.
+
+A canvas draws into the first color of its target, into its samples when it has several, and leaves its other colors and its depth as they are, since the draws of 2D write one color and test no depth. So the first color takes a format that the device blends into. The pipelines of the renderer take the format and the sample count of the pass they draw in, and the renderer makes them the first time a pass of that layout needs them. A glass reads what its canvas drew before it, so it never draws into a memoryless target of several samples, whose samples a pass loses as it ends.
+
+```lua
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local counts = graphics.formatSupport('rgba8').sampleCounts
+local map = graphics.newRenderTarget(256, 256, {filter = 'linear', samples = counts[#counts], memoryless = true})
+local camera = graphics2d.newCamera()
+camera.x = 128
+camera.y = 128
+
+scene.push({
+    render = function(self)
+        graphics2d.beginTarget(map, camera, {clear = '#FF10202A'})
+        graphics2d.drawCircle(128, 128, 90, '#FFFFD040')
+
+        graphics2d.beginScreen()
+        graphics2d.draw(map.texture, 20, 20, {pivotX = 0, pivotY = 0})
+    end,
+})
+```
+
+The [RHI guide](rhi.md#attachments) explains how each graphics API resolves depth and keeps attachments in its tiles.
 
 ## Captures
 

@@ -478,6 +478,20 @@ MTLLoadAction Formats::toLoadAction(gpu::Device::Load load) noexcept {
     return MTLLoadActionClear;
 }
 
+MTLMultisampleDepthResolveFilter Formats::toDepthResolveFilter(gpu::Device::DepthResolve mode) noexcept {
+    using DepthResolve = gpu::Device::DepthResolve;
+    switch (mode) {
+    case DepthResolve::SampleZero:
+        return MTLMultisampleDepthResolveFilterSample0;
+    case DepthResolve::Min:
+        return MTLMultisampleDepthResolveFilterMin;
+    case DepthResolve::Max:
+        return MTLMultisampleDepthResolveFilterMax;
+    }
+
+    return MTLMultisampleDepthResolveFilterSample0;
+}
+
 MTLClearColor Formats::toClearColor(math::Color color) noexcept {
     return MTLClearColorMake(color.r, color.g, color.b, color.a);
 }

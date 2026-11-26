@@ -51,6 +51,38 @@ TEST(GraphicsLuaTest, ReportsTheCapabilitiesOfTheDeviceAndOfEachFormat) {
     EXPECT_NE(fixture.lua("return graphics.formatSupport('rgba7')").find("unknown value 'rgba7'"), std::string::npos);
 }
 
+// A render target takes its colors, its depth, its samples, a kept depth with its resolve and whether it is memoryless from its options, shows them as properties, and refuses what the device cannot draw with a sentence, while the capabilities name the depth resolves and the memoryless attachments of the device.
+TEST(GraphicsLuaTest, MakesRenderTargetsOfColorsADepthAndSamples) {
+    test::LuaFixture fixture;
+    fixture.runLua("graphics = require('haylen.graphics')");
+
+    EXPECT_EQ(fixture.lua("local t = graphics.newRenderTarget(16, 8) return #t.textures .. ' ' .. t.colors[1] .. ' ' .. tostring(t.depthFormat) .. ' ' .. t.samples .. ' ' .. tostring(t.depthTexture) .. ' ' .. tostring(t.memoryless)"), "1 rgba8 nil 1 nil false");
+    // clang-format off
+    fixture.runLua(R"(
+        scene = graphics.newRenderTarget(16, 8, {
+            filter = 'linear',
+            colors = {'rgba16Float', 'rgba8'},
+            depthFormat = 'depth32Float',
+            samples = 4,
+            depthTexture = true,
+            depthResolve = 'max',
+            memoryless = true,
+        })
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return #scene.textures .. ' ' .. table.concat(scene.colors, ',') .. ' ' .. scene.depthFormat .. ' ' .. scene.samples .. ' ' .. tostring(scene.memoryless)"), "2 rgba16Float,rgba8 depth32Float 4 true");
+    EXPECT_EQ(fixture.lua("return scene.textures[2].format .. ' ' .. scene.textures[1].filter .. ' ' .. scene.depthTexture.format .. ' ' .. scene.depthTexture.filter .. ' ' .. tostring(scene.texture == scene.textures[1])"), "rgba8 linear depth32Float nearest true");
+    EXPECT_EQ(fixture.lua("local c = graphics.capabilities() return table.concat(c.depthResolves, ',') .. ' ' .. tostring(c.memorylessAttachments)"), "sampleZero,min,max true");
+
+    EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {colors = {}})").find("A render target has from 1 to 4 colors, not 0."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {samples = 3})").find("The samples of a render target are a power of two from 1, not 3."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {colors = {'rgba32Float'}})").find("The graphics API \"none\" of this device samples the format \"rgba32Float\" only without filtering"), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {depthTexture = true})").find("A render target keeps a depth texture only with a \"depthFormat\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {depthFormat = 'rgba8'})").find("draws into no depth of the format \"rgba8\""), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {depthResolve = 'average'})").find("average"), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {stencil = true})").find("Unknown option \"stencil\"."), std::string::npos);
+}
+
 // The sampling of a texture follows its options on each axis, with anisotropy, levels of detail, a bias and a border color that the device checks.
 TEST(GraphicsLuaTest, SamplesTexturesAsTheirOptionsSay) {
     test::LuaFixture fixture;

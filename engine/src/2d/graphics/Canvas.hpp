@@ -38,6 +38,9 @@ struct Canvas {
 
     // The image a canvas that is not composited draws into, its render target or its capture, which its draws cannot sample.
     const graphics::TextureResource* destination = nullptr;
+
+    // Whether that image is a render target whose samples a pass loses once it ends, so nothing that ends the pass and keeps what it drew, such as a glass, draws there.
+    bool losesSamples = false;
     std::size_t itemBegin = 0;
     std::size_t itemEnd = 0;
     std::size_t sceneBegin = 0;

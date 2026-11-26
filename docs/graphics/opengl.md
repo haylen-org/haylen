@@ -98,6 +98,8 @@ Every call that changes OpenGL state goes through a state cache. The cache knows
 | Views of images | `glTextureView` of OpenGL 4.3 over the immutable storage that every image of one sample has, and on OpenGL ES with `GL_EXT_texture_view` or `GL_OES_texture_view`. WebGL2 has none. |
 | Depth into later layers | `glFramebufferTextureLayer` of the depth attachment, everywhere but the OpenGL ES translator of the Android emulator on SwiftShader 4.0.0.1, whose draws into a later layer of a depth texture land in another layer, as the [driver issues](rhi.md#driver-issues) list. |
 | Mip generation | `glGenerateMipmap`, for the formats that the context renders into and filters. |
+| Depth resolves | None on any of the three, since a blit of a multisampled depth resolves it by a rule of the driver. |
+| Transient attachments | Ordinary textures, or renderbuffers when multisampled, which each pass invalidates as it ends, so a tile GPU skips their loads and stores while their memory stays. |
 
 ## Limits
 

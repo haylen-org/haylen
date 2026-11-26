@@ -22,7 +22,7 @@
 
 namespace haylen::gpu {
 
-// The device of the headless host, which draws nothing and checks every call against the contract of `Device`: objects exist when they are used, images fit their type, mip levels, layers, sample count and format, views take ranges their images hold, passes open and close in turn with attachments that match each other and the pipelines drawn with them, multisampled attachments resolve into images of one sample, draws happen inside a pass with a pipeline, its bindings and every uniform block of its program, debug groups balance, and the surface comes and goes in turn. A broken call throws `std::logic_error`, so the tests of the engine fail on it. It keeps what the last committed frame did for tests to read. It holds the memory of the buffers and images it destroyed for later, the way a device keeps its empty memory blocks, until a trim gives it back, which happens only outside a pass.
+// The device of the headless host, which draws nothing and checks every call against the contract of `Device`: objects exist when they are used, images fit their type, mip levels, layers, sample count and format, views take ranges their images hold, passes open and close in turn with attachments that match each other and the pipelines drawn with them, multisampled attachments resolve into images of one sample, transient images keep nothing past their pass, draws happen inside a pass with a pipeline, its bindings and every uniform block of its program, debug groups balance, and the surface comes and goes in turn. A broken call throws `std::logic_error`, so the tests of the engine fail on it. It keeps what the last committed frame did for tests to read. It holds the memory of the buffers and images it destroyed for later, the way a device keeps its empty memory blocks, until a trim gives it back, which happens only outside a pass.
 class NullDevice final : public Device {
   public:
     static constexpr int kMaxImageSize = 16 * 1024;
@@ -259,7 +259,7 @@ class NullDevice final : public Device {
     // The pass that is open, with the mip levels and layers it draws into: those of its color attachments, of the images they resolve into and of its depth stencil image.
     struct OpenPass {
         Targets targets{};
-        std::array<Subresource, (kMaxColorTargets * 2) + 1> drawn{};
+        std::array<Subresource, (kMaxColorTargets * 2) + 2> drawn{};
         std::size_t drawnCount = 0;
         std::size_t debugGroups = 0;
     };
@@ -281,8 +281,6 @@ class NullDevice final : public Device {
     static void checkDepthStencilState(const PipelineDesc& desc);
     void checkVertexLayout(const PipelineDesc& desc) const;
     [[nodiscard]] Targets describeOffscreenPass(const PassDesc& desc, OpenPass& pass) const;
-    void checkColorAttachment(const ColorAttachment& color, ImageInfo::Extent& extent, int& sampleCount) const;
-    void checkDepthStencilAttachment(const DepthStencilAttachment& depthStencil, ImageInfo::Extent& extent, int& sampleCount) const;
     void checkTexture(const TextureBinding& binding, Image image) const;
     void checkSampler(const SamplerBinding& binding, Sampler sampler) const;
     void checkIndexRange(int first, int count) const;

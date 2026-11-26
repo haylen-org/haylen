@@ -10,7 +10,9 @@
 
 #include "2d/graphics/MaterialResource.hpp"
 #include "core/EmbeddedFiles.hpp"
+#include "gpu/ImageInfo.hpp"
 #include "graphics/DeviceState.hpp"
+#include "graphics/RenderTargetResource.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/lighting/Light.hpp"
@@ -271,8 +273,10 @@ void RendererState::openCanvas(Canvas next) {
 
     if (!next.isComposited() && next.kind == Canvas::Kind::Target) {
         next.destination = next.target.getTexture().getResource().get();
+        next.losesSamples = next.target.getResource()->losesSamples();
     } else if (!next.isComposited() && next.capture != 0) {
         next.destination = captures[next.capture - 1].target.getTexture().getResource().get();
+        next.losesSamples = captures[next.capture - 1].target.getResource()->losesSamples();
     }
 
     canvases.push_back(std::move(next));
@@ -542,6 +546,12 @@ void RendererState::requireReadable(const graphics::TextureResource* texture) {
     }
 }
 
+void RendererState::requireColors(const graphics::TextureResource* texture) {
+    if (texture != nullptr && gpu::ImageInfo::isDepth(texture->format)) {
+        throw std::invalid_argument("A draw takes a depth texture only through a material texture of the sample type \"depth\".");
+    }
+}
+
 // Throws when the order asks for something the program cannot draw.
 void RendererState::checkOrder(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures, const Canvas& canvas) {
     if (order.material.isValid() && (program == Program::ImageBlend || program == Program::Backdrop || program == Program::Metaball)) {
@@ -554,6 +564,10 @@ void RendererState::checkOrder(Program program, const DrawOrder& order, std::spa
 
     if (program == Program::Backdrop && canvas.isLit()) {
         throw std::invalid_argument("A group that blends with what lies below draws in a canvas without ambient light.");
+    }
+
+    if (program == Program::Glass && canvas.losesSamples) {
+        throw std::invalid_argument("A glass reads what its canvas drew before it, which a memoryless render target of several samples keeps only inside each pass. Draw the glass into a render target that is not memoryless.");
     }
 
     if (program == Program::Glass && canvas.isLit()) {
@@ -586,16 +600,19 @@ void RendererState::checkOrder(Program program, const DrawOrder& order, std::spa
     }
 }
 
-// Throws when a texture of the draw, its part mask or a texture of its material is the image its canvas draws into.
+// Throws when a texture of the draw, its part mask or a texture of its material is the image its canvas draws into, or when the draw or its part mask takes a depth texture, which only a material texture of the sample type depth reads.
 void RendererState::requireReadableSources(Program program, const DrawOrder& order, const graphics::TextureResource* texture, std::span<const graphics::Texture> textures, const Canvas& canvas) {
     requireReadable(texture);
+    requireColors(texture);
 
     for (const graphics::Texture& batchTexture : textures) {
         requireReadable(batchTexture.getResource().get());
+        requireColors(batchTexture.getResource().get());
     }
 
     if (program == Program::Recolor) {
         requireReadable(order.partMask.getResource().get());
+        requireColors(order.partMask.getResource().get());
     }
 
     if (order.material.isValid() && canvas.destination != nullptr) {
@@ -734,9 +751,11 @@ void RendererState::addTintedMesh(const graphics::Texture& texture, std::span<co
     addMesh(texture, packed, meshIndices, order);
 }
 
-// The program, the blend and the target each take a byte of the key, so no value of one reaches the bits of another.
-std::uint32_t RendererState::pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target) noexcept {
-    return static_cast<std::uint32_t>(program) | (static_cast<std::uint32_t>(blend) << 8U) | (static_cast<std::uint32_t>(target) << 16U);
+// The program, the blend, the target and the color format and sample count of the pass each take a byte of the key, so no value of one reaches the bits of another.
+std::uint64_t RendererState::pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& layout) noexcept {
+    const std::uint64_t format = static_cast<std::uint64_t>(layout.color) << 24U;
+    const std::uint64_t samples = static_cast<std::uint64_t>(layout.samples) << 32U;
+    return static_cast<std::uint64_t>(program) | (static_cast<std::uint64_t>(blend) << 8U) | (static_cast<std::uint64_t>(target) << 16U) | format | samples;
 }
 
 bool RendererState::expectsPremultiplied(graphics::BlendMode::Type mode) noexcept {
@@ -867,7 +886,7 @@ std::span<const RendererState::Input> RendererState::getPairedInputs(Program pro
     return kBatchInputs;
 }
 
-RendererState::Targets RendererState::describeTargets(std::uint8_t blend, graphics::PassTarget target) const {
+RendererState::Targets RendererState::describeTargets(std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& layout) const {
     using Mode = graphics::BlendMode::Type;
     const auto mode = static_cast<Mode>(blend);
     const gpu::Device::PixelFormat offscreen = device.getState().offscreenFormat;
@@ -881,7 +900,7 @@ RendererState::Targets RendererState::describeTargets(std::uint8_t blend, graphi
         targets.colors[0] = {.blend = blendState(mode)};
         return targets;
     case graphics::PassTarget::Offscreen:
-        targets.colors[0] = {.format = offscreen, .blend = blendState(mode)};
+        targets.colors[0] = {.format = layout.color, .blend = blendState(mode)};
         return targets;
     case graphics::PassTarget::LightMap:
         targets.colors[0] = {.format = lightFormat, .writeMask = gpu::Device::ColorMask::Rgb, .blend = lightBlend(blend)};
@@ -900,9 +919,9 @@ RendererState::Targets RendererState::describeTargets(std::uint8_t blend, graphi
 }
 
 // Every input of the layout reads the vertex attribute of the program that has its name, wherever the compiler placed it.
-gpu::Device::Pipeline RendererState::makePipeline(const graphics::ShaderResource& package, std::string_view programName, gpu::Device::Program made, Program program, std::uint8_t blend, graphics::PassTarget target, std::string_view label) {
+gpu::Device::Pipeline RendererState::makePipeline(const graphics::ShaderResource& package, std::string_view programName, gpu::Device::Program made, Program program, std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& passLayout, std::string_view label) {
     const Layout layout = describeLayout(program);
-    const Targets targets = describeTargets(blend, target);
+    const Targets targets = describeTargets(blend, target, passLayout);
     const graphics::ShaderResource::ProgramInfo& info = package.getInfo(programName);
     std::array<gpu::Device::VertexAttribute, gpu::Device::kMaxAttributes> attributes{};
     std::size_t count = 0;
@@ -923,6 +942,7 @@ gpu::Device::Pipeline RendererState::makePipeline(const graphics::ShaderResource
         .primitive = layout.primitive,
         .indexType = layout.indexType,
         .colors = std::span(targets.colors.data(), targets.count),
+        .sampleCount = passLayout.samples,
         .swapchain = swapchain,
         .label = label,
     });
@@ -947,8 +967,8 @@ const graphics::ShaderResource::Compiled& RendererState::getProgram(Program prog
     return packages[source.package].getResource()->getProgram(getGpu(), lit ? source.lit : source.program);
 }
 
-gpu::Device::Pipeline RendererState::getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target) {
-    const std::uint32_t key = pipelineKey(program, blend, target);
+gpu::Device::Pipeline RendererState::getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& layout) {
+    const std::uint64_t key = pipelineKey(program, blend, target, layout);
     if (const auto found = pipelines.find(key); found != pipelines.end()) {
         return found->second;
     }
@@ -956,7 +976,7 @@ gpu::Device::Pipeline RendererState::getPipeline(Program program, std::uint8_t b
     const bool lit = target == graphics::PassTarget::LitScene;
     const ProgramSource& source = kPrograms[static_cast<std::size_t>(program)];
     const graphics::ShaderResource::Compiled& made = getProgram(program, lit);
-    const gpu::Device::Pipeline created = makePipeline(*packages[source.package].getResource(), lit ? source.lit : source.program, made.program, program, blend, target, "haylen-pipeline");
+    const gpu::Device::Pipeline created = makePipeline(*packages[source.package].getResource(), lit ? source.lit : source.program, made.program, program, blend, target, layout, "haylen-pipeline");
     pipelines.emplace(key, created);
     return created;
 }
@@ -1015,9 +1035,9 @@ const graphics::ShaderResource::Compiled& RendererState::getMaterialProgram(Mate
     return made;
 }
 
-gpu::Device::Pipeline RendererState::getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target) {
+gpu::Device::Pipeline RendererState::getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target, const graphics::PassLayout& layout) {
     graphics::ShaderResource& shader = *material.shader.getResource();
-    const std::uint32_t key = pipelineKey(program, blend, target);
+    const std::uint64_t key = pipelineKey(program, blend, target, layout);
     if (const auto found = shader.pipelines.find(key); found != shader.pipelines.end()) {
         return found->second;
     }
@@ -1025,7 +1045,7 @@ gpu::Device::Pipeline RendererState::getMaterialPipeline(MaterialResource& mater
     const char* programName = materialProgramName(program, target);
     const graphics::ShaderResource::Compiled& made = getMaterialProgram(material, program, target);
     const std::string label = std::format("{}/{}", shader.name, programName);
-    const gpu::Device::Pipeline created = makePipeline(shader, programName, made.program, program, blend, target, label);
+    const gpu::Device::Pipeline created = makePipeline(shader, programName, made.program, program, blend, target, layout, label);
     shader.pipelines.emplace(key, created);
     return created;
 }

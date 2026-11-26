@@ -209,7 +209,7 @@ scene.push({
 
 ### graphics2d.beginTarget(target, camera, options)
 
-Opens a canvas that draws into the render target `target` through `camera`. The view of the camera covers the size of the target, so a camera at `target.width / 2, target.height / 2` shows the region from 0, 0 to the size of the target. A camera `viewport` is a rectangle of the target in pixels. The table `options` takes the [canvas options](#canvas-options), and `clear` is transparent by default. With `ambientLight` or `postProcess`, the canvas renders lit and post-processed offscreen and then composites into the target, so a minimap, a portrait or a mirror can show a lit scene.
+Opens a canvas that draws into the first color of the render target `target` through `camera`, into its samples when it has several, which resolve into `target.texture`, and leaves its other colors and its depth as they are. The first color takes a format that the device blends into, or the call raises a sentence that names it. The view of the camera covers the size of the target, so a camera at `target.width / 2, target.height / 2` shows the region from 0, 0 to the size of the target. A camera `viewport` is a rectangle of the target in pixels. The table `options` takes the [canvas options](#canvas-options), and `clear` is transparent by default. With `ambientLight` or `postProcess`, the canvas renders lit and post-processed offscreen and then composites into the target, so a minimap, a portrait or a mirror can show a lit scene.
 
 Draw the result with `target.texture`. The target holds colors premultiplied by their alpha, so draw its texture with `blend = 'premultiplied'` wherever it is not fully opaque, or its soft edges come out darker. A target that is not valid raises `A render target canvas needs a valid render target.`. A canvas that draws into the target cannot sample its texture, and such a draw raises `A draw cannot sample the render target that its canvas draws into.`.
 
@@ -3930,7 +3930,7 @@ Sets a uniform or a texture of the shader by name. The value fits the type of th
 | `vec4` | A `Color`, a color string or a list of 4 numbers. |
 | `mat4` | A `Transform2D`, which moves x and y like the transform, or a list of 16 numbers in column order. |
 | arrays | A list of every number of every element, such as 12 numbers for `vec4 palette[3]`. |
-| texture | A `Texture`, or `nil` for a white texture. |
+| texture | A `Texture`, or `nil` for a white texture. A texture of the sample type `depth`, which `@sample_type` names in the shader, takes the `depthTexture` of a render target, and every other texture takes a texture of colors. |
 
 An unknown name raises `The shader "<name>" has no uniform named "<key>".`. A value that does not fit raises an error that names the type and the count of numbers the uniform takes, such as `The uniform "tint" is a "vec4", which takes 4 numbers, not 1.` or `The uniform "palette" is an array of 3 "vec4", which takes 12 numbers, not 4.`.
 
@@ -4044,6 +4044,11 @@ These messages come from the functions and methods of the module, besides the er
 | `Screen canvases do not support lighting or post-processing.` | A screen canvas got `ambientLight` or `postProcess`. |
 | `Screen canvases do not support a clear color.` | A screen canvas got a `clear` color. |
 | `A render target canvas needs a valid render target.` | The target of `graphics2d.beginTarget` is not valid. |
+| `A canvas draws into the first color of a render target, of the format "<format>", which the graphics API "<api>" of this device does not blend into. ...` | The first color of the target of `graphics2d.beginTarget` or `graphics2d.beginCapture` is in a format the device does not blend into. |
+| `A glass reads what its canvas drew before it, which a memoryless render target of several samples keeps only inside each pass. ...` | A glass draws into a canvas whose target is memoryless and has several samples. |
+| `A draw takes a depth texture only through a material texture of the sample type "depth".` | A draw, a batch or a part mask names the depth texture of a render target. |
+| `The texture "<name>" of the shader "<shader>" takes the depth texture of a render target.` | `material:set` gives a texture of colors to a texture of the sample type `depth`. |
+| `The texture "<name>" of the shader "<shader>" takes a texture of colors, not the depth texture of a render target.` | `material:set` gives the depth texture of a render target to a texture of colors. |
 | `A capture needs a valid render target.` | The target of `graphics2d.beginCapture` is not valid. |
 | `A draw cannot sample the render target that its canvas draws into.` | A draw used the texture of its own target. |
 | `The "popClip" call has no matching "pushClip".` | The function `graphics2d.popClip` had no clip to remove. |

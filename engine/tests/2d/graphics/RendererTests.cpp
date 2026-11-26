@@ -322,6 +322,66 @@ TEST(RendererTest, SkipsTheDrawsOfClipsThatCoverNoPixel) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
+// A canvas draws into the first color of a render target of any layout, into its samples that resolve into its texture, through pipelines of that format and sample count, and captures, lit canvases and glass reach it the same way, while its other colors and its depth stay out of the pass.
+TEST(RendererTest, DrawsCanvasesIntoTheFirstColorOfAnyRenderTarget) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    const graphics::Texture texture = device.createTexture(graphics::Image(8, 8, math::Color::white()));
+    const graphics::RenderTarget target = device.createRenderTarget(64, 64, {}, {.colors = {gpu::Device::PixelFormat::Rgba16Float, gpu::Device::PixelFormat::Rgba8}, .depthFormat = gpu::Device::PixelFormat::Depth24Stencil8, .samples = 4});
+    const graphics::RenderTarget memoryless = device.createRenderTarget(64, 64, {}, {.samples = 4, .memoryless = true});
+    const gpu::NullDevice& gpu = fixture.host().getGpu();
+    // clang-format off
+    (void)test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+        Renderer& renderer = engine.getRenderer2D();
+        renderer.beginTarget(target, Camera{}, {.clear = math::Color::black()});
+        renderer.draw({.texture = texture});
+        renderer.drawGlass({.bounds = {4.0F, 4.0F, 24.0F, 24.0F}}, {.blur = 4.0F});
+        renderer.beginTarget(target, Camera{}, {.ambientLight = math::Color::white()});
+        renderer.draw({.texture = texture});
+        renderer.beginTarget(memoryless, Camera{});
+        renderer.draw({.texture = texture});
+        renderer.beginCapture(memoryless);
+        renderer.beginScreen();
+        renderer.draw({.texture = texture});
+        renderer.endCapture();
+        renderer.beginScreen();
+        renderer.draw({.texture = target.getTexture(1), .order = {.blend = graphics::BlendMode::Type::Premultiplied}});
+        renderer.draw({.texture = memoryless.getTexture()});
+    });
+    // clang-format on
+    ASSERT_EQ(fixture.engine().getError(), nullptr);
+    ASSERT_FALSE(gpu.getLastFrame().passes.empty());
+    EXPECT_EQ(gpu.getLastFrame().passes[0].colors, 1U);
+}
+
+// A glass reads what its canvas drew before it, which the samples of a memoryless render target lose at the end of each pass, a draw takes the depth texture of a render target only through a material, and a canvas draws only into a first color that the device blends into.
+TEST(RendererTest, RefusesWhatARenderTargetCannotHoldForACanvas) {
+    gpu::Device::Capabilities capabilities = gpu::NullDevice::getDefaultCapabilities();
+    capabilities.getFormat(gpu::Device::PixelFormat::Rgba16Float).blend = false;
+    test::EngineFixture fixture({}, nullptr, {.gpuDevice = [capabilities] { return std::make_unique<gpu::NullDevice>(gpu::Device::Language::None, capabilities, gpu::Device::Api::Metal); }});
+    graphics::Device& device = fixture.engine().getGraphics();
+    Renderer& renderer = fixture.engine().getRenderer2D();
+    const graphics::RenderTarget memoryless = device.createRenderTarget(16, 16, {}, {.samples = 4, .memoryless = true});
+    const graphics::RenderTarget depth = device.createRenderTarget(16, 16, {}, {.depthFormat = gpu::Device::PixelFormat::Depth32Float, .depthTexture = true});
+    const graphics::RenderTarget unblended = device.createRenderTarget(16, 16, {}, {.colors = {gpu::Device::PixelFormat::Rgba16Float}});
+
+    renderer.beginTarget(memoryless, Camera{});
+    EXPECT_THROW(renderer.drawGlass({.bounds = {0.0F, 0.0F, 8.0F, 8.0F}}, {}), std::invalid_argument);
+    renderer.beginTarget(memoryless, Camera{}, {.ambientLight = math::Color::white()});
+    EXPECT_THROW(renderer.draw({.texture = depth.getDepthTexture()}), std::invalid_argument);
+
+    try {
+        renderer.beginTarget(unblended, Camera{});
+        FAIL() << "A canvas began in a color that the device does not blend into.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "A canvas draws into the first color of a render target, of the format \"rgba16Float\", which the graphics API \"metal\" of this device does not blend into. Give the target a first color whose format support has \"blend\".");
+    }
+
+    EXPECT_THROW(renderer.beginCapture(unblended), std::invalid_argument);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 // A canvas that draws straight into an image cannot sample it, and a lit canvas can, since it draws into images of its own first.
 TEST(RendererTest, RejectsDrawsThatSampleTheirOwnTarget) {
     test::EngineFixture fixture;
@@ -900,7 +960,7 @@ TEST(RendererTest, KeepsAPipelineForEveryProgramAndBlend) {
     for (std::size_t later = 16; later < RendererState::kProgramCount; ++later) {
         const auto program = static_cast<Program>(later);
         const auto earlier = static_cast<Program>(later - 16);
-        EXPECT_NE(state.getPipeline(program, alpha, graphics::PassTarget::Offscreen), state.getPipeline(earlier, additive, graphics::PassTarget::Offscreen)) << later;
+        EXPECT_NE(state.getPipeline(program, alpha, graphics::PassTarget::Offscreen, {}), state.getPipeline(earlier, additive, graphics::PassTarget::Offscreen, {})) << later;
     }
 }
 

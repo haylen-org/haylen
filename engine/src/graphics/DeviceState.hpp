@@ -89,8 +89,8 @@ struct DeviceState {
     // Returns the bytes an image of the size and pixel format holds, for the debug statistics.
     [[nodiscard]] static std::size_t getImageBytes(int width, int height, gpu::Device::PixelFormat format);
 
-    // Creates a render target of a pixel format, such as the floating-point light maps of the 2D renderer.
-    [[nodiscard]] RenderTarget createRenderTarget(int width, int height, gpu::Device::PixelFormat format, Texture::Options options);
+    // Creates a render target of the attachments with the sampling of the options, such as the floating-point light maps of the 2D renderer, which the device checked or the renderer knows the device takes.
+    [[nodiscard]] RenderTarget createRenderTarget(int width, int height, Texture::Options options, const RenderTarget::Options& attachments);
 
     // Creates a texture whose image takes the pixels of the first level of each layer with the next upload, which keeps them for later uploads when the texture is dynamic. With `mipmaps` the image holds every mip level, which the GPU generates after each upload.
     [[nodiscard]] Texture createStagedTexture(const Device::TextureData& data, Texture::Options options, bool dynamic);
@@ -104,6 +104,7 @@ struct DeviceState {
   private:
     // The samples a linear texture with mipmaps takes along the longer side of the footprint of a pixel, so a texture drawn much smaller along one side than the other, such as the middle of a nine-slice squeezed into a narrow button, keeps the detail of its other side.
 
+    [[nodiscard]] Texture createTargetTexture(int width, int height, gpu::Device::PixelFormat format, gpu::Device::ImageKind kind, Texture::Options options);
     [[nodiscard]] static gpu::Device::BorderColor toBorderColor(Texture::BorderColor color) noexcept;
     [[nodiscard]] static gpu::Device::Wrap toWrap(Texture::Wrap wrap) noexcept;
 };

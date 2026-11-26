@@ -177,11 +177,30 @@ int GraphicsBinding::readBufferAsync(lua_State* L) {
 }
 
 int GraphicsBinding::newRenderTarget(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().createRenderTarget(lua::Stack::read<int>(L, 1), lua::Stack::read<int>(L, 2), lua::TypeConverter::readTextureOptions(L, 3)));
+    const int width = lua::Stack::read<int>(L, 1);
+    const int height = lua::Stack::read<int>(L, 2);
+    const haylen::graphics::Texture::Options options = lua::TypeConverter::readTextureOptions(L, 3, {kTargetFields});
+    const haylen::graphics::RenderTarget::Options attachments = readTargetOptions(L, 3);
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().createRenderTarget(width, height, options, attachments));
     return 1;
 }
 
 // Creates a texture from raw RGBA bytes or a fill color with `newTexture(width, height, {pixels = bytes or fill = color, dynamic, filter, wrap})`, where a dynamic texture changes its pixels with `update`, or from the bytes of an image file with `newTexture(bytes, {dynamic, filter, wrap})`, where bytes are a string or a data view.
+haylen::graphics::RenderTarget::Options GraphicsBinding::readTargetOptions(lua_State* L, int index) {
+    haylen::graphics::RenderTarget::Options attachments;
+    if (lua_isnoneornil(L, index)) {
+        return attachments;
+    }
+
+    lua::Table::readField(L, index, "colors", attachments.colors);
+    lua::Table::readField(L, index, "depthFormat", attachments.depthFormat);
+    lua::Table::readField(L, index, "samples", attachments.samples);
+    lua::Table::readField(L, index, "depthTexture", attachments.depthTexture);
+    lua::Table::readField(L, index, "depthResolve", attachments.depthResolve);
+    lua::Table::readField(L, index, "memoryless", attachments.memoryless);
+    return attachments;
+}
+
 int GraphicsBinding::newTexture(lua_State* L) {
     if (lua_type(L, 1) == LUA_TSTRING || luaL_testudata(L, 1, varn::dataview::DataViewModule::kMetatable) != nullptr) {
         pushImageTexture(L);
@@ -396,7 +415,7 @@ void GraphicsBinding::setField(lua_State* L, const char* name, bool value) {
 
 int GraphicsBinding::capabilities(lua_State* L) {
     const haylen::gpu::Device::Capabilities& device = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities();
-    lua_createtable(L, 0, 18);
+    lua_createtable(L, 0, 20);
     setField(L, "maxTextureSize", device.maxImageSize);
     setField(L, "maxArrayLayers", device.maxArrayLayers);
     setField(L, "maxVolumeSize", device.maxVolumeSize);
@@ -408,6 +427,17 @@ int GraphicsBinding::capabilities(lua_State* L) {
     lua::Stack::push(L, device.depthRange);
     lua_setfield(L, -2, "depthRange");
     setField(L, "independentBlend", device.independentBlend);
+    lua_createtable(L, static_cast<int>(haylen::gpu::Device::kDepthResolveNames.size()), 0);
+    int resolves = 0;
+    for (const auto& [name, mode] : haylen::gpu::Device::kDepthResolveNames) {
+        if (device.hasDepthResolve(mode)) {
+            lua::Stack::push(L, name);
+            lua_rawseti(L, -2, ++resolves);
+        }
+    }
+
+    lua_setfield(L, -2, "depthResolves");
+    setField(L, "memorylessAttachments", device.memorylessAttachments);
     setField(L, "gpuTiming", device.gpuTiming);
     setField(L, "maxAnisotropy", device.maxAnisotropy);
     lua::Stack::push(L, device.maxLodBias);
@@ -558,6 +588,48 @@ int GraphicsBinding::targetWidth(lua_State* L) {
 
 int GraphicsBinding::targetHeight(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<haylen::graphics::RenderTarget>(L, 1).getHeight());
+    return 1;
+}
+
+int GraphicsBinding::targetTextures(lua_State* L) {
+    const haylen::graphics::RenderTarget& target = lua::Userdata::check<haylen::graphics::RenderTarget>(L, 1);
+    lua_createtable(L, static_cast<int>(target.getColorCount()), 0);
+    for (std::size_t index = 0; index < target.getColorCount(); ++index) {
+        lua::Stack::push(L, target.getTexture(index));
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+
+    return 1;
+}
+
+int GraphicsBinding::targetDepthTexture(lua_State* L) {
+    const haylen::graphics::Texture& depth = lua::Userdata::check<haylen::graphics::RenderTarget>(L, 1).getDepthTexture();
+    if (!depth.isValid()) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    lua::Stack::push(L, depth);
+    return 1;
+}
+
+int GraphicsBinding::targetColors(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::RenderTarget>(L, 1).getOptions().colors);
+    return 1;
+}
+
+int GraphicsBinding::targetDepthFormat(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::RenderTarget>(L, 1).getOptions().depthFormat);
+    return 1;
+}
+
+int GraphicsBinding::targetSamples(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::RenderTarget>(L, 1).getOptions().samples);
+    return 1;
+}
+
+int GraphicsBinding::targetMemoryless(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::RenderTarget>(L, 1).getOptions().memoryless);
     return 1;
 }
 
@@ -722,7 +794,20 @@ void GraphicsBinding::install(lua_State* L) {
         .meta("__eq", &lua::Userdata::equal<haylen::graphics::Texture>)
         .install();
     // clang-format on
-    lua::ClassBuilder<haylen::graphics::RenderTarget>(L).property("width", &targetWidth).property("height", &targetHeight).property("texture", &targetTexture).meta("__eq", &lua::Userdata::equal<haylen::graphics::RenderTarget>).install();
+    // clang-format off
+    lua::ClassBuilder<haylen::graphics::RenderTarget>(L)
+        .property("width", &targetWidth)
+        .property("height", &targetHeight)
+        .property("texture", &targetTexture)
+        .property("textures", &targetTextures)
+        .property("depthTexture", &targetDepthTexture)
+        .property("colors", &targetColors)
+        .property("depthFormat", &targetDepthFormat)
+        .property("samples", &targetSamples)
+        .property("memoryless", &targetMemoryless)
+        .meta("__eq", &lua::Userdata::equal<haylen::graphics::RenderTarget>)
+        .install();
+    // clang-format on
     lua::ClassBuilder<haylen::graphics::Shader>(L).property("name", &shaderName).property("uniforms", &shaderUniforms).property("textures", &shaderTextures).meta("__eq", &lua::Userdata::equal<haylen::graphics::Shader>).install();
     lua::ClassBuilder<haylen::graphics::VectorImage>(L).property("width", &vectorWidth).property("height", &vectorHeight).function("rasterize", &lua::Binding::native<&rasterizeVector>).meta("__eq", &lua::Userdata::equal<haylen::graphics::VectorImage>).install();
     FontBinding::install(L);

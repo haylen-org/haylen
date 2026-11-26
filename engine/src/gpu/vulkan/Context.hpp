@@ -76,6 +76,11 @@ class Context final {
         return astcHdr;
     }
 
+    // The modes that the GPU resolves multisampled depth by, through the resolves of depth of Vulkan 1.2 or their extension with the second version of render passes, or none without them.
+    [[nodiscard]] VkResolveModeFlags getDepthResolveModes() const noexcept {
+        return depthResolveModes;
+    }
+
     [[nodiscard]] bool hasSwapchain() const noexcept {
         return swapchain;
     }
@@ -152,6 +157,7 @@ class Context final {
     std::uint32_t apiVersion = VK_API_VERSION_1_1;
     std::uint32_t timestampBits = 0;
     VkFormat depthStencilFormat = VK_FORMAT_D24_UNORM_S8_UINT;
+    VkResolveModeFlags depthResolveModes = 0;
     bool dynamicRendering = false;
     bool astcHdr = false;
     bool swapchain = false;

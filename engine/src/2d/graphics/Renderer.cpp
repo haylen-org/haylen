@@ -8,6 +8,7 @@
 #include <limits>
 #include <numeric>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -207,6 +208,7 @@ void Renderer::beginTarget(const graphics::RenderTarget& target, const Camera& c
         throw std::invalid_argument("A render target canvas needs a valid render target.");
     }
 
+    requireBlendedColor(target);
     validatePostProcess(options);
     checkViewport(camera);
 
@@ -216,11 +218,23 @@ void Renderer::beginTarget(const graphics::RenderTarget& target, const Camera& c
     state->openCanvas({.kind = Canvas::Kind::Target, .options = options, .target = target, .viewSize = area.getSize(), .view = camera.viewTransform(area.getSize()), .frame = Canvas::frameOf(area, whole)});
 }
 
+// A canvas draws into the first color of a render target, and its draws blend there.
+void Renderer::requireBlendedColor(const graphics::RenderTarget& target) const {
+    const gpu::Device::PixelFormat format = target.getTexture().getFormat();
+    if (state->device.getGpu().getCapabilities().getFormat(format).blend) {
+        return;
+    }
+
+    const auto named = std::ranges::find(gpu::Device::kPixelFormatNames, format, &std::pair<std::string_view, gpu::Device::PixelFormat>::second);
+    throw std::invalid_argument(std::format("A canvas draws into the first color of a render target, of the format \"{}\", which the graphics API \"{}\" of this device does not blend into. Give the target a first color whose format support has \"blend\".", named->first, state->device.getApiName()));
+}
+
 void Renderer::beginCapture(const graphics::RenderTarget& target, math::Color clear) {
     if (!target.isValid()) {
         throw std::invalid_argument("A capture needs a valid render target.");
     }
 
+    requireBlendedColor(target);
     finishCanvas();
     state->openCaptures.push_back(state->captures.size());
     state->captures.push_back({.target = target, .clear = clear});

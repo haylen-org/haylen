@@ -17,7 +17,7 @@ namespace haylen::gpu::vulkan {
 class Context;
 class ReleaseQueue;
 
-// The render passes and framebuffers of a device whose GPU lacks dynamic rendering. A render pass is made once for each choice of formats, sample counts and load and store actions, and a framebuffer once for each render pass, set of image views and size. The attachments keep their layouts through a pass, since the device moves them in and out of those layouts with barriers of its own.
+// The render passes and framebuffers of a device whose GPU lacks dynamic rendering. A render pass is made once for each choice of formats, sample counts, load and store actions and resolves, and a framebuffer once for each render pass, set of image views and size. The attachments keep their layouts through a pass, since the device moves them in and out of those layouts with barriers of its own. A pass that resolves its depth is made through the second version of render passes, which a GPU that resolves depth has, and every other pass through the first.
 class RenderPassCache final {
   public:
     struct Attachment {
@@ -31,18 +31,20 @@ class RenderPassCache final {
         friend bool operator==(const Attachment&, const Attachment&) = default;
     };
 
-    // The color attachments, the formats of the images that resolve them or `VK_FORMAT_UNDEFINED` for none, and the depth and stencil attachment, whose format is undefined when the pass has none.
+    // The color attachments, the formats of the images that resolve them or `VK_FORMAT_UNDEFINED` for none, the depth and stencil attachment, whose format is undefined when the pass has none, and the format of the image that resolves its depth by its mode, undefined for none.
     struct PassKey {
         std::array<Attachment, Device::kMaxColorTargets> colors{};
         std::array<VkFormat, Device::kMaxColorTargets> resolves{};
         std::uint32_t colorCount = 0;
         Attachment depth{};
+        VkFormat depthResolve = VK_FORMAT_UNDEFINED;
+        VkResolveModeFlagBits depthResolveMode = VK_RESOLVE_MODE_NONE;
 
         friend bool operator==(const PassKey&, const PassKey&) = default;
     };
 
-    // The views of a framebuffer in the order of the attachments of its render pass: the colors, the images that resolve them and the depth and stencil image.
-    static constexpr std::size_t kMaxViews = Device::kMaxColorTargets * 2 + 1;
+    // The views of a framebuffer in the order of the attachments of its render pass: the colors, the images that resolve them, the depth and stencil image and the image that resolves its depth.
+    static constexpr std::size_t kMaxViews = Device::kMaxColorTargets * 2 + 2;
 
     RenderPassCache(const Context& owner, ReleaseQueue& releases) noexcept : context(owner), releaseQueue(releases) {}
     ~RenderPassCache();
@@ -71,6 +73,9 @@ class RenderPassCache final {
     };
 
     [[nodiscard]] VkRenderPass makeRenderPass(const PassKey& key) const;
+    [[nodiscard]] VkRenderPass makeDepthResolvePass(const PassKey& key, std::span<const VkAttachmentDescription> described, const VkSubpassDescription& subpass) const;
+    [[nodiscard]] static VkAttachmentDescription2 toVersion2(const VkAttachmentDescription& attachment) noexcept;
+    [[nodiscard]] static VkAttachmentReference2 toVersion2(const VkAttachmentReference& reference, VkImageAspectFlags aspects) noexcept;
 
     const Context& context;
     ReleaseQueue& releaseQueue;

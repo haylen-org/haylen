@@ -12,6 +12,7 @@
 
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/SamplerRules.hpp"
 #include "gpu/d3d11/BufferReadback.hpp"
 #include "gpu/d3d11/ImageReadback.hpp"
@@ -837,26 +838,14 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
 }
 
 void Device::beginOffscreenPass(const PassDesc& desc) {
-    if (desc.colors.size() > kMaxColorTargets) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    int width = 0;
-    int height = 0;
+    const PassRules::Extent extent = PassRules::check(desc, capabilities, [this](Image image) -> const ImageRules::Description& { return images.get(image.id).description; });
 
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& color = desc.colors[index];
         ImageRecord& image = images.get(color.image.id);
-        if (image.description.isView() || image.description.kind != ImageKind::RenderTarget) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
         ID3D11RenderTargetView* view = getAttachment(image, color.mipLevel, color.layer).color.Get();
         pass.colors[index] = view;
         pass.discardColors[index] = color.store == Store::Discard;
-        const ImageInfo::Extent extent = image.description.getLevelExtent(color.mipLevel);
-        width = extent.width;
-        height = extent.height;
 
         if (color.load == Load::Clear) {
             const std::array<float, 4> clear{color.clear.r, color.clear.g, color.clear.b, color.clear.a};
@@ -878,16 +867,9 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& image = images.get(attachment.image.id);
-        if (image.description.isView() || image.description.kind != ImageKind::DepthStencil) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
         pass.depthStencil = getAttachment(image, attachment.mipLevel, attachment.layer).depth.Get();
         const bool stencil = ImageInfo::hasStencil(image.description.format);
         pass.discardDepthStencil = attachment.depthStore == Store::Discard && (!stencil || attachment.stencilStore == Store::Discard);
-        const ImageInfo::Extent extent = image.description.getLevelExtent(attachment.mipLevel);
-        width = width > 0 ? width : extent.width;
-        height = height > 0 ? height : extent.height;
 
         UINT clear = attachment.depthLoad == Load::Clear ? static_cast<UINT>(D3D11_CLEAR_DEPTH) : 0U;
         clear |= stencil && attachment.stencilLoad == Load::Clear ? static_cast<UINT>(D3D11_CLEAR_STENCIL) : 0U;
@@ -899,7 +881,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     }
 
     context->OMSetRenderTargets(pass.colorCount, pass.colors.data(), pass.depthStencil);
-    setViewportAndScissor(width, height);
+    setViewportAndScissor(extent.width, extent.height);
 }
 
 Device::Attachment& Device::getAttachment(ImageRecord& image, int mipLevel, int layer) {
@@ -1096,7 +1078,9 @@ void Device::bindUniformBuffers(const PipelineRecord& pipeline, const Bindings& 
 
 void Device::applyTextures(const PipelineRecord& pipeline, const Bindings& bindings) {
     for (const Register& texture : pipeline.textures) {
-        ID3D11ShaderResourceView* view = images.get(bindings.textures[static_cast<std::size_t>(texture.slot)].id).view.Get();
+        const ImageRecord& image = images.get(bindings.textures[static_cast<std::size_t>(texture.slot)].id);
+        ImageRules::checkSampled(image.description);
+        ID3D11ShaderResourceView* view = image.view.Get();
         ID3D11ShaderResourceView*& held = bound.textures[texture.stage][texture.number];
         if (held == view) {
             continue;
@@ -1418,11 +1402,8 @@ void Device::attachSurface(const Surface& target) {
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
     const ImageRules::Description& description = record.description;
-    if (description.isView() || description.kind != ImageKind::RenderTarget || description.sampleCount > 1 || description.type == TextureType::Volume) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    if (width <= 0 || height <= 0 || width > description.width || height > description.height) {
+    ImageRules::checkReadback(description, width, height);
+    if (description.type == TextureType::Volume) {
         throw ContractError(ContractError::Rule::Readback);
     }
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
 #include <cstdint>
 #include <functional>
@@ -310,6 +311,51 @@ TEST_P(GpuRendererTest, ComposesRenderTargets) {
         renderer.draw({.texture = inner.getTexture(), .position = {92.0F, 92.0F}, .size = {48.0F, 48.0F}, .rotation = std::numbers::pi_v<float> / 4.0F});
     });
     // clang-format on
+}
+
+// A canvas into a render target of several samples, memoryless or not, draws into its samples, which resolve into its texture, so the edges of a turned sprite mix the sprite with what lies behind it, while a target of one sample keeps those edges hard. The second color of a target of two takes nothing that the canvas draws.
+TEST_P(GpuRendererTest, DrawsCanvasesIntoTheSamplesOfARenderTarget) {
+    graphics::Device& device = fixture->engine().getGraphics();
+    const std::uint8_t counts = device.getGpu().getCapabilities().getFormat(gpu::Device::PixelFormat::Rgba8).sampleCounts;
+    if (counts < 2) {
+        GTEST_SKIP() << "The device draws into no render target of several samples.";
+    }
+
+    const int samples = static_cast<int>(std::bit_floor(counts));
+    const graphics::Texture& white = device.getWhiteTexture();
+    const graphics::RenderTarget single = device.createRenderTarget(32, 32);
+    const graphics::RenderTarget kept = device.createRenderTarget(32, 32, {}, {.colors = {gpu::Device::PixelFormat::Rgba8, gpu::Device::PixelFormat::Rgba8}, .samples = samples});
+    const graphics::RenderTarget memoryless = device.createRenderTarget(32, 32, {}, {.samples = samples, .memoryless = true});
+    std::optional<graphics::Image> image;
+    // clang-format off
+    readScene("samples", [&](core::Engine&, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+        for (const graphics::RenderTarget& layer : {single, kept, memoryless}) {
+            renderer.beginTarget(layer, topLeft(), {.clear = math::Color::black()});
+            renderer.draw({.texture = white, .position = {16.0F, 16.0F}, .size = {20.0F, 20.0F}, .rotation = 0.4F});
+        }
+
+        renderer.beginTarget(into, topLeft(), {.clear = math::Color::black()});
+        const std::array<graphics::RenderTarget, 3> drawn{single, kept, memoryless};
+        for (std::size_t index = 0; index < drawn.size(); ++index) {
+            renderer.draw({.texture = drawn[index].getTexture(), .position = {static_cast<float>(index) * 40.0F + 16.0F, 16.0F}, .size = {32.0F, 32.0F}});
+        }
+    }, image);
+    // clang-format on
+    ASSERT_TRUE(image.has_value());
+
+    std::array<int, 3> mixed{};
+    for (std::size_t index = 0; index < mixed.size(); ++index) {
+        for (int y = 0; y < 32; ++y) {
+            for (int x = 0; x < 32; ++x) {
+                const float red = image->getPixel((static_cast<int>(index) * 40) + x, y).r;
+                mixed[index] += red > 0.1F && red < 0.9F ? 1 : 0;
+            }
+        }
+    }
+
+    EXPECT_EQ(mixed[0], 0) << "A target of one sample mixed the edges of a sprite.";
+    EXPECT_GT(mixed[1], 8) << "The samples of a target did not resolve into its texture.";
+    EXPECT_GT(mixed[2], 8) << "The samples of a memoryless target did not resolve into its texture.";
 }
 
 // Groups whose blends mix with what lies below, which read a copy of what their canvas drew before them, over stripes of four colors.

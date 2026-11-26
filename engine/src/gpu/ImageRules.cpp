@@ -17,11 +17,11 @@ ImageRules::Description ImageRules::check(const Device::ImageDesc& desc, const D
         checkLevels(desc);
     }
 
-    return {.type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .format = desc.format, .kind = desc.kind};
+    return {.type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .format = desc.format, .kind = desc.kind, .transient = desc.transient};
 }
 
 ImageRules::Description ImageRules::checkView(const Description& image, const Device::ViewDesc& desc, const Device::Capabilities& capabilities) {
-    if (!capabilities.imageViews || image.isView() || image.sampleCount != 1) {
+    if (!capabilities.imageViews || image.isView() || image.sampleCount != 1 || image.transient) {
         throw ContractError(ContractError::Rule::View);
     }
 
@@ -100,6 +100,22 @@ void ImageRules::checkMipmaps(const Description& image, const Device::Capabiliti
     }
 }
 
+void ImageRules::checkSampled(const Description& image) {
+    if (image.transient) {
+        throw ContractError(ContractError::Rule::Bindings);
+    }
+}
+
+void ImageRules::checkReadback(const Description& image, int width, int height) {
+    if (image.isView() || image.kind != Device::ImageKind::RenderTarget || image.sampleCount != 1 || image.transient) {
+        throw ContractError(ContractError::Rule::Readback);
+    }
+
+    if (width < 1 || height < 1 || width > image.width || height > image.height) {
+        throw ContractError(ContractError::Rule::Readback);
+    }
+}
+
 bool ImageRules::reaches(Device::Image sampled, const Description& description, Device::Image image, int mipLevel, int layer) noexcept {
     const Device::Image viewed = description.isView() ? description.viewed : sampled;
     if (viewed != image || mipLevel < description.baseMipLevel || mipLevel >= description.baseMipLevel + description.mipLevels) {
@@ -154,7 +170,7 @@ void ImageRules::checkShape(const Device::ImageDesc& desc, const Device::Capabil
     }
 }
 
-// Depth formats belong to depth stencil images alone, which are no volume since no graphics API has depth volumes, block compressed formats to textures that are no volume and whose sides hold whole blocks, only textures come with pixels, only attachments take samples, and the format is one the device makes images of that kind in.
+// Depth formats belong to depth stencil images alone, which are no volume since no graphics API has depth volumes, block compressed formats to textures that are no volume and whose sides hold whole blocks, only textures come with pixels, only attachments take samples and are transient, a transient image is flat with one mip level and one layer, as the memory of the tiles of a pass holds it, and the format is one the device makes images of that kind in.
 void ImageRules::checkKind(const Device::ImageDesc& desc, const Device::Capabilities& capabilities) {
     if (ImageInfo::isDepth(desc.format) != (desc.kind == Device::ImageKind::DepthStencil)) {
         throw ContractError(ContractError::Rule::Image);
@@ -179,9 +195,13 @@ void ImageRules::checkKind(const Device::ImageDesc& desc, const Device::Capabili
         throw ContractError(ContractError::Rule::Image);
     }
 
-    const bool renders = desc.kind == Device::ImageKind::RenderTarget || desc.kind == Device::ImageKind::DepthStencil;
+    const bool attachment = desc.kind == Device::ImageKind::RenderTarget || desc.kind == Device::ImageKind::DepthStencil;
+    if (desc.transient && (!attachment || desc.type != Device::TextureType::Flat || desc.mipLevels != 1)) {
+        throw ContractError(ContractError::Rule::Image);
+    }
+
     const Device::FormatSupport& support = capabilities.getFormat(desc.format);
-    if (!(renders ? support.render : support.sample)) {
+    if (!(attachment ? support.render : support.sample)) {
         throw ContractError(ContractError::Rule::Image);
     }
 }

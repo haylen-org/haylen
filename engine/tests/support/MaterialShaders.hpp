@@ -76,6 +76,24 @@ void main() {
 @program sky haylen_vs sky_fs
 )";
 
+    // A material that darkens what lies behind the depth of a render target, through a texture of the sample type depth.
+    static constexpr const char* kFogSource = R"(@include haylen/material.glsl
+
+@fs fog_fs
+@include_block haylen_fragment
+@sample_type scene_depth depth
+layout(binding=1) uniform texture2D scene_depth;
+layout(binding=1) uniform samplerShadow scene_sampler;
+
+void main() {
+    float behind = texture(sampler2DShadow(scene_depth, scene_sampler), vec3(uv, 0.5));
+    haylen_output(color * behind);
+}
+@end
+
+@program fog haylen_vs fog_fs
+)";
+
     [[nodiscard]] static std::vector<std::uint8_t> compile(const std::string& name, const char* source);
     [[nodiscard]] static const std::vector<std::uint8_t>& tint();
 };

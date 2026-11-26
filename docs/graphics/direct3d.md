@@ -86,6 +86,8 @@ Compiling a shader takes time, so the engine asks the device to prepare programs
 | Cube arrays | Yes, `TextureCubeArray` of feature level 10.1 and later. | The same. |
 | Views of images | Shader resource views of the range of mip levels and layers, whose conflicts with render target views the runtime tracks by subresource. | Shader resource views of the range, and the device moves the states of exactly the subresources that a use reaches, so a pass samples a view of the levels it does not draw into. |
 | Mip generation | `GenerateMips`, for the formats with `D3D11_FORMAT_SUPPORT_MIP_AUTOGEN`, on images with the bind of render targets and `D3D11_RESOURCE_MISC_GENERATE_MIPS`. | `d3d12::MipmapGenerator` draws each level of each layer or slice from a view of the level above with a linear filter, since Direct3D 12 has no command for it, for the formats with render target, linear sample and mip support. |
+| Depth resolves | None, since `ResolveSubresource` takes no depth format. | `Min` and `Max` of `ResolveSubresourceRegion` on the depth plane once the render pass ends, which keeps the samples for it, where `ProgrammableSamplePositionsTier` of `D3D12_FEATURE_DATA_D3D12_OPTIONS2` is at least the first tier, as the specification of that call requires. |
+| Transient attachments | Ordinary textures. | Ordinary committed resources. |
 
 ## Debugging
 
@@ -104,7 +106,6 @@ A device is lost when the GPU is removed or reset, or when its driver fails or u
 ## Limits
 
 - Dynamic images take their pixels for their first mip level, every layer at once.
-- A multisampled attachment resolves into the first mip level and the first layer of its resolve image.
 - A readback copies the first mip level and the first layer of a render target of one sample.
 - The heap of samplers that shaders read holds 2048 descriptors, the most that Direct3D 12 allows, and a frame reuses the table of each set of samplers it binds. A frame that binds more different samplers than the heap holds goes on in a fresh heap, while the GPU reads the old one until it finished the frames that used it. A heap of textures that runs out of room makes way for one twice as large the same way.
 - Each image of the Direct3D 12 device has memory of its own, so making many images in one frame costs more than making buffers. Small buffers share large blocks, so GPU debuggers show them under the name of their block rather than their own label.

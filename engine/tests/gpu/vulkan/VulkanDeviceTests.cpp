@@ -89,6 +89,34 @@ TEST_F(VulkanDeviceTest, ResolvesAndKeepsAttachmentsThroughRenderPasses) {
     device->destroy(target);
 }
 
+// A pass that resolves its depth makes a render pass of the second version with the resolve of the depth, under validation, and the next pass keeps the depth it resolved.
+TEST_F(VulkanDeviceTest, ResolvesDepthThroughRenderPasses) {
+    if (!device->getCapabilities().hasDepthResolve(gpu::Device::DepthResolve::SampleZero)) {
+        GTEST_SKIP() << "The Vulkan driver of this machine resolves no depth, which needs Vulkan 1.2 or \"VK_KHR_depth_stencil_resolve\".";
+    }
+
+    const gpu::Device::PixelFormat format = gpu::Device::PixelFormat::Depth32Float;
+    const gpu::Device::Image colorSamples = device->makeImage({.width = kSize, .height = kSize, .sampleCount = 4, .kind = gpu::Device::ImageKind::RenderTarget, .transient = true, .label = "haylen-test-color-samples"});
+    const gpu::Device::Image depthSamples = device->makeImage({.width = kSize, .height = kSize, .sampleCount = 4, .format = format, .kind = gpu::Device::ImageKind::DepthStencil, .label = "haylen-test-depth-samples"});
+    const gpu::Device::Image target = device->makeImage({.width = kSize, .height = kSize, .kind = gpu::Device::ImageKind::RenderTarget, .label = "haylen-test-target"});
+    const gpu::Device::Image depth = device->makeImage({.width = kSize, .height = kSize, .format = format, .kind = gpu::Device::ImageKind::DepthStencil, .label = "haylen-test-resolved-depth"});
+
+    const gpu::Device::ColorAttachment resolved{.image = colorSamples, .store = gpu::Device::Store::Discard, .clear = math::Color{0.0F, 0.0F, 1.0F, 1.0F}, .resolve = target};
+    device->beginPass({.colors = std::span(&resolved, 1), .depthStencil = gpu::Device::DepthStencilAttachment{.image = depthSamples, .clearDepth = 0.25F, .resolve = depth}, .label = "haylen-test-depth-resolve"});
+    device->endPass();
+    const gpu::Device::ColorAttachment kept{.image = target, .load = gpu::Device::Load::Keep};
+    device->beginPass({.colors = std::span(&kept, 1), .depthStencil = gpu::Device::DepthStencilAttachment{.image = depth, .depthLoad = gpu::Device::Load::Keep, .depthStore = gpu::Device::Store::Store}, .label = "haylen-test-kept-depth"});
+    device->endPass();
+    device->commit();
+
+    const std::vector<std::uint8_t> pixels = read(target);
+    ASSERT_EQ(pixels.size(), static_cast<std::size_t>(kSize * kSize * 4));
+    EXPECT_EQ((std::array<std::uint8_t, 4>{pixels[0], pixels[1], pixels[2], pixels[3]}), (std::array<std::uint8_t, 4>{0, 0, 255, 255}));
+    for (const gpu::Device::Image image : {colorSamples, depthSamples, target, depth}) {
+        device->destroy(image);
+    }
+}
+
 // The framebuffers of destroyed render targets go with them, while the frames in flight may still draw with them.
 TEST_F(VulkanDeviceTest, ReleasesTheFramebuffersOfDestroyedImages) {
     std::vector<gpu::Device::Pool> before;

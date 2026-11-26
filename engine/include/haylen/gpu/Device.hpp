@@ -377,6 +377,19 @@ class Device {
         Discard,
     };
 
+    // How a depth resolve turns the samples of each pixel into one depth: the depth of its first sample, the smallest of them or the largest of them.
+    enum class DepthResolve : std::uint8_t {
+        SampleZero,
+        Min,
+        Max,
+    };
+
+    static constexpr std::array<std::pair<std::string_view, DepthResolve>, 3> kDepthResolveNames{{
+        {"sampleZero", DepthResolve::SampleZero},
+        {"min", DepthResolve::Min},
+        {"max", DepthResolve::Max},
+    }};
+
     // The handles of the objects of a device, whose id 0 names nothing.
     struct Buffer {
         std::uint64_t id = 0;
@@ -465,6 +478,12 @@ class Device {
         // Whether each color target of a pipeline takes a blend and a write mask of its own, rather than all of them those of the first target.
         bool independentBlend = false;
 
+        // The modes of the depth resolves of passes, as bits whose values are 1 shifted left by the value of each `DepthResolve`, 0 on a device without depth resolves, which Direct3D 11, OpenGL, OpenGL ES, WebGL2 and WebGPU lack.
+        std::uint8_t depthResolves = 0;
+
+        // Whether transient images take no memory, since tile GPUs keep them in the memory of their tiles for the pass alone, rather than the memory of an image of their size.
+        bool memorylessAttachments = false;
+
         // Whether the device measures the time the GPU takes for each frame.
         bool gpuTiming = false;
 
@@ -490,6 +509,9 @@ class Device {
         [[nodiscard]] constexpr const FormatSupport& getFormat(PixelFormat format) const noexcept {
             return formats[static_cast<std::size_t>(format)];
         }
+        [[nodiscard]] constexpr bool hasDepthResolve(DepthResolve mode) const noexcept {
+            return (depthResolves & (1U << static_cast<unsigned>(mode))) != 0;
+        }
         [[nodiscard]] constexpr FormatSupport& getFormat(PixelFormat format) noexcept {
             return formats[static_cast<std::size_t>(format)];
         }
@@ -504,7 +526,7 @@ class Device {
         std::string_view label{};
     };
 
-    // The pixels of a texture come with the image, one span per mip level from the largest, each holding every layer of its level, and the other kinds start without pixels. The layers count the slices of a volume, the layers of an array, the six faces of a cube and six faces for each cube of a cube array, in the order +X, -X, +Y, -Y, +Z and -Z.
+    // The pixels of a texture come with the image, one span per mip level from the largest, each holding every layer of its level, and the other kinds start without pixels. The layers count the slices of a volume, the layers of an array, the six faces of a cube and six faces for each cube of a cube array, in the order +X, -X, +Y, -Y, +Z and -Z. A transient image is a flat render target or depth stencil image of one mip level and one layer whose contents never leave the pass that draws into it, which takes no memory on a device with `Capabilities::memorylessAttachments`: each pass clears it or leaves it undefined and discards it, and nothing samples it, views it, resolves into it or reads it back.
     struct ImageDesc {
         TextureType type = TextureType::Flat;
         int width = 0;
@@ -514,6 +536,7 @@ class Device {
         int sampleCount = 1;
         PixelFormat format = PixelFormat::Rgba8;
         ImageKind kind = ImageKind::Texture;
+        bool transient = false;
         std::span<const std::span<const std::byte>> levels{};
         std::string_view label{};
     };
@@ -688,7 +711,7 @@ class Device {
         int resolveLayer = 0;
     };
 
-    // The depth and stencil attachment of an offscreen pass, at a mip level and a layer of its image, such as one cascade of an array of shadow maps or one face of a cube of shadows. A layer after the first needs `Capabilities::depthLayers`.
+    // The depth and stencil attachment of an offscreen pass, at a mip level and a layer of its image, such as one cascade of an array of shadow maps or one face of a cube of shadows. A layer after the first needs `Capabilities::depthLayers`. A multisampled depth of a format without stencil resolves into a mip level and a layer of a depth stencil image of one sample and the same format when the pass ends, by a mode of `Capabilities::depthResolves`, since Vulkan resolves the stencil of a format that has it with the depth unless the GPU resolves them apart.
     struct DepthStencilAttachment {
         Image image{};
         int mipLevel = 0;
@@ -699,6 +722,10 @@ class Device {
         Load stencilLoad = Load::Clear;
         Store stencilStore = Store::Discard;
         std::uint8_t clearStencil = 0;
+        Image resolve{};
+        int resolveMipLevel = 0;
+        int resolveLayer = 0;
+        DepthResolve resolveMode = DepthResolve::SampleZero;
     };
 
     // A pass draws into the swapchain of a surface when it names no attachment, the window for the surface 0 or a surface that `addSurface` made, clearing its color, depth and stencil as its loads say. The swapchain passes of a frame into one surface follow one another, since a device may present a surface once a pass into another surface leaves it. A swapchain pass that keeps the contents keeps the depth, the stencil and the multisampled color only when it directly follows the swapchain pass of the same surface whose contents it keeps, with no debug group pushed or popped and no write into a dynamic buffer or copy of buffers between them. After an offscreen pass, a debug group, such a write or a copy between them, a window of one sample keeps its color alone, and a multisampled window keeps no color, so a renderer of a multisampled window draws the offscreen passes of a frame before its swapchain passes.
@@ -886,7 +913,7 @@ class Device {
     // Lets go of a surface that `addSurface` made, whose objects the frames in flight still draw into wait for them.
     virtual void removeSurface(int surface) = 0;
 
-    // Starts copying the pixels of the first mip level and layer of a render target, which must come after the frame that renders it was committed.
+    // Starts copying a region of the pixels of the first mip level and layer of a render target, of the width and the height from its first row and column, which must come after the frame that renders it was committed.
     [[nodiscard]] virtual std::unique_ptr<Readback> readImage(Image image, int width, int height) = 0;
 
     // Starts copying a range of a buffer that is a copy source, at an offset and of a size that are multiples of 4, outside a pass. The copy reads what the committed frames left in the buffer, so it comes after the frame that wrote it was committed.

@@ -73,6 +73,8 @@ Shader packages carry SPIR-V modules, the `spirv` language, with the descriptor 
 | Cube arrays | Where the GPU has the feature `imageCubeArray`, which the device turns on. Cubes and cube arrays are made cube compatible, so array views of their faces work. |
 | Views of images | Image views of the range, and every image rests in one layout while a pass moves only the mip level and the layer that it draws into, so a pass samples a view of the other levels. |
 | Mip generation | A chain of `vkCmdBlitImage` with a linear filter, level by level, for the formats whose optimal tiling has blit source, blit destination and linear filtering. |
+| Depth resolves | The modes of `supportedDepthResolveModes` in `VkPhysicalDeviceDepthStencilResolveProperties`, where the GPU has Vulkan 1.2 or `VK_KHR_depth_stencil_resolve`, which always hold the first sample. Dynamic rendering sets the resolve on the depth attachment, and a render pass that resolves depth comes from `vkCreateRenderPass2` with `VkSubpassDescriptionDepthStencilResolve` and no stencil resolve. |
+| Transient attachments | Images with `VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT` and their attachment usage alone, in memory with `VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT` where a memory type of the GPU has it, which `memorylessAttachments` reports, and in device memory elsewhere. |
 
 ## Debugging
 

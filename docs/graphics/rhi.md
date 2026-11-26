@@ -119,6 +119,25 @@ Inside a pass the renderer calls, in this order for each draw:
 
 Every device remembers what it sent last, so a binding, a pipeline or a value that does not change costs nothing. Debug groups wrap commands with `pushDebugGroup` and `popDebugGroup`, and GPU debuggers show their names.
 
+### Attachments
+
+`PassRules` of `engine/src/gpu/PassRules.hpp` checks the attachments of every offscreen pass for every device before the device records anything, so each device refuses the same passes: every attachment is an image of its kind at a mip level and a layer it holds, all of them have one size and one sample count, and each resolve names an image of one sample of the same format and size at its own mip level and layer. The capabilities say what else a pass may ask for:
+
+- A multisampled depth resolves into a depth stencil image of one sample when its `DepthStencilAttachment` names a `resolve` with its `resolveMipLevel`, `resolveLayer` and `resolveMode`. The modes of `DepthResolve` are `SampleZero`, the depth of the first sample, `Min`, the nearest of the samples, and `Max`, the farthest of them, and `Capabilities::depthResolves` holds the modes that the device takes. A post effect that reads the depth of a multisampled scene, such as ambient occlusion or depth of field, reads its resolve.
+- A depth resolve takes a depth format without stencil, since Vulkan resolves the stencil of a format that has it by the mode of the depth unless the GPU resolves them apart.
+- A transient image, an `ImageDesc` with `transient` set, is a flat render target or depth stencil image of one mip level whose contents never leave the pass that draws into it. Each pass clears it or leaves it undefined and discards it, and nothing samples it, views it, resolves into it or reads it back. On a device with `Capabilities::memorylessAttachments` it takes no memory, since a tile GPU keeps it in the memory of its tiles for the pass alone. The multisampled color that resolves into a texture and the depth that only tests the draws of one pass are the attachments that gain most.
+
+Every device checks the transient rules whether its memory holds the image or not, so a renderer that breaks them fails on every API. Each graphics API decides what a device offers:
+
+| Device | Depth resolves | Transient attachments |
+| --- | --- | --- |
+| Metal | `SampleZero`, `Min` and `Max` through the resolve texture and the depth resolve filter of the depth attachment, on the GPUs of the family Apple3 and later and on every Mac. None on the A8 and in the simulators, which draw like an Apple2 GPU. | `MTLStorageModeMemoryless` on every Apple GPU, the Apple silicon Macs included, and ordinary private images on Intel Macs and in the simulators. |
+| Direct3D 12 | `Min` and `Max` through `ResolveSubresourceRegion` after the pass, where the GPU has the first tier of programmable sample positions, which that call needs. Direct3D 12 has no mode of the first sample. | Ordinary images. |
+| Direct3D 11 | None, since `ResolveSubresource` resolves no depth format. | Ordinary images. |
+| Vulkan | `SampleZero`, and `Min` and `Max` where the GPU reports them, through `VK_KHR_depth_stencil_resolve` or Vulkan 1.2. | `VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT` in lazily allocated memory where the GPU has such memory, as tile GPUs do, and ordinary images elsewhere. |
+| OpenGL, OpenGL ES and WebGL2 | None, since `glBlitFramebuffer` resolves depth in a way that each driver chooses and no mode names. | Ordinary images, which the passes invalidate. |
+| WebGPU | None, since WebGPU has no depth resolve. | Textures that render alone, with no other usage. |
+
 ## Uploads
 
 Two calls bring data from the CPU into a frame:
@@ -159,7 +178,7 @@ The engine never generates mip levels on the CPU in the place of the GPU. A form
 
 ## Reading pixels and bytes back
 
-`readBuffer(buffer, offset, size)` copies a range of a buffer that is a copy source, of whole words, into memory that the CPU reads, after the frame that wrote it was committed, and its `Readback` hands the bytes over as they are once the GPU finished the copy. `readImage(image, width, height)` starts copying the first mip level and layer of a render target after the frame that drew it was committed. Every device refuses a size larger than the render target. It returns a `Readback`, whose `poll` gives nothing until the GPU finished the copy, then hands over four bytes a pixel, red, green, blue and alpha, whatever the format, and gives nothing again after that. The rows start with the first row that the device stores, which `Capabilities::originTopLeft` names. No device waits for the GPU to finish a copy. The [rendering guide](rendering.md#reading-pixels-back) shows how each API copies.
+`readBuffer(buffer, offset, size)` copies a range of a buffer that is a copy source, of whole words, into memory that the CPU reads, after the frame that wrote it was committed, and its `Readback` hands the bytes over as they are once the GPU finished the copy. `readImage(image, width, height)` starts copying the first mip level and layer of a render target after the frame that drew it was committed. It copies a region of the width and height from the first row and column, so a reader of a few pixels, such as picking, copies only those, and every device refuses a region without a pixel or larger than the render target. It returns a `Readback`, whose `poll` gives nothing until the GPU finished the copy, then hands over four bytes a pixel, red, green, blue and alpha, whatever the format, and gives nothing again after that. The rows start with the first row that the device stores, which `Capabilities::originTopLeft` names. No device waits for the GPU to finish a copy. The [rendering guide](rendering.md#reading-pixels-back) shows how each API copies.
 
 ## Frames in flight and lifetimes
 
@@ -280,6 +299,8 @@ A device is lost when the GPU resets or is removed, when its driver fails or upd
 | `originTopLeft` | Whether the first row of a render target is its top row. |
 | `depthRange` | The range of depth in clip space, `ZeroToOne` or `NegativeOneToOne` of `math::Mat4::DepthRange`, which the vertex stages write and the projections of the renderers take. |
 | `independentBlend` | Whether each color target of a pipeline takes a blend and a write mask of its own. Without it, every target takes those of the first. |
+| `depthResolves` | The modes of `DepthResolve` that a pass resolves a multisampled depth by, as bits that `hasDepthResolve(mode)` reads, 0 on a device without depth resolves. |
+| `memorylessAttachments` | Whether transient images take no memory. |
 | `gpuTiming` | Whether `getGpuFrameSeconds` measures the time the GPU took for a frame. |
 | `maxAnisotropy` | The most samples of anisotropic filtering that a sampler takes, 1 without anisotropic filtering. |
 | `maxLodBias` | The largest bias of the level of detail that a sampler adds in either direction, 0 where samplers take no bias. |
@@ -390,11 +411,12 @@ A frame capture records every command of the device during some frames into a fi
 - A draw comes inside a pass, after a pipeline, its bindings and every uniform block of its program, and reads only indices its buffer holds.
 - A buffer follows the [rules of buffers](#buffers): usages that the device has and that serve together, data for an immutable buffer, no copy of a stream buffer, writes, copies and readbacks of whole words inside the buffer, vertex, index and uniform buffers with those usages, and uniform buffers at aligned offsets with room for their block, which no `applyUniforms` of the same slot meets.
 - A texture slot takes an image or a view of its type, one that filters never takes a format the device cannot filter, and a pass never samples a mip level and a layer that it draws or resolves into, while it samples a view of the others.
-- Depth stencil attachments and resolves name a mip level and a layer that their image holds, of the size of the pass, a depth attachment takes a layer after the first only with `depthLayers`, and a resolve image is no volume.
+- Depth stencil attachments and resolves name a mip level and a layer that their image holds, of the size of the pass, a depth attachment takes a layer after the first only with `depthLayers`, a resolve image is no volume, and a depth resolve takes a mode the device has and a format without stencil, as the shared [rules of attachments](#attachments) say.
+- A transient image is a flat attachment of one mip level that each pass clears or leaves undefined and discards, and which nothing samples, views, resolves into or reads back.
 - Writes reach a mip level and a layer of a dynamic image once a call, and mip levels generate only for dynamic images and render targets of a format with `mipmaps`, outside a pass and after the writes of the frame.
 - Stream buffers and dynamic images take their data before the passes that read them, once a frame.
 - Debug groups close inside the pass that opened them, and the surface goes and comes back in turn.
-- A readback hands its pixels over once.
+- A readback reads a region inside a render target of one sample and hands its pixels over once.
 - The swapchain passes of a frame into one surface follow one another.
 - Pools hold at most the sizes that `NullDevice.hpp` declares, so a leak of GPU objects fails a test.
 - A capture begins and ends in turn outside a pass, only on a device that a test made with a capture tool.
@@ -443,6 +465,8 @@ The matrix lists what each device reports. "From the GPU" means that the device 
 | HDR profile of ASTC | From the A13 and M1 on | No | With the feature of Vulkan 1.3 or its extension | With `GL_KHR_texture_compression_astc_hdr` | With `GL_KHR_texture_compression_astc_hdr` | No | No |
 | Storage images | The uncompressed color formats | From the GPU | From the GPU | The formats of the image units | From OpenGL ES 3.1 | No | `Rgba8`, `Rgba16Float`, `R32Float`, `Rg32Float` and `Rgba32Float` |
 | Independent blend | Yes | Yes | Where the GPU has the feature | Yes | On OpenGL ES 3.2 or with an extension | No | Yes |
+| Depth resolves | `SampleZero`, `Min` and `Max` on the family Apple3 and later and on every Mac | `Min` and `Max` on Direct3D 12 with programmable sample positions, none on Direct3D 11 | `SampleZero`, and `Min` and `Max` where the GPU reports them | No | No | No | No |
+| Memoryless attachments | Every Apple GPU outside the simulators | No | Where the GPU has lazily allocated memory | No | No | No | No |
 | Anisotropic filtering | 16 | 16 | From the GPU, with the feature `samplerAnisotropy` | From the GPU, with its extension | From the GPU, with its extension | From the GPU, with its extension | 16 |
 | Bias of the level of detail | No | From -15.99 to 15.99 | From the GPU, as `maxSamplerLodBias` | From the GPU, as `GL_MAX_TEXTURE_LOD_BIAS` | No | No | No |
 | Border colors | From the A14 and M1 on, and on every Mac | Yes | Yes | Yes | On OpenGL ES 3.2 or with `GL_EXT_texture_border_clamp` | No | No |

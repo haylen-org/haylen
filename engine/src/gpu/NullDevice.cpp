@@ -7,6 +7,7 @@
 
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/ProgramSlots.hpp"
 #include "gpu/SamplerRules.hpp"
 #include "haylen/gpu/ContractError.hpp"
@@ -26,6 +27,11 @@ Device::Capabilities NullDevice::getDefaultCapabilities() noexcept {
     capabilities.cubeArrays = true;
     capabilities.imageViews = true;
     capabilities.depthLayers = true;
+    capabilities.memorylessAttachments = true;
+    for (const auto& [name, mode] : kDepthResolveNames) {
+        capabilities.depthResolves |= static_cast<std::uint8_t>(1U << static_cast<unsigned>(mode));
+    }
+
     for (std::size_t format = 0; format < capabilities.formats.size(); ++format) {
         const auto pixelFormat = static_cast<PixelFormat>(format);
         const bool wide = pixelFormat == PixelFormat::R32Float || pixelFormat == PixelFormat::Rg32Float || pixelFormat == PixelFormat::Rgba32Float;
@@ -404,82 +410,12 @@ void NullDevice::generateMipmaps(Image image) {
     ++currentFrame.mipmapGenerations;
 }
 
-// Every attachment of a pass has the size of the first one at its mip level and its sample count, and a multisampled color resolves into a mip level and a layer of a render target of one sample that is no volume, of the same size and format there.
-void NullDevice::checkColorAttachment(const ColorAttachment& color, ImageInfo::Extent& extent, int& sampleCount) const {
-    const ImageRules::Description& image = getImage(color.image);
-    if (image.isView() || image.kind != ImageKind::RenderTarget) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    if (color.mipLevel < 0 || color.mipLevel >= image.mipLevels) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    const ImageInfo::Extent level = image.getLevelExtent(color.mipLevel);
-    if (color.layer < 0 || color.layer >= level.depth) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    if (extent.width == 0) {
-        extent = level;
-        sampleCount = image.sampleCount;
-    }
-
-    if (level.width != extent.width || level.height != extent.height || image.sampleCount != sampleCount) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    if (!color.resolve.isValid()) {
-        return;
-    }
-
-    const ImageRules::Description& resolve = getImage(color.resolve);
-    if (image.sampleCount == 1 || resolve.isView() || resolve.kind != ImageKind::RenderTarget || resolve.type == TextureType::Volume || resolve.sampleCount != 1 || resolve.format != image.format) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    if (color.resolveMipLevel < 0 || color.resolveMipLevel >= resolve.mipLevels) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    const ImageInfo::Extent resolved = resolve.getLevelExtent(color.resolveMipLevel);
-    if (color.resolveLayer < 0 || color.resolveLayer >= resolved.depth || resolved.width != level.width || resolved.height != level.height) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-}
-
-void NullDevice::checkDepthStencilAttachment(const DepthStencilAttachment& depthStencil, ImageInfo::Extent& extent, int& sampleCount) const {
-    const ImageRules::Description& depth = getImage(depthStencil.image);
-    if (depth.isView() || depth.kind != ImageKind::DepthStencil || depthStencil.mipLevel < 0 || depthStencil.mipLevel >= depth.mipLevels) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    const ImageInfo::Extent level = depth.getLevelExtent(depthStencil.mipLevel);
-    if (depthStencil.layer < 0 || depthStencil.layer >= level.depth || (depthStencil.layer > 0 && !features.depthLayers)) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-
-    if (extent.width == 0) {
-        extent = level;
-        sampleCount = depth.sampleCount;
-    }
-
-    if (level.width != extent.width || level.height != extent.height || depth.sampleCount != sampleCount) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
-}
-
 NullDevice::Targets NullDevice::describeOffscreenPass(const PassDesc& desc, OpenPass& opened) const {
-    if (desc.colors.size() > kMaxColorTargets) {
-        throw ContractError(ContractError::Rule::PassAttachments);
-    }
+    const PassRules::Extent extent = PassRules::check(desc, features, [this](Image image) -> const ImageRules::Description& { return getImage(image); });
 
     Targets targets;
-    ImageInfo::Extent extent;
-    int sampleCount = 1;
     std::size_t drawn = 0;
     for (const ColorAttachment& color : desc.colors) {
-        checkColorAttachment(color, extent, sampleCount);
         opened.drawn[drawn++] = {.image = color.image, .mipLevel = color.mipLevel, .layer = color.layer};
         if (color.resolve.isValid()) {
             opened.drawn[drawn++] = {.image = color.resolve, .mipLevel = color.resolveMipLevel, .layer = color.resolveLayer};
@@ -489,13 +425,17 @@ NullDevice::Targets NullDevice::describeOffscreenPass(const PassDesc& desc, Open
     }
 
     if (desc.depthStencil) {
-        checkDepthStencilAttachment(*desc.depthStencil, extent, sampleCount);
-        opened.drawn[drawn++] = {.image = desc.depthStencil->image, .mipLevel = desc.depthStencil->mipLevel, .layer = desc.depthStencil->layer};
-        targets.depthStencil = getImage(desc.depthStencil->image).format;
+        const DepthStencilAttachment& depthStencil = *desc.depthStencil;
+        opened.drawn[drawn++] = {.image = depthStencil.image, .mipLevel = depthStencil.mipLevel, .layer = depthStencil.layer};
+        if (depthStencil.resolve.isValid()) {
+            opened.drawn[drawn++] = {.image = depthStencil.resolve, .mipLevel = depthStencil.resolveMipLevel, .layer = depthStencil.resolveLayer};
+        }
+
+        targets.depthStencil = getImage(depthStencil.image).format;
     }
 
     opened.drawnCount = drawn;
-    targets.sampleCount = sampleCount;
+    targets.sampleCount = extent.sampleCount;
     return targets;
 }
 
@@ -629,6 +569,7 @@ void NullDevice::applyPipeline(Pipeline pipeline) {
 // A texture slot takes an image or a view of its type that the pass does not draw or resolve into at any mip level and layer the slot reads.
 void NullDevice::checkTexture(const TextureBinding& binding, Image image) const {
     const ImageRules::Description& desc = getImage(image);
+    ImageRules::checkSampled(desc);
     if (desc.type != binding.type || (desc.sampleCount > 1) != binding.multisampled) {
         throw ContractError(ContractError::Rule::Bindings);
     }
@@ -951,15 +892,7 @@ void NullDevice::removeSurface(int surface) {
 
 std::unique_ptr<Device::Readback> NullDevice::readImage(Image image, int width, int height) {
     requireNoPass();
-    const ImageRules::Description& desc = getImage(image);
-    if (desc.isView() || desc.kind != ImageKind::RenderTarget || desc.sampleCount != 1) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
-    if (width != desc.width || height != desc.height) {
-        throw ContractError(ContractError::Rule::Readback);
-    }
-
+    ImageRules::checkReadback(getImage(image), width, height);
     return std::make_unique<NullReadback>(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4);
 }
 

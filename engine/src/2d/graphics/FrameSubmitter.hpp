@@ -13,6 +13,7 @@
 #include "2d/graphics/GpuInstance.hpp"
 #include "2d/graphics/LitTargets.hpp"
 #include "2d/graphics/Program.hpp"
+#include "graphics/PassLayout.hpp"
 #include "graphics/PassTarget.hpp"
 #include "haylen/2d/graphics/PostProcess.hpp"
 #include "haylen/2d/lighting/Light.hpp"
@@ -237,6 +238,9 @@ class FrameSubmitter final {
 
     // The clear colors of color images are premultiplied by their alpha, like everything drawn into them.
     void beginOffscreenPass(const graphics::RenderTarget& renderTarget, std::optional<math::Color> clear);
+
+    // Begins the pass and keeps the format and the sample count of its color, which the pipelines of its draws take.
+    void openPass(const gpu::Device::PassDesc& desc, const graphics::PassLayout& layout);
     void beginLitPass(const LitTargets& targets, math::Color clear);
     void endPass();
     void composite(const Canvas& canvas, graphics::PassTarget pass, Stage stage);
@@ -313,6 +317,7 @@ class FrameSubmitter final {
     std::size_t commandFloor = 0;
     bool identity = true;
     bool passOpen = false;
+    graphics::PassLayout passLayout{};
 
     // The pixels of the shadow atlas that the shadowed lights of the frame cast, which reach the GPU with the dynamic textures.
     std::optional<gpu::Device::ImageWrite> shadowWrite;

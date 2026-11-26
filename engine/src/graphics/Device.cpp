@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <format>
 #include <memory>
@@ -12,6 +13,7 @@
 #include <vector>
 
 #include "gpu/ImageInfo.hpp"
+#include "gpu/ImageRules.hpp"
 #include "graphics/BufferResource.hpp"
 #include "graphics/DeviceState.hpp"
 #include "graphics/TextureResource.hpp"
@@ -493,14 +495,84 @@ const Texture& Device::getWhiteTexture(gpu::Device::TextureType type) {
     return white;
 }
 
-RenderTarget Device::createRenderTarget(int width, int height, Texture::Options options) {
+RenderTarget Device::createRenderTarget(int width, int height, Texture::Options options, const RenderTarget::Options& attachments) {
     validateSize(width, height, getMaxTextureSize());
 
     if (options.mipmaps.value_or(false)) {
         throw std::invalid_argument("A render target has no mipmaps.");
     }
 
-    return state->createRenderTarget(width, height, state->offscreenFormat, options);
+    validateAttachments(attachments);
+    return state->createRenderTarget(width, height, options, attachments);
+}
+
+// Every color is a format that the device draws into and filters, the depth a depth format that it draws into, each of them takes the samples, and a kept depth is one the device samples, which a target of several samples resolves by a mode the device has from a format without stencil.
+void Device::validateAttachments(const RenderTarget::Options& attachments) const {
+    const gpu::Device::Capabilities& capabilities = state->gpu->getCapabilities();
+    if (attachments.colors.empty() || attachments.colors.size() > gpu::Device::kMaxColorTargets) {
+        throw std::invalid_argument(std::format("A render target has from 1 to {} colors, not {}.", gpu::Device::kMaxColorTargets, attachments.colors.size()));
+    }
+
+    if (attachments.samples < 1 || !std::has_single_bit(static_cast<unsigned>(attachments.samples))) {
+        throw std::invalid_argument(std::format("The samples of a render target are a power of two from 1, not {}.", attachments.samples));
+    }
+
+    for (const gpu::Device::PixelFormat format : attachments.colors) {
+        const gpu::Device::FormatSupport& support = capabilities.getFormat(format);
+        if (gpu::ImageInfo::isDepth(format) || !support.render) {
+            throw std::invalid_argument(std::format("The graphics API \"{}\" of this device draws into no color of the format \"{}\". Make the render target in a format whose \"render\" its format support holds.", getApiName(), getFormatName(format)));
+        }
+
+        if (!support.filter) {
+            throw std::invalid_argument(std::format("The graphics API \"{}\" of this device samples the format \"{}\" only without filtering, and the textures of a render target filter. Make the render target in a format that the device filters, as its format support tells.", getApiName(), getFormatName(format)));
+        }
+
+        validateSamples(format, attachments.samples);
+    }
+
+    if (!attachments.depthFormat) {
+        if (attachments.depthTexture) {
+            throw std::invalid_argument("A render target keeps a depth texture only with a \"depthFormat\".");
+        }
+
+        return;
+    }
+
+    const gpu::Device::PixelFormat depth = *attachments.depthFormat;
+    if (!gpu::ImageInfo::isDepth(depth) || !capabilities.getFormat(depth).render) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device draws into no depth of the format \"{}\". Name a depth format whose \"render\" its format support holds.", getApiName(), getFormatName(depth)));
+    }
+
+    validateSamples(depth, attachments.samples);
+    if (!attachments.depthTexture) {
+        return;
+    }
+
+    if (!capabilities.getFormat(depth).sample) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device samples no depth of the format \"{}\", so a render target keeps no depth texture of it.", getApiName(), getFormatName(depth)));
+    }
+
+    if (attachments.samples == 1) {
+        return;
+    }
+
+    if (gpu::ImageInfo::hasStencil(depth)) {
+        throw std::invalid_argument(std::format("A render target of several samples keeps a depth texture only of a depth format without stencil, which \"{}\" has.", getFormatName(depth)));
+    }
+
+    if (!capabilities.hasDepthResolve(attachments.depthResolve)) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device resolves no depth by \"{}\". Name a \"depthResolve\" of the \"depthResolves\" of \"graphics.capabilities()\", or keep no depth texture.", getApiName(), getDepthResolveName(attachments.depthResolve)));
+    }
+}
+
+void Device::validateSamples(gpu::Device::PixelFormat format, int samples) const {
+    if (!gpu::ImageRules::takesSamples(state->gpu->getCapabilities(), format, samples)) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device takes no {} samples of the format \"{}\". Use one of the \"sampleCounts\" of its format support.", getApiName(), samples, getFormatName(format)));
+    }
+}
+
+std::string_view Device::getDepthResolveName(gpu::Device::DepthResolve mode) noexcept {
+    return std::ranges::find(gpu::Device::kDepthResolveNames, mode, &std::pair<std::string_view, gpu::Device::DepthResolve>::second)->first;
 }
 
 void Device::replaceTexture(const Texture& texture, const Image& image) {

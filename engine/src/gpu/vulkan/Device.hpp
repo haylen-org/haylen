@@ -20,6 +20,7 @@
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/PassRules.hpp"
 #include "gpu/renderdoc/Capturer.hpp"
 #include "gpu/vulkan/DescriptorCache.hpp"
 #include "gpu/vulkan/LayoutCache.hpp"
@@ -36,7 +37,7 @@ class Context;
 class Instance;
 class PreparedModules;
 
-// The device of Vulkan 1.1 on Windows, Linux and Android. It records each frame into a command buffer of uploads and one of passes, with dynamic rendering where the GPU has it and render passes otherwise, and keeps a fixed number of frames in flight behind fences, releasing what `destroy` lets go of once those frames finished. Uniform blocks take dynamic offsets into a ring that stays mapped or into the uniform buffers of the bindings, stream buffers rotate through a copy for each frame in flight, the writes into dynamic buffers and the copies between buffers are copies among the passes of the frame, the mip levels of images generate through chains of linear blits among those passes, views of ranges of mip levels and layers are image views that bindings take like images, and the descriptor sets of textures and samplers are made once for each choice of them. Its viewport flips the vertical axis, so clip space and the rows of render targets match Metal and Direct3D.
+// The device of Vulkan 1.1 on Windows, Linux and Android. It records each frame into a command buffer of uploads and one of passes, with dynamic rendering where the GPU has it and render passes otherwise, and keeps a fixed number of frames in flight behind fences, releasing what `destroy` lets go of once those frames finished. Uniform blocks take dynamic offsets into a ring that stays mapped or into the uniform buffers of the bindings, stream buffers rotate through a copy for each frame in flight, the writes into dynamic buffers and the copies between buffers are copies among the passes of the frame, the mip levels of images generate through chains of linear blits among those passes, views of ranges of mip levels and layers are image views that bindings take like images, multisampled depth resolves through the resolves of depth of Vulkan 1.2 or their extension, transient images take memory that the GPU allocates only as its tiles need it where it has such memory, and the descriptor sets of textures and samplers are made once for each choice of them. Its viewport flips the vertical axis, so clip space and the rows of render targets match Metal and Direct3D.
 class Device final : public gpu::Device {
   public:
     static constexpr int kFramesInFlight = 2;
@@ -286,6 +287,7 @@ class Device final : public gpu::Device {
         VkClearValue clear{};
         VkImageView resolveView = VK_NULL_HANDLE;
         VkFormat resolveFormat = VK_FORMAT_UNDEFINED;
+        VkResolveModeFlagBits resolveMode = VK_RESOLVE_MODE_NONE;
     };
 
     // The attachments of a pass as both ways of recording passes take them.
@@ -297,13 +299,15 @@ class Device final : public gpu::Device {
         VkExtent2D extent{};
     };
 
-    // A part of an image that a pass moves out of its resting layout, and back once the pass ends.
+    // A part of an image that a pass moves out of its resting layout, and back once the pass ends, with the stages and the accesses that the pass uses it in.
     struct Transition {
         VkImage image = VK_NULL_HANDLE;
         VkImageSubresourceRange range{};
         VkImageLayout attachmentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         VkImageLayout fromLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         VkImageLayout restLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkPipelineStageFlags stages = 0;
+        VkAccessFlags access = 0;
     };
 
     struct PassState {
@@ -369,7 +373,6 @@ class Device final : public gpu::Device {
     static void checkImageLimits(const ImageDesc& desc, const VkImageCreateInfo& info, const VkImageFormatProperties& supported);
     [[nodiscard]] VkFormat resolveFormat(PixelFormat format) const noexcept;
     [[nodiscard]] VkImageView makeSampleView(const ImageRecord& image, const ViewDesc& range);
-    [[nodiscard]] ImageRecord& requireAttachment(Image image, ImageKind kind);
     [[nodiscard]] VkImageView getAttachmentView(ImageRecord& record, int mipLevel, int layer);
     [[nodiscard]] math::Rect getPassPixels(const math::Rect& window) const noexcept;
     void uploadLevels(const ImageRecord& record, std::span<const std::span<const std::byte>> levels);
@@ -386,8 +389,8 @@ class Device final : public gpu::Device {
     void rebuildPipeline(PipelineRecord& record);
 
     void beginSwapchainPass(const PassDesc& desc);
-    void beginOffscreenPass(const PassDesc& desc);
-    void addTransition(const ImageRecord& record, int mipLevel, int layer, bool keeps);
+    void beginOffscreenPass(const PassDesc& desc, const PassRules::Extent& extent);
+    void addTransition(const ImageRecord& record, int mipLevel, int layer, bool keeps, bool resolvesDepth);
     void beginRendering(const PassTarget& target);
     void endRendering();
     void endSwapchainRendering();

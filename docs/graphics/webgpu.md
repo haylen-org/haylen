@@ -51,6 +51,8 @@ Shader packages carry WGSL, the `wgsl` language, with uniform blocks in bind gro
 | Cube arrays | Yes, through the view dimension `cube-array`. |
 | Views of images | Texture views of the range, which WebGPU checks by subresource. |
 | Mip generation | `webgpu::MipmapGenerator` draws each level from a view of the level above with a linear filter, one pass for each layer, or for each slice of a volume through the depth slice of the attachment, for the formats that the device renders and filters, since WebGPU has no command for it. |
+| Depth resolves | None, since a render pass of WebGPU resolves colors alone. |
+| Transient attachments | Textures whose only usage is `RenderAttachment`. |
 
 ## GPU time
 

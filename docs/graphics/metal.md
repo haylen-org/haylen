@@ -60,6 +60,8 @@ Uniform blocks take the buffer indices from 0 of each stage, and vertex buffers 
 | Cube arrays | Every Mac GPU and the Apple GPUs of the A11 and later, the families Apple4 and Mac2, which have cube texture arrays. The A8 to A10X of the families Apple2 and Apple3 have none. |
 | Views of images | Texture views of the same pixel format, which change the type without a usage of their own, counting the faces of cubes as slices. |
 | Mip generation | `generateMipmapsForTexture:` of a blit encoder of the command buffer of the frame, for every color format that the GPU renders and filters. |
+| Depth resolves | The resolve texture, level and slice of the depth attachment with the filters `Sample0`, `Min` and `Max` of `MTLMultisampleDepthResolveFilter`, on the A9 and later, the family Apple3, and on every Mac, which the row of depth resolves of the feature set tables lists. The A8 and the simulators, which Apple documents as GPUs of the family Apple2, resolve no depth. |
+| Transient attachments | Memoryless textures, `MTLStorageModeMemoryless`, which only render, on every Apple GPU, Apple silicon Macs and Mac Catalyst included. Intel Macs and the simulators, which keep depth and multisampled textures in private storage, make private textures. |
 
 ## Debugging
 

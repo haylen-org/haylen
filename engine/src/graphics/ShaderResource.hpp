@@ -128,7 +128,7 @@ struct ShaderResource {
     std::unordered_map<std::string, ProgramInfo> programs;
     std::uint32_t version = 1;
     std::unordered_map<std::string, Compiled> compiled;
-    std::unordered_map<std::uint32_t, gpu::Device::Pipeline> pipelines;
+    std::unordered_map<std::uint64_t, gpu::Device::Pipeline> pipelines;
     std::weak_ptr<ResourceGraveyard> graveyard;
 
     ShaderResource() = default;

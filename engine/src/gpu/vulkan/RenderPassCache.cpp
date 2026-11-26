@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "gpu/vulkan/Context.hpp"
+#include "gpu/vulkan/Conversions.hpp"
 #include "gpu/vulkan/ReleaseQueue.hpp"
 
 namespace haylen::gpu::vulkan {
@@ -84,10 +85,83 @@ VkRenderPass RenderPassCache::makeRenderPass(const PassKey& key) const {
         .preserveAttachmentCount = 0,
         .pPreserveAttachments = nullptr,
     };
+
+    if (key.depthResolve != VK_FORMAT_UNDEFINED) {
+        return makeDepthResolvePass(key, std::span(attachments.data(), count), subpass);
+    }
+
     const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, .pNext = nullptr, .flags = 0, .attachmentCount = count, .pAttachments = attachments.data(), .subpassCount = 1, .pSubpasses = &subpass, .dependencyCount = 0, .pDependencies = nullptr};
     VkRenderPass pass = VK_NULL_HANDLE;
     Context::check(context.getFunctions().vkCreateRenderPass(context.getDevice(), &info, nullptr, &pass), "make a render pass");
     return pass;
+}
+
+// The second version describes the attachments and the subpass of the first, and after them the image of one sample that the depth resolves into by its mode when the subpass ends. The stencil resolves by no mode, which Vulkan allows for a depth format without stencil, the only one whose depth a pass resolves.
+VkRenderPass RenderPassCache::makeDepthResolvePass(const PassKey& key, std::span<const VkAttachmentDescription> described, const VkSubpassDescription& subpass) const {
+    std::array<VkAttachmentDescription2, kMaxViews> attachments{};
+    for (std::size_t index = 0; index < described.size(); ++index) {
+        attachments[index] = toVersion2(described[index]);
+    }
+
+    const auto resolveIndex = static_cast<std::uint32_t>(described.size());
+    attachments[resolveIndex] = {.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2, .pNext = nullptr, .flags = 0, .format = key.depthResolve, .samples = VK_SAMPLE_COUNT_1_BIT, .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .storeOp = VK_ATTACHMENT_STORE_OP_STORE, .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE, .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+
+    std::array<VkAttachmentReference2, Device::kMaxColorTargets> colors{};
+    std::array<VkAttachmentReference2, Device::kMaxColorTargets> resolves{};
+    for (std::uint32_t index = 0; index < subpass.colorAttachmentCount; ++index) {
+        colors[index] = toVersion2(subpass.pColorAttachments[index], VK_IMAGE_ASPECT_COLOR_BIT);
+        if (subpass.pResolveAttachments != nullptr) {
+            resolves[index] = toVersion2(subpass.pResolveAttachments[index], VK_IMAGE_ASPECT_COLOR_BIT);
+        }
+    }
+
+    const VkImageAspectFlags depthAspects = Conversions::getAspects(key.depth.format);
+    const VkAttachmentReference2 depth = toVersion2(*subpass.pDepthStencilAttachment, depthAspects);
+    const VkAttachmentReference2 depthResolve{.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, .pNext = nullptr, .attachment = resolveIndex, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .aspectMask = depthAspects};
+    const VkSubpassDescriptionDepthStencilResolve resolve{.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE, .pNext = nullptr, .depthResolveMode = key.depthResolveMode, .stencilResolveMode = VK_RESOLVE_MODE_NONE, .pDepthStencilResolveAttachment = &depthResolve};
+    const VkSubpassDescription2 resolving{
+        .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
+        .pNext = &resolve,
+        .flags = 0,
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .viewMask = 0,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = nullptr,
+        .colorAttachmentCount = subpass.colorAttachmentCount,
+        .pColorAttachments = colors.data(),
+        .pResolveAttachments = subpass.pResolveAttachments != nullptr ? resolves.data() : nullptr,
+        .pDepthStencilAttachment = &depth,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = nullptr,
+    };
+    const VkRenderPassCreateInfo2 info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2, .pNext = nullptr, .flags = 0, .attachmentCount = resolveIndex + 1, .pAttachments = attachments.data(), .subpassCount = 1, .pSubpasses = &resolving, .dependencyCount = 0, .pDependencies = nullptr, .correlatedViewMaskCount = 0, .pCorrelatedViewMasks = nullptr};
+
+    // The second version is part of Vulkan 1.2, and before it the extension that the context turns on with the resolves of depth.
+    const VolkDeviceTable& vk = context.getFunctions();
+    const PFN_vkCreateRenderPass2 create = context.getApiVersion() >= VK_API_VERSION_1_2 ? vk.vkCreateRenderPass2 : vk.vkCreateRenderPass2KHR;
+    VkRenderPass pass = VK_NULL_HANDLE;
+    Context::check(create(context.getDevice(), &info, nullptr, &pass), "make a render pass that resolves depth");
+    return pass;
+}
+
+VkAttachmentDescription2 RenderPassCache::toVersion2(const VkAttachmentDescription& attachment) noexcept {
+    return {
+        .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
+        .pNext = nullptr,
+        .flags = attachment.flags,
+        .format = attachment.format,
+        .samples = attachment.samples,
+        .loadOp = attachment.loadOp,
+        .storeOp = attachment.storeOp,
+        .stencilLoadOp = attachment.stencilLoadOp,
+        .stencilStoreOp = attachment.stencilStoreOp,
+        .initialLayout = attachment.initialLayout,
+        .finalLayout = attachment.finalLayout,
+    };
+}
+
+VkAttachmentReference2 RenderPassCache::toVersion2(const VkAttachmentReference& reference, VkImageAspectFlags aspects) noexcept {
+    return {.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, .pNext = nullptr, .attachment = reference.attachment, .layout = reference.layout, .aspectMask = aspects};
 }
 
 VkFramebuffer RenderPassCache::getFramebuffer(VkRenderPass pass, std::span<const VkImageView> views, VkExtent2D extent) {
