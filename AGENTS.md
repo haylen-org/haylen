@@ -189,7 +189,7 @@ engine/
   platform/android/       Gradle project of the Android libraries: `haylen` (activity with the splash screen, bridge, gamepad, insets, text input, requirements and the player library), the manifest-only `haylen-plugins` and `haylen-links`, and `haylen-coroutines`.
   platform/web/           The JavaScript runtime, its engine side in haylen-runtime.js and its page side in haylen-page.js, the worker of its Worker mode, the audio worklet and the worker of the content store, and the HTML shell of the web apps of CMake projects.
   platform/apple/         The PrivacyInfo.xcprivacy of the engine and the Swift helpers of the bridge, which the Apple SDK installs.
-  bench/                  The benchmark apps (sprites, core, algorithms, procedural, physics, UI, render, particles, content, nodes, animation, Lua).
+  bench/                  The benchmark apps (sprites, core, algorithms, procedural, physics, UI, render, particles, content, models, nodes, animation, Lua).
   tools/content/          The content tool `haylen-content` and its library, which builds, verifies, inspects, compares and publishes protected releases on desktop hosts.
   tests/                  The GoogleTest suite of the core, which builds into `haylen-tests`, with its support helpers, test data and the native test library, the fuzzers of the binary formats, the consumer project that `haylen engine consumers` builds, whose C++ app without Lua runs on the headless host, the runners of the UI tests of apps in ui/apple and ui/android, and the test port in data/port with its app in data/port-app, which `haylen test --port` builds and plays.
 samples/
@@ -203,7 +203,7 @@ templates/
 tools/
   haylen/                 The Python package of the command line: cli/ with the commands, core/ with the manifest, the resolution and the pipeline of apps, plugins/, sdk/, native/, assets/, content/, development/ with the development server, engine/ with the commands of the engine, toolchains/, scaffold/, schemas/ with the JSON Schemas of haylen.json, plugin.json and haylen-sdk.json, and platforms/ with the contracts PlatformBackend and EnginePort, their registry and one folder per backend (apple, android, desktop, player, web) with its engine port and the template of its generated projects in template/.
   tests/                  The pytest suites of the tooling, by the folders of the package, with the rule tests of the repository in repository/ and the fake backend, port and fixtures in support/.
-  *.py, *.json            The PNG reader and writer of the tools that draw sample art, the checkers of the pivots of the animated sheets and of the edges of the images of the samples with what they declare, and the tool that joins the ends of a painted strip of scenery so it repeats without a seam.
+  *.py, *.json            The PNG reader and writer of the tools that draw sample art, the writer of the glTF test files of the engine with its glTF builder and its JPEG writer, the checkers of the pivots of the animated sheets and of the edges of the images of the samples with what they declare, and the tool that joins the ends of a painted strip of scenery so it repeats without a seam.
 docs/                     The index of the docs, one folder per block with its index and guides, and the Lua API reference with its index in lua-api/.
 extras/images/            Brand images: the vertical and horizontal logos, the symbol, and the logo variants with a white wordmark for dark backgrounds.
 ```

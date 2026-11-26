@@ -50,6 +50,9 @@ set(HAYLEN_TEST_SOURCES
   2d/tiled/MapQueryTests.cpp
   2d/tiled/TileCollisionTests.cpp
   2d/tiled/TiledTests.cpp
+  3d/gltf/AccessorReaderTests.cpp
+  3d/gltf/ReaderRulesTests.cpp
+  3d/gltf/ReaderTests.cpp
   3d/physics/BackendRegistryTests.cpp
   3d/physics/WorldTests.cpp
   3d/physics/jolt/SimulationTests.cpp
@@ -255,6 +258,7 @@ set(HAYLEN_TEST_SUPPORT_SOURCES
   support/EngineFixture.cpp
   support/EventLoop.cpp
   support/FakeVideoDecoder.cpp
+  support/GltfFiles.cpp
   support/MaterialShaders.cpp
   support/ReleaseFixture.cpp
   support/TemporaryDirectory.cpp
@@ -288,9 +292,9 @@ target_link_libraries(haylen-tests PRIVATE Jolt)
 if(NOT WIN32)
   target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/direct3d/CompileQueue.cpp")
 endif()
-# The shader tests compile a material with `haylen app shaders`, the way apps compile theirs, running the tooling of the checkout through uv, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`.
+# The shader tests compile a material with `haylen app shaders`, the way apps compile theirs, running the tooling of the checkout through uv, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`, and the glTF tests read the files of `data/gltf`, which `tools/gltf-fixtures.py` writes.
 find_program(HAYLEN_UV uv REQUIRED)
-target_compile_definitions(haylen-test-support PUBLIC HAYLEN_UV="${HAYLEN_UV}" HAYLEN_TOOLING_ROOT="${HAYLEN_ENGINE_DIR}/.." HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_APP_IDENTIFIERS="${CMAKE_CURRENT_LIST_DIR}/data/app-identifiers.json" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video" HAYLEN_DOCS_DIR="${HAYLEN_ENGINE_DIR}/../docs")
+target_compile_definitions(haylen-test-support PUBLIC HAYLEN_UV="${HAYLEN_UV}" HAYLEN_TOOLING_ROOT="${HAYLEN_ENGINE_DIR}/.." HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_APP_IDENTIFIERS="${CMAKE_CURRENT_LIST_DIR}/data/app-identifiers.json" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video" HAYLEN_TEST_GLTF="${CMAKE_CURRENT_LIST_DIR}/data/gltf" HAYLEN_DOCS_DIR="${HAYLEN_ENGINE_DIR}/../docs")
 # On Windows the tests also run the decoder of Media Foundation, the font fallback of DirectWrite and the reader of the accessibility settings, which need no window, on the clip made for the tests in `data/video`.
 if(WIN32)
   target_sources(haylen-tests PRIVATE platform/WindowsAccessibilityTests.cpp platform/WindowsFontsTests.cpp platform/WindowsSettingsTests.cpp platform/WindowsVideoDecoderTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityElement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityRoot.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityTree.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsFonts.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsFontText.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsSettings.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsText.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsVideoDecoder.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsPackageStream.cpp")
@@ -348,7 +352,7 @@ gtest_discover_tests(haylen-tests
   PROPERTIES TIMEOUT 120
 )
 
-# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents, of Ogg pages, of TrueType fonts and of BMFont files run their parsers on the inputs libFuzzer generates.
+# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents, of Ogg pages, of TrueType fonts, of glTF files and of BMFont files run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen-content-fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen-content-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
@@ -400,6 +404,12 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_libraries(haylen-font-fuzzer PRIVATE haylen::engine haylen::headless haylen-harfbuzz)
   target_link_options(haylen-font-fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen-font-fuzzer)
+
+  add_executable(haylen-gltf-fuzzer fuzz/GltfFuzzer.cpp)
+  set_target_properties(haylen-gltf-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_link_libraries(haylen-gltf-fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen-gltf-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-gltf-fuzzer)
 
   add_executable(haylen-bitmap-font-fuzzer fuzz/BitmapFontFuzzer.cpp)
   set_target_properties(haylen-bitmap-font-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")

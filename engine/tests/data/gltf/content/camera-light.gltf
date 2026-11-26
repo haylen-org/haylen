@@ -1,0 +1,103 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "Haylen test files"
+  },
+  "extensionsUsed": [
+    "KHR_lights_punctual"
+  ],
+  "extensions": {
+    "KHR_lights_punctual": {
+      "lights": [
+        {
+          "type": "point",
+          "color": [
+            1,
+            0.9,
+            0.8
+          ],
+          "intensity": 20
+        }
+      ]
+    }
+  },
+  "cameras": [
+    {
+      "name": "Lens",
+      "type": "perspective",
+      "perspective": {
+        "aspectRatio": 1.5,
+        "yfov": 0.8,
+        "zfar": 100,
+        "znear": 0.1
+      }
+    },
+    {
+      "name": "Endless",
+      "type": "perspective",
+      "perspective": {
+        "yfov": 1.0,
+        "znear": 0.05
+      }
+    },
+    {
+      "name": "Plan",
+      "type": "orthographic",
+      "orthographic": {
+        "xmag": 4,
+        "ymag": 3,
+        "zfar": 50,
+        "znear": 0
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "camera": 0,
+      "translation": [
+        0,
+        0,
+        5
+      ]
+    },
+    {
+      "camera": 1,
+      "translation": [
+        0,
+        0,
+        6
+      ]
+    },
+    {
+      "camera": 2,
+      "translation": [
+        0,
+        0,
+        7
+      ]
+    },
+    {
+      "name": "Lamp",
+      "translation": [
+        0,
+        3,
+        0
+      ],
+      "extensions": {
+        "KHR_lights_punctual": {
+          "light": 0
+        }
+      }
+    }
+  ],
+  "scenes": [
+    {
+      "nodes": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  ]
+}

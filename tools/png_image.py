@@ -148,10 +148,14 @@ class Image:
     def chunk(kind: bytes, payload: bytes) -> bytes:
         return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF)
 
-    def write(self, path: Path) -> None:
+    def encode(self, level: int = 9) -> bytes:
+        """Returns the image as a PNG file, whose data the compression level of zlib packs. Level 0 stores the data without compressing it, which gives the same bytes with every build of zlib."""
         stride = self.width * 4
         rows = [bytes(self.pixels[row * stride : (row + 1) * stride]) for row in range(self.height)]
         raw = b"".join(Image.filtered(line, rows[index - 1] if index else bytes(stride)) for index, line in enumerate(rows))
         header = struct.pack(">IIBBBBB", self.width, self.height, 8, 6, 0, 0, 0)
+        return Image.SIGNATURE + Image.chunk(b"IHDR", header) + Image.chunk(b"IDAT", zlib.compress(raw, level)) + Image.chunk(b"IEND", b"")
+
+    def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(Image.SIGNATURE + Image.chunk(b"IHDR", header) + Image.chunk(b"IDAT", zlib.compress(raw, 9)) + Image.chunk(b"IEND", b""))
+        path.write_bytes(self.encode())

@@ -10,7 +10,7 @@ from haylen.terminal import Terminal
 
 
 class Benchmarks:
-    """Builds a benchmark of the engine in Release in the tree of this machine and runs it here: the sprite benchmark in a window of the player, the benchmarks of the core, algorithms, procedural generation, physics, the UI, rendering, particles, content, nodes and animation on the CPU, and the Lua sprite benchmark. The benchmarks that draw run on the null device of the headless host, on the graphics API that `api` names, or once on every API of the build with `every_api`."""
+    """Builds a benchmark of the engine in Release in the tree of this machine and runs it here: the sprite benchmark in a window of the player, the benchmarks of the core, algorithms, procedural generation, physics, the UI, rendering, particles, content, glTF models, nodes and animation on the CPU, and the Lua sprite benchmark. The benchmarks that draw run on the null device of the headless host, on the graphics API that `api` names, or once on every API of the build with `every_api`."""
 
     CPU = {
         "core": "haylen-core-benchmark",
@@ -21,6 +21,7 @@ class Benchmarks:
         "render": "haylen-render-benchmark",
         "particles": "haylen-particle-benchmark",
         "content": "haylen-content-benchmark",
+        "models": "haylen-model-benchmark",
         "nodes": "haylen-node-benchmark",
         "animation": "haylen-animation-benchmark",
     }

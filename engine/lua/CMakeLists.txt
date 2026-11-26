@@ -55,6 +55,7 @@ set(HAYLEN_LUA_SOURCES
   src/2d/tiled/MapBuilderBinding.cpp
   src/2d/tiled/MapQueryBinding.cpp
   src/2d/tiled/TiledBinding.cpp
+  src/3d/gltf/GltfBinding.cpp
   src/3d/physics/Physics3DBinding.cpp
   src/3d/physics/WorldBinding.cpp
   src/3d/spatial/MeshBvhBinding.cpp
@@ -141,6 +142,7 @@ set(HAYLEN_LUA_SOURCES
   src/modules/ConversationModule.cpp
   src/modules/CoreModule.cpp
   src/modules/DebugModule.cpp
+  src/modules/GltfModule.cpp
   src/modules/Graphics2DModule.cpp
   src/modules/HotReloadModule.cpp
   src/modules/InputModule.cpp

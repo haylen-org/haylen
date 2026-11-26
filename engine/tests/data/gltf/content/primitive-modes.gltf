@@ -1,0 +1,223 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "Haylen test files"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 36
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 36,
+      "byteLength": 48
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 84,
+      "byteLength": 36
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 120,
+      "byteLength": 36
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 156,
+      "byteLength": 36
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 192,
+      "byteLength": 48
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 240,
+      "byteLength": 48
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 3,
+      "type": "VEC3",
+      "min": [
+        -0.416146844625473,
+        0.0,
+        0.0
+      ],
+      "max": [
+        1.0,
+        0.9092974066734314,
+        0.0
+      ]
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 4,
+      "type": "VEC3",
+      "min": [
+        -0.9899924993515015,
+        0.0,
+        1.0
+      ],
+      "max": [
+        1.0,
+        0.9092974066734314,
+        1.0
+      ]
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 3,
+      "type": "VEC3",
+      "min": [
+        -0.416146844625473,
+        0.0,
+        2.0
+      ],
+      "max": [
+        1.0,
+        0.9092974066734314,
+        2.0
+      ]
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 3,
+      "type": "VEC3",
+      "min": [
+        -0.416146844625473,
+        0.0,
+        3.0
+      ],
+      "max": [
+        1.0,
+        0.9092974066734314,
+        3.0
+      ]
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5126,
+      "count": 3,
+      "type": "VEC3",
+      "min": [
+        -0.416146844625473,
+        0.0,
+        4.0
+      ],
+      "max": [
+        1.0,
+        0.9092974066734314,
+        4.0
+      ]
+    },
+    {
+      "bufferView": 5,
+      "componentType": 5126,
+      "count": 4,
+      "type": "VEC3",
+      "min": [
+        -0.9899924993515015,
+        0.0,
+        5.0
+      ],
+      "max": [
+        1.0,
+        0.9092974066734314,
+        5.0
+      ]
+    },
+    {
+      "bufferView": 6,
+      "componentType": 5126,
+      "count": 4,
+      "type": "VEC3",
+      "min": [
+        -0.9899924993515015,
+        0.0,
+        6.0
+      ],
+      "max": [
+        1.0,
+        0.9092974066734314,
+        6.0
+      ]
+    }
+  ],
+  "meshes": [
+    {
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0
+          },
+          "mode": 0
+        },
+        {
+          "attributes": {
+            "POSITION": 1
+          },
+          "mode": 1
+        },
+        {
+          "attributes": {
+            "POSITION": 2
+          },
+          "mode": 2
+        },
+        {
+          "attributes": {
+            "POSITION": 3
+          },
+          "mode": 3
+        },
+        {
+          "attributes": {
+            "POSITION": 4
+          },
+          "mode": 4
+        },
+        {
+          "attributes": {
+            "POSITION": 5
+          },
+          "mode": 5
+        },
+        {
+          "attributes": {
+            "POSITION": 6
+          },
+          "mode": 6
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 288,
+      "uri": "data:application/octet-stream;base64,AACAPwAAAAAAAAAAQFEKP6RqVz8AAAAAMxHVvrfHaD8AAAAAAACAPwAAAAAAAIA/QFEKP6RqVz8AAIA/MxHVvrfHaD8AAIA/JnB9v8OBED4AAIA/AACAPwAAAAAAAABAQFEKP6RqVz8AAABAMxHVvrfHaD8AAABAAACAPwAAAAAAAEBAQFEKP6RqVz8AAEBAMxHVvrfHaD8AAEBAAACAPwAAAAAAAIBAQFEKP6RqVz8AAIBAMxHVvrfHaD8AAIBAAACAPwAAAAAAAKBAQFEKP6RqVz8AAKBAMxHVvrfHaD8AAKBAJnB9v8OBED4AAKBAAACAPwAAAAAAAMBAQFEKP6RqVz8AAMBAMxHVvrfHaD8AAMBAJnB9v8OBED4AAMBA"
+    }
+  ]
+}

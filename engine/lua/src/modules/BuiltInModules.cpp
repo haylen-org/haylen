@@ -10,6 +10,7 @@
 #include "modules/ConversationModule.hpp"
 #include "modules/CoreModule.hpp"
 #include "modules/DebugModule.hpp"
+#include "modules/GltfModule.hpp"
 #include "modules/Graphics2DModule.hpp"
 #include "modules/HotReloadModule.hpp"
 #include "modules/InputModule.hpp"
@@ -45,6 +46,7 @@ void BuiltInModules::registerAll(Modules& modules) {
     modules.add(std::make_unique<AudioModule>());
     modules.add(std::make_unique<VideoModule>());
     modules.add(std::make_unique<TiledModule>());
+    modules.add(std::make_unique<GltfModule>());
     modules.add(std::make_unique<Nodes2DModule>());
     modules.add(std::make_unique<Spatial2DModule>());
     modules.add(std::make_unique<Spatial3DModule>());

@@ -207,6 +207,19 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/tiled/Tileset.cpp
   src/2d/tiled/WangSet.cpp
   src/2d/tiled/World.cpp
+  src/3d/gltf/AccessorReader.cpp
+  src/3d/gltf/AccessorView.cpp
+  src/3d/gltf/DataValidator.cpp
+  src/3d/gltf/Diagnostics.cpp
+  src/3d/gltf/Document.cpp
+  src/3d/gltf/DocumentParser.cpp
+  src/3d/gltf/FormatNames.cpp
+  src/3d/gltf/GlbContainer.cpp
+  src/3d/gltf/LinkValidator.cpp
+  src/3d/gltf/Mesh.cpp
+  src/3d/gltf/Node.cpp
+  src/3d/gltf/Reader.cpp
+  src/3d/gltf/UriResolver.cpp
   src/3d/physics/BackendRegistry.cpp
   src/3d/physics/World.cpp
   src/3d/physics/WorldSettings.cpp
@@ -1110,6 +1123,12 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   target_link_libraries(haylen-procedural-benchmark PRIVATE haylen::headless)
   set_target_properties(haylen-procedural-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-procedural-benchmark)
+
+  # The model benchmark times each step of reading a large glTF file on the CPU, with the pass of the rules of its data on its own.
+  add_executable(haylen-model-benchmark bench/ModelBenchmark.cpp)
+  target_link_libraries(haylen-model-benchmark PRIVATE haylen::engine)
+  set_target_properties(haylen-model-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-model-benchmark)
 
   # The algorithm benchmark times path finding, crowds, spatial queries, ray casts and batch math on the CPU, so it is a plain executable too. The physics world links the debug drawing of the renderer, whose GPU calls the null GPU device of the headless host satisfies.
   add_executable(haylen-algorithm-benchmark bench/AlgorithmBenchmark.cpp)

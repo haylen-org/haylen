@@ -33,6 +33,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   2d/spatial/Spatial2DTests.cpp
   2d/tiled/MapQueryTests.cpp
   2d/tiled/TiledTests.cpp
+  3d/gltf/GltfTests.cpp
   3d/physics/Physics3DTests.cpp
   3d/spatial/Spatial3DLuaTests.cpp
   ai/DecisionLuaTests.cpp
