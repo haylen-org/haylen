@@ -43,6 +43,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept override;
     [[nodiscard]] bool isLost() const noexcept override;
 
     [[nodiscard]] Buffer makeBuffer(const BufferDesc& desc) override;
@@ -81,6 +82,9 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+
+    // Releases the chunks of the uniform ring that the last frame did not reach, with their bind groups. The browser holds every other upload and frees each object that the device releases, so the ring is all that the device keeps for later.
+    void trim() override;
     void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
     void attachSurface(const Surface& surface) override;

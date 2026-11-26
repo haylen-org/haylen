@@ -18,7 +18,7 @@
 
 namespace haylen::gpu {
 
-// The device of the headless host, which draws nothing and checks every call against the contract of `Device`: objects exist when they are used, images fit their type, mip levels, layers, sample count and format, passes open and close in turn with attachments that match each other and the pipelines drawn with them, multisampled attachments resolve into images of one sample, draws happen inside a pass with a pipeline, its bindings and every uniform block of its program, debug groups balance, and the surface comes and goes in turn. A broken call throws `std::logic_error`, so the tests of the engine fail on it. It keeps what the last committed frame did for tests to read.
+// The device of the headless host, which draws nothing and checks every call against the contract of `Device`: objects exist when they are used, images fit their type, mip levels, layers, sample count and format, passes open and close in turn with attachments that match each other and the pipelines drawn with them, multisampled attachments resolve into images of one sample, draws happen inside a pass with a pipeline, its bindings and every uniform block of its program, debug groups balance, and the surface comes and goes in turn. A broken call throws `std::logic_error`, so the tests of the engine fail on it. It keeps what the last committed frame did for tests to read. It holds the memory of the buffers and images it destroyed for later, the way a device keeps its empty memory blocks, until a trim gives it back, which happens only outside a pass.
 class NullDevice final : public Device {
   public:
     static constexpr int kMaxImageSize = 16 * 1024;
@@ -74,6 +74,9 @@ class NullDevice final : public Device {
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept override {
+        return spare;
+    }
     [[nodiscard]] bool isLost() const noexcept override;
 
     [[nodiscard]] Buffer makeBuffer(const BufferDesc& desc) override;
@@ -112,6 +115,12 @@ class NullDevice final : public Device {
     void popDebugGroup() override;
 
     void commit() override;
+    void trim() override;
+
+    // How many times the engine trimmed the device.
+    [[nodiscard]] int getTrimCount() const noexcept {
+        return trims;
+    }
 
     void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
@@ -267,6 +276,10 @@ class NullDevice final : public Device {
     std::vector<bool> debugGroups;
 
     bool lost = false;
+
+    // The bytes of the first level of the images and of the buffers that the device destroyed since the last trim, and the trims so far.
+    std::size_t spare = 0;
+    int trims = 0;
 
     // The capture tool the device reports, the path of the capture that records and the frame it began at.
     CaptureTool captureTool = CaptureTool::None;

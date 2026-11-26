@@ -1,6 +1,7 @@
 #include "gpu/vulkan/Device.hpp"
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cmath>
 #include <cstring>
@@ -241,6 +242,12 @@ bool Device::ensureFrame() {
 
     Context::check(vk.vkResetFences(context->getDevice(), 1, &frame.fence), "reset the fence of a frame");
     releases.collect(completedSerial);
+    if (std::exchange(frame.trim, false)) {
+        staging.trim(static_cast<int>(frameIndex));
+        uniforms.trim(static_cast<int>(frameIndex));
+    }
+
+    finishTrim();
     staging.begin(static_cast<int>(frameIndex));
     uniforms.begin(static_cast<int>(frameIndex));
 
@@ -339,6 +346,7 @@ void Device::commit() {
     if (!frameOpen) {
         pollFrames();
         releases.collect(completedSerial);
+        finishTrim();
         readbacks.sweep();
         return;
     }
@@ -428,7 +436,62 @@ void Device::commit() {
     pollFrames();
     releases.collect(completedSerial);
     descriptors.trim(completedSerial);
+    finishTrim();
     readbacks.sweep();
+}
+
+// What the GPU finished goes at once, and the rest goes as the frames in flight finish, so a trim never waits for the GPU. Between frames, once every frame finished, the objects released since then carry the serial of a frame that no GPU work reads yet, so they go at once too.
+void Device::trim() {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    if (lost) {
+        return;
+    }
+
+    pollFrames();
+    const bool idle = !frameOpen && std::ranges::none_of(frames, [](const Frame& frame) { return frame.submitted; });
+    releases.collect(idle ? nextSerial : completedSerial);
+
+    for (std::size_t index = 0; index < frames.size(); ++index) {
+        Frame& frame = frames[index];
+        if (frame.submitted || (frameOpen && index == frameIndex)) {
+            frame.trim = true;
+            continue;
+        }
+
+        staging.trim(static_cast<int>(index));
+        uniforms.trim(static_cast<int>(index));
+    }
+
+    trimSerial = idle ? completedSerial : nextSerial;
+    finishTrim();
+}
+
+// The allocator keeps an empty block of each memory type for the next allocation, which the trim gives back once every object released before it and every chunk it let go of left its block.
+void Device::finishTrim() {
+    if (!trimSerial || completedSerial < *trimSerial || std::ranges::any_of(frames, [](const Frame& frame) { return frame.trim; })) {
+        return;
+    }
+
+    vmaFreeEmptyBlocks(context->getAllocator());
+    trimSerial.reset();
+}
+
+// The bytes of the memory blocks that hold no object, with the free room of the blocks that do, and the chunks of the rings that the last frames left empty.
+std::size_t Device::getSpareBytes() const noexcept {
+    const VkPhysicalDeviceMemoryProperties* memory = nullptr;
+    vmaGetMemoryProperties(context->getAllocator(), &memory);
+    std::array<VmaBudget, VK_MAX_MEMORY_HEAPS> budgets{};
+    vmaGetHeapBudgets(context->getAllocator(), budgets.data());
+
+    VkDeviceSize spare = staging.getSpareBytes() + uniforms.getSpareBytes();
+    for (std::uint32_t heap = 0; heap < memory->memoryHeapCount; ++heap) {
+        spare += budgets[heap].statistics.blockBytes - budgets[heap].statistics.allocationBytes;
+    }
+
+    return static_cast<std::size_t>(spare);
 }
 
 void Device::resizeSurface(const Surface::Size& size) {

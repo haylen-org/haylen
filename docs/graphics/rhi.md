@@ -114,6 +114,24 @@ The CPU records a frame while the GPU still draws the frames before it. Each dev
 
 `destroy` never frees an object that a frame on the GPU may still use. Metal, Direct3D 12 and Vulkan keep it until the frames that may use it finished. Direct3D 11, OpenGL and WebGPU hand it to their API, which keeps it alive while queued commands use it. The engine itself destroys objects only between frames, through the graveyard of `graphics::Device`, and only on the frame thread.
 
+## Memory held for later
+
+A device keeps some memory for the frames to come, so a frame like the one before it allocates nothing. Its upload memory grows to the largest frame, and the memory allocator of Vulkan keeps an empty block of each memory type after its objects are gone. After a burst of loads, such as a scene that loads its art and then lets it go, that memory would stay with the app. `getSpareBytes()` tells how many bytes the device holds for later beyond what its objects take, and `trim()` gives them back to the system.
+
+A trim runs outside a pass and never waits for the GPU. What the GPU finished with goes at once. The upload memory of a frame in flight goes when that frame finished, as the device starts its next frame there. Between frames, once every frame finished, the objects destroyed since the last frame go at once too, so a trim in the background, where no frame runs, gives everything back.
+
+| Device | What `trim` gives back |
+| --- | --- |
+| Metal | The objects that the finished frames released, and the upload ring of each frame in flight down to what its last frame wrote. Metal frees every object that the device releases. |
+| Direct3D 12 | The objects that the finished frames released, the upload pages of the pool beyond one for each frame in flight, and the blocks of small buffers that hold no buffer. |
+| Direct3D 11 | The memory that the driver keeps for the device, such as the copies of the dynamic buffers it hands out, through `IDXGIDevice3::Trim`, after the context let go of every bound object. The rings of the device keep their size. |
+| Vulkan | The objects that the finished frames released, the chunks of the staging and uniform rings that the last frames left empty, and the empty memory blocks of the Vulkan Memory Allocator, through `vmaFreeEmptyBlocks` of the [patch](../tools/build.md#vulkan-memory-allocator-empty-blockspatch). |
+| OpenGL and OpenGL ES | The upload ring down to what the last frame of each region wrote. OpenGL frees every object that the device deletes. |
+| WebGL2 | Nothing, since every upload goes to the browser without a ring of the device. |
+| WebGPU | The chunks of the uniform ring that the last frame did not reach, with their bind groups. The browser holds every other upload. |
+
+The engine trims in two moments. `graphics::Device::followSpareMemory`, which runs at the end of every frame, trims once the spare bytes stopped growing for `graphics::Device::kTrimDelay`, two seconds of frames, so what a burst left behind goes back and a frame that draws what the frame before drew trims nothing and allocates nothing. A low memory warning of the system trims at once, after `assets.releaseUnused` and the listeners of `appLowMemory` released what they could. An app trims on its own with [`graphics.trim`](../lua-api/graphics.md#graphicstrim), such as after it left a level, and [`debug.stats`](../lua-api/debug.md#debugstats) reports the spare bytes as `memory.gpuSpare`.
+
 ## Surfaces
 
 The platform layer hands a device a `gpu::Surface`: the kind of window, its native handles, its `gpu::Surface::Size`, the sample count, whether vertical sync is on and whether the window is transparent. A device made without a surface draws offscreen only, which the GPU tests use.
@@ -222,6 +240,7 @@ A frame capture records every command of the device during some frames into a fi
 - The swapchain passes of a frame into one surface follow one another.
 - Pools hold at most the sizes that `NullDevice.hpp` declares, so a leak of GPU objects fails a test.
 - A capture begins and ends in turn outside a pass, only on a device that a test made with a capture tool.
+- A trim comes outside a pass. The device holds the memory of the buffers and images it destroyed as spare bytes until a trim gives it back, the way a device keeps its empty memory blocks, and `getTrimCount` tells how often the engine trimmed it.
 
 The [testing guide](../tools/testing.md#the-headless-host) lists every check and how tests read what a frame did.
 

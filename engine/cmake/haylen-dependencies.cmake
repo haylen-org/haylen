@@ -364,10 +364,16 @@ if("vulkan" IN_LIST HAYLEN_GRAPHICS_APIS)
     URL_HASH SHA256=e47c6efe5294bb03729a976b385864bba5daf46ec60f0bdea11e1d1446345f9a
     DOWNLOAD_ONLY YES
   )
+  # The allocator keeps one empty memory block of each memory type once its allocations are freed, so a patch adds the function that frees the empty blocks, which the device calls some time after a burst of loads and when the system runs low on memory.
+  set(vulkan_memory_allocator_patches "${CMAKE_CURRENT_LIST_DIR}/patches/vulkan-memory-allocator-empty-blocks.patch")
+  set(vulkan_memory_allocator_hash c5f3db848fca9cb9726b41f256cc3007773321fa92a86d1e0902e66474e8a9e3)
+  haylen_patched_package_key(vulkan_memory_allocator_cache_key ${vulkan_memory_allocator_hash} ${vulkan_memory_allocator_patches})
   CPMAddPackage(
     NAME vulkan_memory_allocator
     URL "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.5.0.tar.gz"
-    URL_HASH SHA256=c5f3db848fca9cb9726b41f256cc3007773321fa92a86d1e0902e66474e8a9e3
+    URL_HASH SHA256=${vulkan_memory_allocator_hash}
+    PATCHES ${vulkan_memory_allocator_patches}
+    CUSTOM_CACHE_KEY ${vulkan_memory_allocator_cache_key}
     DOWNLOAD_ONLY YES
   )
 endif()

@@ -1,6 +1,7 @@
 #include "gpu/d3d12/UploadAllocator.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <format>
 #include <utility>
 
@@ -8,7 +9,7 @@
 
 namespace haylen::gpu::d3d12 {
 
-UploadAllocator::UploadAllocator(ID3D12Device& owner, std::size_t framesInFlight) : device(owner) {
+UploadAllocator::UploadAllocator(ID3D12Device& owner, std::size_t frames) : device(owner), framesInFlight(frames) {
     free.reserve(framesInFlight);
     retired.reserve(framesInFlight);
     for (std::size_t frame = 0; frame < framesInFlight; ++frame) {
@@ -94,6 +95,42 @@ void UploadAllocator::release(std::uint64_t completedValue) {
     }
 
     retired.erase(finished.begin(), finished.end());
+
+    if (trimming) {
+        trimPool();
+        trimming = !retired.empty();
+    }
+}
+
+void UploadAllocator::trim() {
+    trimPool();
+    trimming = !retired.empty();
+}
+
+// The pool keeps the smallest pages, so the pages of its own size that a frame like the one before fills stay, and the larger pages that a single piece took go first.
+void UploadAllocator::trimPool() {
+    std::ranges::sort(free, {}, &Page::size);
+    std::size_t kept = 0;
+    while (kept < free.size() && kept < framesInFlight && free[kept].size == kPageSize) {
+        ++kept;
+    }
+
+    free.erase(free.begin() + static_cast<std::ptrdiff_t>(kept), free.end());
+}
+
+UINT64 UploadAllocator::getSpareBytes() const noexcept {
+    UINT64 spare = 0;
+    std::size_t kept = 0;
+    for (const Page& page : free) {
+        if (page.size == kPageSize && kept < framesInFlight) {
+            ++kept;
+            continue;
+        }
+
+        spare += page.size;
+    }
+
+    return spare;
 }
 
 } // namespace haylen::gpu::d3d12

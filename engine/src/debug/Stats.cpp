@@ -73,6 +73,7 @@ void Stats::update(core::Engine& engine, const graphics2d::Renderer::Stats& last
     memory.batches = bytesOf("StaticSpriteBatch");
     memory.buffers = bytesOf("RendererBuffers");
     memory.sounds = bytesOf("Sound");
+    memory.gpuSpare = engine.getGraphics().getSpareBytes();
 
     counts.scenes = engine.getScenes().size();
     counts.tweens = engine.getTweens().size();

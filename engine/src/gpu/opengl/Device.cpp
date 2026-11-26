@@ -1206,6 +1206,20 @@ void Device::popDebugGroup() {
     debug.popGroup();
 }
 
+void Device::trim() {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    if (ring && !lost) {
+        ring->trim();
+    }
+}
+
+std::size_t Device::getSpareBytes() const noexcept {
+    return ring ? ring->getSpareBytes() : 0;
+}
+
 // The depth and stencil of the window are never kept past the frame, so they are invalidated before the swap, and the fence of the frame tells a later frame when its region of the upload ring is free.
 void Device::commit() {
     if (pass.open) {

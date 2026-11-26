@@ -334,11 +334,20 @@ void NullDevice::prepareProgram(const ProgramDesc&, core::JobSystem&) {
 }
 
 void NullDevice::destroy(Buffer buffer) noexcept {
-    buffers.erase(buffer.id);
+    const auto found = buffers.find(buffer.id);
+    if (found != buffers.end()) {
+        spare += found->second.size;
+        buffers.erase(found);
+    }
 }
 
 void NullDevice::destroy(Image image) noexcept {
-    images.erase(image.id);
+    const auto found = images.find(image.id);
+    if (found != images.end()) {
+        const ImageDesc& desc = found->second;
+        spare += static_cast<std::size_t>(desc.width) * static_cast<std::size_t>(desc.height) * static_cast<std::size_t>(desc.layers) * ImageInfo::getBytesPerPixel(desc.format);
+        images.erase(found);
+    }
 }
 
 void NullDevice::destroy(Sampler sampler) noexcept {
@@ -956,6 +965,12 @@ Device::CaptureSupport NullDevice::getCaptureSupport() const {
     }
 
     return {.tool = captureTool, .missing = {}};
+}
+
+void NullDevice::trim() {
+    requireNoPass();
+    spare = 0;
+    ++trims;
 }
 
 void NullDevice::beginCapture(const std::filesystem::path& path) {

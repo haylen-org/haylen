@@ -294,6 +294,23 @@ void Device::release(std::uint64_t completedValue) {
     samplerTables->release(completedValue);
 }
 
+// Between frames, once the GPU finished every frame, the objects released since then wait for a fence value that no GPU work reads yet, so they go at once, and the pages that the frames in flight still fill go once they come back.
+void Device::trim() {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    const std::uint64_t completed = fence->GetCompletedValue();
+    const bool idle = !frameOpen && completed >= fenceValue;
+    release(idle ? fenceValue + 1 : completed);
+    uploads->trim();
+    bufferArena->trim();
+}
+
+std::size_t Device::getSpareBytes() const noexcept {
+    return static_cast<std::size_t>(uploads->getSpareBytes() + bufferArena->getSpareBytes());
+}
+
 void Device::setHeaps() {
     const std::array<ID3D12DescriptorHeap*, 2> heaps{textureTables->get(), samplerTables->get()};
     commands->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());

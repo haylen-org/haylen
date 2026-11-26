@@ -35,6 +35,12 @@ class UploadRing final {
     // Makes what the frame wrote visible to the GPU, on memory that the CPU does not keep coherent.
     void flush();
 
+    // Destroys the chunks of a frame in flight that its last use left empty, beyond the first, once the GPU finished that use.
+    void trim(int frame);
+
+    // The bytes of the chunks that the last use of each frame left empty, beyond the first chunk of each frame.
+    [[nodiscard]] VkDeviceSize getSpareBytes() const noexcept;
+
   private:
     struct Chunk {
         VkBuffer buffer = VK_NULL_HANDLE;

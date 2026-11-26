@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <vector>
 
 #include "gpu/opengl/Gl.hpp"
 #include "gpu/opengl/StateCache.hpp"
@@ -43,9 +44,16 @@ class UploadRing final {
         return regionSize * regionCount;
     }
 
+    // Makes the ring as small as the last frame of each region needed, and never smaller than its first size. OpenGL keeps the buffer that the ring lets go of until the copies the GPU has yet to make from it finished.
+    void trim();
+
+    // The bytes of the regions beyond what the last frame of each region needed.
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept;
+
   private:
     void allocate(std::size_t size);
     void release() noexcept;
+    [[nodiscard]] std::size_t getNeededRegionSize() const noexcept;
 
     Gl& gl;
     StateCache& state;
@@ -53,6 +61,8 @@ class UploadRing final {
     std::size_t regionSize = 0;
     std::size_t region = 0;
     std::size_t cursor = 0;
+    // The bytes that the last frame of each region wrote.
+    std::vector<std::size_t> used;
     Gl::Uint buffer = 0;
     std::byte* persistentMemory = nullptr;
 };

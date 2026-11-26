@@ -36,6 +36,10 @@ void OffscreenSwapchain::readPools(std::vector<Pool>& pools) const {
     device->readPools(pools);
 }
 
+std::size_t OffscreenSwapchain::getSpareBytes() const noexcept {
+    return device->getSpareBytes();
+}
+
 bool OffscreenSwapchain::isLost() const noexcept {
     return device->isLost();
 }
@@ -162,6 +166,10 @@ void OffscreenSwapchain::pushDebugGroup(std::string_view name) {
 
 void OffscreenSwapchain::popDebugGroup() {
     device->popDebugGroup();
+}
+
+void OffscreenSwapchain::trim() {
+    device->trim();
 }
 
 void OffscreenSwapchain::commit() {

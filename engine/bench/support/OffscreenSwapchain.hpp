@@ -29,6 +29,7 @@ class OffscreenSwapchain final : public gpu::Device {
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept override;
     [[nodiscard]] bool isLost() const noexcept override;
 
     [[nodiscard]] Buffer makeBuffer(const BufferDesc& desc) override;
@@ -62,6 +63,7 @@ class OffscreenSwapchain final : public gpu::Device {
     void pushDebugGroup(std::string_view name) override;
     void popDebugGroup() override;
     void commit() override;
+    void trim() override;
 
     void resizeSurface(const gpu::Surface::Size& size) override;
     void detachSurface() override;

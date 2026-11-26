@@ -617,6 +617,9 @@ class Device {
     // Fills `pools` with the pools of the device in the storage it holds, so a reader that keeps the vector allocates nothing once it grew.
     virtual void readPools(std::vector<Pool>& pools) const = 0;
 
+    // The bytes of memory that the device holds for later beyond what its objects take, such as memory blocks that hold no object and the chunks of its upload rings that its last frames left empty, which `trim` gives back. A reader may ask in every frame, since the answer allocates nothing.
+    [[nodiscard]] virtual std::size_t getSpareBytes() const noexcept = 0;
+
     // Whether the device stopped working, such as after a reset of the GPU or a lost context, after which the platform creates a new device and the app starts again.
     [[nodiscard]] virtual bool isLost() const noexcept = 0;
 
@@ -662,6 +665,9 @@ class Device {
 
     // Submits the passes of the frame and presents the swapchain of every surface that a pass drew into.
     virtual void commit() = 0;
+
+    // Gives back to the system the memory that the device holds for later, outside a pass. What the GPU finished with goes at once and the rest as the frames in flight finish, so a trim never waits for the GPU. While no frame is in flight or open, the objects destroyed since the last frame go at once too. A device that holds nothing for later says why in its code.
+    virtual void trim() = 0;
 
     // Makes the swapchain follow a new size of the drawable and of its window in pixels, from the next frame.
     virtual void resizeSurface(const Surface::Size& size) = 0;

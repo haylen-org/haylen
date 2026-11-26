@@ -36,6 +36,12 @@ class BufferArena final {
     // Gives the range back, once the GPU finished every frame that used it.
     void free(const Range& range);
 
+    // Releases the blocks that hold no buffer, whose places a later block takes.
+    void trim();
+
+    // The bytes of the blocks that hold no buffer.
+    [[nodiscard]] UINT64 getSpareBytes() const noexcept;
+
   private:
     static constexpr UINT64 kAlignment = 256;
 
@@ -47,6 +53,7 @@ class BufferArena final {
 
     [[nodiscard]] Microsoft::WRL::ComPtr<ID3D12Resource> makeResource(UINT64 size) const;
     [[nodiscard]] static bool take(Block& block, UINT64 size, UINT64& offset);
+    [[nodiscard]] static bool isEmpty(const Block& block) noexcept;
 
     ID3D12Device& device;
     std::vector<Block> blocks;

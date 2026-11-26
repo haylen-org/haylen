@@ -34,6 +34,18 @@ local atlas = graphics.newRenderTarget(size, size)
 print(atlas.width, graphics.maxTextureSize())
 ```
 
+### graphics.trim()
+
+Gives back to the system the GPU memory that the device holds for later, such as the empty memory blocks and the upload memory that a burst of loads left behind, as the [RHI guide](../graphics/rhi.md#memory-held-for-later) describes. The engine already trims two seconds after that memory stopped growing and when the system warns that its memory is low, so an app calls it only at a moment it knows about, such as after it left a level and released its art. It never waits for the GPU, and what the frames in flight still read goes as they finish.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+
+assets.releaseUnused()
+graphics.trim()
+```
+
 ### graphics.maxImageSize()
 
 Returns the longest side in pixels that an `Image` can have on every platform, 16384. It keeps every image within the memory of a device and within the 32-bit arithmetic of its pixels. The images that `graphics.newImage` and `graphics.decodeImage` make and the rasters of vector images never have a longer side.

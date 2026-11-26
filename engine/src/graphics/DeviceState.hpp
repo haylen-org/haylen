@@ -55,6 +55,10 @@ struct DeviceState {
 
     std::optional<PendingCapture> capture;
 
+    // The memory that the GPU device held for later at the last frame, and the seconds of frames since it last grew, while a trim waits for it to stop growing.
+    std::size_t spare = 0;
+    std::optional<double> sinceSpareGrew;
+
     // Returns the sampler that every texture with the options shares, creating it on first use.
     [[nodiscard]] gpu::Device::Sampler getSampler(Texture::Options options);
 

@@ -47,6 +47,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept override;
     [[nodiscard]] bool isLost() const noexcept override;
 
     [[nodiscard]] Buffer makeBuffer(const BufferDesc& desc) override;
@@ -85,6 +86,9 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+
+    // Makes the upload ring as small as its last frames needed, which is all that the device keeps for later: OpenGL frees the memory of each object that the device deletes, and WebGL2 hands every upload to the browser without a ring.
+    void trim() override;
 
     void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;

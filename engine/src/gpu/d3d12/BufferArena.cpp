@@ -40,10 +40,39 @@ BufferArena::Allocation BufferArena::allocate(UINT64 size) {
         }
     }
 
-    Block& block = blocks.emplace_back(Block{.resource = makeResource(kBlockSize), .size = kBlockSize});
+    // The ranges of buffers name their block by its place, so a new block takes the place of a block that a trim released.
+    const auto released = std::ranges::find_if(blocks, [](const Block& block) { return block.resource == nullptr; });
+    const auto index = static_cast<std::uint32_t>(released != blocks.end() ? released - blocks.begin() : blocks.size());
+    if (released == blocks.end()) {
+        blocks.emplace_back();
+    }
+
+    Block& block = blocks[index];
+    block = {.resource = makeResource(kBlockSize), .size = kBlockSize};
     block.resource->SetName(L"haylen-buffers");
-    block.available.push_back({.block = static_cast<std::uint32_t>(blocks.size() - 1), .offset = room, .size = kBlockSize - room});
-    return {.resource = block.resource, .range = {.block = static_cast<std::uint32_t>(blocks.size() - 1), .offset = 0, .size = room}};
+    block.available.push_back({.block = index, .offset = room, .size = kBlockSize - room});
+    return {.resource = block.resource, .range = {.block = index, .offset = 0, .size = room}};
+}
+
+bool BufferArena::isEmpty(const Block& block) noexcept {
+    return block.resource != nullptr && block.available.size() == 1 && block.available.front().size == block.size;
+}
+
+void BufferArena::trim() {
+    for (Block& block : blocks) {
+        if (isEmpty(block)) {
+            block = {};
+        }
+    }
+}
+
+UINT64 BufferArena::getSpareBytes() const noexcept {
+    UINT64 spare = 0;
+    for (const Block& block : blocks) {
+        spare += isEmpty(block) ? block.size : 0;
+    }
+
+    return spare;
 }
 
 // The first free range that fits gives its start, and what it has left stays free.

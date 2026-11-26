@@ -6,6 +6,7 @@ set(haylen_gpu_test_sources
   "${haylen_tests_dir}/gpu/DrawTests.cpp"
   "${haylen_tests_dir}/gpu/DriverIssuesTests.cpp"
   "${haylen_tests_dir}/gpu/LifetimeTests.cpp"
+  "${haylen_tests_dir}/gpu/MemoryTrimTests.cpp"
   "${haylen_tests_dir}/gpu/PassTests.cpp"
   "${haylen_tests_dir}/gpu/RendererImageTests.cpp"
   "${haylen_tests_dir}/gpu/ShaderPackageTests.cpp"

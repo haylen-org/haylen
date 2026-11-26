@@ -72,7 +72,23 @@ void UniformRing::flush(WGPUQueue queue) noexcept {
         chunk.used = 0;
     }
 
+    reached = current + 1U;
     current = 0;
+}
+
+// WebGPU keeps the memory of a destroyed buffer until the work that the queue already took from it finished.
+std::size_t UniformRing::trim() noexcept {
+    while (chunks.size() > reached) {
+        wgpuBufferDestroy(chunks.back().buffer);
+        wgpuBufferRelease(chunks.back().buffer);
+        chunks.pop_back();
+    }
+
+    return chunks.size();
+}
+
+std::size_t UniformRing::getSpareBytes() const noexcept {
+    return (chunks.size() - reached) * kChunkSize;
 }
 
 } // namespace haylen::gpu::webgpu

@@ -36,6 +36,20 @@ TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
 }
 
 // The bytes of an image file, such as a PNG that a plugin returns, become a texture.
+// The memory of the textures that the app let go of stays with the device for later until a trim gives it back, which the statistics report.
+TEST(GraphicsLuaTest, TrimsTheMemoryThatTheDeviceHoldsForLater) {
+    test::LuaFixture fixture;
+    fixture.runLua("graphics = require('haylen.graphics') debugging = require('haylen.debug') textures = {} for index = 1, 4 do textures[index] = graphics.newTexture(32, 32) end");
+    fixture.frames(1);
+    fixture.runLua("textures = nil collectgarbage() collectgarbage()");
+    fixture.frames(1);
+
+    EXPECT_EQ(fixture.lua("return tostring(debugging.stats().memory.gpuSpare > 0)"), "true");
+    const int trims = fixture.host().getGpu().getTrimCount();
+    EXPECT_EQ(fixture.lua("graphics.trim() return debugging.stats().memory.gpuSpare"), "0");
+    EXPECT_EQ(fixture.host().getGpu().getTrimCount(), trims + 1);
+}
+
 TEST(GraphicsLuaTest, CreatesTexturesFromTheBytesOfImageFiles) {
     const std::vector<std::uint8_t> image = test::TestFiles::pngImage(5, 3, 0x336699FFU);
     test::LuaFixture fixture;

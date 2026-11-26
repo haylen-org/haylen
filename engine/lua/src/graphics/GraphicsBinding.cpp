@@ -130,6 +130,11 @@ int GraphicsBinding::maxTextureSize(lua_State* L) {
     return 1;
 }
 
+int GraphicsBinding::trim(lua_State* L) {
+    lua::Runtime::getEngine(L).getGraphics().trim();
+    return 0;
+}
+
 int GraphicsBinding::whiteTexture(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getWhiteTexture());
     return 1;
@@ -289,6 +294,7 @@ int GraphicsBinding::open(lua_State* L) {
         {"whiteTexture", &whiteTexture},
         {"apiName", &apiName},
         {"maxTextureSize", &maxTextureSize},
+        {"trim", &lua::Binding::native<&trim>},
         {"newFontFamily", &lua::Binding::native<&FontBinding::newFontFamily>},
         {"systemFonts", &FontBinding::systemFonts},
         {"newBitmapFont", &lua::Binding::native<&FontBinding::newBitmapFont>},

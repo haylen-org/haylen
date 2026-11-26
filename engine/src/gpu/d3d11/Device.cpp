@@ -1127,6 +1127,24 @@ void Device::commit() {
     drainMessages();
 }
 
+// The driver gives back only what no object of the context holds, so the context lets go of every bound object first, and the next draws bind their state again.
+void Device::trim() {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    if (lost) {
+        return;
+    }
+
+    context->ClearState();
+    bound = {};
+
+    ComPtr<IDXGIDevice3> dxgi;
+    HResult::check(device.As(&dxgi), "reach the DXGI device of the GPU");
+    dxgi->Trim();
+}
+
 void Device::drainMessages() {
     if (messages != nullptr) {
         messages->drain<ID3D11InfoQueue, D3D11_MESSAGE>(*infoQueue.Get(), "Direct3D 11");

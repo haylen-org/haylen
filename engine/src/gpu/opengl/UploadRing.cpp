@@ -1,11 +1,12 @@
 #include "gpu/opengl/UploadRing.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <stdexcept>
 
 namespace haylen::gpu::opengl {
 
-UploadRing::UploadRing(Gl& functions, StateCache& cache, std::size_t regions) : gl(functions), state(cache), regionCount(regions) {
+UploadRing::UploadRing(Gl& functions, StateCache& cache, std::size_t regions) : gl(functions), state(cache), regionCount(regions), used(regions) {
     allocate(kInitialRegionSize);
 }
 
@@ -48,6 +49,26 @@ void UploadRing::release() noexcept {
 void UploadRing::beginFrame(std::size_t frame) noexcept {
     region = frame % regionCount;
     cursor = region * regionSize;
+    used[region] = 0;
+}
+
+void UploadRing::trim() {
+    const std::size_t needed = getNeededRegionSize();
+    if (needed >= regionSize) {
+        return;
+    }
+
+    release();
+    allocate(needed);
+}
+
+std::size_t UploadRing::getSpareBytes() const noexcept {
+    return (regionSize - std::min(regionSize, getNeededRegionSize())) * regionCount;
+}
+
+std::size_t UploadRing::getNeededRegionSize() const noexcept {
+    const std::size_t largest = std::ranges::max(used);
+    return std::max(kInitialRegionSize, std::bit_ceil(align(largest)));
 }
 
 UploadRing::Slice UploadRing::map(std::size_t size) {
@@ -59,6 +80,7 @@ UploadRing::Slice UploadRing::map(std::size_t size) {
     }
 
     cursor = start + size;
+    used[region] = cursor - region * regionSize;
 
     if (persistentMemory != nullptr) {
         return {.data = persistentMemory + start, .offset = start};

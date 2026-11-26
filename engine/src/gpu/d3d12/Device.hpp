@@ -54,6 +54,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept override;
     [[nodiscard]] bool isLost() const noexcept override;
 
     [[nodiscard]] Buffer makeBuffer(const BufferDesc& desc) override;
@@ -92,6 +93,9 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+
+    // Releases the objects that the GPU finished with, the upload pages of the pool beyond one for every frame in flight and the blocks of buffers that hold no buffer.
+    void trim() override;
     void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
     void attachSurface(const Surface& target) override;

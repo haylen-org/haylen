@@ -19,13 +19,19 @@ class UploadAllocator final {
         D3D12_GPU_VIRTUAL_ADDRESS address = 0;
     };
 
-    UploadAllocator(ID3D12Device& owner, std::size_t framesInFlight);
+    UploadAllocator(ID3D12Device& owner, std::size_t frames);
 
     [[nodiscard]] Allocation allocate(UINT64 size, UINT64 alignment);
 
     // Tags the pages that the frame filled with the fence value that marks its end, and takes back the pages of the frames the GPU finished.
     void endFrame(std::uint64_t fenceValue);
     void release(std::uint64_t completedValue);
+
+    // Keeps a page for every frame in flight in the pool and releases the other pages there, and the ones that the frames in flight still fill once they come back.
+    void trim();
+
+    // The bytes of the pages of the pool beyond a page for every frame in flight.
+    [[nodiscard]] UINT64 getSpareBytes() const noexcept;
 
   private:
     static constexpr UINT64 kPageSize = 4ULL << 20U;
@@ -40,8 +46,12 @@ class UploadAllocator final {
 
     [[nodiscard]] Page makePage(UINT64 size);
     [[nodiscard]] Page takePage(UINT64 size);
+    void trimPool();
 
     ID3D12Device& device;
+    std::size_t framesInFlight = 0;
+    // Whether the pages that come back from the frames in flight go once the pool holds its page for every frame in flight.
+    bool trimming = false;
     std::vector<Page> free;
     std::vector<Page> filled;
     std::vector<Page> retired;

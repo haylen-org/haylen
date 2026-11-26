@@ -62,6 +62,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept override;
     [[nodiscard]] bool isLost() const noexcept override;
 
     [[nodiscard]] Buffer makeBuffer(const BufferDesc& desc) override;
@@ -101,6 +102,9 @@ class Device final : public gpu::Device {
 
     void commit() override;
 
+    // Frees the memory blocks that no object uses and the chunks of the upload rings that the last frames left empty, through the Vulkan Memory Allocator.
+    void trim() override;
+
     void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
     void attachSurface(const Surface& surface) override;
@@ -136,6 +140,8 @@ class Device final : public gpu::Device {
         VkQueryPool timestamps = VK_NULL_HANDLE;
         std::uint64_t serial = 0;
         bool submitted = false;
+        // Whether a trim waits for the frame to finish, so the chunks of its rings that its last use left empty go once it begins again.
+        bool trim = false;
     };
 
     // A buffer, which a dynamic one holds once for each frame in flight at the stride, and whose current copy changes with the first write of a frame.
@@ -315,6 +321,7 @@ class Device final : public gpu::Device {
     void pollFrames();
     void markLost(VkResult result);
     void waitIdle();
+    void finishTrim();
 
     [[nodiscard]] static std::vector<std::unique_ptr<SurfaceChain>> makeChains(const Instance& owner, const std::optional<Surface>& surface);
     [[nodiscard]] SurfaceChain& requireChain(int surface) const;
@@ -394,6 +401,8 @@ class Device final : public gpu::Device {
     std::uint64_t completedSerial = 0;
     std::optional<double> gpuFrameSeconds;
     bool lost = false;
+    // The serial of the last frame that may use an object released before the trim, after which the empty memory blocks go.
+    std::optional<std::uint64_t> trimSerial;
 
     SwapchainTarget swapchainTarget;
     bool swapchainRendering = false;

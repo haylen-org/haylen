@@ -1,6 +1,7 @@
 #include "gpu/vulkan/UploadRing.hpp"
 
 #include <algorithm>
+#include <cstddef>
 
 #include "gpu/vulkan/Context.hpp"
 
@@ -61,9 +62,32 @@ void UploadRing::flush() {
     }
 }
 
+// The chunks keep the cursors of the last use of their frame until the frame begins again, so the chunks that use left empty are the ones the frames like it need no more. The first chunk stays, so a frame that writes again takes no new chunk.
+void UploadRing::trim(int frame) {
+    std::vector<Chunk>& chunks = frames[static_cast<std::size_t>(frame)];
+    for (std::size_t index = chunks.size(); index-- > 1;) {
+        if (chunks[index].cursor == 0) {
+            destroyChunk(chunks[index]);
+            chunks.erase(chunks.begin() + static_cast<std::ptrdiff_t>(index));
+        }
+    }
+}
+
+VkDeviceSize UploadRing::getSpareBytes() const noexcept {
+    VkDeviceSize spare = 0;
+    for (const std::vector<Chunk>& chunks : frames) {
+        for (std::size_t index = 1; index < chunks.size(); ++index) {
+            spare += chunks[index].cursor == 0 ? chunks[index].size : 0;
+        }
+    }
+
+    return spare;
+}
+
+// Each chunk owns its memory, so a chunk that a burst of uploads made never shares a memory block with the images and buffers of the app, where a chunk that stays would keep the block of released images from going back, as on a GPU whose memory the CPU shares, which keeps both in one kind of memory.
 UploadRing::Chunk UploadRing::makeChunk(VkDeviceSize size) const {
     const VkBufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .pNext = nullptr, .flags = 0, .size = size, .usage = usage, .sharingMode = VK_SHARING_MODE_EXCLUSIVE, .queueFamilyIndexCount = 0, .pQueueFamilyIndices = nullptr};
-    const VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
+    const VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
     Chunk made{.size = size};
     VmaAllocationInfo allocated{};
     Context::check(vmaCreateBuffer(context.getAllocator(), &info, &memory, &made.buffer, &made.allocation, &allocated), "make an upload buffer");

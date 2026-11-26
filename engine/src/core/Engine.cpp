@@ -426,6 +426,7 @@ void Engine::frame(double frameSeconds) {
     }
 
     current.graphics->collectGarbage();
+    current.graphics->followSpareMemory(frameSeconds);
     current.input.endFrame();
     profiler.endFrame();
 }
@@ -846,9 +847,11 @@ void Engine::dispatchEvent(const platform::Event& event) {
             current.events.emit(LifecycleEvent::kAppQuitRequested);
             break;
         case platform::Event::Type::LowMemory:
+            // The GPU device gives back what it holds for later once the assets and the listeners of the app released what they could.
             current.assets->releaseUnused();
             lowMemory.emit(event.memoryLevel);
             current.events.emit(LifecycleEvent::kAppLowMemory, {{"level", platform::Event::memoryLevelName(event.memoryLevel)}});
+            current.graphics->trim();
             break;
         default:
             break;

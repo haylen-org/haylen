@@ -143,6 +143,9 @@ struct Device::Native {
 
     [[nodiscard]] BufferEntry& requireBuffer(Buffer buffer);
     [[nodiscard]] Swapchain& requireSwapchain(int surface);
+
+    // The number of the last committed frame of a slot, or 0 for a slot that no frame used yet.
+    [[nodiscard]] std::uint64_t getLastFrame(std::size_t slot) const noexcept;
     [[nodiscard]] std::unique_ptr<Swapchain>& requireAddedSurface(int surface);
     [[nodiscard]] ImageEntry& requireImage(Image image);
     [[nodiscard]] ProgramEntry& requireProgram(Program program);
@@ -172,6 +175,8 @@ struct Device::Native {
     std::vector<std::unique_ptr<Swapchain>> surfaces;
     LibraryCache libraries;
     std::vector<UploadRing> rings;
+    // The slots whose ring a trim makes smaller once the frame in flight that reads it finished.
+    std::array<bool, kFramesInFlight> trims{};
 
     HandleTable<BufferEntry> buffers{"buffer"};
     HandleTable<ImageEntry> images{"image"};
@@ -336,6 +341,16 @@ void Device::Native::complete(Signals& state, id<MTLCommandBuffer> commands, std
     std::uint64_t known = state.completed.load(std::memory_order_relaxed);
     while (known < frame && !state.completed.compare_exchange_weak(known, frame, std::memory_order_release)) {}
     dispatch_semaphore_signal(state.semaphore);
+}
+
+std::uint64_t Device::Native::getLastFrame(std::size_t slot) const noexcept {
+    for (std::uint64_t frame = frameNumber; frame-- > kFirstFrame;) {
+        if (static_cast<std::size_t>(frame % kFramesInFlight) == slot) {
+            return frame;
+        }
+    }
+
+    return 0;
 }
 
 // The surface 0 is the window, and the others are the surfaces that `addSurface` made.
@@ -1430,6 +1445,10 @@ void Device::openFrame() {
     reportErrors();
 
     native->frameSlot = static_cast<std::size_t>(native->frameNumber % kFramesInFlight);
+    if (std::exchange(native->trims[native->frameSlot], false)) {
+        native->rings[native->frameSlot].trim();
+    }
+
     native->rings[native->frameSlot].reset();
     @autoreleasepool {
         native->commands = [native->queue commandBufferWithDescriptor:native->commandsDesc];
@@ -1505,6 +1524,36 @@ void Device::commit() {
     native->frameOpen = false;
     ++native->frameNumber;
     native->graveyard.setFrame(native->frameNumber);
+}
+
+// The objects that wait for frames go once the GPU finished those frames, and all of them once every committed frame finished between frames, since no command buffer records them then.
+void Device::trim() {
+    if (native->passOpen) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    const std::uint64_t completed = native->signals->completed.load(std::memory_order_acquire);
+    const bool idle = !native->frameOpen && completed + 1 >= native->frameNumber;
+    native->graveyard.release(idle ? native->frameNumber : completed);
+
+    for (std::size_t slot = 0; slot < native->rings.size(); ++slot) {
+        const bool reading = (native->frameOpen && slot == native->frameSlot) || native->getLastFrame(slot) > completed;
+        if (reading) {
+            native->trims[slot] = true;
+            continue;
+        }
+
+        native->rings[slot].trim();
+    }
+}
+
+std::size_t Device::getSpareBytes() const noexcept {
+    std::size_t spare = 0;
+    for (const UploadRing& ring : native->rings) {
+        spare += ring.getSpareBytes();
+    }
+
+    return spare;
 }
 
 void Device::resizeSurface(const Surface::Size& size) {

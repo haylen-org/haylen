@@ -104,6 +104,7 @@ set(HAYLEN_TEST_SOURCES
   graphics/ImageFiltersTests.cpp
   graphics/ImagePaletteTests.cpp
   graphics/MaterialTests.cpp
+  graphics/MemoryTrimTests.cpp
   graphics/ShaderTests.cpp
   input/ActionMapTests.cpp
   input/CommandBufferTests.cpp

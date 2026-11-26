@@ -48,6 +48,11 @@ class Device final : public gpu::Device {
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
+
+    // The rings keep their size, and the copies of their buffers that the driver hands out as they start over belong to the driver, which `trim` asks to give them back, so the device itself holds no spare bytes.
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept override {
+        return 0;
+    }
     [[nodiscard]] bool isLost() const noexcept override;
 
     [[nodiscard]] Buffer makeBuffer(const BufferDesc& desc) override;
@@ -86,6 +91,9 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+
+    // Asks the driver, through `IDXGIDevice3::Trim`, to give back the memory it keeps for the device, such as the copies of dynamic buffers and the memory of released objects.
+    void trim() override;
     void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
     void attachSurface(const Surface& target) override;

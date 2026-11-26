@@ -238,7 +238,7 @@ void DebugBinding::pushStats(lua_State* L, const haylen::debug::Stats& snapshot)
     lua_setfield(L, -2, "uploadedBytes");
     lua_setfield(L, -2, "rendering");
 
-    lua_createtable(L, 0, 6);
+    lua_createtable(L, 0, 7);
     lua::Stack::push(L, snapshot.memory.lua);
     lua_setfield(L, -2, "lua");
     lua::Stack::push(L, snapshot.memory.textures);
@@ -251,6 +251,8 @@ void DebugBinding::pushStats(lua_State* L, const haylen::debug::Stats& snapshot)
     lua_setfield(L, -2, "buffers");
     lua::Stack::push(L, snapshot.memory.sounds);
     lua_setfield(L, -2, "sounds");
+    lua::Stack::push(L, snapshot.memory.gpuSpare);
+    lua_setfield(L, -2, "gpuSpare");
     lua_setfield(L, -2, "memory");
 
     const haylen::debug::Stats::Counts& counts = snapshot.counts;

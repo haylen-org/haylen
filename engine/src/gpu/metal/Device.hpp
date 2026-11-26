@@ -27,6 +27,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept override;
     [[nodiscard]] bool isLost() const noexcept override;
 
     [[nodiscard]] Buffer makeBuffer(const BufferDesc& desc) override;
@@ -65,6 +66,9 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+
+    // Releases the objects that the GPU finished with and makes the upload ring of each frame in flight as small as its last frame wrote. Metal frees the memory of every object that the device releases, so the rings are all that the device keeps for later.
+    void trim() override;
 
     void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;

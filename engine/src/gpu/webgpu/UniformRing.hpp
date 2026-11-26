@@ -43,6 +43,12 @@ class UniformRing final {
     // Writes the uniforms of the frame into the buffers of the GPU, before the frame is submitted, and starts the next frame from the first chunk.
     void flush(WGPUQueue queue) noexcept;
 
+    // Releases the chunks beyond the ones that the last frame reached, and returns how many chunks stay, so the device lets go of the bind groups of the others.
+    std::size_t trim() noexcept;
+
+    // The bytes of the chunks beyond the ones that the last frame reached.
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept;
+
   private:
     struct Chunk {
         WGPUBuffer buffer = nullptr;
@@ -56,6 +62,8 @@ class UniformRing final {
     std::uint32_t alignment;
     std::vector<Chunk> chunks;
     std::uint32_t current = 0;
+    // The chunks that the last frame reached.
+    std::size_t reached = 1;
 };
 
 } // namespace haylen::gpu::webgpu

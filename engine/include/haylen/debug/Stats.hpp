@@ -39,6 +39,7 @@ class Stats final {
         std::int64_t batches = 0;
         std::int64_t buffers = 0;
         std::int64_t sounds = 0;
+        std::size_t gpuSpare = 0;
     };
 
     // The last poll of the event loop of Varn: the milliseconds it could take, whether anything ran, whether work remains and the milliseconds the loop can wait before it has work of its own, which is -1 when only work from outside can bring any.

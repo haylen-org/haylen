@@ -1,0 +1,109 @@
+Adds vmaFreeEmptyBlocks, which frees the memory blocks that hold no allocation in every pool down to its minimum block count, since the allocator keeps one empty block of each memory type after its allocations are freed and offers no other way to give that memory back after a burst of loads or when the system runs low on memory.
+
+--- a/include/vk_mem_alloc.h
++++ b/include/vk_mem_alloc.h
+@@ -1848,6 +1848,14 @@
+ VMA_CALL_PRE void VMA_CALL_POST vmaSetCurrentFrameIndex(
+     VmaAllocator VMA_NOT_NULL allocator,
+     uint32_t frameIndex);
++
++/** \brief Frees the memory blocks that hold no allocation, in the default pools and in every custom pool, down to the minimum block count of each.
++
++The allocator keeps one empty block of each memory type once its allocations are freed, so that the next allocation does not create a block again.
++This function gives that memory back, such as some time after a burst of allocations or when the system reports that its memory is low.
++*/
++VMA_CALL_PRE void VMA_CALL_POST vmaFreeEmptyBlocks(
++    VmaAllocator VMA_NOT_NULL allocator);
+ 
+ /** @} */
+ 
+@@ -10198,6 +10206,8 @@
+     void AddDetailedStatistics(VmaDetailedStatistics& inoutStats);
+     bool IsEmpty();
+     bool IsCorruptionDetectionEnabled() const;
++    // Frees the blocks that hold no allocation, down to the minimum block count.
++    void FreeEmptyBlocks();
+ 
+     VkResult Allocate(
+         VkDeviceSize size,
+@@ -10790,6 +10800,7 @@
+         const VmaAllocation* pAllocations);
+ 
+     void CalculateStatistics(VmaTotalStatistics* pStats);
++    void FreeEmptyBlocks();
+ 
+     void GetHeapBudgets(
+         VmaBudget* outBudgets, uint32_t firstHeap, uint32_t heapCount);
+@@ -12283,7 +12294,33 @@
+ 
+     return VK_SUCCESS;
+ }
++
++void VmaBlockVector::FreeEmptyBlocks()
++{
++    for (;;)
++    {
++        VmaDeviceMemoryBlock* pBlockToDelete = VMA_NULL;
++        {
++            VmaMutexLockWrite lock(m_Mutex, m_hAllocator->m_UseMutex);
++            for (size_t index = m_Blocks.size(); index-- > 0 && m_Blocks.size() > m_MinBlockCount; )
++            {
++                if (m_Blocks[index]->m_pMetadata->IsEmpty())
++                {
++                    pBlockToDelete = m_Blocks[index];
++                    VmaVectorRemove(m_Blocks, index);
++                    break;
++                }
++            }
++        }
+ 
++        // Destruction of a free block happens outside of the mutex lock, as in Free.
++        if (pBlockToDelete == VMA_NULL)
++            return;
++        pBlockToDelete->Destroy(m_hAllocator);
++        vma_delete(m_hAllocator, pBlockToDelete);
++    }
++}
++
+ bool VmaBlockVector::HasEmptyBlock()
+ {
+     for (size_t index = 0, count = m_Blocks.size(); index < count; ++index)
+@@ -14789,7 +14826,21 @@
+                 VMA_ASSERT(0);
+             }
+         }
++    }
++}
++
++void VmaAllocator_T::FreeEmptyBlocks()
++{
++    for(uint32_t memTypeIndex = 0; memTypeIndex < GetMemoryTypeCount(); ++memTypeIndex)
++    {
++        VmaBlockVector* const pBlockVector = m_pBlockVectors[memTypeIndex];
++        if (pBlockVector != VMA_NULL)
++            pBlockVector->FreeEmptyBlocks();
+     }
++
++    VmaMutexLockRead lock(m_PoolsMutex, m_UseMutex);
++    for(VmaPool pool = m_Pools.Front(); pool != VMA_NULL; pool = m_Pools.GetNext(pool))
++        pool->m_BlockVector.FreeEmptyBlocks();
+ }
+ 
+ void VmaAllocator_T::CalculateStatistics(VmaTotalStatistics* pStats)
+@@ -15910,6 +15961,16 @@
+     VMA_DEBUG_GLOBAL_MUTEX_LOCK
+ 
+     allocator->SetCurrentFrameIndex(frameIndex);
++}
++
++VMA_CALL_PRE void VMA_CALL_POST vmaFreeEmptyBlocks(
++    VmaAllocator allocator)
++{
++    VMA_ASSERT(allocator);
++
++    VMA_DEBUG_GLOBAL_MUTEX_LOCK
++
++    allocator->FreeEmptyBlocks();
+ }
+ 
+ VMA_CALL_PRE void VMA_CALL_POST vmaCalculateStatistics(

@@ -350,4 +350,29 @@ void Device::collectGarbage() {
     state->graveyard->collect(*state->gpu);
 }
 
+void Device::followSpareMemory(double seconds) {
+    const std::size_t spare = state->gpu->getSpareBytes();
+    if (spare > state->spare) {
+        state->sinceSpareGrew = 0.0;
+    } else if (state->sinceSpareGrew) {
+        *state->sinceSpareGrew += seconds;
+    }
+
+    state->spare = spare;
+    if (state->sinceSpareGrew && *state->sinceSpareGrew >= kTrimDelay) {
+        trim();
+    }
+}
+
+void Device::trim() {
+    collectGarbage();
+    state->gpu->trim();
+    state->spare = state->gpu->getSpareBytes();
+    state->sinceSpareGrew.reset();
+}
+
+std::size_t Device::getSpareBytes() const noexcept {
+    return state->gpu->getSpareBytes();
+}
+
 } // namespace haylen::graphics

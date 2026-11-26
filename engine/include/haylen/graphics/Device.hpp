@@ -90,8 +90,20 @@ class Device final {
     // Fills `pools` with how many images, buffers, samplers, programs and pipelines exist, out of the room the GPU device holds for them, in the storage it holds.
     void readPools(std::vector<Pool>& pools) const;
 
+    // The seconds of frames that the memory the GPU device holds for later must stop growing before the device gives it back.
+    static constexpr double kTrimDelay = 2.0;
+
     // Destroys GPU resources whose last handle was released, at a point where no pending draw can use them.
     void collectGarbage();
+
+    // Follows the memory that the GPU device holds for later through the seconds of a frame, and trims the device once that memory stopped growing for `kTrimDelay`, so what a burst of loads and releases left behind goes back to the system while a frame that draws what the frame before drew trims nothing.
+    void followSpareMemory(double seconds);
+
+    // Gives back at once the memory that the GPU device holds for later, after the resources whose last handle was released, as a low memory warning of the system or the app asks.
+    void trim();
+
+    // The bytes of memory that the GPU device holds for later beyond what its objects take.
+    [[nodiscard]] std::size_t getSpareBytes() const noexcept;
 
     // Reads the pixels of a render target as the frame that asks for them renders it, with straight colors and the top row first. The copy starts once that frame is submitted and the GPU finishes it without the frame thread waiting, where the graphics API allows, and the callback receives the image on the frame thread in a later frame, after the task pool turned the copy into straight colors.
     void readTarget(const RenderTarget& target, ReadCallback done);

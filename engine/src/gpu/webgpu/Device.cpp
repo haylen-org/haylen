@@ -1115,6 +1115,27 @@ void Device::popDebugGroup() {
 }
 
 // The uniforms of the frame reach the GPU through the queue before the commands that read them, and what the frame destroyed goes to WebGPU once the commands that may record it are submitted.
+void Device::trim() {
+    if (pass != nullptr) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    const std::size_t kept = ring.trim();
+    for (const auto& [key, layout] : blockLayouts) {
+        while (layout->groups.size() > kept) {
+            if (layout->groups.back() != nullptr) {
+                wgpuBindGroupRelease(layout->groups.back());
+            }
+
+            layout->groups.pop_back();
+        }
+    }
+}
+
+std::size_t Device::getSpareBytes() const noexcept {
+    return ring.getSpareBytes();
+}
+
 void Device::commit() {
     ring.flush(queue);
 

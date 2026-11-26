@@ -416,7 +416,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | Monocypher | 4.0.3 | BSD 2-clause or CC0. The authenticated encryption (XChaCha20-Poly1305), the hashes and key derivation (BLAKE2b) and the manifest signatures (Ed25519) of protected content, compiled from its two sources as `haylen-monocypher`. It is audited, has no dependencies and builds the same on every target, the web included. This release fixes a timing leak of its signatures. |
 | Vulkan-Headers | v1.4.367 | Headers only, when `HAYLEN_GRAPHICS_APIS` holds `vulkan`. The Vulkan device compiles against them, so its build needs no Vulkan SDK. |
 | volk | 1.4.350 | When `HAYLEN_GRAPHICS_APIS` holds `vulkan`, compiled as `haylen-volk`. It opens the Vulkan loader of the system when the app starts. |
-| Vulkan Memory Allocator | v3.5.0 | When `HAYLEN_GRAPHICS_APIS` holds `vulkan`, compiled as `haylen-vulkan-memory-allocator`. It allocates the memory of the Vulkan device and finds the functions of Vulkan through volk. |
+| Vulkan Memory Allocator | v3.5.0 | When `HAYLEN_GRAPHICS_APIS` holds `vulkan`, compiled as `haylen-vulkan-memory-allocator`, with the [patch](#patches) of `engine/cmake/patches` that frees its empty memory blocks. It allocates the memory of the Vulkan device and finds the functions of Vulkan through volk. |
 | GoogleTest | v1.18.0 | Only when the tests build, on desktop or for the GPU tests of the web, Android, iOS and tvOS. |
 
 Every package is pinned by the URL of a release archive, or of a commit archive for a project without releases, with its hash:
@@ -546,6 +546,10 @@ Dear ImGui makes the repeats of a held key itself, from its own delay and rate, 
 #### clipper2-iterator.patch
 
 The core header of Clipper2 uses `std::back_inserter` without including the header `iterator`, which the standard library of Emscripten does not bring in through another header. The patch includes it.
+
+#### vulkan-memory-allocator-empty-blocks.patch
+
+The Vulkan Memory Allocator keeps one empty memory block of each memory type once the last allocation in it is freed, so the next allocation does not make a block again. A block grows up to 256 MB, so after a burst of texture loads the memory stays with the app after its textures are gone, as about 200 MB did on a Galaxy A14 5G. The allocator offers no way to give that block back. The patch adds `vmaFreeEmptyBlocks`, which frees every empty block of the default pools and of the custom pools down to the minimum block count of each. The Vulkan device calls it some time after the last resource was released and when the system runs low on memory, as the [RHI guide](../graphics/rhi.md) describes.
 
 ### Choices that need no patch
 
