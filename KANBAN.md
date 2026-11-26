@@ -1369,7 +1369,7 @@ O estado térmico do aparelho chega ao app: `platform::ThermalState` (`unknown`,
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
-- **Progress:** Começou no trabalho dos recursos da RHI para o 3D, junto com o KB-045, o KB-051, o KB-052, o KB-053 e o KB-055, depois que os defeitos da revisão da RHI entraram no `main`.
+- **Progress:** O desenho foi aprovado. O `BufferDesc` passa a ter os usos `BufferUsage` (vértice, índice, uniform, storage, indireto, origem e destino de cópia) separados do modo `BufferUpdate` (imutável, dinâmico e stream). Entram também `copyBuffer` e `readBuffer`, e o `graphics::Buffer` fica público com `graphics.newBuffer` no Lua. Os buffers uniform passam a ser ligados em todas as APIs, também no GL, porque o compilador de shaders vai emitir blocos uniform std140.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -1520,7 +1520,12 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
-- **Progress:** Começou no trabalho dos recursos da RHI para o 3D, junto com o KB-045, o KB-051, o KB-052, o KB-053 e o KB-055, depois que os defeitos da revisão da RHI entraram no `main`.
+- **Progress:** O desenho foi aprovado:
+  - o tipo `CubeArray`;
+  - as vistas de imagem por nível e camada;
+  - o `generateMipmaps`, nativo onde a API tem e por um pass de redução no D3D12 e no WebGPU;
+  - a escrita e os anexos por nível e camada;
+  - o `graphics::Texture` com o tipo, as camadas, a profundidade e os níveis, com `graphics.newTexture` e `texture:view` no Lua.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -1546,7 +1551,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
-- **Progress:** Começou no trabalho dos recursos da RHI para o 3D, junto com o KB-045, o KB-051, o KB-052, o KB-053 e o KB-055, depois que os defeitos da revisão da RHI entraram no `main`.
+- **Progress:** O desenho foi aprovado. Entram os formatos `Rg11b10Float`, BC1 a BC7, ETC2 e EAC e ASTC de 4x4 a 12x12, com sRGB e HDR. Cada dispositivo preenche a tabela de suporte de cada formato pela sua API em tempo de execução. Um formato comprimido que o aparelho não tem é recusado com uma frase que nomeia o formato e aponta para os perfis de compressão e para o KTX2, sem decodificação na CPU. O contrato dos ports sobe para a versão 15.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -1572,7 +1577,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 3
-- **Progress:** Começou no trabalho dos recursos da RHI para o 3D, junto com o KB-045, o KB-051, o KB-052, o KB-053 e o KB-055, depois que os defeitos da revisão da RHI entraram no `main`.
+- **Progress:** O desenho foi aprovado. Entram o `lodBias`, o `ClampToBorder` com as três cores de borda comuns a todas as APIs e o `maxAnisotropy` da GPU, sem o clamp silencioso de hoje. A falta de cor de borda e de bias na web, no GLES e no Metal fica documentada como lacuna.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -1623,7 +1628,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
-- **Progress:** Começou no trabalho dos recursos da RHI para o 3D, junto com o KB-045, o KB-051, o KB-052, o KB-053 e o KB-055, depois que os defeitos da revisão da RHI entraram no `main`.
+- **Progress:** O desenho foi aprovado. O `graphics::RenderTarget` passa a ter até 4 cores, profundidade com ou sem stencil, amostras, resolve de profundidade e anexos transitórios, que no Apple usam memória sem armazenamento e no Vulkan memória alocada sob demanda. O renderer 2D desenha em qualquer target completo. Entram também `graphics.capabilities()` e `graphics.formatSupport(format)`.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
