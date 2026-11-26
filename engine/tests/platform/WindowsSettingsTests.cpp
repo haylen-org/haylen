@@ -1,7 +1,5 @@
 #include <gtest/gtest.h>
 
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <windows.h>
 
 #include "platform/windows/WindowsSettings.hpp"

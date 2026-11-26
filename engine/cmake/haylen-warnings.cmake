@@ -47,6 +47,11 @@ function(haylen_enable_warnings target)
   if(HAYLEN_SANITIZERS STREQUAL "ADDRESS")
     target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
   endif()
+
+  # Every source of the engine on Windows includes the header of the system without its rarely used parts and without its macros "min" and "max", so no source defines them itself.
+  if(WIN32)
+    target_compile_definitions(${target} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+  endif()
 endfunction()
 
 # Checks the memory of libraries that the engine compiles from the sources of a dependency and hands the bytes of apps, such as SVG documents, fonts and sounds, with AddressSanitizer, so a test of the engine fails on a read past their buffers too. Their warnings and UndefinedBehaviorSanitizer stay off, since only their projects can act on them.

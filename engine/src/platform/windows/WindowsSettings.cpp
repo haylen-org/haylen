@@ -1,7 +1,5 @@
 #include "platform/windows/WindowsSettings.hpp"
 
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <windows.h>
 
 namespace haylen::platform {
