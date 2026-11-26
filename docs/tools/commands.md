@@ -494,7 +494,7 @@ Result: `folder`, the key folder, and `report`.
 ### test
 
 ```sh
-haylen test [--target <target>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--cmake-target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--ui-test <class>] [--device-farm <devices>] [--app <folder>] [--libraries] [--port]
+haylen test [--target <target>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--cmake-target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--ui-test <class>] [--device-farm <devices>] [--app <folder>] [--libraries] [--compiler gcc] [--port]
 ```
 
 Builds and runs the engine tests of this machine by default. The [testing guide](testing.md#running-the-tests) explains each mode.
@@ -504,7 +504,7 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--target` | The target that the tests build for and run on, with the names of the app commands and `haylen devices`: `macos`, `windows`, `linux`, `web`, `android`, `ios-simulator`, `tvos-simulator`, `visionos-simulator`, `catalyst`, `ios`, `tvos` or `visionos`, this machine by default. |
 | `--config` | The configuration of the build tree, or of the app of `--ui` or `--app`, `Debug` by default. |
 | `--sanitizers` | A tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer. |
-| `--cmake-target` | A CMake target that builds before CTest runs, which repeats, `haylen-tests` and `haylen-lua-tests` by default. |
+| `--cmake-target` | A CMake target that builds before CTest runs, which repeats, every target of the tree by default. |
 | `--shard` | Runs one of the equal parts of the engine tests of this machine, or of the checks of the web with `--target web`, such as `2/4`, so several machines run them side by side and together run each test once. |
 | `--gpu` | Runs the GPU tests instead of the engine tests. |
 | `--graphics-api` | A name of `gpu::Device::kApiNames` that the GPU tests, or the pages of the checks of the web, use alone. |
@@ -514,6 +514,7 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--device-farm` | Runs the UI tests of `--ui` on the phones of AWS Device Farm that this list names, separated by commas, with `--target android` or `ios`. |
 | `--app` | Builds the app of this folder in the configuration of `--config` and checks instead that it starts: with `--target web` in a page on WebGPU and WebGL2 or on the API of `--graphics-api`, and with `--target android` on the device of `--device` or on an emulator that it starts. With `--target macos` or `--target catalyst` it checks that the app ends with the status 0 on this Mac when its window closes and when the Dock quits it. |
 | `--libraries` | With `--target android`, runs the tests of the Android libraries of the engine instead: the tests of `src/test` on the Java of this machine and the instrumented tests of `src/androidTest` on the device of `--device` or on an emulator that it starts. Gradle installs the test app, runs it and uninstalls it. |
+| `--compiler` | Compiles every source of every target of the engine with the GCC of this Linux machine and warnings as errors instead, without linking, as [the check of GCC](testing.md#the-check-of-gcc) describes. It takes `--config` alone and runs on Linux alone. |
 | `--port` | Builds the engine with the test port and plays its app instead. |
 
 Result: the build tree with what ran, which depends on what the command ran:
@@ -526,6 +527,7 @@ Result: the build tree with what ran, which depends on what the command ran:
 - The quit check of an app on a Mac: `app`, `target`, `configuration` and `ways`.
 - The UI tests: `app`, `target`, `device` and `screenshots`.
 - The tests of the Android libraries: `tree`, `abi` and `reports`.
+- The check of GCC: `tree`, `compiler` and `configuration`.
 - The test port: `tree` and `app`.
 
 ### engine configure

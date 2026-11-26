@@ -207,7 +207,7 @@ The tooling keeps every build tree of the engine under `build/engine/`, apart fr
 
 | Tree | What builds there |
 | --- | --- |
-| `build/engine/<host>-<config>` | The engine of this machine with its tests, benchmarks, tools and players, such as `build/engine/macos-debug`, which [engine configure](#engine-configure) and `haylen test` use. A tree with sanitizers or the Xcode generator gets its own, such as `macos-debug-thread` or `macos-debug-xcode`. |
+| `build/engine/<host>-<config>` | The engine of this machine with its tests, benchmarks, tools and players, such as `build/engine/macos-debug`, which [engine configure](#engine-configure) and `haylen test` use. A tree with sanitizers, the Xcode generator or GCC gets its own, such as `macos-debug-thread`, `macos-debug-xcode` or the `linux-debug-gcc` of [the check of GCC](testing.md#the-check-of-gcc). |
 | `build/engine/<host>-port-<config>` | The engine with the test port, which `haylen test --port` builds, with a tree of its own for each sanitizer, such as `<host>-port-<config>-thread`. |
 | `build/engine/coverage`, `build/engine/fuzz` | The trees of coverage and fuzzing. |
 | `build/engine/web-gpu-tests-<config>`, `build/engine/android-gpu-tests-<abi>-<config>`, `build/engine/<platform>-gpu-tests-<config>` | The GPU tests of the web, of Android and of the Apple platforms. |

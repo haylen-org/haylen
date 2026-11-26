@@ -14,6 +14,7 @@ from haylen.engine.apple_gpu_tests import AppleGpuTests
 from haylen.engine.desktop_gpu_tests import DesktopGpuTests
 from haylen.engine.engine_tests import EngineTests
 from haylen.engine.engine_tree import EngineTree
+from haylen.engine.gcc_check import GccCheck
 from haylen.engine.mac_app_check import MacAppCheck
 from haylen.engine.port_test import PortTest
 from haylen.engine.suite_shard import SuiteShard
@@ -45,7 +46,7 @@ class TestCommand(Command):
         parser.add_argument(
             "--cmake-target",
             action="append",
-            help='A CMake target that the engine tests build before CTest runs them, which repeats. Both test programs, "haylen-tests" and "haylen-lua-tests", and the player "haylen" of this machine by default.',
+            help="A CMake target that the engine tests build before CTest runs them, which repeats. Every target of the tree by default, both test programs, the player of this machine, the GPU tests, the benchmarks and the tools among them.",
         )
         parser.add_argument(
             "--shard",
@@ -98,6 +99,11 @@ class TestCommand(Command):
             help='Run the tests of the Android libraries of the engine with "--target android", those of the Java of this machine and the instrumented ones on the device of "--device" or an emulator that it starts, instead of the GPU tests.',
         )
         parser.add_argument(
+            "--compiler",
+            choices=("gcc",),
+            help="Compile every source of every target of the engine with the GCC of this Linux machine and warnings as errors, without linking, instead of the engine tests.",
+        )
+        parser.add_argument(
             "--port",
             action="store_true",
             help='Build the engine with the test port of "engine/tests/data/port", whose platform and GPU device come from outside the engine, and play its app on it, instead of the engine tests.',
@@ -113,6 +119,22 @@ class TestCommand(Command):
             raise UnsupportedTarget(
                 'The option "--shard" splits the engine tests of this machine or the checks of the web, so it takes neither the GPU tests, "--app", "--ui", "--port" nor a "--target" other than a desktop or "web".'
             )
+        if arguments.compiler:
+            others = (
+                gpu
+                or arguments.app
+                or arguments.ui
+                or arguments.ui_tests
+                or arguments.device_farm
+                or arguments.port
+                or arguments.sanitizers
+                or arguments.shard
+                or arguments.libraries
+                or arguments.cmake_target
+            )
+            if others or target != Host.system():
+                raise UnsupportedTarget('The option "--compiler" compiles the engine of this machine with another compiler, so it takes "--config" alone, with no option of the other tests.')
+            return GccCheck(context).run(arguments.config)
         if arguments.libraries:
             others = gpu or arguments.app or arguments.ui or arguments.ui_tests or arguments.device_farm or arguments.port or arguments.sanitizers
             if target != "android" or others:
@@ -167,4 +189,4 @@ class TestCommand(Command):
             raise UnsupportedTarget(f'The tests of "{target}" run on a "{target}" machine, and this one runs "{Host.system()}".')
         if gpu:
             return DesktopGpuTests(context).run(arguments.config, arguments.sanitizers, arguments.graphics_api)
-        return EngineTests(context).run(arguments.config, arguments.sanitizers, arguments.cmake_target or list(EngineTests.DEFAULT_TARGETS), arguments.shard)
+        return EngineTests(context).run(arguments.config, arguments.sanitizers, arguments.cmake_target or [], arguments.shard)

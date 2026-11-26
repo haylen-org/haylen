@@ -13,6 +13,7 @@ from haylen.engine.android_app_check import AndroidAppCheck
 from haylen.engine.android_library_tests import AndroidLibraryTests
 from haylen.engine.engine_tests import EngineTests
 from haylen.engine.engine_tree import EngineTree
+from haylen.engine.gcc_check import GccCheck
 from haylen.engine.mac_app_check import MacAppCheck
 from haylen.engine.suite_shard import SuiteShard
 from haylen.engine.web_app_check import WebAppCheck
@@ -101,7 +102,7 @@ class TestCommandTest:
         expected = [("samples/tests", "Release", "webGl2"), ("samples/tests", "Debug", None), ("samples/tests", "Release", "emulator-5554"), ("samples/tests", "Release", "catalyst")]
         assert called == expected
 
-    def test_the_engine_tests_build_both_programs_with_the_player_of_this_machine_and_run_them_in_one_run_of_ctest(self, tmp_path, monkeypatch):
+    def test_the_engine_tests_build_every_target_of_the_tree_and_run_both_programs_in_one_run_of_ctest(self, tmp_path, monkeypatch):
         built = []
         monkeypatch.setattr(Repository, "ENGINE_BUILDS", tmp_path)
         monkeypatch.setattr(EngineTree, "ensure", lambda self, command, env=None: None)
@@ -109,16 +110,25 @@ class TestCommandTest:
         monkeypatch.setattr(EngineTree, "build", lambda self, targets, configuration, *arguments: built.append(list(targets)))
         monkeypatch.setattr(type(BuildTools.CTEST), "require", lambda self: Path(self.name))
         recorded = RecordedCommands(tmp_path)
-        EngineTests(recorded.context).run("Debug", None, list(EngineTests.DEFAULT_TARGETS), None)
-        assert built == [["haylen-tests", "haylen-lua-tests", "haylen"]]
+        EngineTests(recorded.context).run("Debug", None, [], None)
+        assert built == [[]], "The engine tests build every target of the tree, the GPU tests and the player of this machine among them."
         assert [command[0] for command in recorded.commands] == ["ctest"]
 
     def test_a_shard_runs_its_part_of_the_engine_tests_through_the_numbers_of_ctest(self, tmp_path, monkeypatch):
         called = []
         monkeypatch.setattr(EngineTests, "run", lambda self, configuration, sanitizers, targets, shard: called.append((sanitizers, targets, shard)) or {})
         TestCommandTest.run(tmp_path, "--sanitizers", "address", "--shard", "2/4")
-        assert called == [("address", ["haylen-tests", "haylen-lua-tests", "haylen"], SuiteShard(2, 4))]
+        assert called == [("address", [], SuiteShard(2, 4))]
         assert SuiteShard(2, 4).ctest_arguments() == ["--tests-information", "2,,4"]
+
+    def test_the_compiler_option_runs_the_check_of_gcc_alone(self, tmp_path, monkeypatch):
+        called = []
+        monkeypatch.setattr(GccCheck, "run", lambda self, configuration: called.append(configuration) or {})
+        TestCommandTest.run(tmp_path, "--compiler", "gcc")
+        TestCommandTest.run(tmp_path, "--compiler", "gcc", "--config", "Release")
+        assert called == ["Debug", "Release"]
+        with pytest.raises(UnsupportedTarget, match='The option "--compiler" compiles the engine of this machine with another compiler'):
+            TestCommandTest.run(tmp_path, "--compiler", "gcc", "--sanitizers", "address")
 
     def test_a_shard_names_a_part_that_exists_of_the_engine_tests_alone(self, tmp_path):
         for text, problem in (("0/4", "names no part"), ("5/4", "names no part"), ("2", "is not a part"), ("two/four", "is not a part")):

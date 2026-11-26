@@ -728,6 +728,25 @@ The option `--sanitizers` builds the tests with sanitizers in a tree of its own,
 
 AddressSanitizer and ThreadSanitizer fail the test whose process raised a report. UndefinedBehaviorSanitizer prints its reports and lets the test go on. ThreadSanitizer runs the tests several times slower, and `TSAN_OPTIONS`, such as `TSAN_OPTIONS=halt_on_error=1`, tunes it. ThreadSanitizer cannot follow the `_longjmp` with which a yield of Lua jumps back, so those builds tell Varn to keep the yields of Lua as exceptions.
 
+## The check of GCC
+
+```sh
+haylen test --compiler gcc
+```
+
+The Mac builds the engine with clang, while continuous integration also builds it with GCC on Linux, whose warnings differ. GCC refuses a local that hides a member that a class inherits, such as a variable of the body of a test with the name of a member of its fixture, and a designated initializer that leaves out a member without a default initializer, which clang both allows. So a gate on Linux also compiles the engine with GCC, through the option `--compiler` of `haylen test`, which takes `--config` alone and runs no test. Code is checked on a machine of its own platform, so the option runs on a Linux machine alone and stops with a sentence on macOS and Windows.
+
+The check configures `build/engine/linux-<config>-gcc` with the GCC of the machine, warnings as errors and the file and line of each instruction as its debug information, as the Debug trees of continuous integration do. It compiles every source of every target, the test programs, the GPU tests, the benchmarks, the tools and the player with the runtime of Linux among them, with the files that the build generates for them, and links nothing, since a warning comes from a compile while the links of the programs would take most of the time. The build goes on after a failure, so one check reports every warning of a change, and the tree stays, so a later check compiles only what changed. Before each check, CMake runs again in a tree whose CMake files changed, as a build of the tree does, so the check takes the sources that the current CMake files name.
+
+The times of the check with four jobs on an arm64 Linux machine of sixteen cores:
+
+| Check | Time |
+| --- | --- |
+| The first check, which configures the tree and compiles the dependencies | 1124 s |
+| A check without a change | Under a second |
+| A check after a change of one source of the engine | 13 s |
+| A check after a change of `haylen/core/Log.hpp`, a header that most sources read | 102 s |
+
 ## Fuzzing
 
 ```sh

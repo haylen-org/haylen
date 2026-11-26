@@ -5,12 +5,9 @@ from haylen.toolchains.build_tools import BuildTools
 
 
 class EngineTests:
-    """Builds the engine tests in the tree of this machine for a configuration and a sanitizer, the program of the tests of the core and the program of the tests of the Lua layer, and runs every test of both, or one shard of them, through CTest, which prints their results. By default it also builds the player of this machine, so a change that breaks the runtime of the platform fails the tests without a window opening."""
+    """Builds the engine tests in the tree of this machine for a configuration and a sanitizer, the program of the tests of the core and the program of the tests of the Lua layer, and runs every test of both, or one shard of them, through CTest, which prints their results. By default it builds every target of the tree first, the player of this machine with the runtime of its platform, the GPU tests, the benchmarks and the tools among them, so a change that breaks any of them fails the tests without a window opening."""
 
     TARGETS = ("haylen-tests", "haylen-lua-tests")
-    # The desktop player links the runtime of this machine, its platform layer of SDL and its platform folder, which no test program compiles.
-    PLAYER = "haylen"
-    DEFAULT_TARGETS = (*TARGETS, PLAYER)
 
     def __init__(self, context: ToolingContext) -> None:
         self.context = context
