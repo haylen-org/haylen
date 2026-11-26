@@ -365,6 +365,7 @@ A website edits and runs projects through the [editor contract](build.md#the-edi
 11. The editor pauses the app, whose console line then waits for the `resume`, and inspects the globals of the app, runs it again in place four times while its looping sound opens the audio output, and stops it while the output may still open.
 12. A project plays its tone and leaves a timer and a task that wake after three seconds, and the editor runs another project three times before they wake. Afterwards one audio context and one connected processor of the output are left, and neither the timer nor the task of the first run runs after the first run ended.
 13. The editor disposes of the runtime, and a later request fails with `disposed`. The page must log no error of its own during the whole check, such as one of the audio output.
+14. The page loads again with `server` in its address, which names a development server in `Module.haylen.developmentServer` without setting `Module.haylen.development`. Its `hello` reports neither `developmentReload` nor `cancellation`, and the project that the editor runs takes the hooks of Lua with `debug.sethook`, which development refuses, as the editor reads with `inspect`, so the app runs outside development and never connects to the server.
 
 The check then runs again in the [Worker mode](build.md#hosting-the-runtime), on a page whose address asks for it with `hosting=worker` and with the mode `worker` of the driver. There `hello` reports `workerHosting`, and more parts run:
 
@@ -376,6 +377,7 @@ The check then runs again in the [Worker mode](build.md#hosting-the-runtime), on
 6. A project plays the clip of `engine/tests/data/video`, which the driver hands the page, and the app sees its pictures.
 7. After the dispose, the page loads again and runs a project whose update never ends under an execution budget of ten minutes, longer than the check waits. The heartbeat of the worker falls silent while the page goes on answering, and `terminate()` ends the worker, rejects the request that waited with `terminated` and makes every later request fail with `terminated`.
 8. The page loads a third time with `hold=1` in its address, so `Module.preRun` holds the start of the worker with a dependency of `Module.addRunDependency`. The editor calls `terminate()` before the worker exists, which rejects the request that waited with `terminated`, and once the check releases the dependency no worker starts and the canvas stays with the page.
+9. The page then loads with `server` in its address, as the last step above does, and the app in the worker runs outside development too.
 
 ## The memory check of the web
 

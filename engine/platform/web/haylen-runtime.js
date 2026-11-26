@@ -5,6 +5,9 @@ Module.haylen = Module.haylen || {};
 (function (haylen) {
     const hostedInWorker = haylen.hosting === "worker";
 
+    // Only a page that sets `Module.haylen.development` to `true` runs the app in development, on the page as in the dedicated worker, whatever else it sets.
+    const inDevelopment = haylen.development === true;
+
     // Reserves wasm memory, which fails with the size instead of handing out the address 0 when the memory cannot grow that far.
     const allocate = (size) => {
         const address = Module._malloc(size);
@@ -164,11 +167,11 @@ Module.haylen = Module.haylen || {};
         const editable = !haylen.release;
         return {
             packageEditing: editable,
-            developmentReload: editable && haylen.development === true,
+            developmentReload: editable && inDevelopment,
             pause: true,
             console: true,
             inspection: true,
-            cancellation: haylen.development === true,
+            cancellation: inDevelopment,
             storageNamespaces: true,
             workerHosting: hostedInWorker,
         };
@@ -684,7 +687,7 @@ Module.haylen = Module.haylen || {};
         });
     }
 
-    // A page that already holds the zipped package, such as a loader that downloaded it with a progress bar, hands its bytes over as `Module.haylen.packageData`, and a page can instead name a zipped package with `Module.haylen.packageUrl`, which is downloaded before the app starts. The runtime plays it instead of the bundled package. Only a page that sets `Module.haylen.development` runs the app in development, connected to the development server that `Module.haylen.developmentServer` names, if any. The graphics API that `Module.haylen.graphicsApi` names, `webGpu` or `webGl2`, is the one the window tries first, and the list of strings `Module.haylen.arguments` holds the launch arguments of the app.
+    // A page that already holds the zipped package, such as a loader that downloaded it with a progress bar, hands its bytes over as `Module.haylen.packageData`, and a page can instead name a zipped package with `Module.haylen.packageUrl`, which is downloaded before the app starts. The runtime plays it instead of the bundled package. A page that sets `Module.haylen.development` runs the app in development, connected to the development server that `Module.haylen.developmentServer` names, if any, which a page outside development never connects to. The graphics API that `Module.haylen.graphicsApi` names, `webGpu` or `webGl2`, is the one the window tries first, and the list of strings `Module.haylen.arguments` holds the launch arguments of the app.
     const launch = [];
     if (haylen.packageData || haylen.packageUrl) {
         launch.push("/package.zip");
@@ -694,11 +697,11 @@ Module.haylen = Module.haylen || {};
         launch.push("--graphics-api", haylen.graphicsApi);
     }
 
-    if (haylen.development) {
+    if (inDevelopment) {
         launch.push("--dev");
     }
 
-    if (haylen.developmentServer) {
+    if (inDevelopment && haylen.developmentServer) {
         launch.push("--dev-server", haylen.developmentServer);
     }
 

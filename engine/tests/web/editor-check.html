@@ -47,16 +47,20 @@
         videoMain: "video = require('haylen.video')\nclip = video.load('clip.mp4', {autoplay = true, muted = true})",
         // A controller in the standard mapping that the browser would report, with the south button down and the right trigger pulled all the way, which the dead zone of the engine leaves whole.
         pad: { index: 0, id: "Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 09cc)", connected: true, mapping: "standard", buttons: Array.from({ length: 17 }, (_, place) => ({ pressed: place === 0, value: place === 0 || place === 7 ? 1 : 0 })), axes: [0, 0, 0, 0] },
+        // A project that tells whether it runs outside development, where the execution budget leaves the hooks of Lua to the app, with the console that a project outside development turns on itself so the editor inspects it.
+        outsideApp: JSON.stringify({ name: "Editor Check", identifier: "com.haylen.editorcheck", debug: { console: true } }),
+        outside: "outside = pcall(debug.sethook)",
         errors: [],
     };
-    // The page runs the runtime on itself, or in the Worker mode with "?hosting=worker", where it loads the page side of the runtime alone.
+    // The page runs the runtime on itself, or in the Worker mode with "?hosting=worker", where it loads the page side of the runtime alone. With "&server=<address>" it names a development server without asking for development.
     const params = new URLSearchParams(location.search);
     var Module = {
         canvas: document.getElementById("canvas"),
         preRun: [],
         haylen: {
             hosting: params.get("hosting") || undefined,
-            development: true,
+            development: params.get("server") ? undefined : true,
+            developmentServer: params.get("server") || undefined,
             storageNamespace: "editor-check",
             projectBudget: { files: 16, bytes: 1048576 },
             graphicsApi: params.get("graphicsApi") || undefined,

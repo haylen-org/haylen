@@ -90,7 +90,7 @@ class WebChecks:
         "reaches the module of its dependency",
         "kept the newest events before the app started",
     ]
-    # The editor check: a page of the web player of the web SDK in development whose editor builds a project file by file, runs it, reloads, rejects and restores a module, applies a failing batch atomically, keeps the budget of the project, stops code and a finalizer that never end through the execution budget, pauses and resumes the app, inspects the app, runs it again in place while its audio output opens, stops it early and disposes of the runtime, without an error of the page.
+    # The editor check: a page of the web player of the web SDK in development whose editor builds a project file by file, runs it, reloads, rejects and restores a module, applies a failing batch atomically, keeps the budget of the project, stops code and a finalizer that never end through the execution budget, pauses and resumes the app, inspects the app, runs it again in place while its audio output opens, stops it early and disposes of the runtime, without an error of the page, and a page that names a development server without asking for development runs its app outside development.
     EDITOR_PAGE = "editor-check.html"
     EDITOR_STEPS = [
         "ready",
@@ -111,6 +111,7 @@ class WebChecks:
         "stopped early",
         "restarted cleanly",
         "disposed",
+        "stayed outside development",
     ]
     # The same page in the Worker mode, whose runtime runs in a dedicated worker that the page reaches for audio, input, gamepads, the mirror of screen readers, plugins and videos, and whose editor terminates a worker that stopped answering or that has not started.
     WORKER_HOSTING = "hosting=worker"
@@ -143,6 +144,7 @@ class WebChecks:
         "ready again",
         "terminated a stuck worker",
         "terminated before the worker started",
+        "stayed outside development",
     ]
     # The memory check: a protected release with a medium and a large file that download on demand, while the memory of WebAssembly and the array buffers of the page stay far below the size of the files. A page without the files of the browser, or whose worker of the content store does not load, keeps the medium file in memory and refuses the large one for want of room.
     MEMORY_FILE_SIZE = 384 * 1024**2

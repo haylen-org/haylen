@@ -2898,7 +2898,7 @@ Module.haylen = Module.haylen || {};
         const offscreen = Module.canvas.transferControlToOffscreen();
         const transfer = [offscreen];
         const options = {
-            development: haylen.development === true,
+            development: haylen.development,
             developmentServer: haylen.developmentServer,
             graphicsApi: haylen.graphicsApi,
             arguments: haylen.arguments,
