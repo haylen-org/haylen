@@ -802,7 +802,7 @@ The tooling has its own tests, written for pytest, which uv runs with the locked
 | `tools/tests/extensions/` | [The proof of an external port](../platform/ports.md#the-proof-of-an-external-port), which runs only with `uv run pytest -m port`. |
 | `tools/tests/data/` | The app and the backend of the test port that the proof of an external port installs. |
 | `tools/tests/repository/` | The rules of the repository, which the next list describes. |
-| `tools/tests/support/` | The shared doubles: `FakeBackend` and `FakePort`, a backend and an engine port of the platform `fake`, `ToolingFixture`, which makes apps, plugins, SDK manifests and a registry in a temporary folder, `RecordedCommands`, a context whose native tools never run, and the readers of tracked files and Markdown pages. |
+| `tools/tests/support/` | The shared doubles: `FakeBackend` and `FakePort`, a backend and an engine port of the platform `fake`, `ToolingFixture`, which makes apps, plugins, SDK manifests and a registry in a temporary folder, `RecordedCommands`, a context whose native tools never run, `ManualClock`, a clock that only the test moves, which the checks that bound their waits take instead of the real time, and the readers of tracked files and Markdown pages. |
 
 The test `test_architecture.py` checks the rules that the design of the tooling depends on:
 

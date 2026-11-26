@@ -1,10 +1,11 @@
 import subprocess
 import threading
-import time
 from collections import deque
+from collections.abc import Callable
 from pathlib import Path
 
 from haylen.cli.report_printer import ReportPrinter
+from haylen.clock import Clock
 from haylen.core.app_manifest import AppManifest
 from haylen.core.app_pipeline import AppPipeline
 from haylen.core.configuration import Configuration
@@ -19,7 +20,7 @@ from haylen.platforms.apple.app_bundle import AppBundle
 
 
 class MacAppCheck:
-    """Checks that an app quits on this Mac in every way a person quits it, as a macOS or a Mac Catalyst app. The app builds for the processor of this Mac in the configuration it is asked for and starts once for each way. Once its window shows and the app ran `SETTLE_SECONDS` more, the check closes the window with its close button, or quits the app with the quit event that the Dock and logging out send. The process must then end with the status 0 within `QUIT_SECONDS`. The check fails when the process ends before it is asked to, ends with another status or a crash, or keeps running, and it stops a process that it left running. It reaches the window through the accessibility of macOS, which the app that runs the check, such as the terminal, needs in Privacy & Security."""
+    """Checks that an app quits on this Mac in every way a person quits it, as a macOS or a Mac Catalyst app. The app builds for the processor of this Mac in the configuration it is asked for and starts once for each way. Once its window shows and the app ran `SETTLE_SECONDS` more, the check closes the window with its close button, or quits the app with the quit event that the Dock and logging out send. The process must then end with the status 0 within `QUIT_SECONDS`. The check fails when the process ends before it is asked to, ends with another status or a crash, or keeps running, and it stops a process that it left running. It reaches the window through the accessibility of macOS, which the app that runs the check, such as the terminal, needs in Privacy & Security. Its waits take their time from `clock`, and `start` starts the process of the app as a `Run`."""
 
     TARGETS = ("macos", "catalyst")
     # Each way of quitting, with how the steps and the failures of the check name it.
@@ -47,9 +48,11 @@ class MacAppCheck:
     )
     QUIT_EVENT = 'ObjC.import("AppKit"); function run(argv) { return $.NSRunningApplication.runningApplicationWithProcessIdentifier(Number(argv[0])).terminate; }'
 
-    def __init__(self, context: ToolingContext, pipeline: AppPipeline) -> None:
+    def __init__(self, context: ToolingContext, pipeline: AppPipeline, clock: Clock, start: Callable[[Path], MacAppCheck.Run]) -> None:
         self.context = context
         self.pipeline = pipeline
+        self.clock = clock
+        self.start = start
 
     def run(self, app: str, target: str, configuration: str) -> dict[str, object]:
         folder = Path(app).expanduser().resolve()
@@ -71,7 +74,7 @@ class MacAppCheck:
         return {"app": str(folder), "target": target, "configuration": configuration, "ways": list(MacAppCheck.WAYS)}
 
     class Run:
-        """The process of one start of the app with the last lines of its output, which a failure shows."""
+        """The process of one start of the app with the last lines of its output, which a failure shows. The status of `poll` and `wait` is `None` while the process runs, and negative for the signal that stopped it."""
 
         # How long the output of an app that ended takes to reach the check at most.
         DRAIN_SECONDS = 1.0
@@ -79,12 +82,23 @@ class MacAppCheck:
         def __init__(self, executable: Path) -> None:
             self.output: deque[str] = deque(maxlen=MacAppCheck.LOG_LINES)
             self.process = subprocess.Popen([str(executable)], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
+            self.pid = self.process.pid
             self.reader = threading.Thread(target=self.keep, daemon=True)
             self.reader.start()
 
         def keep(self) -> None:
             for line in self.process.stdout:
                 self.output.append(line.rstrip("\n"))
+
+        def poll(self) -> int | None:
+            return self.process.poll()
+
+        def wait(self, seconds: float) -> int | None:
+            """Waits for the process to end for `seconds` at most."""
+            try:
+                return self.process.wait(seconds)
+            except subprocess.TimeoutExpired:
+                return None
 
         def failed(self, reason: str) -> BuildFailed:
             """The failure with the reason and the last lines of the log of the app, all of them once the app ended."""
@@ -99,7 +113,7 @@ class MacAppCheck:
 
     def check(self, executable: Path, way: str) -> None:
         """Starts the app, quits it in the way that `way` names once its window showed and it settled, and fails unless its process ends with the status 0. A process that is left running ends with the check."""
-        run = MacAppCheck.Run(executable)
+        run = self.start(executable)
         try:
             self.quit(run, way)
         finally:
@@ -108,43 +122,42 @@ class MacAppCheck:
     def quit(self, run: Run, way: str) -> None:
         description = MacAppCheck.WAYS[way]
         self.wait_for_window(run)
-        time.sleep(MacAppCheck.SETTLE_SECONDS)
-        if run.process.poll() is not None:
+        self.clock.sleep(MacAppCheck.SETTLE_SECONDS)
+        if run.poll() is not None:
             raise run.failed("The app stopped before the check quit it.")
 
-        pid = str(run.process.pid)
+        pid = str(run.pid)
         if way == "closeButton":
             self.ask(run, ["osascript", *MacAppCheck.lines(MacAppCheck.CLOSE_WINDOW), pid])
         else:
             self.ask(run, ["osascript", "-l", "JavaScript", "-e", MacAppCheck.QUIT_EVENT, pid])
 
-        try:
-            status = run.process.wait(MacAppCheck.QUIT_SECONDS)
-        except subprocess.TimeoutExpired:
-            raise run.failed(f"The process of the app kept running {MacAppCheck.QUIT_SECONDS} seconds after {description}.") from None
+        status = run.wait(MacAppCheck.QUIT_SECONDS)
+        if status is None:
+            raise run.failed(f"The process of the app kept running {MacAppCheck.QUIT_SECONDS} seconds after {description}.")
         if status < 0:
             raise run.failed(f"The app was stopped by the signal {-status} after {description}.")
         if status != 0:
             raise run.failed(f"The app ended with the status {status} after {description}.")
 
     def wait_for_window(self, run: Run) -> None:
-        deadline = time.monotonic() + MacAppCheck.START_SECONDS
+        deadline = self.clock.monotonic() + MacAppCheck.START_SECONDS
         while True:
-            if run.process.poll() is not None:
+            if run.poll() is not None:
                 raise run.failed("The app stopped while it started.")
-            windows = self.ask(run, ["osascript", *MacAppCheck.lines(MacAppCheck.COUNT_WINDOWS), str(run.process.pid)])
+            windows = self.ask(run, ["osascript", *MacAppCheck.lines(MacAppCheck.COUNT_WINDOWS), str(run.pid)])
             if int(windows or "0") > 0:
                 return
-            if time.monotonic() > deadline:
+            if self.clock.monotonic() > deadline:
                 raise run.failed(f"The app showed no window within {MacAppCheck.START_SECONDS} seconds.")
-            time.sleep(MacAppCheck.POLL_SECONDS)
+            self.clock.sleep(MacAppCheck.POLL_SECONDS)
 
     def ask(self, run: Run, command: list[str]) -> str:
         """Runs a script about the app and returns what it printed. A script that fails while the app still runs shows that macOS does not let the check reach the windows of the app."""
         status, printed = self.context.process.attempt(command)
         if status == 0:
             return printed.decode("utf-8", errors="replace").strip()
-        if run.process.poll() is not None:
+        if run.poll() is not None:
             raise run.failed("The app stopped before the check quit it.")
         raise BuildFailed(
             'The check cannot reach the windows of the app, because macOS does not allow it. Allow the app that runs the check, such as the terminal, in "Accessibility" of "Privacy & Security" in System Settings.'

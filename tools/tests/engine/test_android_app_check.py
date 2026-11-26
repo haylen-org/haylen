@@ -4,6 +4,7 @@ from haylen.core.errors.build_failed import BuildFailed
 from haylen.engine import android_app_check
 from haylen.engine.android_app_check import AndroidAppCheck
 from haylen.platforms.android.android_launcher import AndroidLauncher
+from tests.support.manual_clock import ManualClock
 from tests.support.recorded_commands import RecordedCommands
 
 
@@ -11,18 +12,6 @@ class AndroidAppCheckTest:
     """The start check of an app on Android passes an app that drew through its graphics API and kept running without an error, and names the first reason of a start that went wrong with the end of the log."""
 
     DRAWS = 'I/haylen  : [2026-11-19 02:24:19.878] [info] The app draws through "vulkan".'
-
-    class Clock:
-        """A clock that a sleep moves forward, so the bounds of the check pass without waiting."""
-
-        def __init__(self) -> None:
-            self.now = 0.0
-
-        def monotonic(self) -> float:
-            return self.now
-
-        def sleep(self, seconds: float) -> None:
-            self.now += seconds
 
     class Dumps:
         """The dumps of the log of a device, one after the other, which keeps the last one."""
@@ -40,7 +29,7 @@ class AndroidAppCheckTest:
     def follow(tmp_path, monkeypatch, logs: list[list[str]], alive: bool = True) -> str:
         """Follows the start of an app whose log reads `logs` one dump after the other, keeping the last one, while its process runs or not."""
         (tmp_path / "android-sdk").mkdir(parents=True)
-        clock = AndroidAppCheckTest.Clock()
+        clock = ManualClock()
         monkeypatch.setattr(android_app_check, "time", clock)
         monkeypatch.setattr(AndroidLauncher, "pid", lambda self, serial, package: "4242" if alive else "")
         recorded = RecordedCommands(tmp_path, {"ANDROID_HOME": str(tmp_path / "android-sdk")}, AndroidAppCheckTest.Dumps(logs).answer)

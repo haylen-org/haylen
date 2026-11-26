@@ -3,6 +3,7 @@ from collections.abc import Mapping
 
 from haylen.cli.command import Command
 from haylen.cli.command_session import CommandSession
+from haylen.clock import Clock
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.host import Host
 from haylen.engine.android_app_check import AndroidAppCheck
@@ -129,7 +130,7 @@ class TestCommand(Command):
             if target in MacAppCheck.TARGETS:
                 if arguments.graphics_api is not None:
                     raise UnsupportedTarget('A Mac app draws through Metal, so "--app" with "--target macos" or "catalyst" takes no "--graphics-api".')
-                return MacAppCheck(context, session.pipeline).run(arguments.app, target, arguments.config)
+                return MacAppCheck(context, session.pipeline, Clock(), MacAppCheck.Run).run(arguments.app, target, arguments.config)
             if target == "android":
                 if arguments.graphics_api is not None:
                     raise UnsupportedTarget('An Android app draws through the first graphics API of its order that starts, so "--app" with "--target android" takes no "--graphics-api".')
