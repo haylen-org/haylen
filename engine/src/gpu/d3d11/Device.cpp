@@ -233,21 +233,22 @@ UINT Device::getByteWidth(const BufferRules::Description& description) noexcept 
     return static_cast<UINT>((description.size + kUniformBufferAlignment - 1) / kUniformBufferAlignment * kUniformBufferAlignment);
 }
 
-// The CPU maps a stream buffer, which hands the GPU a fresh copy every frame, and an immutable buffer keeps its data, while the other buffers, the destinations of copies and storage, which Direct3D 11 neither maps nor makes immutable, keep their bytes in GPU memory and take new ones through copies.
+// The CPU maps a stream buffer, which hands the GPU a fresh copy every frame, and an immutable buffer keeps its data, while the other buffers, the destinations of copies, storage and the buffers that only serve as the source of copies, which Direct3D 11 neither maps nor makes immutable without a bind flag, keep their bytes in GPU memory and take new ones through copies.
 gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     const BufferRules::Description description = BufferRules::check(desc, capabilities);
     const BufferUsage& usage = description.usage;
     const bool mapped = description.update == BufferUpdate::Stream && !usage.storage;
-    const bool immutable = description.update == BufferUpdate::Immutable && !usage.copyDestination && !usage.storage;
 
     // Storage reads and writes its buffer through raw views, which take any buffer without a stride.
     D3D11_BUFFER_DESC made{};
     made.ByteWidth = getByteWidth(description);
-    made.Usage = immutable ? D3D11_USAGE_IMMUTABLE : (mapped ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT);
     made.BindFlags |= usage.vertex ? static_cast<UINT>(D3D11_BIND_VERTEX_BUFFER) : 0U;
     made.BindFlags |= usage.index ? static_cast<UINT>(D3D11_BIND_INDEX_BUFFER) : 0U;
     made.BindFlags |= usage.uniform ? static_cast<UINT>(D3D11_BIND_CONSTANT_BUFFER) : 0U;
     made.BindFlags |= usage.storage ? static_cast<UINT>(D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE) : 0U;
+
+    const bool immutable = description.update == BufferUpdate::Immutable && !usage.copyDestination && !usage.storage && made.BindFlags != 0U;
+    made.Usage = immutable ? D3D11_USAGE_IMMUTABLE : (mapped ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT);
     made.CPUAccessFlags = mapped ? static_cast<UINT>(D3D11_CPU_ACCESS_WRITE) : 0U;
     made.MiscFlags |= usage.storage ? static_cast<UINT>(D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS) : 0U;
     made.MiscFlags |= usage.indirect ? static_cast<UINT>(D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) : 0U;
