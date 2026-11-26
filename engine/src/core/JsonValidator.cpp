@@ -1,8 +1,11 @@
 #include "haylen/core/JsonValidator.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace haylen::core {
 
@@ -33,7 +36,7 @@ void JsonValidator::requireKnownOptions(const Json& options, std::initializer_li
 Json JsonValidator::parse(std::string_view text, std::string_view file) {
     try {
         return Json::parse(text);
-    } catch (const Json::parse_error& failure) {
+    } catch (const Json::exception& failure) {
         throw std::invalid_argument(describe(failure, text, "The file \"" + std::string(file) + "\""));
     }
 }
@@ -41,6 +44,10 @@ Json JsonValidator::parse(std::string_view text, std::string_view file) {
 std::string JsonValidator::describe(const Json::exception& failure, std::string_view text, std::string_view subject) {
     if (const auto* syntax = dynamic_cast<const Json::parse_error*>(&failure)) {
         return describeSyntax(syntax->byte, text, subject);
+    }
+
+    if (const auto* range = dynamic_cast<const Json::out_of_range*>(&failure); range != nullptr && range->id == kNumberOverflow) {
+        return describeOverflow(text, subject);
     }
 
     // The reader names a missing key and a value of the wrong type in its own words, from which only the key and the types are taken.
@@ -65,11 +72,64 @@ std::string JsonValidator::describeSyntax(std::size_t position, std::string_view
         return std::string(subject) + " is not valid JSON, since it ends before its last value is complete.";
     }
 
-    const std::string_view before = text.substr(0, position - 1);
+    const auto [line, column] = locate(position - 1, text);
+    return std::string(subject) + " is not valid JSON. Check line " + std::to_string(line) + ", column " + std::to_string(column) + ".";
+}
+
+std::string JsonValidator::describeOverflow(std::string_view text, std::string_view subject) {
+    const std::optional<std::size_t> overflow = findOverflowingNumber(text);
+    if (!overflow) {
+        return std::string(subject) + " holds a number too large to read.";
+    }
+
+    const auto [line, column] = locate(*overflow, text);
+    return std::string(subject) + " holds a number too large to read. Check line " + std::to_string(line) + ", column " + std::to_string(column) + ".";
+}
+
+std::optional<std::size_t> JsonValidator::findOverflowingNumber(std::string_view text) {
+    bool inString = false;
+    bool escaped = false;
+    std::size_t position = 0;
+    while (position < text.size()) {
+        const char character = text[position];
+        if (inString) {
+            const bool closes = !escaped && character == '"';
+            escaped = !escaped && character == '\\';
+            inString = !closes;
+            ++position;
+            continue;
+        }
+
+        if (character == '"') {
+            inString = true;
+            ++position;
+            continue;
+        }
+
+        if (character != '-' && (character < '0' || character > '9')) {
+            ++position;
+            continue;
+        }
+
+        // The reader turns a number into a double as the standard library does, so the same conversion finds the number it refused.
+        const std::size_t end = std::min(text.find_first_not_of("0123456789+-.eE", position), text.size());
+        const std::string number(text.substr(position, end - position));
+        if (std::isinf(std::strtod(number.c_str(), nullptr))) {
+            return position;
+        }
+
+        position = end;
+    }
+
+    return std::nullopt;
+}
+
+std::pair<std::size_t, std::size_t> JsonValidator::locate(std::size_t offset, std::string_view text) noexcept {
+    const std::string_view before = text.substr(0, offset);
     const std::size_t line = 1 + static_cast<std::size_t>(std::ranges::count(before, '\n'));
     const std::size_t lineStart = before.rfind('\n');
-    const std::size_t column = lineStart == std::string_view::npos ? position : position - 1 - lineStart;
-    return std::string(subject) + " is not valid JSON. Check line " + std::to_string(line) + ", column " + std::to_string(column) + ".";
+    const std::size_t column = lineStart == std::string_view::npos ? offset + 1 : offset - lineStart;
+    return {line, column};
 }
 
 std::string_view JsonValidator::between(std::string_view message, std::string_view before, std::string_view after) {

@@ -40,6 +40,13 @@ TEST_F(JsonValidatorTest, NamesTheLineAndColumnOfASyntaxMistake) {
     EXPECT_EQ(refusal("{\"width\": 3}"), "");
 }
 
+// A number too large for the reader names its file, line and column like a mistake of syntax, while a number too small to tell from zero and digits inside strings read.
+TEST_F(JsonValidatorTest, NamesTheLineAndColumnOfANumberTooLargeToRead) {
+    EXPECT_EQ(refusal("{\n  \"note\": \"1e999\",\n  \"scale\": [1, 0.833e333333333334]\n}"), "The file \"maps/cave.json\" holds a number too large to read. Check line 3, column 16.");
+    EXPECT_EQ(refusal("-1e400"), "The file \"maps/cave.json\" holds a number too large to read. Check line 1, column 1.");
+    EXPECT_EQ(refusal("{\"note\": \"1e999\", \"tiny\": 1e-400}"), "");
+}
+
 // A missing key and a value of the wrong type keep only the key and the types from the words of the reader.
 TEST_F(JsonValidatorTest, DescribesAMissingKeyAndAValueOfTheWrongType) {
     const Json map = Json::parse(R"({"width": "wide", "layers": {}})");

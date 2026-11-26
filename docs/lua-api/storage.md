@@ -103,7 +103,7 @@ storage.writeText('logs/last-run.txt', 'Finished day 3 with 42 coins.')
 
 ### storage.readJson(path)
 
-Reads a JSON file and returns it as plain Lua values, as [JSON values](#json-values) describes. A missing file raises the same error as `storage.readText`. Invalid JSON raises `The file "<path>" is not valid JSON. Check line <line>, column <column>.`.
+Reads a JSON file and returns it as plain Lua values, as [JSON values](#json-values) describes. A missing file raises the same error as `storage.readText`. Invalid JSON raises `The file "<path>" is not valid JSON. Check line <line>, column <column>.`, and a number too large to read raises `The file "<path>" holds a number too large to read. Check line <line>, column <column>.`.
 
 ```lua
 local storage = require('haylen.storage')
@@ -699,6 +699,7 @@ These messages come from the files and their paths.
 | `The storage folder "<directory>" could not be listed, and the file system reported "<reason>".` | A folder below `directory` cannot be read. |
 | `The user storage could not be listed, and the file system reported "<reason>".` | A folder cannot be read while the whole storage is listed. |
 | `The file "<path>" is not valid JSON. Check line <line>, column <column>.` | The file that `storage.readJson` or `storage.readJsonAsync` read is not valid JSON. |
+| `The file "<path>" holds a number too large to read. Check line <line>, column <column>.` | The file that `storage.readJson` or `storage.readJsonAsync` read holds a number beyond the range of numbers that Lua and the engine read. |
 
 These messages come from the conversion of [JSON values](#json-values).
 
