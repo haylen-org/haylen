@@ -8940,7 +8940,7 @@ As medições do pool de links mostraram que o ld do GNU gasta 12,2 GiB para lin
 - **Type:** improvement
 - **Priority:** medium
 - **Complexity:** 5
-- **Progress:** O pedido de cota de um host dedicado Mac M4 na AWS está aberto, porque a conta tinha cota zero de Macs.
+- **Progress:** A AWS aprovou a cota de um host dedicado Mac M4 em us-east-1. Falta montar o roteiro do dia e juntar o lote antes do aluguel.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
@@ -8949,7 +8949,7 @@ O dono decidiu que o Mac da nuvem é alugado no máximo um dia por mês, porque 
 
 #### Acceptance criteria
 
-- [ ] A cota de um host de Mac está aprovada na AWS.
+- [x] A cota de um host de Mac está aprovada na AWS.
 - [ ] O roteiro do dia está pronto antes do aluguel: a lista do lote, os pacotes e os scripts de montagem, execução, coleta e liberação.
 - [ ] O dia roda o lote inteiro e libera o host ao fim das 24 horas, com o custo anotado.
 
