@@ -262,6 +262,7 @@
 | **[KB-345 · Os builds de Linux linkam com o lld, que usa muito menos memória que o ld do GNU](#kb-345)**<br>🟡 medium · `improvement` · 4/10 | — | — | — | — | — |
 | **[KB-346 · Um dia de Mac na nuvem por mês roda de uma vez todo o lote pesado da Apple](#kb-346)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | — | — |
 | **[KB-347 · As informações de debug guardam caminhos relativos, como os nomes de arquivo das macros](#kb-347)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | — | — |
+| **[KB-350 · A leitura de um render target de volume segue o mesmo contrato em todo dispositivo de GPU](#kb-350)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -9122,6 +9123,29 @@ Na execução completa 45888323959 do `main`, o job dos testes de UI do iOS ligo
 
 - None
 
+### KB-350
+
+- **Title:** A leitura de um render target de volume segue o mesmo contrato em todo dispositivo de GPU
+- **Status:** todo
+- **Type:** bug
+- **Priority:** medium
+- **Complexity:** 3
+- **Progress:** Ainda não começou.
+- **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
+
+#### Description
+
+Durante o KB-055, os streams que escreveram os dispositivos viram que o Direct3D 11 e o 12 recusam a leitura de um render target de volume, enquanto os outros dispositivos a aceitam. Um contrato de `gpu::Device` que muda de um dispositivo para outro sem uma capacidade que o diga é um defeito: ou os dispositivos do Direct3D passam a ler uma fatia do volume, como as APIs permitem com uma cópia para um buffer de leitura, ou a leitura de volumes vira uma capacidade com a recusa clara e a documentação da API que a força.
+
+#### Acceptance criteria
+
+- [ ] Todo dispositivo lê um render target de volume do mesmo jeito, ou uma capacidade diz onde não lê, com a recusa e a linha no `rhi.md`.
+- [ ] Um teste de GPU lê uma fatia de um volume em toda API que a CI roda, e o dispositivo nulo segue a mesma regra.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -9144,7 +9168,7 @@ Na execução completa 45888323959 do `main`, o job dos testes de UI do iOS ligo
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-350. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-351. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
