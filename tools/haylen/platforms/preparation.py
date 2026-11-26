@@ -71,13 +71,13 @@ class Preparation:
 
     def is_current(self) -> bool:
         """Tells whether the project on disk came from the same inputs and still holds the files it was generated with."""
-        recorded = PreparationState.read(self.folders.project)
+        recorded = PreparationState.read(self.folders)
         if not self.state.same_inputs(recorded):
             return False
         return Preparation.folder_digest(self.folders.project) == recorded.output
 
     def unchanged(self, project: Path) -> PreparedProject:
-        recorded = PreparationState.read(self.folders.project)
+        recorded = PreparationState.read(self.folders)
         return PreparedProject(self.product, self.folders, project, self.backend, recorded, False)
 
     def finish(self, tree: GeneratedTree, project: Path) -> PreparedProject:
@@ -97,7 +97,7 @@ class Preparation:
             output=tree.digest(),
             extra=self.state.extra,
         )
-        recorded = PreparationState.read(self.folders.project)
-        state.write(self.folders.project)
+        recorded = PreparationState.read(self.folders)
+        state.write(self.folders)
         changed = bool(tree.changed) or recorded != state
         return PreparedProject(self.product, self.folders, project, self.backend, state, changed)

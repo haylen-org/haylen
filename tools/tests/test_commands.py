@@ -30,6 +30,7 @@ from haylen.platforms.platform_description import PlatformDescription
 from haylen.platforms.port_description import PortDescription
 from haylen.platforms.port_target import PortTarget
 from haylen.platforms.preparation_state import PreparationState
+from haylen.platforms.product_folders import ProductFolders
 from haylen.platforms.sdk_request import SdkRequest
 from haylen.plugins.plugin_lock import PluginLock
 from haylen.sdk.sdk_manifest import SdkManifest
@@ -327,8 +328,10 @@ class CommandsTest:
         assert not re.search(r"\[\d+\]|libraries", fixture.output.getvalue())
 
     def test_a_record_that_an_older_haylen_wrote_is_prepared_again_or_named_in_plain_words(self, tmp_path: Path):
-        (tmp_path / PreparationState.FILE).write_text(json.dumps({"generator": "0.0.1"}), encoding="utf-8")
-        assert PreparationState.read(tmp_path) is None
+        folders = ProductFolders(tmp_path)
+        folders.project.mkdir()
+        (folders.project / PreparationState.FILE).write_text(json.dumps({"generator": "0.0.1"}), encoding="utf-8")
+        assert PreparationState.read(folders) is None
 
         (tmp_path / PluginLock.FILE).write_text(json.dumps({"plugins": []}), encoding="utf-8")
         with pytest.raises(InvalidManifest) as raised:

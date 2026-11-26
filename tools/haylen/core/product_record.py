@@ -43,9 +43,9 @@ class ProductRecord:
             product = (Path(document["path"]), document["kind"], tuple(Path(entry) for entry in document["auxiliary"]))
         except json.JSONDecodeError, KeyError, TypeError:
             raise outdated from None
-        state = PreparationState.read(project)
+        state = PreparationState.read(folders)
         if state is None:
-            raise BuildFailed(f'The project `{Repository.shown(project)}` of the last build is gone. Build the app again with "haylen app build".')
+            raise BuildFailed(f'The project `{Repository.shown(folders.project)}` of the last build is gone. Build the app again with "haylen app build".')
         prepared = PreparedProject(resolved, folders, project, backend, state, False)
         path, kind, auxiliary = product
         return BuildProduct(prepared, path, kind, components, auxiliary)

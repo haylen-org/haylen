@@ -4,11 +4,14 @@ import plistlib
 import pytest
 
 from haylen.core.errors.invalid_manifest import InvalidManifest
+from haylen.core.product_record import ProductRecord
 from haylen.native.native_library import NativeLibrary
 from haylen.platforms.apple.app_bundle import AppBundle
+from haylen.platforms.apple.apple_backend import AppleBackend
 from haylen.platforms.apple.apple_devices import AppleDevices
 from haylen.platforms.apple.apple_launcher import AppleLauncher
 from haylen.platforms.apple.apple_native_libraries import AppleNativeLibraries
+from haylen.platforms.apple.apple_project import AppleProject
 from haylen.platforms.apple.apple_targets import AppleTargets
 from haylen.platforms.apple.apple_verifier import AppleVerifier
 from haylen.platforms.apple.info_plist_keys import InfoPlistKeys
@@ -61,7 +64,7 @@ class AppleBuildTest:
         components = tuple(ProductComponent(project.target, bundle / "Test App", "code") for project in prepared.product.projects)
         return BuildProduct(prepared, bundle, "app", components, ())
 
-    def test_an_app_with_every_part_passes_the_verification(self, apple):
+    def complete(self, apple: AppleFixture) -> BuildProduct:
         info = {
             "UIApplicationSceneManifest": {},
             "UISupportedInterfaceOrientations": list(InfoPlistKeys.PHONE_ORIENTATIONS["landscape"]),
@@ -71,7 +74,20 @@ class AppleBuildTest:
         }
         info |= {"NSCameraUsageDescription": "Reworded.", "Store": "com.haylen.tests"}
         linked = "Test App:\n\t/System/Library/Frameworks/UIKit.framework/UIKit (compat)\n\t/System/Library/Frameworks/Metal.framework/Metal (compat)\n\t/System/Library/Frameworks/StoreKit.framework/StoreKit (compat)\n"
-        product = self.built(apple, info, linked, AppleBuildTest.LISTING)
+        return self.built(apple, info, linked, AppleBuildTest.LISTING)
+
+    def test_an_app_with_every_part_passes_the_verification(self, apple):
+        report = AppleVerifier(apple.context).verify(self.complete(apple), AppleTargets.named("ios-simulator"))
+        assert report.failures == ()
+
+    def test_the_last_build_loads_with_the_xcode_project_of_the_build_folder_and_passes_the_verification(self, apple):
+        built = self.complete(apple)
+        ProductRecord.save(built)
+        product = ProductRecord.load(built.prepared.product, AppleBackend.NAME)
+
+        assert product.prepared.project == built.prepared.folders.build / AppleProject.XCODE_PROJECT
+        assert product.prepared.state == built.prepared.state
+        assert (product.path, product.components) == (built.path, built.components)
         report = AppleVerifier(apple.context).verify(product, AppleTargets.named("ios-simulator"))
         assert report.failures == ()
 
