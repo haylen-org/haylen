@@ -11,8 +11,8 @@ class LinuxGlib final {
     [[nodiscard]] static void* open();
 
     // Sets the function to the symbol that a library or one of its dependencies defines, and returns whether the symbol exists.
-    template <typename Function> static bool find(void* library, Function& function, const char* name) {
-        function = reinterpret_cast<Function>(dlsym(library, name));
+    template <typename Function> static bool find(void* handle, Function& function, const char* name) {
+        function = reinterpret_cast<Function>(dlsym(handle, name));
         return function != nullptr;
     }
 
