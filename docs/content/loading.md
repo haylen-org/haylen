@@ -606,6 +606,6 @@ A release keeps the files of an app away from the common ways of taking them: br
 
 C++ code reaches the same loading through the engine.
 
-- The call `engine.getAssets()` returns the `assets::Manager`, with `load`, `loadAsync`, `defineGroups`, `preload`, `unloadGroup` and `setUploadBudget`.
+- The call `engine.getAssets()` returns the `assets::Manager`, with `load`, `loadAsync`, `defineGroups`, `preload`, `unloadGroup` and `setUploadBudget`. A loader that reads files of its own, such as the files beside a glTF model, brings them with `acquireAsync(paths, callback)`, which calls back on the frame thread with an error, empty once every file is on the device, and at once when they are there already, and a synchronous reader guards each file with `requireLocal(path)`, which throws for a file that is not on the device yet.
 - The load hook of a C++ scene preloads groups with `core::SceneLoad::preload`, and `engine.getScenes()` preloads scenes with `SceneManager::preload`.
 - The call `engine.getContent()` returns the `content::ContentManager`, with `isLocal`, `acquire`, `addPackFolder`, `addPackSource`, `check`, `download` and `apply`, as [the content manager](content.md#the-content-manager) describes.

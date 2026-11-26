@@ -634,6 +634,29 @@ void Manager::readFile(Request& request, bool streamed) const {
     request.bytes = package.readAsset(request.path);
 }
 
+void Manager::acquireAsync(std::vector<std::string> paths, std::function<void(std::string)> callback) {
+    std::vector<std::string> missing;
+    for (std::string& path : paths) {
+        std::string normalized = io::Path::normalize(path);
+        if (!isLocal(normalized) && std::ranges::find(missing, normalized) == missing.end()) {
+            missing.push_back(std::move(normalized));
+        }
+    }
+
+    if (missing.empty()) {
+        callback({});
+        return;
+    }
+
+    // clang-format off
+    availability.acquire(std::move(missing), {}, [owner = std::weak_ptr<bool>(alive), callback = std::move(callback)](const std::string& error) {
+        if (!owner.expired()) {
+            callback(error);
+        }
+    });
+    // clang-format on
+}
+
 void Manager::setAvailability(Availability value) {
     availability = std::move(value);
 }

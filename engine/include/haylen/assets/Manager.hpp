@@ -168,6 +168,12 @@ class Manager final {
     // Drops every pending callback and group listener without running them, before the systems they point into shut down.
     void cancelAll() noexcept;
 
+    // Brings the files of the content folder that are not on the device, such as the files that a model names beside it, and calls back on the frame thread with an error message, empty once every file is on the device. Files that are all on the device call back at once.
+    void acquireAsync(std::vector<std::string> paths, std::function<void(std::string)> callback);
+
+    // Throws for an asset whose bytes are not on the device, which a synchronous read never waits for.
+    void requireLocal(std::string_view path) const;
+
     // Makes loads ask the availability before they read, so a synchronous load of an asset that is not on the device fails at once and an asynchronous load or a preload brings it first. Without one every asset is on the device.
     void setAvailability(Availability value);
 
@@ -256,8 +262,6 @@ class Manager final {
     // A failure of the JSON reader in a file of an asset, in plain words that name the asset.
     [[nodiscard]] static std::string describeJson(const core::Json::exception& failure, const Request& request);
 
-    // Throws for an asset whose bytes are not on the device, which a synchronous read never waits for.
-    void requireLocal(std::string_view path) const;
     [[nodiscard]] bool isLocal(std::string_view path) const;
     void loadGroup(const std::string& groupName, std::uint64_t generation, std::vector<Request> requests);
     [[nodiscard]] static float getProgress(const Group& group) noexcept;

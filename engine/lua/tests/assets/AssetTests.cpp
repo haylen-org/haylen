@@ -7,6 +7,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -362,6 +363,37 @@ TEST_F(AssetsManagerTest, ReportsOneProgressForAGroupWhoseAssetsDownloadFirst) {
     ASSERT_TRUE(fixture.frameUntil([&loaded] { return loaded; }));
     EXPECT_FLOAT_EQ(reported.back(), 1.0F);
     EXPECT_FLOAT_EQ(assets.getGroupProgress("menu"), 1.0F);
+}
+
+// Files that a loader reads on its own come onto the device once each, by their normalized paths, and files already there call back at once, while a failure of the download reaches the callback and a synchronous read of a missing file throws.
+TEST_F(AssetsManagerTest, BringsTheFilesThatALoaderReadsOntoTheDevice) {
+    test::LuaFixture fixture(getAssetFiles());
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
+    std::vector<std::vector<std::string>> requests;
+    const std::string failure = "The download failed.";
+    // clang-format off
+    assets.setAvailability({
+        .isLocal = [](std::string_view path) { return path != "data/config.json" && path != "images/tile.png"; },
+        .acquire = [&requests, &failure](std::vector<std::string> paths, haylen::assets::Manager::GroupProgress, std::function<void(std::string)> done) {
+            requests.push_back(std::move(paths));
+            done(failure);
+        },
+    });
+    // clang-format on
+
+    std::optional<std::string> local;
+    assets.acquireAsync({"preload.json"}, [&local](const std::string& error) { local = error; });
+    EXPECT_EQ(local, std::string());
+    EXPECT_TRUE(requests.empty());
+
+    std::optional<std::string> missing;
+    assets.acquireAsync({"data/config.json", "./data/config.json", "images/tile.png", "preload.json"}, [&missing](const std::string& error) { missing = error; });
+    ASSERT_EQ(requests.size(), 1U);
+    EXPECT_EQ(requests[0], (std::vector<std::string>{"data/config.json", "images/tile.png"}));
+    EXPECT_EQ(missing, "The download failed.");
+
+    EXPECT_THROW(assets.requireLocal("data/config.json"), std::runtime_error);
+    EXPECT_NO_THROW(assets.requireLocal("preload.json"));
 }
 
 TEST_F(AssetsManagerTest, KeepsAGroupAsItWasWhenItsPreloadFails) {
