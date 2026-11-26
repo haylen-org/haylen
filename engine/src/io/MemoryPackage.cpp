@@ -8,7 +8,7 @@
 
 namespace haylen::io {
 
-MemoryPackage::MemoryPackage(std::string packageName, std::map<std::string, std::vector<std::uint8_t>> contents) : name(std::move(packageName)) {
+MemoryPackage::MemoryPackage(std::string packageName, std::map<std::string, std::vector<std::uint8_t>> contents, std::optional<std::string> packageLocation) : name(std::move(packageName)), location(std::move(packageLocation)) {
     for (auto& [path, bytes] : contents) {
         files.insert_or_assign(Path::normalize(path), std::make_shared<const std::vector<std::uint8_t>>(std::move(bytes)));
     }

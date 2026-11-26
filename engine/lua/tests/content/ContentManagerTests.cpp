@@ -397,7 +397,7 @@ TEST(ContentDevelopmentTest, KeepsTheFilesThatDownloadOffTheDeviceUntilSomething
     files.emplace("source/main.lua", test::TestFiles::bytes("started = true"));
     files.emplace("content/levels/forest.json", test::TestFiles::bytes(R"({"trees": 12})"));
     files.emplace("content/data/config.json", test::TestFiles::bytes(R"({"level": 1})"));
-    auto package = std::make_shared<haylen::io::MemoryPackage>("development", std::move(files));
+    auto package = std::make_shared<haylen::io::MemoryPackage>("development", std::move(files), "https://example.com/apps/development");
     haylen::core::AppConfig config = haylen::core::AppConfig::fromPackage(*package);
     auto application = std::make_unique<lua::Application>();
     application->configure(config);
@@ -428,7 +428,7 @@ TEST(ContentDevelopmentTest, HoldsTheStartForTheLanguagesThatARuleDeliversLater)
     files.emplace("haylen.json", test::TestFiles::bytes(R"({"localization": {"folder": "locale"}, "content": {"delivery": [{"match": "locale/**", "mode": "onDemand"}]}})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("greeting = require('haylen.localization').text('menu.play')"));
     files.emplace("content/locale/en.json", test::TestFiles::bytes(R"({"menu": {"play": "Play"}})"));
-    auto package = std::make_shared<haylen::io::MemoryPackage>("development", std::move(files));
+    auto package = std::make_shared<haylen::io::MemoryPackage>("development", std::move(files), "https://example.com/apps/development");
     haylen::core::AppConfig config = haylen::core::AppConfig::fromPackage(*package);
     auto application = std::make_unique<lua::Application>();
     application->configure(config);

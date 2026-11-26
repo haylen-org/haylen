@@ -33,7 +33,8 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
         contents.emplace(path, TestFiles::bytes(text));
     }
 
-    memoryPackage = std::make_shared<io::MemoryPackage>("test", std::move(contents));
+    // The package of the fixture comes from its folder, which names an app whose "haylen.json" names no identifier, as a package on disk would.
+    memoryPackage = std::make_shared<io::MemoryPackage>("test", std::move(contents), (directory.getPath() / "package").generic_string());
     playedPackage = memoryPackage;
     if (platform::DevelopmentSession* session = headlessHost.getDevelopmentSession(); session != nullptr && session->isConnected()) {
         auto overlay = std::make_shared<io::OverlayPackage>(memoryPackage);

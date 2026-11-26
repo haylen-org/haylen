@@ -14,6 +14,9 @@ namespace haylen::core {
 
 class AppConfigTest : public ::testing::Test {
   protected:
+    // The location of the packages of the tests, which names the apps whose "haylen.json" names no identifier.
+    static constexpr const char* kLocation = "https://example.com/apps/app";
+
     // Returns the message that refuses the document, or an empty text when the document is valid.
     [[nodiscard]] static std::string refusal(const std::string& document) {
         try {
@@ -27,7 +30,7 @@ class AppConfigTest : public ::testing::Test {
 
     // Returns the message that refuses a package with the `haylen.json` and the group manifest, or an empty text when the package is valid.
     [[nodiscard]] static std::string refusalOfPackage(const std::string& document, const std::string& groups) {
-        io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(document)}, {"content/groups.json", test::TestFiles::bytes(groups)}});
+        io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(document)}, {"content/groups.json", test::TestFiles::bytes(groups)}}, kLocation);
         try {
             AppConfig config = AppConfig::fromPackage(package);
             config.content.expandGroups(package);
@@ -255,7 +258,7 @@ TEST_F(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
 // A rule that names a preload group delivers the files of the group, which the group manifest of the app lists for the asset manager too.
 TEST_F(AppConfigTest, DeliversThePreloadGroupsThatRulesName) {
     const std::string app = R"({"content": {"groups": "groups.json", "delivery": [{"group": "asia", "mode": "onDemand"}, {"match": "world/**", "mode": "prefetch"}]}})";
-    io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(app)}, {"content/groups.json", test::TestFiles::bytes(R"({"groups": {"asia": ["world/asia/", {"path": "music/tokyo.ogg", "options": {"stream": true}}]}})")}});
+    io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(app)}, {"content/groups.json", test::TestFiles::bytes(R"({"groups": {"asia": ["world/asia/", {"path": "music/tokyo.ogg", "options": {"stream": true}}]}})")}}, kLocation);
     AppConfig config = AppConfig::fromPackage(package);
     EXPECT_TRUE(config.content.hasGroupRules()) << "Reading the configuration reads no content.";
     config.content.expandGroups(package);
@@ -306,7 +309,7 @@ TEST_F(AppConfigTest, ReadsThePluginsOfTheApp) {
     EXPECT_EQ(nested.plugins.at("ads").path, "ads");
 
     // Every plugin of `haylen.json` has its manifest in the package, which only the tooling stages for a plugin that `haylen.json` references elsewhere.
-    io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}}})")}});
+    io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}}})")}}, kLocation);
     try {
         (void)AppConfig::fromPackage(package);
         FAIL() << "The package has no manifest for the plugin.";

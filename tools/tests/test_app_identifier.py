@@ -35,13 +35,15 @@ class AppIdentifierTest:
         cases = json.loads((Repository.ROOT / "engine" / "tests" / "data" / "app-identifiers.json").read_text(encoding="utf-8"))
         assert cases, "The engine test AppIdentifierTest reads the same cases, so both sides follow one rule."
         for case in cases:
-            assert AppIdentifier.compose(case["name"], case["path"]) == case["identifier"], case["path"]
+            assert AppIdentifier.from_location(case["location"]) == case["identifier"], case["location"]
+        locations = [case["location"] for case in cases]
+        assert any(location.startswith("https://") for location in locations), "The cases hold the addresses of launched packages and of the projects of editors."
 
-    def test_the_identifier_takes_the_name_and_the_path_of_the_resolved_folder(self, tmp_path: Path):
+    def test_the_identifier_of_a_folder_takes_its_resolved_path(self, tmp_path: Path):
         folder = tmp_path / "Sky Garden"
         folder.mkdir()
         roundabout = tmp_path / "." / "Sky Garden" / ".." / "Sky Garden"
-        assert AppIdentifier.generate(roundabout) == AppIdentifier.compose("Sky Garden", str(folder.resolve()))
+        assert AppIdentifier.generate(roundabout) == AppIdentifier.from_location(str(folder.resolve()))
 
     @pytest.mark.parametrize("name", ["Sky Garden", "2048 Puzzle!", "123", "new", "日本"])
     def test_every_generated_identifier_is_a_bundle_identifier_and_an_application_id(self, tmp_path: Path, name: str):

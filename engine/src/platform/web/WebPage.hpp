@@ -161,6 +161,7 @@ class WebPage final {
 
     [[nodiscard]] static std::vector<Edit> readEdits(const char* operations, std::span<const std::vector<std::byte>> contents);
     [[nodiscard]] static std::string readPath(const core::Json& operation, const char* key);
+    [[nodiscard]] static std::string editorLocation();
     static void checkEdits(const std::vector<Edit>& edits);
 
     // The sizes of the files of a package by their paths.

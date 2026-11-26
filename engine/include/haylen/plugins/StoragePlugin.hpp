@@ -77,6 +77,9 @@ class StoragePlugin final : public Plugin {
 
     std::shared_ptr<Operations> operations = std::make_shared<Operations>();
     core::JobSystem* jobs = nullptr;
+
+    // Whether the storage of the app takes files, which the storage of a screen that belongs to no app and of a page that another tab holds refuse, so the plugin neither loads nor saves.
+    bool available = false;
     std::unique_ptr<storage::SaveSlots> saveSlots;
     std::unique_ptr<storage::Preferences> preferences;
     std::unique_ptr<storage::ResumeState> resumeState;

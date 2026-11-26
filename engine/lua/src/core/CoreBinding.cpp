@@ -112,12 +112,20 @@ int CoreBinding::rootQuit(lua_State* L) {
     return 0;
 }
 
-// Runs the app package at a path of the file system with `haylen.launch(path, options)` once this frame ends, in development when the option `developmentServer` names the server that sends its saved files, without native code when `nativeAccess` is false, and the app that launched it starts again when it quits.
+// Runs the app package at a path of the file system with `haylen.launch(path, options)` once this frame ends, named after the option `address` that it came from when its `haylen.json` names no identifier, in development when the option `developmentServer` names the server that sends its saved files, without native code when `nativeAccess` is false, and the app that launched it starts again when it quits.
 int CoreBinding::rootLaunch(lua_State* L) {
     haylen::core::Engine::Launch launch{.package = lua::Stack::read<std::string_view>(L, 1)};
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua::Table::checkFields(L, 2, {kLaunchFields});
+        lua_getfield(L, 2, "address");
+        const bool named = !lua_isnil(L, -1);
+        lua_pop(L, 1);
+        if (named) {
+            std::string address;
+            lua::Table::readField(L, 2, "address", address);
+            launch.address = std::move(address);
+        }
         lua::Table::readField(L, 2, "developmentServer", launch.developmentServer);
         lua::Table::readField(L, 2, "nativeAccess", launch.nativeAccess);
     }

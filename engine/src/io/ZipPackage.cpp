@@ -9,7 +9,7 @@
 
 namespace haylen::io {
 
-ZipPackage::ZipPackage(std::shared_ptr<ZipArchive> openArchive, std::optional<std::filesystem::path> file) : archive(std::move(openArchive)), location(std::move(file)) {
+ZipPackage::ZipPackage(std::shared_ptr<ZipArchive> openArchive, std::optional<std::string> packageLocation) : archive(std::move(openArchive)), location(std::move(packageLocation)) {
     checkEntries();
 }
 

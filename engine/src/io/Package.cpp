@@ -15,16 +15,18 @@
 
 namespace haylen::io {
 
-std::unique_ptr<Package> Package::openDirectory(const std::filesystem::path& root) {
+std::unique_ptr<Package> Package::openDirectory(const std::filesystem::path& root, std::optional<std::string> location) {
     std::error_code error;
     if (!std::filesystem::is_directory(root, error)) {
         throw std::runtime_error("The package folder \"" + root.generic_string() + "\" was not found.");
     }
 
-    return std::make_unique<DirectoryPackage>(std::filesystem::canonical(root));
+    std::filesystem::path resolved = std::filesystem::canonical(root);
+    std::string named = location.has_value() ? std::move(*location) : resolvedText(resolved);
+    return std::make_unique<DirectoryPackage>(std::move(resolved), std::move(named));
 }
 
-std::unique_ptr<Package> Package::openZip(const std::filesystem::path& file) {
+std::unique_ptr<Package> Package::openZip(const std::filesystem::path& file, std::optional<std::string> location) {
     std::error_code error;
     if (!std::filesystem::is_regular_file(file, error)) {
         throw std::runtime_error("The package file \"" + file.generic_string() + "\" was not found.");
@@ -42,10 +44,11 @@ std::unique_ptr<Package> Package::openZip(const std::filesystem::path& file) {
         throw std::runtime_error("The package archive \"" + file.filename().generic_string() + "\" is not a valid zip file, and the zip reader reported \"" + message + "\".");
     }
 
-    return std::make_unique<ZipPackage>(std::make_shared<ZipArchive>(archive, std::vector<std::uint8_t>{}, file.filename().generic_string()), std::filesystem::canonical(file));
+    std::string named = location.has_value() ? std::move(*location) : resolvedText(std::filesystem::canonical(file));
+    return std::make_unique<ZipPackage>(std::make_shared<ZipArchive>(archive, std::vector<std::uint8_t>{}, file.filename().generic_string()), std::move(named));
 }
 
-std::unique_ptr<Package> Package::openZip(std::vector<std::uint8_t> bytes, std::string name) {
+std::unique_ptr<Package> Package::openZip(std::vector<std::uint8_t> bytes, std::string name, std::optional<std::string> location) {
     zip_error_t error;
     zip_error_init(&error);
 
@@ -65,16 +68,21 @@ std::unique_ptr<Package> Package::openZip(std::vector<std::uint8_t> bytes, std::
     }
 
     zip_error_fini(&error);
-    return std::make_unique<ZipPackage>(std::make_shared<ZipArchive>(archive, std::move(bytes), std::move(name)));
+    return std::make_unique<ZipPackage>(std::make_shared<ZipArchive>(archive, std::move(bytes), std::move(name)), std::move(location));
 }
 
-std::unique_ptr<Package> Package::open(const std::filesystem::path& path) {
+std::unique_ptr<Package> Package::open(const std::filesystem::path& path, std::optional<std::string> location) {
     std::error_code error;
     if (std::filesystem::is_directory(path, error)) {
-        return openDirectory(path);
+        return openDirectory(path, std::move(location));
     }
 
-    return openZip(path);
+    return openZip(path, std::move(location));
+}
+
+std::string Package::resolvedText(const std::filesystem::path& resolved) {
+    const std::u8string text = resolved.u8string();
+    return {reinterpret_cast<const char*>(text.data()), text.size()};
 }
 
 bool Package::isLuaBytecode(std::string_view) const {

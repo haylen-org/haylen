@@ -34,7 +34,7 @@ class OverlayPackage final : public Package {
     [[nodiscard]] std::optional<std::filesystem::path> getDirectory() const override {
         return base->getDirectory();
     }
-    [[nodiscard]] std::optional<std::filesystem::path> getLocation() const override {
+    [[nodiscard]] std::optional<std::string> getLocation() const override {
         return base->getLocation();
     }
     [[nodiscard]] bool isLuaBytecode(std::string_view path) const override;

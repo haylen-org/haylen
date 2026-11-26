@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <utility>
@@ -73,6 +74,34 @@ TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedQuits) {
         end
     )", 120), 5);
     // clang-format on
+}
+
+// A launched package whose "haylen.json" names no identifier keeps its files under the identifier of the address it came from, which the launcher names, so two downloads to one file never share their storage.
+TEST_F(HeadlessPlayerTest, KeepsTheFilesOfALaunchedPackageUnderTheIdentifierOfItsAddress) {
+    test::TemporaryDirectory guest;
+    guest.write("haylen.json", R"({"name": "Guest"})");
+    guest.write("source/main.lua", "local preferences = require('haylen.preferences') preferences.set('guest', true) preferences.save() require('haylen').quit()");
+    // clang-format off
+    EXPECT_EQ(play(R"(
+        local haylen = require('haylen')
+        local preferences = require('haylen.preferences')
+        if preferences.get('launched', false) then
+            preferences.remove('launched')
+            preferences.save()
+            haylen.quit({status = 4})
+        else
+            preferences.set('launched', true)
+            preferences.save()
+            haylen.launch(')" + guest.getPath().generic_string() + R"(', {address = 'https://example.com/apps/sky-garden.zip'})
+        end
+    )", 120), 4);
+    // clang-format on
+
+    std::vector<std::string> folders;
+    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(data.getPath())) {
+        folders.push_back(entry.path().filename().string());
+    }
+    EXPECT_NE(std::ranges::find_if(folders, [](const std::string& folder) { return folder.starts_with("local.skygardenzip"); }), folders.end()) << folders.size();
 }
 
 // The launch arguments belong to the app that the process plays first, which has them again once the app it launched quits, while the launched app has none.

@@ -71,9 +71,14 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
         current.audio->addBusEffect("master", std::make_shared<audio::Limiter>(audio::Limiter::Settings{}));
     }
 
-    // clang-format off
-    current.storage = std::make_unique<storage::UserStorage>(host.getUserDataDirectory(current.config.identifier), [&host] { host.persistUserData(); }, host.getUserDataRefusal());
-    // clang-format on
+    // An app without an identifier, such as the screen of an app that did not load, keeps no files, so it never reaches the storage of another app.
+    if (current.config.identifier.empty()) {
+        current.storage = std::make_unique<storage::UserStorage>(std::filesystem::path{}, std::function<void()>{}, std::string(kNoIdentityRefusal));
+    } else {
+        // clang-format off
+        current.storage = std::make_unique<storage::UserStorage>(host.getUserDataDirectory(current.config.identifier), [&host] { host.persistUserData(); }, host.getUserDataRefusal());
+        // clang-format on
+    }
 
     // Handlers that native libraries register through the C interface answer before the handlers of the platform.
     // clang-format off
@@ -1468,6 +1473,10 @@ void Engine::requestLaunch(Launch launch) {
     std::error_code error;
     if (!std::filesystem::exists(launch.package, error)) {
         throw std::invalid_argument("No app package is at \"" + launch.package.string() + "\". Launch a folder or a zip file that holds \"haylen.json\".");
+    }
+
+    if (launch.address && launch.address->find("://") == std::string::npos) {
+        throw std::invalid_argument("The address \"" + *launch.address + "\" of the launch holds no \"://\". Name the address that the package came from, such as \"https://example.com/apps/garden.zip\".");
     }
 
     const std::string_view server = launch.developmentServer;

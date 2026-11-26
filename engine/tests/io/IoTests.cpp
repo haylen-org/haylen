@@ -88,7 +88,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
         }
 
         if (GetParam() == "zip-memory") {
-            return Package::openZip(makeZip(files), "memory.zip");
+            return Package::openZip(makeZip(files), "memory.zip", "https://example.com/apps/memory.zip");
         }
 
         std::map<std::string, std::vector<std::uint8_t>> contents;
@@ -96,7 +96,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
             contents.emplace(path, test::TestFiles::bytes(content));
         }
 
-        return std::make_unique<MemoryPackage>("memory", std::move(contents));
+        return std::make_unique<MemoryPackage>("memory", std::move(contents), "https://example.com/apps/memory");
     }
 
     // Returns the bytes of a zip archive with the files, built by libzip in the temporary directory.

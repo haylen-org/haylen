@@ -9,17 +9,10 @@
 
 namespace haylen::core {
 
-std::string AppIdentifier::generate(const std::filesystem::path& location) {
-    const std::filesystem::path resolved = std::filesystem::canonical(location);
-    const std::u8string name = resolved.filename().u8string();
-    const std::u8string path = resolved.u8string();
-    return compose({reinterpret_cast<const char*>(name.data()), name.size()}, {reinterpret_cast<const char*>(path.data()), path.size()});
-}
-
-std::string AppIdentifier::compose(std::string_view name, std::string_view resolvedPath) {
+std::string AppIdentifier::fromLocation(std::string_view location) {
     // The name keeps its ASCII letters in lowercase and its digits, without the digits it starts with, since every part of an identifier starts with a letter.
     std::string letters;
-    for (const char character : name) {
+    for (const char character : nameOf(location)) {
         const bool digit = character >= '0' && character <= '9';
         const bool lower = character >= 'a' && character <= 'z';
         const bool upper = character >= 'A' && character <= 'Z';
@@ -42,9 +35,9 @@ std::string AppIdentifier::compose(std::string_view name, std::string_view resol
         letters = kFallback;
     }
 
-    const std::span<const std::uint8_t> path(reinterpret_cast<const std::uint8_t*>(resolvedPath.data()), resolvedPath.size());
+    const std::span<const std::uint8_t> bytes(reinterpret_cast<const std::uint8_t*>(location.data()), location.size());
     std::array<std::uint8_t, kDigestSize> digest{};
-    content::Hasher(kDigestSize).update(path).finish(digest);
+    content::Hasher(kDigestSize).update(bytes).finish(digest);
 
     std::string identifier{kPrefix};
     identifier += letters;
@@ -53,6 +46,20 @@ std::string AppIdentifier::compose(std::string_view name, std::string_view resol
     }
 
     return identifier;
+}
+
+std::string_view AppIdentifier::nameOf(std::string_view location) {
+    std::string_view rest = location;
+    if (rest.find("://") != std::string_view::npos) {
+        rest = rest.substr(0, rest.find_first_of("?#"));
+    }
+
+    while (!rest.empty() && (rest.back() == '/' || rest.back() == '\\')) {
+        rest.remove_suffix(1);
+    }
+
+    const std::size_t separator = rest.find_last_of("/\\");
+    return separator == std::string_view::npos ? rest : rest.substr(separator + 1);
 }
 
 } // namespace haylen::core

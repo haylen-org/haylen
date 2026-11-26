@@ -273,13 +273,15 @@ class Engine final {
     [[nodiscard]] bool isRestartRequested() const noexcept;
 
     // The app that `requestLaunch` runs: the package at a path, a folder or a zip file, the address of the development server that plays it in development with hot reload, or an empty text for an app that plays as it is, and whether it reaches native code. Without native access the app and every app it launches in turn have no `ffi`, `process` or `haylen.native` module and no `io.popen` or `os.execute`, so it reaches the system only through the engine and the plugins of the process.
+    // The package to run, the address it came from, which names an app whose `haylen.json` names no identifier, such as the address that a launcher downloaded it from, the development server that sends its saved files and whether it reaches native code.
     struct Launch {
         std::filesystem::path package;
+        std::optional<std::string> address{};
         std::string developmentServer{};
         bool nativeAccess = true;
     };
 
-    // Asks the runtime to run an app in place of this app once this frame ends, and to start this app again when that app quits. Throws `std::invalid_argument` when nothing is at the path or the development server is not a "ws://" or "wss://" address.
+    // Asks the runtime to run an app in place of this app once this frame ends, and to start this app again when that app quits. Throws `std::invalid_argument` when nothing is at the path, the address holds no "://" or the development server is not a "ws://" or "wss://" address.
     void requestLaunch(Launch launch);
     [[nodiscard]] const std::optional<Launch>& getLaunchRequest() const noexcept;
 
@@ -356,6 +358,9 @@ class Engine final {
 
     // An app that redraws on change draws this many frames after each frame that a change needed, because state that follows input a frame behind, such as the hover and the focus of the UI, settles only then.
     static constexpr int kSettleFrames = 2;
+
+    // Why an app without an identifier, such as the screen of an app that did not load, keeps no files.
+    static constexpr std::string_view kNoIdentityRefusal = "This screen belongs to no app, so it keeps no files.";
 
     // Asks an app that redraws on change to update and draw the next frame, for a change that the engine cannot see, such as state that code of the app moves by itself. An app that redraws always draws every frame anyway.
     void requestRedraw() noexcept;

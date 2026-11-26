@@ -45,7 +45,7 @@ void ReleaseFixture::build(const std::map<std::string, std::string>& files, std:
         contents.emplace(path, TestFiles::bytes(text));
     }
 
-    build(io::MemoryPackage("source", std::move(contents)), shardTarget);
+    build(io::MemoryPackage("source", std::move(contents), "https://example.com/apps/release"), shardTarget);
 }
 
 void ReleaseFixture::build(const io::Package& source, std::uint64_t shardTarget) {

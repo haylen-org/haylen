@@ -157,8 +157,8 @@ struct AppConfig {
     static constexpr std::string_view kDefaultName = "Haylen App";
 
     std::string name{kDefaultName};
-    // The identifier of a package that is not on disk and names none, such as a package in memory.
-    std::string identifier = "com.haylen.app";
+    // The identifier of the app, which `fromPackage` gives every package. A configuration that no package gave, such as the one of the screen of an app that did not load, has none and keeps no files.
+    std::string identifier;
     std::string version = "1.0.0";
 
     // The build number of the app, a whole number that grows with every upload to a store, while `version` is the version that people see. It is the bundle version of Apple platforms, the version code of Android and the app build that protected releases and content updates match.
@@ -213,7 +213,7 @@ struct AppConfig {
     // Reads every present field and validates it, keeping the sections that the application names in `sections`, which the application reads itself. Throws `std::invalid_argument` with the offending field on bad values and on a key that neither the engine nor the application reads.
     [[nodiscard]] static AppConfig fromJson(const Json& document, std::span<const std::string_view> applicationSections = {});
 
-    // Reads `haylen.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists, which a folder that the player runs directly lacks for a plugin that `haylen.json` references elsewhere. A package on disk whose `haylen.json` names no identifier takes the one that the tooling generates for the same folder. It reads no content, so the rules that name preload groups stay until `Content::expandGroups`.
+    // Reads `haylen.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists, which a folder that the player runs directly lacks for a plugin that `haylen.json` references elsewhere. A package whose `haylen.json` names no identifier takes the one of its location, which the tooling generates for the same folder too, and a package without a location, such as a damaged bundle of an app, throws. It reads no content, so the rules that name preload groups stay until `Content::expandGroups`.
     [[nodiscard]] static AppConfig fromPackage(const io::Package& package, std::span<const std::string_view> applicationSections = {});
 
     // Reads only the plugins that `haylen.json` of the package lists, as `fromPackage` checks them, for a runtime that loads their native parts before it creates the application.

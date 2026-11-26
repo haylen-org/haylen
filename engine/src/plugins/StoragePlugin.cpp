@@ -12,6 +12,7 @@
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Window.hpp"
+#include "haylen/storage/UserStorage.hpp"
 
 namespace haylen::plugins {
 
@@ -55,14 +56,19 @@ void StoragePlugin::start(core::Engine& engine) {
     jobs = &engine.getJobs();
     saveSlots = std::make_unique<storage::SaveSlots>(engine.getStorage());
     preferences = std::make_unique<storage::Preferences>(engine.getStorage());
+    resumeState = std::make_unique<storage::ResumeState>(engine.getStorage());
+    navigationState = std::make_unique<storage::ResumeState>(engine.getStorage(), "navigation-state.json");
+    available = engine.getStorage().isAvailable();
+    if (!available) {
+        return;
+    }
+
     try {
         preferences->load();
     } catch (const std::exception& error) {
         core::Log::warning("{} The app starts with default preferences, and the next save replaces the file.", error.what());
     }
 
-    resumeState = std::make_unique<storage::ResumeState>(engine.getStorage());
-    navigationState = std::make_unique<storage::ResumeState>(engine.getStorage(), "navigation-state.json");
     for (storage::ResumeState* state : {resumeState.get(), navigationState.get()}) {
         try {
             state->load();
@@ -74,7 +80,7 @@ void StoragePlugin::start(core::Engine& engine) {
 
 // The engine handles the suspension before its plugins, so the listeners of `appBackground` have run, and what they changed is saved with the rest.
 void StoragePlugin::event(core::Engine&, const platform::Event& event) {
-    if (!preferences) {
+    if (!preferences || !available) {
         return;
     }
 
@@ -106,7 +112,7 @@ void StoragePlugin::stop(core::Engine& engine) {
     const std::exception_ptr failure = runOperations(*operations);
     jobs = nullptr;
 
-    if (preferences) {
+    if (preferences && available) {
         saveQuietly(*preferences);
         writeResumeState(*resumeState, false);
         writeResumeState(*navigationState, engine.isRestartRequested());

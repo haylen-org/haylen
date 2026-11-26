@@ -21,12 +21,15 @@ class Package {
 
     virtual ~Package() = default;
 
-    [[nodiscard]] static std::unique_ptr<Package> openDirectory(const std::filesystem::path& root);
+    // A package on disk takes the resolved path of its folder or file as its location, unless its creator names another one, such as the address that a launched package came from.
+    [[nodiscard]] static std::unique_ptr<Package> openDirectory(const std::filesystem::path& root, std::optional<std::string> location = std::nullopt);
 
     // Opens a zip archive in place and reads its entries when they are asked for. Throws `std::runtime_error` for a file that is not a zip archive or an archive with an entry whose name is not a relative path with forward slashes, such as `./haylen.json`.
-    [[nodiscard]] static std::unique_ptr<Package> openZip(const std::filesystem::path& file);
-    [[nodiscard]] static std::unique_ptr<Package> openZip(std::vector<std::uint8_t> bytes, std::string name);
-    [[nodiscard]] static std::unique_ptr<Package> open(const std::filesystem::path& path);
+    [[nodiscard]] static std::unique_ptr<Package> openZip(const std::filesystem::path& file, std::optional<std::string> location = std::nullopt);
+
+    // Opens a zip archive held in memory, whose location its creator names.
+    [[nodiscard]] static std::unique_ptr<Package> openZip(std::vector<std::uint8_t> bytes, std::string name, std::optional<std::string> location = std::nullopt);
+    [[nodiscard]] static std::unique_ptr<Package> open(const std::filesystem::path& path, std::optional<std::string> location = std::nullopt);
 
     [[nodiscard]] virtual std::string_view getName() const noexcept = 0;
     [[nodiscard]] virtual bool exists(std::string_view path) const = 0;
@@ -39,8 +42,8 @@ class Package {
         return std::nullopt;
     }
 
-    // The folder or the zip file on disk that a package reads from, which a package in memory or in the bundle of an app lacks.
-    [[nodiscard]] virtual std::optional<std::filesystem::path> getLocation() const {
+    // Where a package comes from as UTF-8 text, which names an app whose `haylen.json` names no identifier: the resolved path of a folder or a zip file on disk, the address that a launched package came from, or the location that the creator of a package in memory names. The bundle of a built app has none, since the tooling writes the identifier into it.
+    [[nodiscard]] virtual std::optional<std::string> getLocation() const {
         return std::nullopt;
     }
 
@@ -59,6 +62,10 @@ class Package {
     [[nodiscard]] std::vector<std::uint8_t> readAssetRange(std::string_view path, std::uint64_t offset, std::size_t size) const;
     [[nodiscard]] std::string readAssetText(std::string_view path) const;
     [[nodiscard]] std::vector<std::string> listAssets(std::string_view directory) const;
+
+  private:
+    // The resolved path of a package on disk as UTF-8 text, which names its location.
+    [[nodiscard]] static std::string resolvedText(const std::filesystem::path& resolved);
 };
 
 } // namespace haylen::io

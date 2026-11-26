@@ -126,7 +126,7 @@ int HeadlessPlayer::play(const Options& options) {
 // A launched app that cannot start reports its failure, which makes the run fail, and returns no engine.
 std::unique_ptr<core::Engine> HeadlessPlayer::launchPackage(HeadlessHost& host, const core::Engine::Launch& request, std::shared_ptr<io::Package>& playing) {
     try {
-        playing = io::Package::open(request.package);
+        playing = io::Package::open(request.package, request.address);
         if (!request.developmentServer.empty()) {
             host.enableDevelopment(std::nullopt, request.developmentServer);
             playing = std::make_shared<io::OverlayPackage>(std::move(playing));

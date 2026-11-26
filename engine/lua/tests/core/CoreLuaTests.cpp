@@ -73,6 +73,11 @@ TEST(CoreLuaTest, LaunchesAnotherAppPackageOnceTheFrameEnds) {
     EXPECT_EQ(fixture.engine().getLaunchRequest()->package, guest.getPath());
     EXPECT_EQ(fixture.engine().getLaunchRequest()->developmentServer, "");
     EXPECT_TRUE(fixture.engine().getLaunchRequest()->nativeAccess);
+    EXPECT_FALSE(fixture.engine().getLaunchRequest()->address.has_value());
+    fixture.runLua("require('haylen').launch('" + path + "', {address = 'https://example.com/apps/guest.zip'})");
+    ASSERT_TRUE(fixture.engine().getLaunchRequest().has_value());
+    EXPECT_EQ(fixture.engine().getLaunchRequest()->address, "https://example.com/apps/guest.zip");
+    EXPECT_NE(fixture.lua("require('haylen').launch('" + path + "', {address = 'guest.zip'})").find("The address \"guest.zip\" of the launch holds no \"://\"."), std::string::npos);
     fixture.runLua("require('haylen').launch('" + path + "', {nativeAccess = false})");
     ASSERT_TRUE(fixture.engine().getLaunchRequest().has_value());
     EXPECT_FALSE(fixture.engine().getLaunchRequest()->nativeAccess);

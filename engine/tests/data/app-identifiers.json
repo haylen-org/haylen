@@ -1,32 +1,50 @@
 [
   {
-    "name": "Sky Garden",
-    "path": "/apps/Sky Garden",
+    "location": "/apps/Sky Garden",
     "identifier": "local.skygardenb05cba2f"
   },
   {
-    "name": "2048 Puzzle!",
-    "path": "/apps/2048 Puzzle!",
+    "location": "/apps/2048 Puzzle!",
     "identifier": "local.puzzlecb7426e3"
   },
   {
-    "name": "日本",
-    "path": "/apps/日本",
+    "location": "/apps/日本",
     "identifier": "local.haylenappd1f4f310"
   },
   {
-    "name": "Café Ärt",
-    "path": "/apps/Café Ärt",
+    "location": "/apps/Café Ärt",
     "identifier": "local.cafrtf8c452e8"
   },
   {
-    "name": "tiny-island.zip",
-    "path": "C:\\Apps\\tiny-island.zip",
+    "location": "C:\\Apps\\tiny-island.zip",
     "identifier": "local.tinyislandzip994a27c4"
   },
   {
-    "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "path": "/apps/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "location": "/apps/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "identifier": "local.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0fa38b7b"
+  },
+  {
+    "location": "/apps/garden/",
+    "identifier": "local.garden94a6bdb5"
+  },
+  {
+    "location": "https://example.com/apps/sky-garden.zip",
+    "identifier": "local.skygardenzipb1be7a89"
+  },
+  {
+    "location": "https://example.com/apps/sky-garden.zip?version=2#start",
+    "identifier": "local.skygardenzip92012483"
+  },
+  {
+    "location": "http://192.168.0.12:8080/",
+    "identifier": "local.haylenapp1ce76a23"
+  },
+  {
+    "location": "https://editor.example.com/project-42",
+    "identifier": "local.project42d3650758"
+  },
+  {
+    "location": "https://editor.example.com",
+    "identifier": "local.editorexamplecomd5a8e2e3"
   }
 ]

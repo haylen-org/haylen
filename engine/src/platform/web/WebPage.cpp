@@ -121,6 +121,11 @@ EM_JS(char*, haylen_js_clipboard, (), {
 EM_JS(char*, haylen_js_canvas_selector, (), {
     return stringToNewUTF8(Module.haylen.canvasSelector());
 });
+
+EM_JS(char*, haylen_js_editor_location, (), {
+    const storageNamespace = Module.haylen.storageNamespace;
+    return stringToNewUTF8(self.location.origin + (storageNamespace === undefined ? "" : "/" + storageNamespace));
+});
 // clang-format on
 
 namespace haylen::platform {
@@ -428,13 +433,21 @@ int WebPage::edit(const char* operations, const std::uint32_t* buffers, int coun
     // clang-format on
 }
 
+// The project of an editor comes from the page and its storage namespace, which names a project whose `haylen.json` names no identifier, so the identifier and the database of its user data belong to the same project.
+std::string WebPage::editorLocation() {
+    char* location = haylen_js_editor_location();
+    std::string text(location);
+    std::free(location);
+    return text;
+}
+
 // The app stops, and the empty package waits for the files of the page until `run` starts it.
 int WebPage::clearFiles() {
     // clang-format off
     return answer([] {
         requireEditable();
         touched.clear();
-        Player::stage(std::make_shared<io::OverlayPackage>(std::make_shared<io::MemoryPackage>("editor")));
+        Player::stage(std::make_shared<io::OverlayPackage>(std::make_shared<io::MemoryPackage>("editor", std::map<std::string, std::vector<std::uint8_t>>{}, editorLocation())));
         return ++revision;
     });
     // clang-format on
@@ -484,7 +497,7 @@ int WebPage::loadZip(double request, const std::uint8_t* bytes, int size) {
         requireEditable();
         std::shared_ptr<io::Package> package;
         try {
-            package = io::Package::openZip(std::vector<std::uint8_t>(bytes, bytes + size), "app.zip");
+            package = io::Package::openZip(std::vector<std::uint8_t>(bytes, bytes + size), "app.zip", editorLocation());
         } catch (const std::exception& error) {
             throw RequestError("package", error.what());
         }

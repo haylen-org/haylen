@@ -87,7 +87,7 @@ print('Halts in the background: ' .. tostring(config.lifecycle.pauseOnBackground
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `name` | string | `"Haylen App"` | The name of the app that people see. An empty name or `null` is the default name too, the same one that the tooling gives the projects of the app, as the [distribution guide](../tools/distribution.md#name) describes. |
-| `identifier` | string | `"com.haylen.app"` | A unique id in reverse domain form. It also names the folder where [`haylen.storage`](storage.md) and [`haylen.preferences`](preferences.md) keep their files. A package without one takes the identifier of its folder or zip file, which the tooling and the player generate by one rule, as the [distribution guide](../tools/distribution.md#identifier) describes, so the default reaches only a package in memory. |
+| `identifier` | string | The identifier of the location of the package | A unique id in reverse domain form. It also names the folder where [`haylen.storage`](storage.md) and [`haylen.preferences`](preferences.md) keep their files. A package without one takes the identifier of where it comes from, its folder or zip file, the address of a launch or the project of a web editor, by the one rule that the tooling and the player follow, as the [distribution guide](../tools/distribution.md#identifier) describes. |
 | `version` | string | `"1.0.0"` | The version of the app that people see, such as `"1.2.0"`. |
 | `build` | integer | `1` | The build number of the app, a whole number from 1 to 2100000000 that grows with every upload to a store, such as 1, 2 and 3. Every platform takes its build number from it, as the [distribution guide](../tools/distribution.md) describes. Another value stops the start with `The "build" value <value> in "haylen.json" is not a build number. It is a whole number from 1 to 2100000000 that grows with every upload of the app.` |
 | `description` | string | The value of `name` | One sentence about the app. The Windows and Linux templates give it to the executable, the desktop entry, the AppStream metainfo and the packages. |
@@ -704,6 +704,7 @@ The table `options` is optional.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
+| `address` | string | none | The address that the package came from, such as `https://example.com/apps/demo.zip`, which names a launched app whose `haylen.json` names no identifier, as the [distribution guide](../tools/distribution.md#identifier) describes. So two packages that a launcher downloads to one file never share an identifier or their storage. Without it, the resolved path of the package names such an app. |
 | `developmentServer` | string | none | The `ws://` or `wss://` address of a development server, with its token, which plays the launched app in development. The server sends the files saved on the machine of the developer, which [hot reload](../core/lua.md#hot-reload) applies in place, and the keys of the run restart the app and reach its developer console. An app without it plays as it is. |
 | `nativeAccess` | boolean | `true` | Whether the launched app reaches native code. With `false` the launched app has no `ffi`, `process` or [`haylen.native`](native.md) module, as a global or through `require`, and no `io.popen` or `os.execute`, so it reaches the system only through the modules of the engine and the plugins of this app. Use it for apps that come from addresses that people give. |
 
@@ -711,7 +712,7 @@ An app launched without native access passes that limit on: every app it launche
 
 Each app plays with its own development session. A launched app that names a server plays in development even when the app that launched it ships as a release, and an app that names none plays without the files that a development server sends to the app that launched it. The app that launched it starts again with its own session, or with none.
 
-A path with nothing at it raises `No app package is at "<path>". Launch a folder or a zip file that holds "haylen.json".`, and a `developmentServer` of another kind raises `The development server "<address>" is not an address that starts with "ws://" or "wss://".`. An unknown key raises `Unknown option "<key>".`. A package that cannot open, such as one without a valid `haylen.json`, shows the error screen in place of the launched app. A launched app whose engine cannot start, such as one whose storage folder cannot be made, has no error screen, so its error goes to the log and this app starts again. The [headless player](../tools/testing.md#the-test-project) then exits with `1`.
+A path with nothing at it raises `No app package is at "<path>". Launch a folder or a zip file that holds "haylen.json".`, an `address` without `://` raises `The address "<address>" of the launch holds no "://". Name the address that the package came from, such as "https://example.com/apps/garden.zip".`, and a `developmentServer` of another kind raises `The development server "<address>" is not an address that starts with "ws://" or "wss://".`. An unknown key raises `Unknown option "<key>".`. A package that cannot open, such as one without a valid `haylen.json`, shows the error screen in place of the launched app. A launched app whose engine cannot start, such as one whose storage folder cannot be made, has no error screen, so its error goes to the log and this app starts again. The [headless player](../tools/testing.md#the-test-project) then exits with `1`.
 
 ```lua
 local async = require('async')
@@ -729,7 +730,7 @@ async.spawn(function()
     end
     local path = storage.root() .. '/demo.zip'
     fs.writeFile(path, response.body):await()
-    haylen.launch(path)
+    haylen.launch(path, {address = 'https://example.com/apps/demo.zip'})
 end)
 ```
 
@@ -909,6 +910,7 @@ These messages are raised by the functions of the module.
 | `Unknown option "<key>".` | The table of `haylen.setLifecycle` or `haylen.quit` has a key that the function does not take. |
 | `The option "status" of "quit" is invalid: <reason>.` | The `status` of `haylen.quit` is not an integer from `0` to `255`. |
 | `No app package is at "<path>". Launch a folder or a zip file that holds "haylen.json".` | Nothing is at the path of `haylen.launch`. |
+| `The address "<address>" of the launch holds no "://". Name the address that the package came from, such as "https://example.com/apps/garden.zip".` | The option `address` of `haylen.launch` is not an address. |
 | `The development server "<address>" is not an address that starts with "ws://" or "wss://".` | The option `developmentServer` of `haylen.launch` is not the address of a development server. |
 | `The app package could not be read. <reason>` | The promise of `haylen.packageInfo` rejects, such as for a path with nothing at it. |
 | `An autoload needs a name.` | The name of `haylen.autoload` is empty. |

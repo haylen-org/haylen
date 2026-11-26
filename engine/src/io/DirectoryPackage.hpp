@@ -10,7 +10,7 @@ namespace haylen::io {
 // Package that reads the files of a folder.
 class DirectoryPackage final : public Package {
   public:
-    explicit DirectoryPackage(std::filesystem::path folder);
+    DirectoryPackage(std::filesystem::path folder, std::string packageLocation);
 
     [[nodiscard]] std::string_view getName() const noexcept override {
         return name;
@@ -22,13 +22,14 @@ class DirectoryPackage final : public Package {
     [[nodiscard]] std::optional<std::filesystem::path> getDirectory() const override {
         return root;
     }
-    [[nodiscard]] std::optional<std::filesystem::path> getLocation() const override {
-        return root;
+    [[nodiscard]] std::optional<std::string> getLocation() const override {
+        return location;
     }
 
   private:
     std::filesystem::path root;
     std::string name;
+    std::string location;
 };
 
 } // namespace haylen::io

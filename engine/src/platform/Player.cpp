@@ -401,7 +401,8 @@ void Player::launchPackage(const core::Engine::Launch& request) {
         enableDevelopment(std::nullopt, request.developmentServer);
     }
 
-    replace(load([&request] { return std::shared_ptr<io::Package>(io::Package::open(request.package)); }));
+    // A launcher that downloaded the package names the address it came from, which names the app whose `haylen.json` names no identifier.
+    replace(load([&request] { return std::shared_ptr<io::Package>(io::Package::open(request.package, request.address)); }));
 }
 
 // The session of the launched app lasts until its engine closed, since the plugins of that engine hold it.

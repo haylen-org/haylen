@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <filesystem>
 #include <format>
 #include <limits>
 #include <map>
@@ -469,10 +468,14 @@ AppConfig AppConfig::fromPackage(const io::Package& package, std::span<const std
     const Json document = JsonValidator::parse(package.readText(io::Path::kAppConfigFile), io::Path::kAppConfigFile);
     AppConfig config = fromJson(document, applicationSections);
 
-    // A package on disk without an identifier takes the one of its location that the tooling gives the same folder, so two apps that a player runs directly never share their storage.
-    const std::optional<std::filesystem::path> location = package.getLocation();
-    if (location && !document.contains("identifier")) {
-        config.identifier = AppIdentifier::generate(*location);
+    // A package without an identifier takes the one of its location, which the tooling gives the same folder too, so no two apps share an identifier or their storage however they run.
+    if (!document.contains("identifier")) {
+        const std::optional<std::string> location = package.getLocation();
+        if (!location) {
+            throw std::invalid_argument(std::format("The \"haylen.json\" of the package \"{}\" names no \"identifier\", and the package comes from no folder, file or address that could give it one. The tooling writes the identifier into every app that it builds, so this one is damaged. Build the app again with \"haylen app build\", or name \"identifier\" in its \"haylen.json\".", package.getName()));
+        }
+
+        config.identifier = AppIdentifier::fromLocation(*location);
     }
 
     requirePluginManifests(package, config);

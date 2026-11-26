@@ -10,7 +10,7 @@
 
 namespace haylen::io {
 
-DirectoryPackage::DirectoryPackage(std::filesystem::path folder) : root(std::move(folder)), name(root.filename().generic_string()) {}
+DirectoryPackage::DirectoryPackage(std::filesystem::path folder, std::string packageLocation) : root(std::move(folder)), name(root.filename().generic_string()), location(std::move(packageLocation)) {}
 
 bool DirectoryPackage::exists(std::string_view path) const {
     std::error_code error;
