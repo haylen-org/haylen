@@ -158,9 +158,10 @@ class AppleProjectTest:
 
     def test_a_build_setting_that_contradicts_its_owner_stops_with_both_owners(self, apple):
         settings = {"SWIFT_VERSION": "5.0", "ARCHS": "x86_64", "IPHONEOS_DEPLOYMENT_TARGET": "12.0", "PRODUCT_BUNDLE_IDENTIFIER": "com.other", "STRIP_STYLE": "debugging"}
-        app = apple.app({"platforms": {"apple": {"buildSettings": settings}, "ios": {"minimumSystemVersion": "17.0"}}})
+        # The devices of iOS build arm64 alone, so the architectures of the target never follow the machine that runs the test.
+        app = apple.app({"platforms": {"apple": {"team": "ABCDE12345", "buildSettings": settings}, "ios": {"minimumSystemVersion": "17.0"}}})
         with pytest.raises(InvalidManifest) as raised:
-            apple.prepare(app)
+            apple.prepare(app, "ios")
         message = raised.value.message
         origin = apple.resolve(app).app.origin
         assert 'The key "platforms.apple.buildSettings.ARCHS" is "x86_64", while the target, or "--architecture" of the command, gives "arm64".' in message
@@ -181,8 +182,8 @@ class AppleProjectTest:
             "OTHER_LDFLAGS": ["-ObjC"],
             "ENABLE_BITCODE": False,
         }
-        app = apple.app({"platforms": {"apple": {"buildSettings": settings}, "ios": {"minimumSystemVersion": "17.0"}}})
-        base = AppleFixture.spec(apple.prepare(app))["targets"]["App"]["settings"]["base"]
+        app = apple.app({"platforms": {"apple": {"team": "ABCDE12345", "buildSettings": settings}, "ios": {"minimumSystemVersion": "17.0"}}})
+        base = AppleFixture.spec(apple.prepare(app, "ios"))["targets"]["App"]["settings"]["base"]
         assert (base["ARCHS"], base["IPHONEOS_DEPLOYMENT_TARGET"], base["TARGETED_DEVICE_FAMILY"]) == ("arm64", "17.0", "2, 1")
         assert base["CODE_SIGN_IDENTITY"] == "Apple Distribution"
         assert base["OTHER_LDFLAGS"] == ["$(inherited)", "-ObjC"]
