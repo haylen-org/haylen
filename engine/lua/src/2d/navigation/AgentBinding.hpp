@@ -11,7 +11,7 @@
 
 namespace haylen::lua::navigation2d {
 
-// Installs the `SteeringAgent` and `Crowd` classes of `haylen.navigation2d`.
+// Installs the `SteeringAgent` and `Crowd2D` classes of `haylen.navigation2d`.
 class AgentBinding final {
   public:
     static void install(lua_State* L);

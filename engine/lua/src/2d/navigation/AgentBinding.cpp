@@ -24,7 +24,7 @@ template <> struct Type<lua::navigation2d::ScriptedAgent> {
 };
 
 template <> struct Type<haylen::navigation2d::Crowd> {
-    static constexpr const char* name = "haylen.Crowd";
+    static constexpr const char* name = "haylen.Crowd2D";
     using Storage = haylen::navigation2d::Crowd;
 };
 

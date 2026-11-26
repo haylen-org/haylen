@@ -21,9 +21,9 @@ A unit usually does both. It plans a route once, when its goal changes, and it m
 | Many units that head to the same goals, as in strategy and tower defense games | [`grid:flowField`](../lua-api/navigation2d.md#gridflowfieldgoals-options), which every unit reads in constant time. |
 | Monsters that chase or flee the player and weigh several goals | [`grid:dijkstraMap`](../lua-api/navigation2d.md#griddijkstramapsources-options), whose `map:flee` turns a chase into an escape. |
 | Waypoints that a designer places, roads, and doors that open and close | A [`NavGraph`](../lua-api/navigation2d.md#navgraph). |
-| Open levels without a grid, with paths that hug corners and keep a radius clear | A [`NavMesh`](../lua-api/navigation2d.md#navmesh). |
+| Open levels without a grid, with paths that hug corners and keep a radius clear | A [`NavMesh2D`](../lua-api/navigation2d.md#navmesh2d). |
 | Smooth motion of one character toward a target | A [`SteeringAgent`](../lua-api/navigation2d.md#steeringagent), with seek, flee, arrive, flocking, obstacle avoidance and wander. |
-| Hundreds or thousands of agents that must not overlap | A [`Crowd`](../lua-api/navigation2d.md#crowd), which solves optimal reciprocal collision avoidance for every agent each step. |
+| Hundreds or thousands of agents that must not overlap | A [`Crowd2D`](../lua-api/navigation2d.md#crowd2d), which solves optimal reciprocal collision avoidance for every agent each step. |
 
 The choice between a grid, a graph and a mesh follows the shape of the world. A world made of tiles fits a grid, since its cells are the cells of the map. A world where only a few places matter, such as the stops of a bus line or the rooms of a house, fits a graph. A world of free shapes, such as a field with rocks and buildings, fits a mesh, whose paths are short and straight and keep large agents away from walls.
 
@@ -205,7 +205,7 @@ A character joins the graph at the point closest to it, which [`graph:closestPoi
 
 ## Navigation meshes
 
-A [`NavMesh`](../lua-api/navigation2d.md#navmesh) covers the walkable area of a level with triangles. Give it the outline of the area and the outlines of the obstacles, and it builds the triangles itself. The outlines come from anywhere: the collision objects of a Tiled map through [`map:objectOutlines`](../lua-api/tiled.md#mapobjectoutlineslayer), the shapes of physics bodies, or polygons that code makes. Obstacles may overlap each other and cross the outline.
+A [`NavMesh2D`](../lua-api/navigation2d.md#navmesh2d) covers the walkable area of a level with triangles. Give it the outline of the area and the outlines of the obstacles, and it builds the triangles itself. The outlines come from anywhere: the collision objects of a Tiled map through [`map:objectOutlines`](../lua-api/tiled.md#mapobjectoutlineslayer), the shapes of physics bodies, or polygons that code makes. Obstacles may overlap each other and cross the outline.
 
 A path through a mesh goes from triangle to triangle and is then pulled tight like a string, so it turns only at the corners of obstacles. Its points are world positions, not cells, so units walk straight lines between them.
 
@@ -295,7 +295,7 @@ Each behavior is a call from Lua, so steering suits tens or a few hundred agents
 
 ## Crowds
 
-A [`Crowd`](../lua-api/navigation2d.md#crowd) moves many agents and keeps them from overlapping. It uses optimal reciprocal collision avoidance, ORCA. Each step, every agent looks at its nearest neighbors and picks the velocity closest to the one it wants among those that will not hit a neighbor soon. Both agents of a pair share the effort, so they slide past each other without the jitter of agents that each dodge the whole way. Agents also keep clear of static obstacles, polygons or walls that `crowd:addObstacle` adds.
+A [`Crowd2D`](../lua-api/navigation2d.md#crowd2d) moves many agents and keeps them from overlapping. It uses optimal reciprocal collision avoidance, ORCA. Each step, every agent looks at its nearest neighbors and picks the velocity closest to the one it wants among those that will not hit a neighbor soon. Both agents of a pair share the effort, so they slide past each other without the jitter of agents that each dodge the whole way. Agents also keep clear of static obstacles, polygons or walls that `crowd:addObstacle` adds.
 
 The crowd only avoids. Where an agent wants to go comes from the app, in one of two ways:
 
@@ -442,9 +442,9 @@ Every algorithm runs in C++, so one call costs far less than the same work in Lu
 | Hierarchical path finder | Building: the whole grid. Each search: the entrances on the way plus the cells of the chosen clusters. `router:update`: the changed clusters and their neighbors. | Build it once, with the asynchronous version for large maps, and update it after changes. |
 | `grid:flowField` and `grid:dijkstraMap` | Every reachable cell of the grid, once per computation. Reading a cell costs one call. | Compute again only when the goals or the walls change. |
 | `NavGraph` searches | The points and connections it visits. `graph:closestPoint` checks every point. | Keep graphs to the places that matter. |
-| `NavMesh` | Building: the polygons and their corners, far more than a query. Queries: the triangles along the way. | Build in the background, and move obstacles rarely. |
+| `NavMesh2D` | Building: the polygons and their corners, far more than a query. Queries: the triangles along the way. | Build in the background, and move obstacles rarely. |
 | `SteeringAgent` | One Lua call per behavior per agent per frame. | Steer tens or hundreds of agents, and use a crowd for more. |
-| `Crowd` | The agents times their `maxNeighbors`, spread over the job system. | Lower `neighborDistance` and `maxNeighbors` for dense crowds. |
+| `Crowd2D` | The agents times their `maxNeighbors`, spread over the job system. | Lower `neighborDistance` and `maxNeighbors` for dense crowds. |
 
 The command `haylen engine bench --suite algorithms` times A\*, weighted A\*, jump point search, flow fields, hierarchical path finding, navigation mesh builds and paths, and crowd steps on the machine, as [the bench command](../tools/benchmarks.md) describes.
 

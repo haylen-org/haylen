@@ -784,7 +784,7 @@ print(roads.size, roads:closestPoint(0, 0)) -- 0 nil
 
 ### navigation2d.newNavMesh(boundary)
 
-Returns a [`NavMesh`](#navmesh). The argument `boundary` is optional. It sets the outline of the walkable area, a list of at least three points, which `mesh:setBoundary` can also set later.
+Returns a [`NavMesh2D`](#navmesh2d). The argument `boundary` is optional. It sets the outline of the walkable area, a list of at least three points, which `mesh:setBoundary` can also set later.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -796,7 +796,7 @@ print(mesh.triangleCount, mesh.dirty)
 
 ### navigation2d.buildNavMeshAsync(boundary, obstacles)
 
-Builds a `NavMesh` from the outline `boundary` and the optional list of obstacle polygons on a worker thread. It returns a promise that resolves with the built mesh. Use it for large levels, so loading never stalls a frame. A wrong polygon raises at once, and a build that fails rejects the promise.
+Builds a `NavMesh2D` from the outline `boundary` and the optional list of obstacle polygons on a worker thread. It returns a promise that resolves with the built mesh. Use it for large levels, so loading never stalls a frame. A wrong polygon raises at once, and a build that fails rejects the promise.
 
 ```lua
 local async = require('async')
@@ -810,9 +810,9 @@ async.spawn(function()
 end)
 ```
 
-## NavMesh
+## NavMesh2D
 
-A `NavMesh` covers the walkable area of a level with triangles, which [`navigation2d.newNavMesh`](#navigation2dnewnavmeshboundary) and [`navigation2d.buildNavMeshAsync`](#navigation2dbuildnavmeshasyncboundary-obstacles) return. It is built with a constrained Delaunay triangulation, from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map that [`map:objectOutlines`](tiled.md#mapobjectoutlineslayer) returns. Obstacles may overlap each other and cross the boundary. The [navigation guide](../2d/navigation.md#navigation-meshes) explains how paths keep an agent clear of walls.
+A `NavMesh2D` covers the walkable area of a level with triangles, which [`navigation2d.newNavMesh`](#navigation2dnewnavmeshboundary) and [`navigation2d.buildNavMeshAsync`](#navigation2dbuildnavmeshasyncboundary-obstacles) return. It is built with a constrained Delaunay triangulation, from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map that [`map:objectOutlines`](tiled.md#mapobjectoutlineslayer) returns. Obstacles may overlap each other and cross the boundary. The [navigation guide](../2d/navigation.md#navigation-meshes) explains how paths keep an agent clear of walls.
 
 Changing a polygon marks the mesh as dirty, and the mesh rebuilds on the next query or on `mesh:build`. A polygon is a list of points. A polygon with fewer than three points raises `A navigation mesh polygon needs at least three points.`, and a point that is not finite raises `A navigation mesh polygon needs finite points.`
 
@@ -1193,7 +1193,7 @@ scene.push({
 
 ### navigation2d.newCrowd(flocking)
 
-Returns a [`Crowd`](#crowd). The table `flocking` is optional. It sets the weights of the flocking forces, which the crowd adds to the velocity that every agent wants, from the neighbors that the agent avoids.
+Returns a [`Crowd2D`](#crowd2d). The table `flocking` is optional. It sets the weights of the flocking forces, which the crowd adds to the velocity that every agent wants, from the neighbors that the agent avoids.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1208,9 +1208,9 @@ local sheep = navigation2d.newCrowd({separation = 0.5, alignment = 0.3, cohesion
 print(sheep.agentCount, sheep.separation) -- 0 0.5
 ```
 
-## Crowd
+## Crowd2D
 
-A `Crowd` moves many agents at once with optimal reciprocal collision avoidance, ORCA, which [`navigation2d.newCrowd`](#navigation2dnewcrowdflocking) returns. Every step, each agent takes the velocity closest to the one it wants among the velocities that keep it clear of its neighbors for a time horizon, and clear of obstacles for a shorter one. Each agent of a pair takes half of the effort to avoid the other. Steps are deterministic, allocate nothing once the crowd has grown, and spread over the job system of the engine.
+A `Crowd2D` moves many agents at once with optimal reciprocal collision avoidance, ORCA, which [`navigation2d.newCrowd`](#navigation2dnewcrowdflocking) returns. Every step, each agent takes the velocity closest to the one it wants among the velocities that keep it clear of its neighbors for a time horizon, and clear of obstacles for a shorter one. Each agent of a pair takes half of the effort to avoid the other. Steps are deterministic, allocate nothing once the crowd has grown, and spread over the job system of the engine.
 
 Agents are known by the integer ids that `crowd:addAgent` returns, which count from 0 while no agent has been removed. A later agent takes the place of a removed one with an id of its own, so an id that an app kept after the removal never names the new agent, and `crowd:hasAgent` answers `false` for it. An unknown id raises an error such as `Agent 7 is not in the crowd.`, and a position, target or velocity that is not finite raises `Crowd positions, targets and velocities must be finite.`
 
@@ -1499,8 +1499,8 @@ These messages come from the functions and methods of the module. Messages that 
 | `The navigation mesh triangulation lost a constraint.` | The build could not keep a wall in the triangles, which only extreme or broken polygons cause. |
 | `The navigation mesh triangulation did not converge.` | The build could not settle the triangles around a wall, which only extreme or broken polygons cause. |
 | `A crowd agent needs a finite position, velocity, radius, speed and neighbor distance and positive time horizons.` | An option of `crowd:addAgent` is out of range. |
-| `Agent <id> is not in the crowd.` | A method of a `Crowd` got an unknown id. |
-| `Crowd positions, targets and velocities must be finite.` | A position, target or velocity given to a `Crowd` is not finite. |
+| `Agent <id> is not in the crowd.` | A method of a `Crowd2D` got an unknown id. |
+| `Crowd positions, targets and velocities must be finite.` | A position, target or velocity given to a `Crowd2D` is not finite. |
 | `A crowd obstacle needs at least two points.` | The polygon of `crowd:addObstacle` has fewer than two points. |
 | `A crowd obstacle needs every point apart from the next one, so each of its edges has a direction.` | The polygon of `crowd:addObstacle` repeats a point right after itself. |
 | `A crowd obstacle needs finite points.` | A point of `crowd:addObstacle` is not finite. |

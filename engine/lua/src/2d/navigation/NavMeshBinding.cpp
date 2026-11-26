@@ -20,7 +20,7 @@
 namespace haylen::lua {
 
 template <> struct Type<haylen::navigation2d::NavMesh> {
-    static constexpr const char* name = "haylen.NavMesh";
+    static constexpr const char* name = "haylen.NavMesh2D";
     using Storage = haylen::navigation2d::NavMesh;
 };
 

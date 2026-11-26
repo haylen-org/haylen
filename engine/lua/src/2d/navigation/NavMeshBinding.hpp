@@ -12,7 +12,7 @@ class NavMesh;
 }
 
 namespace haylen::lua::navigation2d {
-// Installs the `NavMesh` class of `haylen.navigation2d`. Polygons cross from Lua as lists of points, and obstacle lists as lists of polygons.
+// Installs the `NavMesh2D` class of `haylen.navigation2d`. Polygons cross from Lua as lists of points, and obstacle lists as lists of polygons.
 class NavMeshBinding final {
   public:
     static void install(lua_State* L);
