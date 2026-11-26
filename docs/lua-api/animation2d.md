@@ -584,7 +584,7 @@ scene.push({
 
 ### animator:apply(sprite)
 
-Sets the texture, source, width, height and pivot of `sprite`, or of the sprite a [`Node`](nodes2d.md#node) shows, from the current frame. The pivot is the pivot of the frame, or `pivotX` and `pivotY` in the untrimmed frame, so trimmed atlas frames stay in place. It mirrors where the sprite flips, so a flipped character stays on its feet. Position, scale, rotation, color and flips stay untouched. Without a current animation it does nothing.
+Sets the texture, source, width, height and pivot of `sprite`, or of the sprite a [`Node2D`](nodes2d.md#node2d) shows, from the current frame. The pivot is the pivot of the frame, or `pivotX` and `pivotY` in the untrimmed frame, so trimmed atlas frames stay in place. It mirrors where the sprite flips, so a flipped character stays on its feet. Position, scale, rotation, color and flips stay untouched. Without a current animation it does nothing.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -615,7 +615,7 @@ scene.push({
 
 ### animator:box(name, sprite)
 
-Returns the box `name` of the current frame as a `Rect` in the coordinates of the sprite, a `Sprite` or a `Node` that shows one. The box is placed, sized, scaled, turned and flipped as the sprite draws. A turned box returns the rectangle around its corners. A frame without such a box returns `nil`.
+Returns the box `name` of the current frame as a `Rect` in the coordinates of the sprite, a `Sprite` or a `Node2D` that shows one. The box is placed, sized, scaled, turned and flipped as the sprite draws. A turned box returns the rectangle around its corners. A frame without such a box returns `nil`.
 
 ### animator:point(name, sprite)
 

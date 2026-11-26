@@ -10,7 +10,7 @@ local nodes2d = require('haylen.nodes2d')
 
 ### nodes2d.newTree()
 
-Creates an empty [`NodeTree`](#nodetree).
+Creates an empty [`NodeTree2D`](#nodetree2d).
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -126,9 +126,9 @@ Every error names the node by its path of names, written here as `<path>`, and t
 - `The key "fill" of the frame of the node "<path>" must be "stretch" or "tile".`
 - `The particles of the node "<path>" need the path of their effect file.`
 
-## NodeTree
+## NodeTree2D
 
-A `NodeTree` holds nodes, which `nodes2d.newTree` creates. Two tree values compare equal with `==` when they refer to the same tree.
+A `NodeTree2D` holds nodes, which `nodes2d.newTree` creates. Two tree values compare equal with `==` when they refer to the same tree.
 
 ### Properties
 
@@ -140,7 +140,7 @@ A `NodeTree` holds nodes, which `nodes2d.newTree` creates. Two tree values compa
 
 ### tree:add(properties)
 
-Adds a node at the root, after the roots the tree already has, and returns its [`Node`](#node). The table `properties` takes these keys:
+Adds a node at the root, after the roots the tree already has, and returns its [`Node2D`](#node2d). The table `properties` takes these keys:
 
 | Key | Type | Meaning |
 | --- | --- | --- |
@@ -149,8 +149,8 @@ Adds a node at the root, after the roots the tree already has, and returns its [
 | `text` | string or table | Text in the default font, or a table with `text`, `font` (a `Font`), the style keys of [`graphics2d.drawText`](graphics2d.md#graphics2ddrawtextfont-text-x-y-style) and the draw order keys. |
 | `frame` | table | A frame with `slice` (a [`NineSlice`](graphics2d.md#nineslice)), `width`, `height`, `pivotX` and `pivotY` (both `0.5` by default), `color`, `borderScale` and the draw order keys. |
 | `particles` | ParticleEmitter, ParticleSystem or string | Particles that the node places, or the package path of an effect file. |
-| `body` | Body2D | A [`Body2D`](physics2d.md#body2d) that the node follows, as [`node.body`](#node) does. |
-| `data` | table | The table that [`node.data`](#node) returns. |
+| `body` | Body2D | A [`Body2D`](physics2d.md#body2d) that the node follows, as [`node.body`](#node2d) does. |
+| `data` | table | The table that [`node.data`](#node2d) returns. |
 | `children` | list | Properties tables of children, added in order. |
 
 These errors can come up:
@@ -185,7 +185,7 @@ print(unit.data.health, tree.size)
 
 ### tree:instantiate(prefab, overrides, parent)
 
-Builds the subtree of a [`Prefab`](#prefab) and returns its root. The node goes under `parent`, a `Node` of the tree, or at the root without one. The optional table `overrides` takes the keys of a [description](#descriptions) and replaces those keys of the root description, such as its place and its name. Overrides that are not a table of keys raise `The overrides of a prefab must be an object of the keys of a description.`. The assets of the description load through `haylen.assets` and its cache. An asset that fails to load raises its error and leaves none of the subtree in the tree.
+Builds the subtree of a [`Prefab`](#prefab) and returns its root. The node goes under `parent`, a `Node2D` of the tree, or at the root without one. The optional table `overrides` takes the keys of a [description](#descriptions) and replaces those keys of the root description, such as its place and its name. Overrides that are not a table of keys raise `The overrides of a prefab must be an object of the keys of a description.`. The assets of the description load through `haylen.assets` and its cache. An asset that fails to load raises its error and leaves none of the subtree in the tree.
 
 ```lua
 local assets = require('haylen.assets')
@@ -333,9 +333,9 @@ tree:readTransforms(units, world)
 print(world[298])
 ```
 
-## Node
+## Node2D
 
-A `Node` is a handle to a node of a tree, which `tree:add`, `node:add`, `tree:find` and the other functions of a tree return. It keeps its tree alive. Every member of a destroyed node raises `The node was destroyed.`, except `valid`. Two node values compare equal with `==` when they refer to the same node.
+A `Node2D` is a handle to a node of a tree, which `tree:add`, `node:add`, `tree:find` and the other functions of a tree return. It keeps its tree alive. Every member of a destroyed node raises `The node was destroyed.`, except `valid`. Two node values compare equal with `==` when they refer to the same node.
 
 ### Properties
 
@@ -351,7 +351,7 @@ The number properties and `color` are native properties, so [tweens](tween.md) a
 | `layer` | integer | read and write | Added to the layers of the ancestors. |
 | `depth`, `sortOffset` | number | read and write | Added to the depth and the sort offset of what the node shows. |
 | `worldColor`, `worldLayer`, `worldVisible` | Color, integer, boolean | read | The inherited state as of the last update. |
-| `parent` | Node or nil | read and write | The parent, or `nil` at the root. Setting it moves the node and its subtree under another node of the tree, or to the root with `nil`, and keeps its local transform. A node set under itself or under one of its descendants raises `A node cannot move under itself or under one of its descendants.`. |
+| `parent` | Node2D or nil | read and write | The parent, or `nil` at the root. Setting it moves the node and its subtree under another node of the tree, or to the root with `nil`, and keeps its local transform. A node set under itself or under one of its descendants raises `A node cannot move under itself or under one of its descendants.`. |
 | `childCount` | integer | read | The number of children. |
 | `path` | string | read | The names from the root, such as `'tank/turret'`. |
 | `content` | string | read | What the node shows: `'none'`, `'sprite'`, `'text'`, `'frame'` or `'particles'`. |

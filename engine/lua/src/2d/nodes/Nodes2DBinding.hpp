@@ -22,13 +22,13 @@ class Prefab;
 namespace haylen::lua {
 
 template <> struct Type<haylen::nodes2d::NodeTree> {
-    static constexpr const char* name = "haylen.NodeTree";
+    static constexpr const char* name = "haylen.NodeTree2D";
     using Storage = std::shared_ptr<haylen::nodes2d::NodeTree>;
 };
 
 // A node keeps the userdata of its tree as its user value, where the tree keeps the data and the listeners of its nodes.
 template <> struct Type<haylen::nodes2d::Node> {
-    static constexpr const char* name = "haylen.Node";
+    static constexpr const char* name = "haylen.Node2D";
     using Storage = haylen::nodes2d::Node;
 };
 
@@ -41,7 +41,7 @@ template <> struct Type<haylen::nodes2d::Prefab> {
 
 namespace haylen::lua::nodes2d {
 
-// Installs `haylen.nodes2d` with the `NodeTree`, `Node` and `Prefab` classes.
+// Installs `haylen.nodes2d` with the `NodeTree2D`, `Node2D` and `Prefab` classes.
 class Nodes2DBinding final {
   public:
     static void install(lua_State* L);

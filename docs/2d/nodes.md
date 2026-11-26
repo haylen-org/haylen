@@ -141,7 +141,7 @@ print(sword.path)
 
 ## Node handles
 
-A `Node` value in Lua is a handle: a small reference to a node that lives inside the tree. Several handles can refer to the same node, and they compare equal with `==`. A handle keeps its tree alive.
+A `Node2D` value in Lua is a handle: a small reference to a node that lives inside the tree. Several handles can refer to the same node, and they compare equal with `==`. A handle keeps its tree alive.
 
 A node goes away with `node:destroy()`, which also destroys its descendants, deepest first, or with `tree:clear()`. After that, every member of an old handle raises `The node was destroyed.`, except `valid`, which turns `false`. Code that keeps a node too long fails at once instead of drawing a stale object.
 
