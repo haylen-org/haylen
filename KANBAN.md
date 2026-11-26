@@ -8093,7 +8093,12 @@ No Linux com Wayland, o Weston apaga as telas depois de cinco minutos parado, e 
 - **Type:** performance
 - **Priority:** medium
 - **Complexity:** 4
-- **Progress:** Passa na engine sem cabeça: todo dispositivo tem `trim` e `getSpareBytes`. O `graphics::Device` faz o trim 2 segundos depois que a memória de sobra para de crescer, e na hora no aviso de memória baixa. O Lua ganha `graphics.trim()` e `debug.stats().memory.gpuSpare`. O `haylen test` passou 3038 testes com avisos como erros. Os testes novos são o `MemoryTrimTest` e o `GraphicsLuaTest.TrimsTheMemoryThatTheDeviceHoldsForLater`, com quadros iguais sem trim e sem alocação. Agora o teste de GPU `GpuMemoryTrimTest` roda no Metal, no Linux em Docker, na web e no emulador do Android. O código do Direct3D vai para o branch `device-trim`, e o contrato dos ports sobe para a versão 13.
+- **Progress:** Todo dispositivo tem `trim` e `getSpareBytes`, cada pedaço do anel de envio do Vulkan é uma alocação própria, e o Lua ganha `graphics.trim()` e `debug.stats().memory.gpuSpare`. A prova no Galaxy A14 5G, numa rodada do Device Farm já apagada, mediu a memória gráfica do `dumpsys meminfo`:
+  - antes das cargas: 45 MB;
+  - com as texturas PNG carregadas: 267 MB, e depois de liberadas e do trim: 53 a 55 MB;
+  - com as JPEG carregadas: 127 a 129 MB, e depois: 53 a 55 MB.
+
+Antes da correção, cada carga deixava 202 MB presos. A primeira CI do branch `device-trim` achou dois defeitos, já corrigidos: o pedaço do anel que dividia o bloco das imagens e um nome repetido no teste. Falta a execução completa 45728377784, que roda o Direct3D 11 e o 12 de verdade, e a causa de uma falha do teste do teclado do sistema no tvOS.
   - o Metal e o dispositivo nulo;
   - o contrato `gpu::Device::trim()`;
   - a regra do `graphics::Device`, que faz o trim quando os bytes que sobram param de crescer por 2 segundos;
