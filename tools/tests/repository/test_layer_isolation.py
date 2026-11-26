@@ -4,7 +4,7 @@ from tests.support.engine_sources import EngineSources
 
 
 class LayerIsolationTest:
-    """The engine reaches SDL only through its platform layer and each graphics API only through its GPU device, so the Lua API never changes with the platform or the graphics API that draws, Recast and Detour stay behind the navigation of 3D, and 2D, 3D and the GPU layers under them stay apart, so each dimension builds on the GPU layers alone and never on the other."""
+    """The engine reaches SDL only through its platform layer and each graphics API only through its GPU device, so the Lua API never changes with the platform or the graphics API that draws, Recast and Detour stay behind the navigation of 3D, the 3D node tree reaches the other contexts of 3D only through component types, and 2D, 3D and the GPU layers under them stay apart, so each dimension builds on the GPU layers alone and never on the other."""
 
     BACKEND = re.compile(r"engine/(src|tests)/3d/physics/jolt/")
     JOLT = re.compile(r"#\s*include\s*<Jolt/")
@@ -49,6 +49,13 @@ class LayerIsolationTest:
         simulation = re.compile(r'#\s*include\s*"(?:haylen/)?3d/(?:physics|navigation)/')
         depending = sorted(name for name, text in EngineSources.read().items() if folder.match(name) and simulation.search(text))
         assert depending == [], f"These files of the 3D renderer include a header of physics or navigation: {depending}."
+
+    def test_the_3d_node_tree_names_no_other_3d_context(self):
+        # The contexts of 3D reach the node tree through its component types, so the tree itself never includes one of them.
+        folder = re.compile(r"engine/(?:include/haylen|src)/3d/nodes/")
+        other = re.compile(r'#\s*include\s*"(?:haylen/)?3d/(?!nodes/)')
+        depending = sorted(name for name, text in EngineSources.read().items() if folder.match(name) and other.search(text))
+        assert depending == [], f"These files of the 3D node tree include a header of another 3D context: {depending}."
 
     def test_only_the_private_parts_of_3d_navigation_reach_recast_and_detour(self):
         library = re.compile(r'#\s*include\s*[<"](?:Recast|Detour)\w*\.h[>"]')

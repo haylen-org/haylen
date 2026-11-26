@@ -90,6 +90,10 @@ Node3D NodeTree3D::clone(const Node3D& source, const Node3D& parent) {
         made.emplace_back(handle(static_cast<std::int32_t>(copy.source)), insert(under, copy.properties));
     }
 
+    for (const auto& [original, copied] : made) {
+        components.copyNode(original, copied);
+    }
+
     const Node3D result = made.front().second;
     if (target != kNone) {
         notify(parent.getKey(), NodeEvent3D::ChildAdded, result);
@@ -465,7 +469,9 @@ void NodeTree3D::announce(std::int32_t index, std::uint32_t generation) {
 void NodeTree3D::recycle(std::int32_t index) {
     const auto slot = static_cast<std::size_t>(index);
     const std::uint32_t generation = details[slot].generation;
-    watchers.erase(handle(index).getKey());
+    const Node3D node = handle(index);
+    components.removeNode(node);
+    watchers.erase(node.getKey());
     unlink(index);
     dropTags(static_cast<std::uint32_t>(index));
     details[slot] = Detail{.generation = generation + 1};
@@ -591,6 +597,7 @@ void NodeTree3D::announceEnabled(std::uint32_t index) {
             continue;
         }
 
+        components.setActive(node, isEnabledAt(static_cast<std::int32_t>(node.index)));
         enabledChanged.emit(node);
         notify(node.getKey(), NodeEvent3D::EnabledChanged, node);
     }

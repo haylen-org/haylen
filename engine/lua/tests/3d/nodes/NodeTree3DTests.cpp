@@ -1,6 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <memory>
+
+#include "haylen/core/Engine.hpp"
+#include "haylen/plugins/Nodes3DPlugin.hpp"
 #include "support/LuaFixture.hpp"
+#include "support/SpinnerComponent3D.hpp"
 
 namespace haylen::lua::nodes3d {
 
@@ -97,6 +102,35 @@ TEST(Nodes3DLuaTest, TweensNodesNatively) {
     fixture.runLua("m = require('haylen.math') nodes3d = require('haylen.nodes3d') tween = require('haylen.tween') tree = nodes3d.newTree() node = tree:add({}) tween.to(node, 0.5, {x = 100, rotation = m.fromAxisAngle(m.up(), math.pi / 2)})");
     fixture.frames(60);
     EXPECT_EQ(fixture.lua("local r = node.worldRotation return string.format('%.1f %.3f %.3f', node.x, r.y, r.w)"), "100.0 0.707 0.707");
+}
+
+TEST(Nodes3DLuaTest, AddsReadsAndSavesComponentsOfRegisteredTypes) {
+    test::LuaFixture fixture;
+    fixture.engine().getPlugin<haylen::plugins::Nodes3DPlugin>().getComponentTypes().add(std::make_shared<test::SpinnerComponent3D>());
+    // clang-format off
+    fixture.runLua(R"(
+        m = require('haylen.math')
+        nodes3d = require('haylen.nodes3d')
+        tree = nodes3d.newTree()
+        wheel = tree:add({name = 'wheel'})
+        spin = wheel:addComponent('spinner', {speed = 6, axis = m.vec3(0, 1, 0)})
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("local t = nodes3d.componentTypes()[1] return t.name .. ' ' .. t.phases[1] .. ' ' .. t.properties[2].name .. ' ' .. t.properties[2].kind .. ' ' .. t.properties[2].default.y"), "spinner update axis vec3 1.0");
+    EXPECT_EQ(fixture.lua("local axis = spin:get('axis') return spin.type .. ' ' .. tostring(spin.node == wheel) .. ' ' .. spin:get('speed') .. ' ' .. axis.y .. ' ' .. tree.componentCount"), "spinner true 6.0 1.0 1");
+    fixture.frames(3);
+    EXPECT_EQ(fixture.lua("return string.format('%.2f', wheel.rotation:angle())"), "0.30");
+
+    // A tree whose components run only while the game is paused rests them while it runs.
+    EXPECT_EQ(fixture.lua("tree.processMode = 'whenPaused' return tree.processMode"), "whenPaused");
+    fixture.frames(3);
+    EXPECT_EQ(fixture.lua("tree.processMode = 'inherit' return string.format('%.2f', wheel.rotation:angle())"), "0.30");
+
+    EXPECT_EQ(fixture.lua("local copy = wheel:clone() return #copy:components() .. ' ' .. copy:component('spinner'):get('speed') .. ' ' .. tree.componentCount"), "1 6.0 2");
+    EXPECT_EQ(fixture.lua("local saved = wheel:saveComponents() local other = tree:add({}) other:loadComponents(saved) return other:component('spinner'):get('speed') .. ' ' .. saved.spinner.axis[2]"), "6.0 1.0");
+    EXPECT_EQ(fixture.lua("spin:set('speed', 2) wheel:removeComponent('spinner') return tostring(spin.valid) .. ' ' .. tostring(wheel:component('spinner'))"), "false nil");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(wheel.addComponent, wheel, 'rocket') return message:match('No component.*')"), "No component type is named \"rocket\". Register it in the component types of the 3D nodes plugin.");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(wheel.addComponent, wheel, 'spinner', {speed = 'fast'}) return message:match('A spinner.*')"), "A spinner takes a number \"speed\" and a vector \"axis\".");
 }
 
 } // namespace haylen::lua::nodes3d

@@ -1,5 +1,6 @@
 #include "3d/nodes/Nodes3DBinding.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -12,6 +13,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/FloatBuffer.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/core/ProcessMode.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/JsonConverter.hpp"
@@ -20,9 +22,14 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "haylen/math/Quat.hpp"
+#include "haylen/math/Vec3.hpp"
+#include "haylen/plugins/Nodes3DPlugin.hpp"
 
 namespace haylen::lua::nodes3d {
 
+using haylen::nodes3d::Component3D;
+using haylen::nodes3d::ComponentType3D;
 using haylen::nodes3d::Inheritance3D;
 using haylen::nodes3d::Node3D;
 using haylen::nodes3d::NodeEvent3D;
@@ -223,7 +230,7 @@ void Nodes3DBinding::callListener(const lua::Owners::Function& function, lua_Sta
 
 // The tree keeps the data tables of its nodes in its user value, forgets the table of a node as it goes and gives the copy of a node a copy of its table.
 int Nodes3DBinding::newTree(lua_State* L) {
-    std::shared_ptr<NodeTree3D> tree = NodeTree3D::create();
+    std::shared_ptr<NodeTree3D> tree = lua::Runtime::getEngine(L).getPlugin<haylen::plugins::Nodes3DPlugin>().createTree();
     const NodeTree3D* raw = tree.get();
     lua_State* main = lua::Runtime::getMainThread(L);
     // clang-format off
@@ -486,9 +493,217 @@ int Nodes3DBinding::nodeOn(lua_State* L) {
     return 1;
 }
 
+std::shared_ptr<const ComponentType3D> Nodes3DBinding::checkType(lua_State* L, int index) {
+    const std::string_view name = lua::Stack::read<std::string_view>(L, index);
+    std::shared_ptr<const ComponentType3D> type = lua::Runtime::getEngine(L).getPlugin<haylen::plugins::Nodes3DPlugin>().getComponentTypes().find(name);
+    if (!type) {
+        luaL_error(L, "No component type is named \"%s\". Register it in the component types of the 3D nodes plugin.", std::string(name).c_str());
+    }
+
+    return type;
+}
+
+haylen::core::Json Nodes3DBinding::readValue(lua_State* L, int index, const ComponentType3D::Property* property) {
+    if (property != nullptr && property->kind == ComponentType3D::Kind::Vec3) {
+        const haylen::math::Vec3 value = lua::Stack::read<haylen::math::Vec3>(L, index);
+        return haylen::core::Json::array({value.x, value.y, value.z});
+    }
+
+    if (property != nullptr && property->kind == ComponentType3D::Kind::Quat) {
+        const haylen::math::Quat value = lua::Stack::read<haylen::math::Quat>(L, index);
+        return haylen::core::Json::array({value.x, value.y, value.z, value.w});
+    }
+
+    return lua::JsonConverter::read(L, index);
+}
+
+bool Nodes3DBinding::isNumbers(const haylen::core::Json& value, std::size_t count) {
+    return value.is_array() && value.size() == count && std::ranges::all_of(value, &haylen::core::Json::is_number);
+}
+
+void Nodes3DBinding::pushValue(lua_State* L, const haylen::core::Json& value, const ComponentType3D::Property* property) {
+    if (property != nullptr && property->kind == ComponentType3D::Kind::Vec3 && isNumbers(value, 3)) {
+        lua::Stack::push(L, haylen::math::Vec3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()});
+        return;
+    }
+
+    if (property != nullptr && property->kind == ComponentType3D::Kind::Quat && isNumbers(value, 4)) {
+        lua::Stack::push(L, haylen::math::Quat{value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()});
+        return;
+    }
+
+    lua::JsonConverter::push(L, value);
+}
+
+// The pool of the type checks the keys and the values, so a key that the type lacks keeps its JSON form and the pool refuses it with its own sentence.
+haylen::core::Json Nodes3DBinding::readOptions(lua_State* L, int index, const ComponentType3D& type) {
+    haylen::core::Json options = haylen::core::Json::object();
+    if (lua_isnoneornil(L, index)) {
+        return options;
+    }
+
+    luaL_checktype(L, index, LUA_TTABLE);
+    const int table = lua_absindex(L, index);
+    lua_pushnil(L);
+    while (lua_next(L, table) != 0) {
+        if (lua_type(L, -2) != LUA_TSTRING) {
+            luaL_error(L, "The options of a component are a table of its properties by name.");
+        }
+
+        const std::string key = lua::Stack::read<std::string>(L, -2);
+        options[key] = readValue(L, -1, type.findProperty(key));
+        lua_pop(L, 1);
+    }
+
+    return options;
+}
+
+void Nodes3DBinding::pushComponent(lua_State* L, const Component3D& component) {
+    if (!component.isValid()) {
+        lua_pushnil(L);
+        return;
+    }
+
+    lua::Userdata::emplace<Component3D>(L, component);
+}
+
+int Nodes3DBinding::treeComponentCount(lua_State* L) {
+    lua::Stack::push(L, checkTree(L, 1).getComponents().size());
+    return 1;
+}
+
+int Nodes3DBinding::treeGetProcessMode(lua_State* L) {
+    lua::Stack::push(L, checkTree(L, 1).getProcessMode());
+    return 1;
+}
+
+int Nodes3DBinding::treeSetProcessMode(lua_State* L) {
+    checkTree(L, 1).setProcessMode(lua::Stack::read<haylen::core::ProcessMode>(L, 3));
+    return 0;
+}
+
+// Lists every registered type as `{name, phases, properties}`, each property as `{name, kind, default, description}`.
+int Nodes3DBinding::componentTypes(lua_State* L) {
+    const auto& types = lua::Runtime::getEngine(L).getPlugin<haylen::plugins::Nodes3DPlugin>().getComponentTypes().getTypes();
+    lua_createtable(L, static_cast<int>(types.size()), 0);
+    for (std::size_t index = 0; index < types.size(); ++index) {
+        const ComponentType3D& type = *types[index];
+        lua_createtable(L, 0, 3);
+        lua::Stack::push(L, type.getName());
+        lua_setfield(L, -2, "name");
+        lua::Stack::push(L, std::vector<ComponentType3D::Phase>(type.getPhases().begin(), type.getPhases().end()));
+        lua_setfield(L, -2, "phases");
+
+        const std::span<const ComponentType3D::Property> properties = type.getProperties();
+        lua_createtable(L, static_cast<int>(properties.size()), 0);
+        for (std::size_t place = 0; place < properties.size(); ++place) {
+            const ComponentType3D::Property& property = properties[place];
+            lua_createtable(L, 0, 4);
+            lua::Stack::push(L, property.name);
+            lua_setfield(L, -2, "name");
+            lua::Stack::push(L, property.kind);
+            lua_setfield(L, -2, "kind");
+            pushValue(L, property.defaultValue, &property);
+            lua_setfield(L, -2, "default");
+            lua::Stack::push(L, property.description);
+            lua_setfield(L, -2, "description");
+            lua_rawseti(L, -2, static_cast<lua_Integer>(place + 1));
+        }
+
+        lua_setfield(L, -2, "properties");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+
+    return 1;
+}
+
+int Nodes3DBinding::nodeAddComponent(lua_State* L) {
+    const Node3D& node = checkNode(L, 1);
+    const std::shared_ptr<const ComponentType3D> type = checkType(L, 2);
+    const haylen::core::Json options = readOptions(L, 3, *type);
+    pushComponent(L, node.addComponent(type, options));
+    return 1;
+}
+
+int Nodes3DBinding::nodeComponent(lua_State* L) {
+    const Node3D& node = checkNode(L, 1);
+    pushComponent(L, node.findComponent(checkType(L, 2)));
+    return 1;
+}
+
+int Nodes3DBinding::nodeComponents(lua_State* L) {
+    const std::vector<Component3D> components = checkNode(L, 1).getComponents();
+    lua_createtable(L, static_cast<int>(components.size()), 0);
+    for (std::size_t index = 0; index < components.size(); ++index) {
+        pushComponent(L, components[index]);
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+
+    return 1;
+}
+
+int Nodes3DBinding::nodeRemoveComponent(lua_State* L) {
+    const Node3D& node = checkNode(L, 1);
+    node.getTree().getComponents().remove(node, *checkType(L, 2));
+    return 0;
+}
+
+int Nodes3DBinding::nodeSaveComponents(lua_State* L) {
+    const Node3D& node = checkNode(L, 1);
+    lua::JsonConverter::push(L, node.getTree().getComponents().save(node));
+    return 1;
+}
+
+int Nodes3DBinding::nodeLoadComponents(lua_State* L) {
+    const Node3D& node = checkNode(L, 1);
+    const haylen::core::Json components = lua::JsonConverter::read(L, 2);
+    node.getTree().getComponents().load(node, components.is_array() && components.empty() ? haylen::core::Json::object() : components, lua::Runtime::getEngine(L).getPlugin<haylen::plugins::Nodes3DPlugin>().getComponentTypes());
+    return 0;
+}
+
+int Nodes3DBinding::componentGet(lua_State* L) {
+    const Component3D& component = lua::Userdata::check<Component3D>(L, 1);
+    const std::string_view name = lua::Stack::read<std::string_view>(L, 2);
+    pushValue(L, component.get(name), component.getType()->findProperty(name));
+    return 1;
+}
+
+int Nodes3DBinding::componentSet(lua_State* L) {
+    Component3D& component = lua::Userdata::check<Component3D>(L, 1);
+    const std::string_view name = lua::Stack::read<std::string_view>(L, 2);
+    component.set(name, readValue(L, 3, component.getType()->findProperty(name)));
+    return 0;
+}
+
+int Nodes3DBinding::componentSave(lua_State* L) {
+    lua::JsonConverter::push(L, lua::Userdata::check<Component3D>(L, 1).save());
+    return 1;
+}
+
+int Nodes3DBinding::componentRemove(lua_State* L) {
+    lua::Userdata::check<Component3D>(L, 1).remove();
+    return 0;
+}
+
+int Nodes3DBinding::componentType(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<Component3D>(L, 1).getType()->getName());
+    return 1;
+}
+
+int Nodes3DBinding::componentNode(lua_State* L) {
+    pushNode(L, lua::Userdata::check<Component3D>(L, 1).getNode());
+    return 1;
+}
+
+int Nodes3DBinding::componentValid(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<Component3D>(L, 1).isValid());
+    return 1;
+}
+
 int Nodes3DBinding::open(lua_State* L) {
     const luaL_Reg functions[] = {
         {"newTree", &newTree},
+        {"componentTypes", &lua::Binding::native<&componentTypes>},
         {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
@@ -503,9 +718,11 @@ void Nodes3DBinding::install(lua_State* L) {
     lua_setmetatable(L, -2);
     lua_setfield(L, LUA_REGISTRYINDEX, kTrees);
 
-    lua::ClassBuilder<NodeTree3D>(L).function("add", &lua::Binding::native<&treeAdd>).function("find", &lua::Binding::native<&treeFind>).function("findByKey", &lua::Binding::native<&treeFindByKey>).function("roots", &lua::Binding::native<&treeRoots>).function("findTagged", &lua::Binding::native<&treeFindTagged>).function("update", &lua::Binding::native<&treeUpdate>).function("clear", &lua::Binding::native<&treeClear>).function("writeTransforms", &lua::Binding::native<&treeWriteTransforms>).function("readTransforms", &lua::Binding::native<&treeReadTransforms>).property("size", &treeSize).property("updatedCount", &treeUpdatedCount).meta("__eq", &lua::Userdata::equal<NodeTree3D>).install();
+    lua::ClassBuilder<NodeTree3D>(L).function("add", &lua::Binding::native<&treeAdd>).function("find", &lua::Binding::native<&treeFind>).function("findByKey", &lua::Binding::native<&treeFindByKey>).function("roots", &lua::Binding::native<&treeRoots>).function("findTagged", &lua::Binding::native<&treeFindTagged>).function("update", &lua::Binding::native<&treeUpdate>).function("clear", &lua::Binding::native<&treeClear>).function("writeTransforms", &lua::Binding::native<&treeWriteTransforms>).function("readTransforms", &lua::Binding::native<&treeReadTransforms>).property("size", &treeSize).property("updatedCount", &treeUpdatedCount).property("componentCount", &treeComponentCount).property("processMode", &lua::Binding::native<&treeGetProcessMode>, &lua::Binding::native<&treeSetProcessMode>).meta("__eq", &lua::Userdata::equal<NodeTree3D>).install();
 
-    lua::ClassBuilder<Node3D>(L).accessor<&Node3D::getName, &Node3D::setName>("name").liveAccessor<&Node3D::getPosition, &Node3D::setPosition>("position").liveAccessor<&Node3D::getX, &Node3D::setX>("x").liveAccessor<&Node3D::getY, &Node3D::setY>("y").liveAccessor<&Node3D::getZ, &Node3D::setZ>("z").liveAccessor<&Node3D::getRotation, &Node3D::setRotation>("rotation").liveAccessor<&Node3D::getScale, &Node3D::setScale>("scale").accessor<&Node3D::getTransform, &Node3D::setTransform>("transform").accessor<&Node3D::isVisible, &Node3D::setVisible>("visible").property("enabled", &lua::Binding::native<&nodeGetEnabled>, &lua::Binding::native<&nodeSetEnabled>).accessor<&Node3D::getLayers, &Node3D::setLayers>("layers").accessor<&Node3D::isStatic, &Node3D::setStatic>("static").accessor<&Node3D::hasFrustumCulling, &Node3D::setFrustumCulling>("frustumCulling").accessor<&Node3D::getRenderOrder, &Node3D::setRenderOrder>("renderOrder").property("inheritPosition", &lua::Binding::native<&nodeGetInherit<&Inheritance3D::position>>, &lua::Binding::native<&nodeSetInherit<&Inheritance3D::position>>).property("inheritRotation", &lua::Binding::native<&nodeGetInherit<&Inheritance3D::rotation>>, &lua::Binding::native<&nodeSetInherit<&Inheritance3D::rotation>>).property("inheritScale", &lua::Binding::native<&nodeGetInherit<&Inheritance3D::scale>>, &lua::Binding::native<&nodeSetInherit<&Inheritance3D::scale>>).property("parent", &lua::Binding::native<&nodeGetParent>, &lua::Binding::native<&nodeSetParentProperty>).property("tags", &lua::Binding::method<&Node3D::getTags>).property("data", &lua::Binding::native<&nodeData>).property("valid", &nodeValid).property("key", &lua::Binding::native<&nodeKey>).property("path", &lua::Binding::native<&nodePath>).property("childCount", &lua::Binding::native<&nodeChildCount>).property("worldMatrix", &lua::Binding::method<&Node3D::getWorldMatrix>).liveAccessor<&Node3D::getWorldPosition, &Node3D::setWorldPosition>("worldPosition").liveAccessor<&Node3D::getWorldRotation, &Node3D::setWorldRotation>("worldRotation").property("worldScale", &lua::Binding::method<&Node3D::getWorldScale>).property("worldVisible", &lua::Binding::method<&Node3D::isWorldVisible>).property("worldEnabled", &lua::Binding::method<&Node3D::isWorldEnabled>).function("add", &lua::Binding::native<&nodeAdd>).function("find", &lua::Binding::native<&nodeFind>).function("children", &lua::Binding::native<&nodeChildren>).function("clone", &lua::Binding::native<&nodeClone>).function("setParent", &lua::Binding::native<&nodeSetParent>).function("addTag", &lua::Binding::method<&Node3D::addTag>).function("removeTag", &lua::Binding::method<&Node3D::removeTag>).function("hasTag", &lua::Binding::method<&Node3D::hasTag>).function("toWorld", &lua::Binding::method<&Node3D::toWorld>).function("toLocal", &lua::Binding::method<&Node3D::toLocal>).function("lookAt", &lua::Binding::native<&nodeLookAt>).function("destroy", &lua::Binding::native<&nodeDestroy>).function("on", &lua::Binding::native<&nodeOn>).meta("__eq", &lua::Userdata::equal<Node3D>).install();
+    lua::ClassBuilder<Node3D>(L).accessor<&Node3D::getName, &Node3D::setName>("name").liveAccessor<&Node3D::getPosition, &Node3D::setPosition>("position").liveAccessor<&Node3D::getX, &Node3D::setX>("x").liveAccessor<&Node3D::getY, &Node3D::setY>("y").liveAccessor<&Node3D::getZ, &Node3D::setZ>("z").liveAccessor<&Node3D::getRotation, &Node3D::setRotation>("rotation").liveAccessor<&Node3D::getScale, &Node3D::setScale>("scale").accessor<&Node3D::getTransform, &Node3D::setTransform>("transform").accessor<&Node3D::isVisible, &Node3D::setVisible>("visible").property("enabled", &lua::Binding::native<&nodeGetEnabled>, &lua::Binding::native<&nodeSetEnabled>).accessor<&Node3D::getLayers, &Node3D::setLayers>("layers").accessor<&Node3D::isStatic, &Node3D::setStatic>("static").accessor<&Node3D::hasFrustumCulling, &Node3D::setFrustumCulling>("frustumCulling").accessor<&Node3D::getRenderOrder, &Node3D::setRenderOrder>("renderOrder").property("inheritPosition", &lua::Binding::native<&nodeGetInherit<&Inheritance3D::position>>, &lua::Binding::native<&nodeSetInherit<&Inheritance3D::position>>).property("inheritRotation", &lua::Binding::native<&nodeGetInherit<&Inheritance3D::rotation>>, &lua::Binding::native<&nodeSetInherit<&Inheritance3D::rotation>>).property("inheritScale", &lua::Binding::native<&nodeGetInherit<&Inheritance3D::scale>>, &lua::Binding::native<&nodeSetInherit<&Inheritance3D::scale>>).property("parent", &lua::Binding::native<&nodeGetParent>, &lua::Binding::native<&nodeSetParentProperty>).property("tags", &lua::Binding::method<&Node3D::getTags>).property("data", &lua::Binding::native<&nodeData>).property("valid", &nodeValid).property("key", &lua::Binding::native<&nodeKey>).property("path", &lua::Binding::native<&nodePath>).property("childCount", &lua::Binding::native<&nodeChildCount>).property("worldMatrix", &lua::Binding::method<&Node3D::getWorldMatrix>).liveAccessor<&Node3D::getWorldPosition, &Node3D::setWorldPosition>("worldPosition").liveAccessor<&Node3D::getWorldRotation, &Node3D::setWorldRotation>("worldRotation").property("worldScale", &lua::Binding::method<&Node3D::getWorldScale>).property("worldVisible", &lua::Binding::method<&Node3D::isWorldVisible>).property("worldEnabled", &lua::Binding::method<&Node3D::isWorldEnabled>).function("add", &lua::Binding::native<&nodeAdd>).function("find", &lua::Binding::native<&nodeFind>).function("children", &lua::Binding::native<&nodeChildren>).function("clone", &lua::Binding::native<&nodeClone>).function("setParent", &lua::Binding::native<&nodeSetParent>).function("addTag", &lua::Binding::method<&Node3D::addTag>).function("removeTag", &lua::Binding::method<&Node3D::removeTag>).function("hasTag", &lua::Binding::method<&Node3D::hasTag>).function("toWorld", &lua::Binding::method<&Node3D::toWorld>).function("toLocal", &lua::Binding::method<&Node3D::toLocal>).function("lookAt", &lua::Binding::native<&nodeLookAt>).function("destroy", &lua::Binding::native<&nodeDestroy>).function("on", &lua::Binding::native<&nodeOn>).function("addComponent", &lua::Binding::native<&nodeAddComponent>).function("component", &lua::Binding::native<&nodeComponent>).function("components", &lua::Binding::native<&nodeComponents>).function("removeComponent", &lua::Binding::native<&nodeRemoveComponent>).function("saveComponents", &lua::Binding::native<&nodeSaveComponents>).function("loadComponents", &lua::Binding::native<&nodeLoadComponents>).meta("__eq", &lua::Userdata::equal<Node3D>).install();
+
+    lua::ClassBuilder<Component3D>(L).function("get", &lua::Binding::native<&componentGet>).function("set", &lua::Binding::native<&componentSet>).function("save", &lua::Binding::native<&componentSave>).function("remove", &lua::Binding::native<&componentRemove>).property("type", &lua::Binding::native<&componentType>).property("node", &lua::Binding::native<&componentNode>).property("valid", &lua::Binding::native<&componentValid>).meta("__eq", &lua::Userdata::equal<Component3D>).install();
 
     lua::Binding::preload(L, "haylen.nodes3d", &open);
 }

@@ -19,6 +19,8 @@
 
 namespace haylen::nodes3d {
 
+class Component3D;
+class ComponentType3D;
 class NodeTree3D;
 struct NodeProperties3D;
 
@@ -116,6 +118,11 @@ class Node3D final {
 
     // Turns the node in the world so its forward axis, negative `z`, points at the target, with its up axis as close to `up` as it can. Throws `std::invalid_argument` for a target at the place of the node, within the tolerance of `Vec3::approximately`, or straight along `up` from it.
     void lookAt(math::Vec3 target, math::Vec3 up = math::Vec3::up());
+
+    // Adds a component of the type from its options and returns it, with the errors of `ComponentStore3D::add`. The component that a node holds of a type is found with `findComponent`, which returns an invalid component for a node without one.
+    Component3D addComponent(const std::shared_ptr<const ComponentType3D>& type, const core::Json& options = core::Json::object()) const;
+    [[nodiscard]] Component3D findComponent(const std::shared_ptr<const ComponentType3D>& type) const;
+    [[nodiscard]] std::vector<Component3D> getComponents() const;
 
     // Calls the slot on every event of the kind for this node, until the connection ends or the node goes.
     core::Connection on(NodeEvent3D event, core::Signal<const Node3D&>::Slot slot, core::Signal<const Node3D&>::Options options = {}) const;

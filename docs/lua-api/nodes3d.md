@@ -24,9 +24,20 @@ local sails = mill:add({name = 'sails', position = m.vec3(0, 8, 1)})
 scene.push({
     update = function(self, dt)
         sails.rotation = sails.rotation * m.fromAxisAngle(m.vec3(0, 0, 1), dt)
-        tree:update()
     end,
 })
+```
+
+### nodes3d.componentTypes()
+
+Returns a list of the registered [component types](#component3d), each a table with `name`, `phases`, a list of `'fixedUpdate'`, `'update'` and `'lateUpdate'`, and `properties`, a list of tables with the `name`, the `kind` (`'boolean'`, `'number'`, `'integer'`, `'string'`, `'vec3'`, `'quat'` or `'json'`), the `default` and the `description` of each property.
+
+```lua
+local nodes3d = require('haylen.nodes3d')
+
+for _, type in ipairs(nodes3d.componentTypes()) do
+    print(type.name, #type.properties)
+end
 ```
 
 ## NodeTree3D
@@ -39,6 +50,8 @@ A `NodeTree3D` holds nodes, which `nodes3d.newTree` creates. Two tree values com
 | --- | --- | --- | --- |
 | `size` | integer | read | The number of nodes. |
 | `updatedCount` | integer | read | The nodes that the last update with changes to apply computed again, which a read of world state also counts. |
+| `componentCount` | integer | read | The components of every node of the tree. |
+| `processMode` | string | read and write | How the components of the tree run while the game is paused: `'inherit'` and `'pausable'` rest them, `'whenPaused'` runs them only then, `'always'` always and `'disabled'` never. `'inherit'` by default. |
 
 ### tree:add(properties)
 
@@ -115,7 +128,7 @@ Returns a list of the roots, in order.
 
 ### tree:update()
 
-Computes the world state of every node whose local state changed, and of its descendants, on the worker threads of the job system when 4096 nodes or more changed. Reads of world state are current without it, and it suits the frame of an app that moves many nodes, once after they moved.
+Computes the world state of every node whose local state changed, and of its descendants, on the worker threads of the job system when 4096 nodes or more changed. The engine runs it for every tree after the scenes update, and reads of world state are current without it, so a call suits a scene that moves many nodes and reads them in the same update.
 
 ### tree:clear()
 
@@ -286,6 +299,46 @@ Turns the node in the world so its forward axis, negative `z`, points at the `Ve
 
 Destroys the node and its descendants, deepest first, and calls their listeners.
 
+### node:addComponent(type, options)
+
+Adds a component of the registered type named `type` to the node, from the optional table `options` of its properties, and returns its [`Component3D`](#component3d). A `Vec3` or a `Quat` passes as itself.
+
+- A type that no plugin registered raises `No component type is named "<type>". Register it in the component types of the 3D nodes plugin.`.
+- A node that holds a component of the type raises `The node "<path>" holds a "<type>" component already.`.
+- A property that the type lacks or a value of the wrong kind raises the sentence of the type.
+
+### node:component(type)
+
+Returns the [`Component3D`](#component3d) of the type that the node holds, or `nil`.
+
+### node:components()
+
+Returns a list of the components of the node.
+
+### node:removeComponent(type)
+
+Removes the component of the type from the node, or does nothing for a node without one.
+
+### node:saveComponents()
+
+Returns the components of the node as a table of the properties of each component by the name of its type, where a `Vec3` is a list of three numbers and a `Quat` a list of four.
+
+### node:loadComponents(components)
+
+Adds the components of a table that `node:saveComponents` returned. A type that no plugin registered raises its error before any component is added.
+
+```lua
+local nodes3d = require('haylen.nodes3d')
+
+local tree = nodes3d.newTree()
+local lamp = tree:add({name = 'lamp'})
+for _, component in ipairs(lamp:components()) do
+    print(component.type)
+end
+local saved = lamp:saveComponents()
+tree:add({name = 'copy'}):loadComponents(saved)
+```
+
 ### node:on(event, listener, options)
 
 Listens to an event of the node and returns a `Connection`. The listener receives the node, or the child that joined or left for `childAdded` and `childRemoved`. The optional table `options` takes `owner`, which ends the listener with its owner. Without one, the listener takes the default owner. Another event raises `Unknown node event "<event>". Nodes report "destroyed", "parentChanged", "childAdded", "childRemoved" and "enabledChanged".`.
@@ -314,3 +367,31 @@ scene.push({
     end,
 })
 ```
+
+## Component3D
+
+A `Component3D` is a handle to the component of one type that a node holds, which `node:addComponent`, `node:component` and `node:components` return. The types come from the registry of the 3D nodes plugin, where the engine and the plugins of the app register them, as the [3D nodes guide](../3d/nodes.md#components) explains. Two component values compare equal with `==` when they name the component of one type of the same node.
+
+### Properties
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `type` | string | read | The name of the type. |
+| `node` | Node3D | read | The node that holds the component. |
+| `valid` | boolean | read | Whether the node still holds a component of the type. |
+
+### component:get(name)
+
+Returns the value of the property `name`, a `Vec3` or a `Quat` for a property of those kinds. A property that the type lacks raises the sentence of the type, and a component that is gone raises `The node "<path>" holds no "<type>" component.`.
+
+### component:set(name, value)
+
+Changes the property `name`, with the errors of [`node:addComponent`](#nodeaddcomponenttype-options).
+
+### component:save()
+
+Returns the properties of the component as a table, as `node:saveComponents` writes them.
+
+### component:remove()
+
+Takes the component off its node.

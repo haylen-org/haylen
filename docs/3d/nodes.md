@@ -27,7 +27,7 @@ A node reads its world state through `worldMatrix`, `worldPosition`, `worldRotat
 
 The tree only computes the subtrees that changed. It marks each node whose local state changes, and before the next read it walks only the subtrees under the highest marked nodes. A tree of a hundred thousand nodes where one wheel turned computes that wheel and its children, and nothing else. A tree where nothing changed costs almost nothing to read.
 
-Call `tree:update()` once a frame, after the code that moves nodes, when many nodes move together. It does the same work as a read, but it splits large changes over the worker threads of the job system. A change of 4096 nodes or more runs in parallel, even inside one deep subtree, because the tree splits a subtree below its root. The property `tree.updatedCount` tells how many nodes the last update computed.
+Every frame, after the scenes updated, the engine updates each tree that `nodes3d.newTree` made. The update does the same work as a read, but it splits large changes over the worker threads of the job system. A change of 4096 nodes or more runs in parallel, even inside one deep subtree, because the tree splits a subtree below its root. Call `tree:update()` to run that work earlier, such as in the middle of the update of a scene that moved many nodes and then reads them. The property `tree.updatedCount` tells how many nodes the last update computed.
 
 ```lua
 local m = require('haylen.math')
@@ -45,7 +45,6 @@ scene.push({
         for _, fan in ipairs(fans) do
             fan.rotation = fan.rotation * m.fromAxisAngle(m.up(), dt)
         end
-        tree:update()
     end,
 })
 ```
@@ -187,6 +186,20 @@ scene.push({
 })
 ```
 
+## Components
+
+A component gives a node a part that works on it, such as a body that moves it or an agent that walks it. Each kind of component is a component type with a name. A type says which properties its components take, with their kinds and defaults, and in which phases of the frame they run: with the fixed steps, before the scenes update or after them, as `nodes3d.componentTypes()` lists. A node holds at most one component of each type.
+
+- `node:addComponent(type, options)` adds a component from a table of its properties and returns it. A `Vec3` or a `Quat` passes as itself.
+- `node:component(type)` returns the component of a type, or `nil`, and `node:components()` lists them all.
+- `component:get(name)` and `component:set(name, value)` read and change a property, and `component:remove()` takes the component off.
+
+The components of a type live in arrays, one set for each tree, and one call runs all of them in a phase, so a thousand components cost one call and no call into Lua. A component goes with its node, a clone of the node gets a copy of it, and it rests while its node is off in the hierarchy. A tree runs its components while the game is not paused, and its `processMode` changes that, as [pause and process modes](../core/lifecycle.md#pause-and-process-modes) explains for scenes.
+
+`node:saveComponents()` returns the components of a node as a table of the properties of each one by its type, and `node:loadComponents(table)` adds them to another node, which is how saved scenes recreate them.
+
+Plugins add component types in C++ through the registry of the 3D nodes plugin, the same way the engine adds its own, as the section [From C++](#from-c) shows.
+
 ## Moving many nodes at once
 
 Some apps simulate many objects themselves, such as a flock of birds. They can move all the nodes in one call. Write the position and the rotation of each node into a [float buffer](../lua-api/collections.md#float-buffers), seven values per node, `x`, `y`, `z` and the `x`, `y`, `z` and `w` of the rotation, and call `tree:writeTransforms(nodes, buffer)`. To read where they ended up, `tree:readTransforms(nodes, buffer)` fills a buffer with the world positions and rotations in the same layout. The layout is the one of [`world:readTransforms`](../lua-api/physics3d.md#worldreadtransformsbodies-buffer-first-interpolated) of 3D physics, so one buffer carries bodies to nodes.
@@ -247,6 +260,7 @@ The same tree is `haylen::nodes3d::NodeTree3D` in `haylen/3d/nodes/NodeTree3D.hp
 - The method `on(node, event, slot)` and `Node3D::on` call a slot for the `NodeEvent3D` of one node. The signals `destroyed`, `parentChanged` and `enabledChanged` of the tree tell of every node.
 - The signal `cloned` tells of every node that a clone copied, with its copy, so a system that keeps state for nodes copies its own.
 - The methods `writeTransforms` and `readTransforms` move and read many nodes from spans of floats.
+- A component type derives from `ComponentType3D`: it names its phases and the `Property` metadata of its properties, and makes for each tree a `ComponentPool3D`, which keeps the components of the tree in arrays by index and runs them in one call per phase with a `ComponentPool3D::Batch` of their nodes and of whether each node is on. A plugin registers it in `Nodes3DPlugin::getComponentTypes()`, and `Nodes3DPlugin::createTree()` makes a tree that the plugin runs. `Node3D::addComponent` returns a `Component3D` handle, and `NodeTree3D::getComponents()` returns the `ComponentStore3D` of the tree.
 
 ```cpp
 #include <any>

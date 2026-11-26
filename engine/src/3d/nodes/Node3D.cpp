@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/3d/nodes/Component3D.hpp"
 #include "haylen/3d/nodes/NodeTree3D.hpp"
 
 namespace haylen::nodes3d {
@@ -334,6 +335,25 @@ void Node3D::lookAt(math::Vec3 target, math::Vec3 up) {
     }
 
     owner->setWorldRotation(index, math::Quat::lookRotation(target - position, up));
+}
+
+Component3D Node3D::addComponent(const std::shared_ptr<const ComponentType3D>& type, const core::Json& options) const {
+    lock()->components.add(*this, type, options);
+    return {*this, type};
+}
+
+Component3D Node3D::findComponent(const std::shared_ptr<const ComponentType3D>& type) const {
+    const std::shared_ptr<NodeTree3D> owner = lock();
+    return type && owner->components.has(*this, *type) ? Component3D{*this, type} : Component3D{};
+}
+
+std::vector<Component3D> Node3D::getComponents() const {
+    std::vector<Component3D> held;
+    for (std::shared_ptr<const ComponentType3D>& type : lock()->components.getTypes(*this)) {
+        held.emplace_back(*this, std::move(type));
+    }
+
+    return held;
 }
 
 core::Connection Node3D::on(NodeEvent3D event, core::Signal<const Node3D&>::Slot slot, core::Signal<const Node3D&>::Options options) const {

@@ -12,12 +12,14 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/3d/nodes/ComponentStore3D.hpp"
 #include "haylen/3d/nodes/Inheritance3D.hpp"
 #include "haylen/3d/nodes/Node3D.hpp"
 #include "haylen/3d/nodes/NodeEvent3D.hpp"
 #include "haylen/3d/nodes/NodeProperties3D.hpp"
 #include "haylen/core/Connection.hpp"
 #include "haylen/core/Json.hpp"
+#include "haylen/core/ProcessMode.hpp"
 #include "haylen/core/Signal.hpp"
 #include "haylen/math/Mat4.hpp"
 #include "haylen/math/Quat.hpp"
@@ -87,6 +89,22 @@ class NodeTree3D final : public std::enable_shared_from_this<NodeTree3D> {
     // Copies the world position and rotation of each node into seven floats of the values.
     void readTransforms(std::span<const Node3D> nodes, std::span<float> values);
 
+    // The components of the nodes of the tree.
+    [[nodiscard]] ComponentStore3D& getComponents() noexcept {
+        return components;
+    }
+    [[nodiscard]] const ComponentStore3D& getComponents() const noexcept {
+        return components;
+    }
+
+    // How the components of the tree run while the game is paused, as `Inherit` resolves to `Pausable`.
+    [[nodiscard]] core::ProcessMode getProcessMode() const noexcept {
+        return processMode;
+    }
+    void setProcessMode(core::ProcessMode value) noexcept {
+        processMode = value;
+    }
+
     // Calls the slot on every event of the kind for the node, until the connection ends or the node goes.
     core::Connection on(const Node3D& node, NodeEvent3D event, core::Signal<const Node3D&>::Slot slot, core::Signal<const Node3D&>::Options options = {});
 
@@ -103,6 +121,7 @@ class NodeTree3D final : public std::enable_shared_from_this<NodeTree3D> {
     core::Signal<const Node3D&, const Node3D&> cloned;
 
   private:
+    friend class ComponentStore3D;
     friend class Node3D;
 
     static constexpr std::int32_t kNone = -1;
@@ -178,7 +197,7 @@ class NodeTree3D final : public std::enable_shared_from_this<NodeTree3D> {
     struct Copy {
         std::uint32_t source = 0;
         std::int32_t parent = kNone;
-        NodeProperties3D properties;
+        NodeProperties3D properties{};
     };
 
     // A run of the order that updates as one piece: a whole subtree, whose root takes its parent from outside the run.
@@ -276,7 +295,11 @@ class NodeTree3D final : public std::enable_shared_from_this<NodeTree3D> {
     std::int32_t lastRoot = kNone;
     std::size_t count = 0;
     std::size_t updated = 0;
+    core::ProcessMode processMode = core::ProcessMode::Inherit;
     bool orderChanged = false;
+
+    // Last, so the components go first when the tree goes.
+    ComponentStore3D components{*this};
 };
 
 } // namespace haylen::nodes3d

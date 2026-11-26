@@ -9,6 +9,7 @@
 #include "haylen/plugins/Navigation3DPlugin.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
 #include "haylen/plugins/Nodes2DPlugin.hpp"
+#include "haylen/plugins/Nodes3DPlugin.hpp"
 #include "haylen/plugins/Particles2DPlugin.hpp"
 #include "haylen/plugins/Physics2DPlugin.hpp"
 #include "haylen/plugins/Physics3DPlugin.hpp"
@@ -36,6 +37,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<VideoPlugin>(host));
     registry.add(std::make_unique<TiledPlugin>());
     registry.add(std::make_unique<Nodes2DPlugin>());
+    registry.add(std::make_unique<Nodes3DPlugin>());
     registry.add(std::make_unique<Navigation3DPlugin>());
     registry.add(std::make_unique<LocalizationPlugin>());
     registry.add(std::make_unique<ConversationPlugin>());

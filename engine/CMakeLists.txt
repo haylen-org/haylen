@@ -237,6 +237,10 @@ set(HAYLEN_ENGINE_SOURCES
   src/3d/navigation/TileBaker.cpp
   src/3d/navigation/TileGrid.cpp
   src/3d/navigation/TileIndex.cpp
+  src/3d/nodes/Component3D.cpp
+  src/3d/nodes/ComponentRegistry3D.cpp
+  src/3d/nodes/ComponentStore3D.cpp
+  src/3d/nodes/ComponentType3D.cpp
   src/3d/nodes/Node3D.cpp
   src/3d/nodes/NodeTree3D.cpp
   src/3d/physics/Backend.cpp
@@ -553,6 +557,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/Navigation3DPlugin.cpp
   src/plugins/NetPlugin.cpp
   src/plugins/Nodes2DPlugin.cpp
+  src/plugins/Nodes3DPlugin.cpp
   src/plugins/Particles2DPlugin.cpp
   src/plugins/Physics2DPlugin.cpp
   src/plugins/Physics3DPlugin.cpp
