@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -42,11 +43,16 @@ JPH::RefConst<JPH::Shape> ShapeBuilder::make(const JPH::ShapeSettings& settings,
 JPH::RefConst<JPH::Shape> ShapeBuilder::makeHull(const physics3d::Shape::ConvexHull& hull, float density) {
     JPH::Array<JPH::Vec3> points;
     points.reserve(hull.points.size());
+    JPH::Vec3 reach = JPH::Vec3::sZero();
     for (const math::Vec3 point : hull.points) {
         points.push_back(Converter::toJolt(point));
+        reach = JPH::Vec3::sMax(reach, points.back().Abs());
     }
 
+    // Jolt tells points on one plane apart within the precision of floats at the reach of the points, three float steps of their summed reach, and merges the points of faces within the tolerance of the hull. The tolerance stays ten times that precision, so building far points never mixes the two.
+    const float precision = 3.0F * std::numeric_limits<float>::epsilon() * (reach.GetX() + reach.GetY() + reach.GetZ());
     JPH::ConvexHullShapeSettings settings(points, hull.convexRadius);
+    settings.mHullTolerance = std::max(settings.mHullTolerance, kHullTolerancePrecisions * precision);
     settings.SetEmbedded();
     settings.SetDensity(density);
     return make(settings, "The points of a convex hull make no solid that the physics holds, such as points that nearly lie on one plane. Give it points that spread along every axis.");

@@ -95,6 +95,10 @@ void Shape::checkHull(const ConvexHull& hull) {
 
     for (const math::Vec3& point : hull.points) {
         requireFinite("point of a convex hull", point);
+        const float reach = std::max({std::abs(point.x), std::abs(point.y), std::abs(point.z)});
+        if (reach > kMaxHullCoordinate) {
+            throw std::invalid_argument(std::format("The points of a convex hull lie within {:g} meters of its origin along each axis. Place the points around the origin of the hull and move its body instead.", kMaxHullCoordinate));
+        }
     }
 
     if (!spreadsAlongEveryAxis(hull.points)) {

@@ -142,7 +142,7 @@ class Shape {
             return static_cast<Kind>(geometry.index());
         }
 
-        // Throws `std::invalid_argument` with a sentence that says what the shape takes, for a size that is not positive, a value that is not finite, a mesh whose indices pass its vertices, a hull of fewer than four points or of points that do not spread along every axis by `kMinHullSpread` and `kMinHullSpreadShare` of its length, a heightfield whose heights do not fill its grid and a compound without children or with a child of another backend than `backend`.
+        // Throws `std::invalid_argument` with a sentence that says what the shape takes, for a size that is not positive, a value that is not finite, a mesh whose indices pass its vertices, a hull of fewer than four points, of points beyond `kMaxHullCoordinate` or of points that do not spread along every axis by `kMinHullSpread` and `kMinHullSpreadShare` of its length, a heightfield whose heights do not fill its grid and a compound without children or with a child of another backend than `backend`.
         void validate(std::string_view backend) const;
     };
 
@@ -154,6 +154,9 @@ class Shape {
     // The least spread of the points of a hull along every axis, in meters and as a share of the length of the hull. The physics places every point on a face of a hull within a millimeter and computes the directions of the faces in floats, so a hull thinner than either loses points between its faces.
     static constexpr float kMinHullSpread = 1.0e-3F;
     static constexpr float kMinHullSpreadShare = 1.0e-3F;
+
+    // The farthest a point of a hull lies from the origin of the hull along each axis, in meters, within which floats place the points of a hull finely enough for the physics to build it.
+    static constexpr float kMaxHullCoordinate = 1000.0F;
 
     explicit Shape(Kind shapeKind) noexcept : kind(shapeKind) {}
     virtual ~Shape() = default;

@@ -565,7 +565,7 @@ local bucket = physics3d.newTaperedCylinder(0.4, 0.15, 0.12)
 
 ### physics3d.newConvexHull(points, options)
 
-Makes the smallest convex solid that holds the points, from a `FloatBuffer` of three numbers for each point or a list of `Vec3` values. A hull takes from 4 to 65536 points that spread along every axis by at least a millimeter and a thousandth of the length of the hull, since the physics places every point on a face of the hull within a millimeter. A hull is the shape of a rock, a bottle or a simplified model.
+Makes the smallest convex solid that holds the points, from a `FloatBuffer` of three numbers for each point or a list of `Vec3` values. A hull takes from 4 to 65536 points within 1000 meters of its origin along each axis, which spread along every axis by at least a millimeter and a thousandth of the length of the hull, since the physics places every point on a face of the hull within a millimeter. A hull is the shape of a rock, a bottle or a simplified model.
 
 ```lua
 local rock = physics3d.newConvexHull({{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0.6, 0.6, 0.6}})
@@ -667,6 +667,7 @@ print(crate.kind, crate.mass, crate.bounds.max.y) -- box 600.0 0.5
 | `The convex radius of a box must be from 0 to <largest>, half of its smallest size.` | A convex radius larger than the shape. |
 | `The height of a capsule, from the bottom of one cap to the top of the other, must be more than twice its radius. Make a sphere for a shorter one.` | A capsule shorter than its caps. |
 | `The points of a convex hull lie too close to one plane or one line to hold a volume that the physics builds. Spread them along every axis by at least a millimeter and a thousandth of the length of the hull.` | A flat hull, or a hull thinner than a millimeter or than a thousandth of its length. |
+| `The points of a convex hull lie within 1000 meters of its origin along each axis. Place the points around the origin of the hull and move its body instead.` | A point of a hull farther than 1000 meters from its origin along an axis. |
 | `Item <item> of the indices of a mesh names vertex <index>, but the vertex count of the mesh is <count>.` | A mesh whose indices pass its vertices. |
 | `A triangle mesh needs at least one triangle with an area, and every triangle of this one has its corners on one line.` | A mesh of flat triangles alone. |
 | `A heightfield of <side> samples on each side needs <count> heights, and it has <found>.` | Heights that do not fill the grid. |

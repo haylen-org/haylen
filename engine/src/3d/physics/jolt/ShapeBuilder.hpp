@@ -21,6 +21,9 @@ class ShapeBuilder final {
     [[nodiscard]] static std::shared_ptr<const Shape> build(const physics3d::Shape::Settings& settings);
 
   private:
+    // The tolerance of a hull in steps of the precision of its points.
+    static constexpr float kHullTolerancePrecisions = 10.0F;
+
     // Makes the shape of the settings, or throws `std::invalid_argument` with the sentence.
     [[nodiscard]] static JPH::RefConst<JPH::Shape> make(const JPH::ShapeSettings& settings, std::string_view failure);
 
