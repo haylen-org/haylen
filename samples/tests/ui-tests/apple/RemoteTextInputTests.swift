@@ -13,9 +13,12 @@ class RemoteTextInputTests: HaylenUITestCase {
         }
         try saveScreenshot("search-focused")
         remote.press(.select)
-        waitFor(app.keyboards.firstMatch)
-        app.typeText("text fields")
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        // The keyboard of the system shows before it takes keys, which reach its text line once that line holds the keyboard focus, and the test goes on once the line shows what it typed.
+        let line = waitFor(app.textViews.matching(NSPredicate(format: "hasKeyboardFocus == true")).firstMatch)
+        line.typeText("text fields")
+        waitUntil("The text line of the keyboard of the system shows \"\(line.value ?? "")\" instead of \"text fields\".") {
+            line.value as? String == "text fields"
+        }
         try saveScreenshot("keyboard")
         remote.press(.menu)
         waitFor(element(matching: "GUI-005\\s+Text fields.*"))
