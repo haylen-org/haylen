@@ -14,9 +14,9 @@ namespace haylen::test {
 // A pixel buffer of the configuration of the context, which the context draws into once it is current on it.
 class OffscreenGlContext::Drawable final : public gpu::GlContext {
   public:
-    Drawable(EGLDisplay owner, EGLConfig config, EGLContext shared, int pixelsWide, int pixelsHigh) : display(owner), context(shared) {
+    Drawable(EGLDisplay owner, EGLConfig bufferConfig, EGLContext shared, int pixelsWide, int pixelsHigh) : display(owner), context(shared) {
         const std::array<EGLint, 5> attributes{EGL_WIDTH, pixelsWide, EGL_HEIGHT, pixelsHigh, EGL_NONE};
-        surface = eglCreatePbufferSurface(display, config, attributes.data());
+        surface = eglCreatePbufferSurface(display, bufferConfig, attributes.data());
         if (surface == EGL_NO_SURFACE) {
             throw std::runtime_error("EGL could not make another pixel buffer of the context.");
         }
