@@ -245,19 +245,24 @@ int MatrixBinding::mat4Decompose(lua_State* L) {
     return 1;
 }
 
-// Takes the plane in the space of the camera and the range and direction of depth that the projection was built with, `{depthRange = 'zeroToOne', reversedDepth = true}` by default.
+std::pair<haylen::math::Mat4::DepthRange, bool> MatrixBinding::readDepthOptions(lua_State* L, int index) {
+    haylen::math::Mat4::DepthRange depthRange = haylen::math::Mat4::DepthRange::ZeroToOne;
+    bool reversedDepth = true;
+    if (!lua_isnoneornil(L, index)) {
+        luaL_checktype(L, index, LUA_TTABLE);
+        lua::Table::checkFields(L, index, {kDepthFields});
+        lua::Table::readField(L, index, "depthRange", depthRange);
+        lua::Table::readField(L, index, "reversedDepth", reversedDepth);
+    }
+
+    return {depthRange, reversedDepth};
+}
+
+// Takes the plane in the space of the camera and the options of `readDepthOptions`.
 int MatrixBinding::mat4ObliqueNearPlane(lua_State* L) {
     const haylen::math::Mat4& self = lua::Userdata::check<haylen::math::Mat4>(L, 1);
     const haylen::math::Plane plane = lua::Stack::read<haylen::math::Plane>(L, 2);
-    haylen::math::Mat4::DepthRange depthRange = haylen::math::Mat4::DepthRange::ZeroToOne;
-    bool reversedDepth = true;
-    if (!lua_isnoneornil(L, 3)) {
-        luaL_checktype(L, 3, LUA_TTABLE);
-        lua::Table::checkFields(L, 3, {kDepthFields});
-        lua::Table::readField(L, 3, "depthRange", depthRange);
-        lua::Table::readField(L, 3, "reversedDepth", reversedDepth);
-    }
-
+    const auto [depthRange, reversedDepth] = readDepthOptions(L, 3);
     lua::Stack::push(L, self.getObliqueNearPlane(plane, depthRange, reversedDepth));
     return 1;
 }

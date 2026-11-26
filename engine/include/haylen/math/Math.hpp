@@ -11,6 +11,8 @@ class Math final {
     static constexpr float kPi = 3.14159265358979323846F;
     static constexpr float kTau = kPi * 2.0F;
     static constexpr float kHalfPi = kPi * 0.5F;
+    // Standard gravity in meters per second squared, the pull of the Earth at sea level that weights, sensors and the default gravity of 3D measure against.
+    static constexpr float kStandardGravity = 9.80665F;
 
     // Returns `from` and `to` exactly at 0 and 1.
     [[nodiscard]] static constexpr float lerp(float from, float to, float t) noexcept {

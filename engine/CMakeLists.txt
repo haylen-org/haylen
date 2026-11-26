@@ -410,6 +410,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Polygon.cpp
   src/math/Quat.cpp
   src/math/Random.cpp
+  src/math/Ray3D.cpp
   src/math/Raycast.cpp
   src/math/ShuffleBag.cpp
   src/math/SignalFilterHelper.cpp

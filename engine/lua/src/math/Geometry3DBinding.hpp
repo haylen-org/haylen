@@ -46,6 +46,7 @@ class Geometry3DBinding final {
     [[nodiscard]] static haylen::math::Triangle newTriangle(haylen::math::Vec3 a, haylen::math::Vec3 b, haylen::math::Vec3 c);
     [[nodiscard]] static haylen::math::Frustum newFrustum(const haylen::math::Mat4& viewProjection, std::optional<haylen::math::Mat4::DepthRange> depthRange);
     static void pushHit(lua_State* L, const std::optional<haylen::math::RayHit3D>& hit);
+    static int rayFromView(lua_State* L);
     static int rayCast(lua_State* L);
     static int boxContains(lua_State* L);
     static int boxIntersects(lua_State* L);

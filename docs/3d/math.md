@@ -136,6 +136,17 @@ local hit = foot:cast(ground)
 print(hit and hit.distance) -- 1.0, so the foot stands one meter above the ground
 ```
 
+Picking finds what the person points at. The function `m.ray3dFromView` turns a point of the view into the ray that the camera sees through it, built for the range and direction of depth of the projection, and casting that ray finds the nearest thing under the pointer.
+
+```lua
+local m = require('haylen.math')
+
+local camera = m.perspective({aspect = 16 / 9}) * m.lookAt({0, 6, 12}, {0, 0, 0})
+local crate = m.box({-1, 0, -1}, {1, 2, 1})
+local underPointer = m.ray3dFromView(camera, {0.05, -0.1})
+print(underPointer:cast(crate) ~= nil) -- true when the pointer is over the crate
+```
+
 A `Frustum` is the space that a camera sees, which `m.frustum` builds from the view and the projection of the camera. Culling skips the objects whose bounds lie outside it, which saves the work of drawing them. The test is conservative: it never calls a shape outside that reaches inside, so nothing that the camera sees disappears, and it allows a little room past each plane so a shape that rests on one is never cut by rounding.
 
 ## Curves

@@ -2255,7 +2255,7 @@ A `Ragdoll`, named `haylen.Ragdoll` in messages, is a human figure seen from the
 
 Builds a figure of eleven capsules joined by revolute joints, with the angle limits of real joints, and returns a `Ragdoll`. Its parts share a negative collision group, so they never collide with each other. They collide with the rest of the world through the category and mask of the options. Two figures with the same group pass through each other, so figures that should collide take a negative group each.
 
-Every joint resists bending with a motor that aims at no motion, whose torque comes from `stiffness`. At 1, a joint holds the limb below it straight out against standard gravity, 9.8 meters per second squared, whatever the height of the figure and the scale of the world. At 0, the figure is limp. The table `options` is optional, and an unknown key raises `Unknown option "<key>".`.
+Every joint resists bending with a motor that aims at no motion, whose torque comes from `stiffness`. At 1, a joint holds the limb below it straight out against standard gravity, [`m.standardGravity`](math.md#mstandardgravity) of `haylen.math`, whatever the height of the figure and the scale of the world. At 0, the figure is limp. The table `options` is optional, and an unknown key raises `Unknown option "<key>".`.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2769,7 +2769,7 @@ Creates a `Grabber`. It takes the body nearest to a point within its pick radius
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `pickRadius` | number | `0` | Distance in world units around the point within which bodies are taken. |
-| `strength` | number | `30` | The pull, as a multiple of the weight under standard gravity, 9.8 meters per second squared, of the held body and every dynamic body joined to it, directly or through others. |
+| `strength` | number | `30` | The pull, as a multiple of the weight under standard gravity, [`m.standardGravity`](math.md#mstandardgravity), of the held body and every dynamic body joined to it, directly or through others. |
 | `hertz`, `dampingRatio` | number | `5`, `0.7` | Stiffness and damping of the spring that pulls. |
 | `category`, `mask` | integer | `1`, all bits | The shapes the grabber takes, as in a [query filter](#query-filters). |
 

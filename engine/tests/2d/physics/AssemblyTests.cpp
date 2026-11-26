@@ -9,6 +9,7 @@
 #include "haylen/2d/physics/Ragdoll.hpp"
 #include "haylen/2d/physics/Rope.hpp"
 #include "haylen/2d/physics/World.hpp"
+#include "haylen/math/Math.hpp"
 
 namespace haylen::physics2d {
 
@@ -281,7 +282,7 @@ TEST_F(AssemblyTest, GrabbersLiftWholeAssemblies) {
 
     Grabber grabber(world, {.pickRadius = 4.0F, .strength = 30.0F});
     ASSERT_TRUE(grabber.grab({0.0F, 0.0F}).has_value());
-    EXPECT_NEAR(grabber.getForce(), 30.0F * previous.getMass() * 10.0F * 9.80665F * world.getPixelsPerMeter(), grabber.getForce() * 0.01F);
+    EXPECT_NEAR(grabber.getForce(), 30.0F * previous.getMass() * 10.0F * math::Math::kStandardGravity * world.getPixelsPerMeter(), grabber.getForce() * 0.01F);
     grabber.moveTo({0.0F, -300.0F});
     simulate(1.5F);
     EXPECT_LT(previous.getPosition().y, -60.0F);

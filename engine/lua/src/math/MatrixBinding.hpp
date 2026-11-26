@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -25,6 +26,9 @@ class MatrixBinding final {
 
     // Sets `mat3`, `mat4`, `compose`, `lookAt`, `perspective`, `asymmetricPerspective`, `orthographic` and `depthRangeConversion` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
+
+    // Reads the optional table at `index` with the range and direction of depth that a projection was built with, `{depthRange = 'zeroToOne', reversedDepth = true}` by default.
+    [[nodiscard]] static std::pair<haylen::math::Mat4::DepthRange, bool> readDepthOptions(lua_State* L, int index);
 
   private:
     static constexpr std::array<std::string_view, 6> kPerspectiveFields{"fieldOfView", "aspect", "nearPlane", "farPlane", "depthRange", "reversedDepth"};

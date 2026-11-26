@@ -14,7 +14,7 @@ class World;
 // Drags dynamic bodies with a mouse, a finger or a cursor alike. It takes the body nearest to a point within its pick radius, holds it by the point it took, and pulls that point toward a target with a soft spring whose force grows with everything joined to the body, so one hand of a ragdoll drags the whole figure and a heavy chain follows as well as a pebble. The grabber owns a static anchor body and must go before its world.
 class Grabber final {
   public:
-    // The pick radius is in world units. The strength is the pull as a multiple of the weight under standard gravity, 9.8 meters per second squared, of the bodies the held one is joined to, so the same strength drags a coin and a ragdoll alike.
+    // The pick radius is in world units. The strength is the pull as a multiple of the weight under standard gravity, `math::Math::kStandardGravity`, of the bodies the held one is joined to, so the same strength drags a coin and a ragdoll alike.
     struct Options {
         float pickRadius = 0.0F;
         float strength = 30.0F;
@@ -54,9 +54,6 @@ class Grabber final {
     void setDampingRatio(float value);
 
   private:
-    // Standard gravity in meters per second squared, which the strength measures the pull against.
-    static constexpr float kStandardGravity = 9.80665F;
-
     // Returns the mass of the body and of every dynamic body joined to it, directly or through others.
     [[nodiscard]] float getConnectedMass(const Body& body) const;
 

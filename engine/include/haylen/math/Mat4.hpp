@@ -102,6 +102,9 @@ struct Mat4 {
         return {{1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.5F, 0.0F, 0.0F, 0.0F, 0.5F, 1.0F}};
     }
 
+    // Returns the depth that a projection gives its near plane and its far plane, for the range and direction of depth, which is where clip space and the world meet.
+    [[nodiscard]] static std::pair<float, float> getDepthEnds(DepthRange depthRange, bool reversedDepth) noexcept;
+
     [[nodiscard]] static std::optional<DepthRange> depthRangeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view depthRangeName(DepthRange value) noexcept;
 
@@ -186,8 +189,6 @@ struct Mat4 {
   private:
     static const std::array<std::pair<std::string_view, DepthRange>, 2> kDepthRangeNames;
 
-    // The depth that a projection gives its near plane and its far plane, for the range and direction of depth.
-    [[nodiscard]] static std::pair<float, float> getDepthEnds(DepthRange depthRange, bool reversedDepth) noexcept;
     [[nodiscard]] static Mat4 projectTangents(float left, float right, float bottom, float top, float nearPlane, float farPlane, DepthRange depthRange, bool reversedDepth) noexcept;
     // The twelve products of pairs of elements that the determinant and the inverse share.
     [[nodiscard]] std::array<float, 12> getMinors() const noexcept;

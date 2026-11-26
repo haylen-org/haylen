@@ -122,6 +122,17 @@ local down = m.fromAngle(m.halfPi)
 print(m.approximately(down.y, 1)) -- true
 ```
 
+### m.standardGravity
+
+Standard gravity, `9.80665` meters per second squared, the pull of the Earth at sea level. The weights of 2D physics measure against it, the accelerometers of gamepads read it on a device that lies still, and 3D measures its default gravity with it, as the [coordinates page](../3d/coordinates.md#units) describes.
+
+```lua
+local m = require('haylen.math')
+
+local weight = 80 * m.standardGravity
+print(weight) -- the weight of 80 kilograms in newtons, about 784.5
+```
+
 ## Vec2
 
 A `Vec2` is a 2D vector with `x` and `y` components. Make one with `m.vec2` or `m.fromAngle`.
@@ -1747,6 +1758,19 @@ local m = require('haylen.math')
 
 local shot = m.ray3dBetween({0, 1, 0}, {0, 1, -8})
 print(shot.length) -- 8.0
+```
+
+### m.ray3dFromView(viewProjection, point, options)
+
+Returns the `Ray3D` that a camera sees through `point` of its view, such as what lies under the pointer or a finger. The `Mat4` `viewProjection` is the projection times the view of the camera, and `point` is a `Vec2` in normalized device coordinates, from `-1` to `1` from the left edge to the right edge and from the bottom edge to the top edge. The ray starts on the near plane and has no end, so it also reaches past a far plane at infinity. The options `depthRange` and `reversedDepth` are those the projection was built with, `'zeroToOne'` and `true` by default, and an unknown key raises `Unknown option "<key>".`. A matrix without an inverse raises the error of [`mat4:inverse`](#mat4inverse), a point that is not finite raises `The point of a view must have coordinates that are finite numbers.`, and a matrix that puts the point at infinity raises `The matrix is not the projection and view of a camera, because it puts the point of the view at no place on the near plane.`
+
+```lua
+local m = require('haylen.math')
+
+local camera = m.perspective({aspect = 16 / 9}) * m.lookAt({0, 5, 10}, {0, 0, 0})
+local ray = m.ray3dFromView(camera, {0, 0})
+local hit = ray:cast(m.plane(m.up(), 0))
+print(hit.point) -- close to Vec3(0.0, 0.0, 0.0), the point that the center of the view looks at
 ```
 
 ### ray:at(distance)

@@ -749,6 +749,8 @@ int MathBinding::open(lua_State* L) {
     lua_setfield(L, -2, "tau");
     lua_pushnumber(L, haylen::math::Math::kHalfPi);
     lua_setfield(L, -2, "halfPi");
+    lua_pushnumber(L, haylen::math::Math::kStandardGravity);
+    lua_setfield(L, -2, "standardGravity");
     return 1;
 }
 

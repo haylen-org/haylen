@@ -31,6 +31,14 @@ TEST_F(Geometry3DLuaTest, CastsRaysAgainstEveryShape) {
     EXPECT_NE(lua("return m.ray3d({0, 0, 0}, {0, 0, 0})").find("The vector has no direction, because its length is zero."), std::string::npos);
 }
 
+TEST_F(Geometry3DLuaTest, CastsTheRayUnderAPointOfTheView) {
+    lua("view = m.lookAt({0, 2, 10}, {0, 2, 0})");
+    EXPECT_EQ(lua("local ray = m.ray3dFromView(m.perspective({nearPlane = 0.5}) * view, {0, 0}) return tostring(ray.origin:approximately({0, 2, 9.5})) .. ' ' .. tostring(ray.direction:approximately(m.forward())) .. ' ' .. tostring(ray.length == math.huge)"), "true true true");
+    EXPECT_EQ(lua("local options = {depthRange = 'negativeOneToOne', reversedDepth = false} local camera = m.perspective({nearPlane = 0.5, farPlane = 50, depthRange = 'negativeOneToOne', reversedDepth = false}) * view local point = camera:apply({3, 1, -4}) local ray = m.ray3dFromView(camera, m.vec2(point.x, point.y), options) return ray:cast(m.sphere({3, 1, -4}, 0.1)) ~= nil"), "true");
+    EXPECT_NE(lua("m.ray3dFromView(view, {0, 0}, {reversed = true})").find("Unknown option \"reversed\"."), std::string::npos);
+    EXPECT_NE(lua("m.ray3dFromView(m.mat4(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1), {0, 0})").find("The matrix has no inverse"), std::string::npos);
+}
+
 TEST_F(Geometry3DLuaTest, MeasuresAndCombinesShapes) {
     EXPECT_EQ(lua("local box = m.boxFromCenter({1, 2, 3}, {2, 4, 6}) return tostring(box.min) .. ' ' .. tostring(box:center()) .. ' ' .. tostring(box:halfExtents())"), "Vec3(0.0, 0.0, 0.0) Vec3(1.0, 2.0, 3.0) Vec3(1.0, 2.0, 3.0)");
     EXPECT_EQ(lua("local box = m.box({0, 0, 0}, {2, 2, 2}) return tostring(box:contains({1, 1, 1})) .. ' ' .. tostring(box:contains(m.box({0, 0, 0}, {3, 1, 1}))) .. ' ' .. tostring(box:intersects(m.box({2, 2, 2}, {3, 3, 3}))) .. ' ' .. tostring(box:intersects(m.sphere({4, 1, 1}, 1)))"), "true false true false");

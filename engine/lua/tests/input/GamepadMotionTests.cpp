@@ -13,6 +13,7 @@
 #include "haylen/input/GamepadMotion.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
+#include "haylen/math/Math.hpp"
 #include "haylen/platform/Event.hpp"
 #include "support/LuaFixture.hpp"
 
@@ -21,8 +22,6 @@ namespace haylen::lua::input {
 // Drives the motion sensors of gamepads through the headless host, which records the sensors that run and takes gamepads with the readings that tests give them.
 class GamepadMotionTest : public ::testing::Test {
   protected:
-    static constexpr float kGravity = 9.80665F;
-
     [[nodiscard]] static haylen::input::GamepadMotion::Sensors makeSensors(std::initializer_list<haylen::input::MotionSensor> list) {
         haylen::input::GamepadMotion::Sensors sensors;
         for (const haylen::input::MotionSensor sensor : list) {
@@ -40,7 +39,7 @@ class GamepadMotionTest : public ::testing::Test {
         gamepad.connected = true;
         gamepad.motionSensors = makeSensors({haylen::input::MotionSensor::Accelerometer});
         gamepad.motion.sensors = gamepad.motionSensors;
-        gamepad.motion.acceleration = {-std::sin(right) * std::cos(far) * kGravity, -std::sin(far) * kGravity, std::cos(right) * std::cos(far) * kGravity};
+        gamepad.motion.acceleration = {-std::sin(right) * std::cos(far) * haylen::math::Math::kStandardGravity, -std::sin(far) * haylen::math::Math::kStandardGravity, std::cos(right) * std::cos(far) * haylen::math::Math::kStandardGravity};
         return gamepad;
     }
 };

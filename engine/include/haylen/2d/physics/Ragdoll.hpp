@@ -87,9 +87,6 @@ class Ragdoll final {
     static const std::array<Bone, kPartCount> kBones;
     static const std::array<Link, kPartCount - 1> kLinks;
 
-    // Standard gravity in meters per second squared, which the stiffness measures the joints against.
-    static constexpr float kStandardGravity = 9.80665F;
-
     void build(World& world, const Options& options);
     // Adds the mass of the part and of every part below it, and returns how far below the joint at `at` they reach, in heights.
     float measureLimb(Part part, float at, float& mass) const;

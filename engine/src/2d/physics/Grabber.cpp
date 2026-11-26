@@ -9,6 +9,7 @@
 
 #include "2d/physics/Box2DConverter.hpp"
 #include "haylen/2d/physics/World.hpp"
+#include "haylen/math/Math.hpp"
 
 namespace haylen::physics2d {
 
@@ -36,7 +37,7 @@ void Grabber::setPickRadius(float value) {
 void Grabber::setStrength(float value) {
     options.strength = Box2DConverter::toPositive(value, "A grabber needs a positive strength, stiffness and damping ratio.");
     if (isHolding()) {
-        joint.setMaxMotorForce(options.strength * getConnectedMass(held) * kStandardGravity * world.getPixelsPerMeter());
+        joint.setMaxMotorForce(options.strength * getConnectedMass(held) * math::Math::kStandardGravity * world.getPixelsPerMeter());
     }
 }
 
@@ -95,7 +96,7 @@ std::optional<Body> Grabber::grab(math::Vec2 point) {
         const float scale = world.getPixelsPerMeter();
         const b2Vec2 location = Box2DConverter::toMeters(point, scale);
         const math::Vec2 grip = b2Shape_TestPoint(id, location) ? point : Box2DConverter::toPixels(b2Shape_GetClosestPoint(id, location), scale);
-        const float force = options.strength * getConnectedMass(body) * kStandardGravity * scale;
+        const float force = options.strength * getConnectedMass(body) * math::Math::kStandardGravity * scale;
         joint = world.createJoint(Joint::Type::Mouse, anchor, body, {.anchorB = grip, .maxMotorForce = force, .hertz = options.hertz, .dampingRatio = options.dampingRatio});
         held = body;
         target = grip;

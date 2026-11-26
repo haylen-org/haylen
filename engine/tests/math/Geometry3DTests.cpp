@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <vector>
@@ -14,7 +15,9 @@
 #include "haylen/math/Mat4.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Obb.hpp"
+#include "haylen/math/Quat.hpp"
 #include "haylen/math/Random.hpp"
+#include "haylen/math/Ray3D.hpp"
 #include "haylen/math/Sphere.hpp"
 #include "haylen/math/Transform3D.hpp"
 #include "haylen/math/Triangle.hpp"
@@ -232,6 +235,57 @@ TEST_F(Geometry3DTest, CullsNothingThatTheViewSees) {
     EXPECT_TRUE(openGlFrustum.contains({0.0F, 2.0F, 9.0F}));
     EXPECT_FALSE(openGlFrustum.contains({0.0F, 2.0F, 9.9F}));
     EXPECT_EQ(Frustum::containmentFromName("intersecting"), Frustum::Containment::Intersecting);
+}
+
+TEST_F(Geometry3DTest, SeesThroughEveryPointOfTheViewInEveryRangeOfDepth) {
+    const Vec3 eye{800.0F, 30.0F, -1500.0F};
+    const Vec3 target{810.0F, 25.0F, -1520.0F};
+    const Vec3 forward = (target - eye).getNormalized();
+    const Mat4 view = Mat4::lookAt(eye, target);
+    constexpr float kNear = 0.25F;
+
+    for (const Mat4::DepthRange depthRange : {Mat4::DepthRange::ZeroToOne, Mat4::DepthRange::NegativeOneToOne}) {
+        for (const bool reversedDepth : {true, false}) {
+            for (const float farPlane : {100.0F, std::numeric_limits<float>::infinity()}) {
+                const Mat4 viewProjection = Mat4::perspective({.fieldOfView = Math::radians(70.0F), .aspect = 1.5F, .nearPlane = kNear, .farPlane = farPlane, .depthRange = depthRange, .reversedDepth = reversedDepth}) * view;
+                Random random(5);
+                for (int index = 0; index < 200; ++index) {
+                    const float distance = random.range(0.5F, 90.0F);
+                    const Vec3 point = eye + forward * distance + Vec3{random.range(-0.4F, 0.4F), random.range(-0.3F, 0.3F), random.range(-0.4F, 0.4F)} * distance;
+                    const Vec3 onScreen = viewProjection.apply(point);
+                    const Ray3D ray = Ray3D::fromView(viewProjection, {onScreen.x, onScreen.y}, depthRange, reversedDepth);
+
+                    const Vec3 toPoint = point - ray.origin;
+                    EXPECT_GT(Vec3::dot(toPoint, ray.direction), 0.0F) << index;
+                    EXPECT_LT(Vec3::cross(toPoint, ray.direction).getLength(), 2e-3F * distance) << index;
+                    EXPECT_NEAR(Vec3::dot(ray.origin - eye, forward), kNear, 1e-3F) << index;
+                    EXPECT_TRUE(std::isinf(ray.length)) << index;
+                }
+            }
+        }
+    }
+
+    const Mat4 box = Mat4::orthographic({.left = -8.0F, .right = 8.0F, .bottom = -4.5F, .top = 4.5F, .nearPlane = 1.0F, .farPlane = 50.0F}) * view;
+    const Ray3D corner = Ray3D::fromView(box, {1.0F, -1.0F}, Mat4::DepthRange::ZeroToOne, true);
+    EXPECT_TRUE(Vec3::approximately(corner.direction, forward, 1e-4F));
+    EXPECT_NEAR(Vec3::dot(corner.origin - eye, forward), 1.0F, 1e-3F);
+    EXPECT_TRUE(Vec3::approximately(box.apply(corner.origin), {1.0F, -1.0F, 1.0F}, 1e-3F));
+}
+
+TEST_F(Geometry3DTest, RefusesViewsThatNoCameraHas) {
+    const Mat4 viewProjection = Mat4::perspective({}) * Mat4::lookAt({0.0F, 0.0F, 5.0F}, {});
+    EXPECT_THROW((void)Ray3D::fromView(viewProjection, {std::nanf(""), 0.0F}, Mat4::DepthRange::ZeroToOne, true), std::invalid_argument);
+    EXPECT_THROW((void)Ray3D::fromView(Mat4::compose({}, Quat::identity(), {1.0F, 0.0F, 1.0F}), {0.0F, 0.0F}, Mat4::DepthRange::ZeroToOne, true), std::invalid_argument);
+
+    // The inverse of this matrix puts every point of the left edge of the view at infinity.
+    Mat4 inverse;
+    inverse.values[3] = 1.0F;
+    try {
+        (void)Ray3D::fromView(inverse.getInverse(), {-1.0F, 0.0F}, Mat4::DepthRange::ZeroToOne, true);
+        ADD_FAILURE() << "The view ray of a point at infinity was made.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The matrix is not the projection and view of a camera, because it puts the point of the view at no place on the near plane.");
+    }
 }
 
 TEST_F(Geometry3DTest, FindsTheClosestPoints) {

@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "haylen/2d/physics/World.hpp"
+#include "haylen/math/Math.hpp"
 
 namespace haylen::physics2d {
 
@@ -89,7 +90,7 @@ void Ragdoll::build(World& world, const Options& options) {
     for (const Link& link : kLinks) {
         float mass = 0.0F;
         const float reach = measureLimb(link.child, link.at, mass) * scale;
-        const float torque = options.stiffness * mass * kStandardGravity * world.getPixelsPerMeter() * reach;
+        const float torque = options.stiffness * mass * math::Math::kStandardGravity * world.getPixelsPerMeter() * reach;
         const Joint::Options joint{.anchorA = options.position + math::Vec2{0.0F, link.at * scale}, .enableLimit = true, .lower = link.lower, .upper = link.upper, .enableMotor = torque > 0.0F, .maxMotorTorque = torque};
         joints.push_back(world.createJoint(Joint::Type::Revolute, getBody(link.parent), getBody(link.child), joint));
     }

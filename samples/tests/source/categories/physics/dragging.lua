@@ -1,6 +1,7 @@
 -- Dragging a ragdoll up the stairs with the same strength in two worlds. On the left a mouse joint pulls with a force sized to the one limb it holds, which drags the figure along the steps without lifting it, and on the right `physics2d.newGrabber` sizes the pull to the limb and everything joined to it, so the figure follows the pointer like a crate does. The walls of the two worlds meet in one stone pillar between the sides.
 local haylen = require('haylen')
 local input = require('haylen.input')
+local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
 local ui = require('haylen.ui')
 
@@ -15,12 +16,11 @@ Dragging.code = [[
 local hand = physics2d.newGrabber(world, {strength = 8})
 hand:grab(x, y)
 hand:moveTo(x, y)  -- Lifts the limb and everything joined to it.
-local force = 8 * limb.mass * 9.8 * world.pixelsPerMeter  -- One limb only.
+local force = 8 * limb.mass * m.standardGravity * world.pixelsPerMeter  -- One limb only.
 local joint = world:createJoint('mouse', anchor, limb, {bx = x, by = y, maxMotorForce = force})
 joint.target = {x, y}]]
 
 Dragging.strength = 8
-Dragging.standardGravity = 9.80665
 Dragging.steps, Dragging.stepWidth, Dragging.stepHeight = 4, 80, 64
 Dragging.stairLeft = -110
 Dragging.cycle = 5
@@ -106,7 +106,7 @@ function Dragging:take(half, x, y, radius)
     for _, shape in ipairs(half.world:queryCircle(x, y, radius)) do
         local body = shape.body
         if body.type == 'dynamic' then
-            local force = self.strength * body.mass * Dragging.standardGravity * half.world.pixelsPerMeter
+            local force = self.strength * body.mass * m.standardGravity * half.world.pixelsPerMeter
             half.joint = half.world:createJoint('mouse', half.anchor, body, {bx = x, by = y, maxMotorForce = force, hertz = 5, dampingRatio = 0.7})
             half.held = body
             return true

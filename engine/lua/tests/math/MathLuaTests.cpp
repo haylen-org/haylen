@@ -168,6 +168,7 @@ TEST_F(MathLuaTest, ProvidesScalarHelpers) {
     EXPECT_EQ(lua("return m.dampFactor(10, 0) .. ' ' .. m.degrees(m.pi) .. ' ' .. tostring(m.approximately(m.radians(180), m.pi))"), "0.0 180.0 true");
     EXPECT_EQ(lua("return m.approximately(1, 1.05, 0.1) and not m.approximately(1, 1.05)"), "true");
     EXPECT_EQ(lua("return m.tau == 2 * m.pi and m.halfPi == m.pi / 2"), "true");
+    EXPECT_EQ(lua("return m.approximately(m.standardGravity, 9.80665)"), "true");
     EXPECT_EQ(lua("return m.sign(-3) .. ' ' .. m.sign(0) .. ' ' .. m.sign(0.2)"), "-1.0 0.0 1.0");
     EXPECT_EQ(lua("return m.saturate(1.5) .. ' ' .. m.saturate(-2) .. ' ' .. m.saturate(0.25)"), "1.0 0.0 0.25");
     EXPECT_EQ(lua("return m.ease({steps = 16777216}, 0.5)"), "0.5");

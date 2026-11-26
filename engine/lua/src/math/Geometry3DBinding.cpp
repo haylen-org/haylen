@@ -12,6 +12,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/math/Geometry3D.hpp"
+#include "math/MatrixBinding.hpp"
 #include "math/NumberText.hpp"
 
 namespace haylen::lua::math {
@@ -56,6 +57,15 @@ void Geometry3DBinding::checkExtents(haylen::math::Vec3 halfExtents) {
 
 haylen::math::Ray3D Geometry3DBinding::newRay(haylen::math::Vec3 origin, haylen::math::Vec3 direction, std::optional<float> length) {
     return {origin, direction.getNormalized(), length.value_or(std::numeric_limits<float>::infinity())};
+}
+
+// Takes the matrix `projection * view`, the point of the view and the options of `MatrixBinding::readDepthOptions`.
+int Geometry3DBinding::rayFromView(lua_State* L) {
+    const haylen::math::Mat4 viewProjection = lua::Stack::read<haylen::math::Mat4>(L, 1);
+    const haylen::math::Vec2 point = lua::Stack::read<haylen::math::Vec2>(L, 2);
+    const auto [depthRange, reversedDepth] = MatrixBinding::readDepthOptions(L, 3);
+    lua::Stack::push(L, haylen::math::Ray3D::fromView(viewProjection, point, depthRange, reversedDepth));
+    return 1;
 }
 
 haylen::math::Box Geometry3DBinding::boxBounds(std::vector<haylen::math::Vec3> points) {
@@ -242,7 +252,7 @@ void Geometry3DBinding::install(lua_State* L) {
 
 void Geometry3DBinding::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"plane", &lua::Binding::function<&haylen::math::Plane::fromNormal>}, {"planeFromPoint", &lua::Binding::function<&haylen::math::Plane::fromPoint>}, {"planeFromPoints", &lua::Binding::function<&haylen::math::Plane::fromPoints>}, {"ray3d", &lua::Binding::function<&newRay>}, {"ray3dBetween", &lua::Binding::function<&haylen::math::Ray3D::between>}, {"segment3d", &lua::Binding::function<&newSegment>}, {"box", &lua::Binding::function<&newBox>}, {"boxFromCenter", &lua::Binding::function<&haylen::math::Box::fromCenter>}, {"boxBounds", &lua::Binding::function<&boxBounds>}, {"sphere", &lua::Binding::function<&newSphere>}, {"obb", &lua::Binding::function<&newObb>}, {"obbFromTransform", &lua::Binding::function<&haylen::math::Obb::fromTransform>}, {"capsule", &lua::Binding::function<&newCapsule>}, {"triangle", &lua::Binding::function<&newTriangle>}, {"frustum", &lua::Binding::function<&newFrustum>}, {nullptr, nullptr},
+        {"plane", &lua::Binding::function<&haylen::math::Plane::fromNormal>}, {"planeFromPoint", &lua::Binding::function<&haylen::math::Plane::fromPoint>}, {"planeFromPoints", &lua::Binding::function<&haylen::math::Plane::fromPoints>}, {"ray3d", &lua::Binding::function<&newRay>}, {"ray3dBetween", &lua::Binding::function<&haylen::math::Ray3D::between>}, {"ray3dFromView", &lua::Binding::native<&rayFromView>}, {"segment3d", &lua::Binding::function<&newSegment>}, {"box", &lua::Binding::function<&newBox>}, {"boxFromCenter", &lua::Binding::function<&haylen::math::Box::fromCenter>}, {"boxBounds", &lua::Binding::function<&boxBounds>}, {"sphere", &lua::Binding::function<&newSphere>}, {"obb", &lua::Binding::function<&newObb>}, {"obbFromTransform", &lua::Binding::function<&haylen::math::Obb::fromTransform>}, {"capsule", &lua::Binding::function<&newCapsule>}, {"triangle", &lua::Binding::function<&newTriangle>}, {"frustum", &lua::Binding::function<&newFrustum>}, {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
 }

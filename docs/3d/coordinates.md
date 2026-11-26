@@ -32,7 +32,28 @@ The 2D side of Haylen keeps its own axes, with `y` down as on the screen. The tw
 
 ## Units
 
-One unit is one meter in physics, audio, XR and light. A character one and a half units tall is one and a half meters tall, gravity pulls at about 9.8 units per second squared, a sound fades with distance in meters, and an XR headset reports the head of the person in meters. Keep the size of things real, and every module behaves the way its numbers say.
+One unit is one meter in physics, audio, XR and light. A character one and a half units tall is one and a half meters tall, a sound fades with distance in meters, and an XR headset reports the head of the person in meters. Keep the size of things real, and every module behaves the way its numbers say. Every other quantity of the 3D API takes the unit of the International System that goes with the meter:
+
+| Quantity | Unit | Examples |
+| --- | --- | --- |
+| Distance, size and position | Meters | The near and far planes of a camera, the range of a light, the distances of shadows, fog, detail levels, culling and fades, the radius and height of a navigation agent, the size of a navigation cell, the width of a line, water waves, terrain, decals, particles and the reference spaces of XR. |
+| Speed | Meters per second | The velocity of a body, of a particle or of a sound source for the Doppler effect. |
+| Acceleration | Meters per second squared | Gravity, which pulls toward negative `y` with standard gravity, `m.standardGravity`, about 9.81 meters per second squared, by default. |
+| Mass | Kilograms | The mass of a body. |
+| Force | Newtons | A push on a body, the weight of a mass under gravity. |
+| Torque | Newton meters | A twist on a body or the strength of a motor of a joint. |
+| Density | Kilograms per cubic meter | The density of a shape, which gives its body a mass, about `1000` for water. |
+| Angle | Radians | Every rotation, field of view and cone, as the next section describes. |
+| Lens and sensor | Millimeters | The focal length and the sensor size of a physical camera, the units of photography. |
+
+glTF files measure in meters too, so the engine reads them without a scale, and the import tool brings every other format to meters. The 2D side keeps its own units, pixels on the screen and the pixels per meter that 2D physics converts with.
+
+```lua
+local m = require('haylen.math')
+
+local crate = 2
+print(crate * m.standardGravity) -- the weight of a crate of 2 kilograms, about 19.6 newtons
+```
 
 ## Angles
 
@@ -123,7 +144,7 @@ local projection = m.perspective({nearPlane = 0.1})
 print(projection:apply({0, 0, -0.1}).z, projection:apply({0, 0, -1000}).z) -- 1.0 and close to 0
 ```
 
-Each graphics API has its own range of depth in clip space. Metal, Direct3D, Vulkan and WebGPU use `0` to `1`, and OpenGL and WebGL2 use `-1` to `1`. The range belongs to the `gpu::Device` of each API, and a projection matrix is built for the range of the device that draws, which the projection functions of `haylen.math` take as `depthRange`. OpenGL takes the range of `0` to `1` with `glClipControl` where the driver has it, and a projection for `-1` to `1` corrects the range elsewhere. Nothing besides the projection and the device converts depth.
+Each graphics API has its own range of depth in clip space. Metal, Direct3D, Vulkan and WebGPU use `0` to `1`, and OpenGL and WebGL2 use `-1` to `1`. The range belongs to the `gpu::Device` of each API, and a projection matrix is built for the range of the device that draws, which the projection functions of `haylen.math` take as `depthRange`. OpenGL takes the range of `0` to `1` with `glClipControl` where the driver has it, and a projection for `-1` to `1` corrects the range elsewhere. Nothing besides the projection and the device converts depth, and the ray that `m.ray3dFromView` makes for picking takes the same `depthRange` and `reversedDepth` as the projection, so it finds the same point on every graphics API.
 
 Textures and render targets have the same origin on every graphics API, so a texture coordinate and a pixel of a render target point at the same place whatever draws.
 

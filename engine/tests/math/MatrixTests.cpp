@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -155,6 +156,39 @@ TEST_F(MatrixTest, BuildsTheDepthOfEveryRange) {
     const Mat4 box = Mat4::orthographic({.left = -2.0F, .right = 2.0F, .bottom = -1.0F, .top = 1.0F, .nearPlane = 1.0F, .farPlane = 5.0F});
     EXPECT_TRUE(Vec3::approximately(box.apply({2.0F, 1.0F, -1.0F}), {1.0F, 1.0F, 1.0F}));
     EXPECT_TRUE(Vec3::approximately(box.apply({-2.0F, -1.0F, -5.0F}), {-1.0F, -1.0F, 0.0F}));
+}
+
+TEST_F(MatrixTest, MirroredModelsTurnTheWindingOfTheirFrontFacesAround) {
+    const Vec3 eye{0.0F, 0.0F, 0.0F};
+    const Mat4 viewProjection = Mat4::perspective({.nearPlane = 0.1F, .farPlane = 100.0F}) * Mat4::lookAt(eye, {0.0F, 0.0F, -1.0F});
+    const std::array<Vec3, 3> corners{Vec3{-0.5F, -0.5F, 0.0F}, Vec3{0.5F, -0.5F, 0.0F}, Vec3{0.0F, 0.5F, 0.0F}};
+    const Vec3 outward{0.0F, 0.0F, 1.0F};
+
+    Random random(3);
+    for (int index = 0; index < 500; ++index) {
+        const Vec3 axis{random.range(-1.0F, 1.0F), random.range(-1.0F, 1.0F), random.range(0.1F, 1.0F)};
+        const Quat rotation = Quat::fromAxisAngle(axis, random.range(-Math::kPi, Math::kPi));
+        const Vec3 scale{random.range(0.5F, 2.0F) * (index % 2 == 0 ? 1.0F : -1.0F), random.range(0.5F, 2.0F) * (index % 4 < 2 ? 1.0F : -1.0F), random.range(0.5F, 2.0F) * (index % 8 < 4 ? 1.0F : -1.0F)};
+        const Mat4 model = Mat4::compose({0.0F, 0.0F, -10.0F}, rotation, scale);
+
+        // The front of a triangle is the side its outward normal points to, and the camera sees that side when the normal points at the eye.
+        const Vec3 normal = (model.getNormalMatrix() * outward).getNormalized();
+        const float facing = Vec3::dot(normal, (eye - model.apply({})).getNormalized());
+        // A triangle seen edge on has no winding on the screen.
+        if (std::fabs(facing) < 0.01F) {
+            continue;
+        }
+
+        const bool facesCamera = facing > 0.0F;
+        const Vec3 a = (viewProjection * model).apply(corners[0]);
+        const Vec3 b = (viewProjection * model).apply(corners[1]);
+        const Vec3 c = (viewProjection * model).apply(corners[2]);
+        const bool counterClockwise = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0.0F;
+
+        const bool mirrored = model.getDeterminant() < 0.0F;
+        EXPECT_EQ(mirrored, scale.x * scale.y * scale.z < 0.0F) << index;
+        EXPECT_EQ(counterClockwise, facesCamera != mirrored) << index;
+    }
 }
 
 TEST_F(MatrixTest, AsymmetricViewsMatchTheirAngles) {
