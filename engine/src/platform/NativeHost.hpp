@@ -85,6 +85,15 @@ class NativeHost : public Host {
 
     [[nodiscard]] std::string_view getPlatformName() const noexcept override;
     [[nodiscard]] bool isFrameTransparent() const noexcept override;
+
+    [[nodiscard]] bool isTakingFrames() const noexcept override {
+        return takingFrames;
+    }
+
+    // Tells whether the window system takes the frame that plays next, which only the platform layer of a Wayland session turns off.
+    void setTakingFrames(bool value) noexcept {
+        takingFrames = value;
+    }
     [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override;
     void persistUserData() override;
     [[nodiscard]] std::string getUserDataRefusal() override;
@@ -247,6 +256,7 @@ class NativeHost : public Host {
     StatusBar statusBar = StatusBar::Hidden;
     SystemGestures systemGestures = SystemGestures::System;
     bool focusable = true;
+    bool takingFrames = true;
     bool screenKeptOn = false;
     int frameRate = 0;
     float maxPixelDensity = 0.0F;

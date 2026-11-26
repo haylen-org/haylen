@@ -30,6 +30,9 @@
 #if defined(_WIN32) || defined(__linux__)
 #include "platform/sdl/TextInput.hpp"
 #endif
+#if defined(__linux__)
+#include "platform/sdl/WaylandFramePacer.hpp"
+#endif
 #if defined(__APPLE__) && !TARGET_OS_OSX
 #include "platform/SurfaceCheck.hpp"
 #endif
@@ -211,6 +214,13 @@ class Runtime final {
 
     // The events that wake the main callbacks for a frame of macOS.
     std::uint32_t frameType = 0;
+#endif
+
+#if defined(__linux__)
+
+    // The pacer of a window of a Wayland session, whose frames follow the frame callbacks of the compositor, and the events that wake the main callbacks for its frames.
+    std::unique_ptr<WaylandFramePacer> waylandPacer;
+    std::uint32_t waylandType = 0;
 #endif
 
     // The events that the platform read on its own, which wait for the event of SDL that keeps their place in the queue.

@@ -152,8 +152,9 @@ struct EngineState {
     // Whether the covered app drew the frame that stays on screen under the cover, which a halted app would only draw again the same, until the window changes size or the app comes back from the background.
     bool coveredFrameDrawn = false;
 
-    // Whether the current frame draws the app, which it decides before the plugins begin it.
+    // Whether the current frame draws the app, which it decides before the plugins begin it, and whether a frame updated while the window system took no frame, which the first frame that it takes again draws.
     bool drawing = false;
+    bool drawMissed = false;
 
     // When the app updates and draws, whether something asked for the next frame of an app that redraws on change, how many frames it still draws to settle after the last frame that a change needed, and how many events had reached a listener of the event bus when the frame before decided.
     platform::Window::Redraw redraw = config.window.redraw;

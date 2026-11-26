@@ -792,6 +792,7 @@ add_library(haylen-platform STATIC
   src/platform/GraphicsApiFallback.cpp
   src/platform/GamepadSlots.cpp
   src/platform/GamepadVendors.cpp
+  src/platform/FrameCallbackGate.cpp
   src/platform/FrameRateGate.cpp
   src/platform/FrameTimer.cpp
   src/platform/GraphicsApiOrder.cpp
@@ -936,6 +937,10 @@ if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
   # Windows and Linux type through the text events of SDL, while the other platforms edit text in a native field of their own.
   if(HAYLEN_PLATFORM MATCHES "^(windows|linux)$")
     list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/TextInput.cpp)
+  endif()
+  # A Wayland session paces the frames of the window by the frame callbacks of its surface, through the library of Wayland that SDL loads.
+  if(HAYLEN_PLATFORM STREQUAL "linux")
+    list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/WaylandFramePacer.cpp)
   endif()
   # The host of Apple platforms reaches the native text field of `platform::AppleTextInput` and, in UIKit apps, the controllers of `platform::AppleGamepads`, whose headers speak Objective-C. UIKit apps read their controllers through those, and the other platforms through the gamepads of SDL.
   if(APPLE)

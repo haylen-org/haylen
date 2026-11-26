@@ -342,7 +342,8 @@ void Engine::frame(double frameSeconds) {
     // A halted app lets no time pass, and an app in the background draws nothing, so it does no GPU work. A covered app draws one frame once the cover began, which shows it covered and stays on screen, and no more while the cover lasts, and an opaque screen of a plugin hides the app, which draws nothing under it. A window without area, such as a canvas that its page hides, shows nothing, so the app draws nothing and lays nothing out until it has an area again.
     const bool halted = isHalted();
     const bool hidden = current.appState == AppState::Background;
-    current.drawing = !hidden && !current.hiddenByScreen && !(current.covered && current.coveredFrameDrawn) && hasWindowArea();
+    const bool taking = current.host.isTakingFrames();
+    current.drawing = !hidden && taking && !current.hiddenByScreen && !(current.covered && current.coveredFrameDrawn) && hasWindowArea();
     remapViewport();
     current.gamepadMotion->update(!hidden);
     current.host.pollGamepads(current.gamepads);
@@ -385,8 +386,13 @@ void Engine::frame(double frameSeconds) {
 
         runScripts(frameSeconds);
 
-        // A frame that an app that redraws on change skips draws nothing and updates nothing, so the picture of the frame before stays on the screen, and it only lets the time of the timers pass and keeps its time out of the fixed steps, so the frame after it neither jumps nor catches up.
+        // A frame that an app that redraws on change skips draws nothing and updates nothing, so the picture of the frame before stays on the screen, and it only lets the time of the timers pass and keeps its time out of the fixed steps, so the frame after it neither jumps nor catches up. A change that a frame updated while the window system took no frame draws once it takes frames again.
+        if (taking && std::exchange(current.drawMissed, false)) {
+            requestRedraw();
+        }
+
         const bool updating = takeRedraw(halted);
+        current.drawMissed = current.drawMissed || (updating && !taking);
         current.drawing = current.drawing && updating;
 
         if (!hidden) {

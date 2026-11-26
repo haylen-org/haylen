@@ -147,6 +147,7 @@ set(HAYLEN_TEST_SOURCES
   platform/NativeViewsTests.cpp
   platform/StreamTests.cpp
   platform/SystemFontReaderTests.cpp
+  platform/FrameCallbackGateTests.cpp
   platform/FrameRateGateTests.cpp
   platform/PixelDensityCapTests.cpp
   platform/AndroidGamepadStatesTests.cpp
@@ -180,6 +181,7 @@ set(HAYLEN_TEST_SOURCES
   platform/SupportedOrientationsTests.cpp
   platform/SurfaceCheckTests.cpp
   platform/SystemTests.cpp
+  platform/TakingFramesTests.cpp
   platform/TextHelperTests.cpp
   platform/WebEntryTests.cpp
   platform/MouseModeTests.cpp

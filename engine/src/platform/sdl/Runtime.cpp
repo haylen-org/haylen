@@ -236,6 +236,9 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
     }
 
     postedType = SDL_RegisterEvents(1);
+#if defined(__linux__)
+    waylandType = SDL_RegisterEvents(1);
+#endif
 #if defined(__APPLE__) && TARGET_OS_OSX
     // The main callbacks wait for events in the run loop of AppKit, and the frames come from the display link of the screen as events too, so the main thread waits between the frames as the one of every native app does.
     SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "waitevent");
@@ -268,6 +271,11 @@ SDL_AppResult Runtime::start() {
 #endif
 #if defined(__APPLE__) && TARGET_OS_TV
     SDL_SetEventFilter(&Runtime::onFilter, this);
+#endif
+#if defined(__linux__)
+    // A window of a Wayland session takes its frames by the frame callbacks of its surface, which wake the main callbacks as events.
+    waylandPacer = WaylandFramePacer::start(window.get(), waylandType, kHiddenRate);
+    updateCallbackRate();
 #endif
     Player::initialize();
     started = true;
@@ -340,6 +348,12 @@ SDL_AppResult Runtime::iterate() {
         return SDL_APP_CONTINUE;
     }
 #endif
+#if defined(__linux__)
+    // The events of a Wayland session wake the main callbacks too, and only a frame of a frame callback or of the timer of the pacer plays.
+    if (waylandPacer != nullptr && !waylandPacer->takeFrame()) {
+        return SDL_APP_CONTINUE;
+    }
+#endif
 
     if (!started) {
         return start();
@@ -347,11 +361,26 @@ SDL_AppResult Runtime::iterate() {
 
     const std::uint64_t now = SDL_GetTicksNS();
     if (!frameRate.takeFrame(static_cast<double>(now) / 1.0e9)) {
+#if defined(__linux__)
+        if (waylandPacer != nullptr) {
+            waylandPacer->skipFrame();
+        }
+#endif
         return SDL_APP_CONTINUE;
     }
 
     recover();
+#if defined(__linux__)
+    // A frame of a Wayland session draws only while the compositor takes frames, so the swapchain never waits for a compositor that holds its callbacks.
+    const bool presentable = waylandPacer == nullptr || waylandPacer->beginFrame();
+    host->setTakingFrames(presentable);
+#endif
     Player::frame(timer.next(now));
+#if defined(__linux__)
+    if (waylandPacer != nullptr && presentable) {
+        waylandPacer->endFrame(Player::isDrawing());
+    }
+#endif
     followPresents();
 #if defined(__APPLE__) && !TARGET_OS_OSX && !defined(NDEBUG)
     AppleApplication::checkSurface(surfaceCheck);
@@ -390,6 +419,15 @@ SDL_AppResult Runtime::handle(const SDL_Event& event) {
 #if defined(__APPLE__) && TARGET_OS_OSX
     if (event.type == frameType) {
         AppleFramePacer::receiveWake();
+        return SDL_APP_CONTINUE;
+    }
+#endif
+#if defined(__linux__)
+    if (event.type == waylandType) {
+        if (waylandPacer != nullptr) {
+            waylandPacer->receiveWake(event.user);
+        }
+
         return SDL_APP_CONTINUE;
     }
 #endif
@@ -473,6 +511,9 @@ void Runtime::quit() noexcept {
 #if defined(__APPLE__) && TARGET_OS_OSX
     AppleFramePacer::stop();
 #endif
+#if defined(__linux__)
+    waylandPacer.reset();
+#endif
     host = nullptr;
     platform::NativeWindow::install(nullptr);
     openedDevice.reset();
@@ -533,6 +574,13 @@ void Runtime::followWindow(const SDL_Event& event) {
             updateCallbackRate();
         }
 
+#if defined(__linux__)
+        // SDL reports a window that the compositor suspends as occluded, and it presents nothing until it shows again.
+        if (waylandPacer != nullptr) {
+            waylandPacer->setSuspended(nowHidden);
+        }
+#endif
+
         // A window that shows again may have lost its picture, such as one of X11 without a compositor, so an app that redraws on change draws it again.
         if (event.type == SDL_EVENT_WINDOW_EXPOSED) {
             Player::requestRedraw();
@@ -586,6 +634,14 @@ void Runtime::updateCallbackRate() {
 #if defined(__APPLE__) && TARGET_OS_OSX
     AppleFramePacer::pace(target, hiddenRate, hidden);
 #else
+#if defined(__linux__)
+    // The frame callbacks and the timer of the pacer wake the main callbacks of a Wayland session, which wait for events between them.
+    if (waylandPacer != nullptr) {
+        waylandPacer->setHiddenRate(hiddenRate);
+        SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "waitevent");
+        return;
+    }
+#endif
     int rate = hidden ? hiddenRate : target;
 #if defined(__EMSCRIPTEN__)
     if (!hidden) {

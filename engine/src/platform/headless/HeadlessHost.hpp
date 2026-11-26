@@ -300,6 +300,15 @@ class HeadlessHost final : public Host {
         audioOutput = std::move(value);
     }
     [[nodiscard]] bool isFrameTransparent() const noexcept override;
+
+    [[nodiscard]] bool isTakingFrames() const noexcept override {
+        return takingFrames;
+    }
+
+    // Makes the window take frames or not, the way a Wayland compositor that holds its frame callbacks or suspends the window takes none.
+    void setTakingFrames(bool value) noexcept {
+        takingFrames = value;
+    }
     [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override;
     void persistUserData() override {
         ++persistCount;
@@ -852,6 +861,7 @@ class HeadlessHost final : public Host {
     bool transparencySupported = false;
     int windowSamples = 1;
     bool transparent = false;
+    bool takingFrames = true;
     bool decorated = true;
     bool alwaysOnTop = false;
     bool shownInTaskbar = true;

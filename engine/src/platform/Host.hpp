@@ -60,6 +60,9 @@ class Host : public Window {
 
     // Whether the window composes the alpha of every frame with the desktop.
     [[nodiscard]] virtual bool isFrameTransparent() const noexcept = 0;
+
+    // Whether the window system takes a new frame of the window now. A Wayland compositor that still holds the frame callback of the last frame, or that suspends the window, takes none, and a frame then draws nothing while the app runs on.
+    [[nodiscard]] virtual bool isTakingFrames() const noexcept = 0;
     [[nodiscard]] virtual std::filesystem::path getUserDataDirectory(std::string_view identifier) = 0;
     virtual void persistUserData() = 0;
     [[nodiscard]] virtual std::string getUserDataRefusal() = 0;
