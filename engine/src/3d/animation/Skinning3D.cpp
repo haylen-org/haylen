@@ -4,6 +4,7 @@
 #include <format>
 #include <stdexcept>
 
+#include "3d/animation/VertexHelper3D.hpp"
 #include "haylen/core/JobSystem.hpp"
 
 namespace haylen::animation3d {
@@ -32,11 +33,6 @@ template <typename Body> void Skinning3D::run(std::size_t count, core::JobSystem
     body(0, count);
 }
 
-math::Vec3 Skinning3D::unit(math::Vec3 vector) noexcept {
-    const float length = vector.getLength();
-    return length > 0.0F ? vector * (1.0F / length) : math::Vec3{};
-}
-
 void Skinning3D::applyLinear(const SkinWeights3D& weights, std::span<const math::Mat4> palette, const Vertices& vertices, core::JobSystem* jobs) {
     check(weights, palette.size(), vertices);
     const std::size_t influences = weights.getInfluenceCount();
@@ -60,7 +56,7 @@ void Skinning3D::applyLinear(const SkinWeights3D& weights, std::span<const math:
             vertices.skinnedPositions[vertex] = blended.apply(position);
             if (!vertices.normals.empty()) {
                 const math::Vec3 normal = vertices.normals[vertex];
-                vertices.skinnedNormals[vertex] = unit(blended.applyVector(normal));
+                vertices.skinnedNormals[vertex] = VertexHelper3D::unitOrZero(blended.applyVector(normal));
             }
         }
     });
@@ -93,7 +89,7 @@ void Skinning3D::applyDualQuat(const SkinWeights3D& weights, std::span<const mat
             vertices.skinnedPositions[vertex] = blended.apply(position);
             if (!vertices.normals.empty()) {
                 const math::Vec3 normal = vertices.normals[vertex];
-                vertices.skinnedNormals[vertex] = unit(blended.getRotation().rotate(normal));
+                vertices.skinnedNormals[vertex] = VertexHelper3D::unitOrZero(blended.getRotation().rotate(normal));
             }
         }
     });

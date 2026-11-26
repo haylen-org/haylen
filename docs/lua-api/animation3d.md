@@ -1,6 +1,6 @@
 # 📖 `haylen.animation3d`
 
-The module `haylen.animation3d` animates 3D models and scenes. It makes tracks, the keys of one property of a node, a bone or a component over time, gathers them into clips with their events, reads the clips of glTF files, edits clips into new ones and plays them with clip players. It also makes the skeletons, poses, skins and skin weights of characters, bends their vertices on the CPU and poses crowds in pose batches. Times are in seconds, positions in meters and angles in radians. The [3D animation guide](../3d/animation.md) explains how the parts fit together.
+The module `haylen.animation3d` animates 3D models and scenes. It makes tracks, the keys of one property of a node, a bone or a component over time, gathers them into clips with their events, reads the clips of glTF files, edits clips into new ones and plays them with clip players. It also makes the skeletons, poses, skins and skin weights of characters, bends their vertices on the CPU, poses crowds in pose batches and blends the morph targets of meshes. Times are in seconds, positions in meters and angles in radians. The [3D animation guide](../3d/animation.md) explains how the parts fit together.
 
 ```lua
 local animation3d = require('haylen.animation3d')
@@ -146,6 +146,18 @@ Returns the [`SkinWeights3D`](#skinweights3d) of a primitive of a mesh table of 
 ### animation3d.newPoseBatch(skin)
 
 Returns an empty [`PoseBatch3D`](#posebatch3d) of the characters of a skin.
+
+### animation3d.newMorphTargets(vertexCount, targets)
+
+Returns [`MorphTargets3D`](#morphtargets3d) of a mesh of `vertexCount` vertices from a list of targets, each `{name, vertices, positions, normals, tangents}`, whose unknown keys raise `Unknown option "<key>".`. The `vertices` are the vertices that the target moves, counted from 1 and growing, and `positions`, `normals` and `tangents`, each optional, hold three numbers for each of them, in a list or a `FloatBuffer`: the difference that the target adds at a weight of one. Each named target needs a name of its own.
+
+### animation3d.morphTargetsFromGltf(document, mesh, options)
+
+Returns the [`MorphTargets3D`](#morphtargets3d) of a primitive of a mesh table of a `Document`, each keeping the vertices it moves, named by the `targetNames` of the `extras` of the mesh when they name every target. The optional table `options` takes `primitive`, counted from 1 (default `1`), and other keys raise `Unknown option "<key>".`.
+
+### animation3d.faceExpressions
+
+The list of the names of the 52 face blend shapes that face tracking reports, from `'eyeBlinkLeft'` to `'tongueOut'`, which [`targets:find`](#targetsfindname) finds the targets of.
 
 ## Track3D
 
@@ -453,6 +465,25 @@ local palettes = collections.newFloatBuffer(crowd.count * crowd.paletteSize)
 crowd:readPalettes(palettes)
 ```
 
+## MorphTargets3D
+
+`MorphTargets3D` hold the morph targets of a mesh, each with the vertices it moves.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `targetCount` | integer | The number of targets. |
+| `vertexCount` | integer | The vertices of the mesh. |
+| `names` | list | The name of each target, an empty string for a target without one. |
+| `memorySize` | integer | The bytes that the vertices and differences of the targets take. |
+
+### targets:find(name)
+
+Returns the place of the target of a name, counted from 1, or nil, such as the target of a face expression by its name.
+
+### targets:apply(weights, positions, morphedPositions, options)
+
+Writes the base positions of a `FloatBuffer`, three floats for each vertex, plus each target times its weight, into `morphedPositions`. The `weights` are one number for each target in a list or a `FloatBuffer`, and may lie below zero or above one. The optional table `options` takes `normals` with `morphedNormals` and `tangents` with `morphedTangents`, float buffers of three floats for each vertex, which become unit vectors again, and other keys raise `Unknown option "<key>".`. Weights of another count or that are not finite raise `The morph targets take <count> finite weights, one for each target, while <given> weights were given.`.
+
 ## Enum names
 
 | Field | Names |
@@ -487,3 +518,7 @@ Keys that break the rules of a track raise a sentence that names the track and t
 | `Vertex <index> of the skin weights names joint <joint> of a skin with <count> joints.` | A vertex names a joint the skin lacks. |
 | `The weights of vertex <index> of the skin weights add up to <sum> and not to 1.` | The weights of a vertex do not add up to one. |
 | `A vertex takes 4 or 8 influences, while <count> were asked for.` | `skinWeightsFromGltf` got other influences. |
+| `The morph target "<name>" names vertex <vertex> at place <place>, while the vertices of a target grow and stay below the <count> vertices of the mesh.` | The vertices of a target are out of order or past the mesh. |
+| `The morph target "<name>" holds <count> differences of an attribute for its <vertices> vertices.` | The differences of a target do not match its vertices. |
+| `The morph target "<name>" has the name of another target, while each target needs a name of its own.` | Two targets share a name. |
+| `The options "normals" and "morphedNormals" come together, and so do "tangents" and "morphedTangents".` | `targets:apply` got one of a pair. |

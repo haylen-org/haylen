@@ -56,9 +56,6 @@ class Skin3DBinding final {
     inline static std::vector<haylen::math::Vec3> skinnedPositions;
     inline static std::vector<haylen::math::Vec3> skinnedNormals;
 
-    static void readVectors(std::span<const float> numbers, std::size_t count, std::vector<haylen::math::Vec3>& target, std::string_view what);
-    static void writeVectors(const std::vector<haylen::math::Vec3>& source, std::span<float> numbers);
-
     static int jointCount(lua_State* L);
     static int joints(lua_State* L);
     static int skinSkeleton(lua_State* L);

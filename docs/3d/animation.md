@@ -1,6 +1,6 @@
 # 🏃 3D animation
 
-This guide explains how Haylen animates 3D models and scenes with the module `haylen.animation3d`. It covers tracks, the keys of one property over time, the four ways values run between keys, clips that hold the tracks of one animation, the clips of glTF files, players that run a clip over time and report its events, and the edits that make new clips, skeletons with their poses, skins with their palettes and the weights of their vertices, skinning on the CPU and crowds of characters posed on the job system. The [`haylen.animation3d` reference](../lua-api/animation3d.md) lists every function, option and error.
+This guide explains how Haylen animates 3D models and scenes with the module `haylen.animation3d`. It covers tracks, the keys of one property over time, the four ways values run between keys, clips that hold the tracks of one animation, the clips of glTF files, players that run a clip over time and report its events, and the edits that make new clips, skeletons with their poses, skins with their palettes and the weights of their vertices, skinning on the CPU, crowds of characters posed on the job system, and morph targets with the face expressions of face tracking. The [`haylen.animation3d` reference](../lua-api/animation3d.md) lists every function, option and error.
 
 ## Tracks
 
@@ -223,13 +223,53 @@ scene.push({
 })
 ```
 
+## Morph targets
+
+A morph target is a shape of a mesh: the difference that it adds to the positions, normals and tangents of the vertices, such as a smile, a blink or a dent. The weights of a mesh blend its targets over its base shape, each target times its weight, and a track of `weights` animates them. A weight may lie below zero or above one, which reaches past a target, as glTF allows.
+
+`animation3d.morphTargetsFromGltf` reads the targets of a primitive of a glTF mesh. Each target keeps only the vertices it moves, so a face of fifty targets that each move a few hundred of its vertices takes little memory. A target takes its name from the `targetNames` that the `extras` of the mesh list, which the tools that export glTF write, and `targets:find(name)` finds a target by it. `targets:apply(weights, positions, morphedPositions)` blends the targets on the CPU, with normals and tangents that become unit vectors again, for what needs the morphed shape itself, such as its bounds or a check of the morphing of the GPU.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local collections = require('haylen.collections')
+local gltf = require('haylen.gltf')
+
+local document = gltf.read('models/face.glb')
+local primitive = document.meshes[1].primitives[1]
+local targets = animation3d.morphTargetsFromGltf(document, document.meshes[1])
+local positions = document:readAccessor(primitive.attributes.POSITION)
+local weights = collections.newFloatBuffer(targets.targetCount)
+weights[targets:find('smile')] = 0.8
+local morphed = collections.newFloatBuffer(#positions)
+targets:apply(weights, positions, morphed)
+```
+
+## Face expressions
+
+Face tracking on phones and headsets reports the face of a person as the weights of 52 blend shapes with fixed names, such as `jawOpen`, `eyeBlinkLeft` and `mouthSmileRight`. Artists give the morph targets of faces the same names, so the weights that tracking reports drive the targets of a model of the same names without a table of their own. `animation3d.faceExpressions` lists the 52 names, and `targets:find` finds the target of each.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local gltf = require('haylen.gltf')
+
+local document = gltf.read('models/face.glb')
+local targets = animation3d.morphTargetsFromGltf(document, document.meshes[1])
+local covered = 0
+for _, expression in ipairs(animation3d.faceExpressions) do
+    if targets:find(expression) then
+        covered = covered + 1
+    end
+end
+print(covered .. ' of ' .. #animation3d.faceExpressions .. ' expressions have a target.')
+```
+
 ## Performance
 
-Sampling, posing, palettes and skinning run in C++, and nothing allocates once their buffers exist. The command `haylen engine bench --suite animation3d` measures a clip of 64 bones, a pose with its palette, a crowd of 500 characters of 64 joints on one thread and on the job system, and 10 thousand vertices skinned with matrices and with dual quaternions.
+Sampling, posing, palettes, skinning and morphing run in C++, and nothing allocates once their buffers exist. The command `haylen engine bench --suite animation3d` measures a clip of 64 bones, a pose with its palette, a crowd of 500 characters of 64 joints on one thread and on the job system, and 10 thousand vertices skinned with matrices and with dual quaternions.
 
 ## From C++
 
-The C++ types live in `haylen/3d/animation/`, in the namespace `haylen::animation3d`: `Track3D`, `Clip3D`, `ClipPlayer3D`, `Skeleton3D`, `Pose3D`, `PoseSampler3D`, which binds a clip to a skeleton once for many characters, `Skin3D`, `SkinWeights3D`, `Skinning3D` and `PoseBatch3D`. A clip is shared data, so players hold it as a `std::shared_ptr<const Clip3D>`, and its sample writes into a span of floats with a cursor for each track. Sampling allocates nothing, and an update of a player allocates nothing once its events of one update fit what earlier updates held.
+The C++ types live in `haylen/3d/animation/`, in the namespace `haylen::animation3d`: `Track3D`, `Clip3D`, `ClipPlayer3D`, `Skeleton3D`, `Pose3D`, `PoseSampler3D`, which binds a clip to a skeleton once for many characters, `Skin3D`, `SkinWeights3D`, `Skinning3D`, `PoseBatch3D`, `MorphTargets3D` and the enum `FaceExpression3D`. A clip is shared data, so players hold it as a `std::shared_ptr<const Clip3D>`, and its sample writes into a span of floats with a cursor for each track. Sampling allocates nothing, and an update of a player allocates nothing once its events of one update fit what earlier updates held.
 
 ```cpp
 #include <memory>

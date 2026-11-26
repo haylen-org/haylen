@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "haylen/3d/animation/Clip3D.hpp"
+#include "haylen/3d/animation/MorphTargets3D.hpp"
 #include "haylen/3d/animation/Skeleton3D.hpp"
 #include "haylen/3d/animation/Skin3D.hpp"
 #include "haylen/3d/animation/SkinWeights3D.hpp"
@@ -19,7 +20,7 @@
 
 namespace haylen::gltf {
 
-// Feeds the glTF reader the inputs libFuzzer generates. An input that starts like a GLB file or a JSON object is a whole file, which covers the container, the JSON and the rules of the document. Any other input gives its first byte to pick a document whose shape is fixed and its other bytes to the data of that document: the binary chunk of a GLB file with accessors of every use, so the rules of the data and the reading of accessors run on hostile bytes, or the text of the `data:` URIs of a buffer and an image. A document that reads has every accessor read, every image decoded within 64 pixels every animation made into a clip that samples at times across it and past both ends, and every skin made into a skeleton and a skin whose palette bends the vertices of each primitive it bends with 4 and 8 influences. Only the failures of reading a file, of decoding an image, of sampling a rotation that a spline passes through zero and of the dual quaternion of a joint whose inverse bind matrix scales an axis to zero may leave, so any other exception, such as a clip or a skin that a valid document does not make, is a bug that the fuzzer reports.
+// Feeds the glTF reader the inputs libFuzzer generates. An input that starts like a GLB file or a JSON object is a whole file, which covers the container, the JSON and the rules of the document. Any other input gives its first byte to pick a document whose shape is fixed and its other bytes to the data of that document: the binary chunk of a GLB file with accessors of every use, so the rules of the data and the reading of accessors run on hostile bytes, or the text of the `data:` URIs of a buffer and an image. A document that reads has every accessor read, every image decoded within 64 pixels every animation made into a clip that samples at times across it and past both ends, every skin made into a skeleton and a skin whose palette bends the vertices of each primitive it bends with 4 and 8 influences, and the morph targets of every primitive blended at half their weights. Only the failures of reading a file, of decoding an image, of sampling a rotation that a spline passes through zero and of the dual quaternion of a joint whose inverse bind matrix scales an axis to zero may leave, so any other exception, such as a clip or a skin that a valid document does not make, is a bug that the fuzzer reports.
 class GltfFuzzer final {
   public:
     static void run(std::span<const std::uint8_t> input) {
@@ -66,6 +67,10 @@ class GltfFuzzer final {
                     skin(document, *node.mesh, *node.skin);
                 }
             }
+
+            for (std::size_t mesh = 0; mesh < document.meshes.size(); ++mesh) {
+                morph(document, mesh);
+            }
         } catch (const haylen::gltf::ReadError&) {}
     }
 
@@ -97,6 +102,20 @@ class GltfFuzzer final {
                 const haylen::animation3d::SkinWeights3D weights = haylen::animation3d::SkinWeights3D::fromGltf(document, mesh, primitive, joints.getJointCount(), influences);
                 haylen::animation3d::Skinning3D::applyLinear(weights, palette, {.positions = positions, .skinnedPositions = skinned});
             }
+        }
+    }
+
+    static void morph(const haylen::gltf::Document& document, std::size_t mesh) {
+        for (std::size_t primitive = 0; primitive < document.meshes[mesh].primitives.size(); ++primitive) {
+            if (document.meshes[mesh].primitives[primitive].targets.empty()) {
+                continue;
+            }
+
+            const haylen::animation3d::MorphTargets3D targets = haylen::animation3d::MorphTargets3D::fromGltf(document, mesh, primitive);
+            const std::vector<haylen::math::Vec3> base(targets.getVertexCount());
+            std::vector<haylen::math::Vec3> morphed(targets.getVertexCount());
+            const std::vector<float> weights(targets.getTargetCount(), 0.5F);
+            targets.apply(weights, {.positions = base, .morphedPositions = morphed});
         }
     }
 

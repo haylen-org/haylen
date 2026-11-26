@@ -41,7 +41,6 @@ class Skinning3D final {
 
     // Runs the body over the range of vertices, in chunks on the job system for a large mesh.
     template <typename Body> static void run(std::size_t count, core::JobSystem* jobs, const Body& body);
-    [[nodiscard]] static math::Vec3 unit(math::Vec3 vector) noexcept;
 };
 
 } // namespace haylen::animation3d

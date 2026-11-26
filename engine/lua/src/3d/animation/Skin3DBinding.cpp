@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "3d/animation/Skeleton3DBinding.hpp"
+#include "3d/animation/VertexBuffers3D.hpp"
 #include "3d/gltf/GltfBinding.hpp"
 #include "core/FloatBufferBinding.hpp"
 #include "haylen/3d/animation/Skinning3D.hpp"
@@ -204,36 +205,15 @@ int Skin3DBinding::readWeights(lua_State* L) {
     return 0;
 }
 
-void Skin3DBinding::readVectors(std::span<const float> numbers, std::size_t count, std::vector<haylen::math::Vec3>& target, std::string_view what) {
-    if (numbers.size() < count * 3) {
-        throw std::invalid_argument(std::format("The {} of {} vertices take {} values, while the buffer holds {}.", what, count, count * 3, numbers.size()));
-    }
-
-    target.resize(count);
-    for (std::size_t vertex = 0; vertex < count; ++vertex) {
-        target[vertex] = {numbers[vertex * 3], numbers[vertex * 3 + 1], numbers[vertex * 3 + 2]};
-    }
-}
-
-void Skin3DBinding::writeVectors(const std::vector<haylen::math::Vec3>& source, std::span<float> numbers) {
-    for (std::size_t vertex = 0; vertex < source.size(); ++vertex) {
-        numbers[vertex * 3] = source[vertex].x;
-        numbers[vertex * 3 + 1] = source[vertex].y;
-        numbers[vertex * 3 + 2] = source[vertex].z;
-    }
-}
-
 // Bends positions on the CPU with `skin(pose, skin, positions, skinnedPositions[, {normals, skinnedNormals, dualQuaternions}])`, three floats for each vertex in float buffers, with matrices or with dual quaternions, on the job system for a large mesh.
 int Skin3DBinding::skin(lua_State* L) {
     const SkinWeights3D& weights = lua::Userdata::check<SkinWeights3D>(L, 1);
     const ScriptedPose3D& pose = Skeleton3DBinding::checkPose(L, 2);
     const std::shared_ptr<const Skin3D> jointSkin = checkSkin(L, 3);
     const std::size_t count = weights.getVertexCount();
-    readVectors(lua::Userdata::check<haylen::core::FloatBuffer>(L, 4).getValues(), count, positions, "positions");
-    std::span<float> skinnedTarget = lua::Userdata::check<haylen::core::FloatBuffer>(L, 5).getValues();
-    if (skinnedTarget.size() < count * 3) {
-        throw std::invalid_argument(std::format("The skinned positions of {} vertices take {} values, while the buffer holds {}.", count, count * 3, skinnedTarget.size()));
-    }
+    VertexBuffers3D::read(lua::Userdata::check<haylen::core::FloatBuffer>(L, 4).getValues(), count, positions, "positions");
+    const std::span<float> skinnedTarget = lua::Userdata::check<haylen::core::FloatBuffer>(L, 5).getValues();
+    VertexBuffers3D::requireRoom(skinnedTarget, count, "skinned positions");
 
     std::span<float> normalTarget;
     bool dualQuaternions = false;
@@ -244,13 +224,11 @@ int Skin3DBinding::skin(lua_State* L) {
         lua::Table::readField(L, 6, "dualQuaternions", dualQuaternions);
         lua_getfield(L, 6, "normals");
         if (!lua_isnil(L, -1)) {
-            readVectors(lua::Userdata::check<haylen::core::FloatBuffer>(L, -1).getValues(), count, normals, "normals");
+            VertexBuffers3D::read(lua::Userdata::check<haylen::core::FloatBuffer>(L, -1).getValues(), count, normals, "normals");
             lua_getfield(L, 6, "skinnedNormals");
             normalTarget = lua::Userdata::check<haylen::core::FloatBuffer>(L, -1).getValues();
             lua_pop(L, 1);
-            if (normalTarget.size() < count * 3) {
-                throw std::invalid_argument(std::format("The skinned normals of {} vertices take {} values, while the buffer holds {}.", count, count * 3, normalTarget.size()));
-            }
+            VertexBuffers3D::requireRoom(normalTarget, count, "skinned normals");
         }
 
         lua_pop(L, 1);
@@ -270,8 +248,8 @@ int Skin3DBinding::skin(lua_State* L) {
         haylen::animation3d::Skinning3D::applyLinear(weights, matrices, vertices, &jobs);
     }
 
-    writeVectors(skinnedPositions, skinnedTarget);
-    writeVectors(skinnedNormals, normalTarget);
+    VertexBuffers3D::write(skinnedPositions, skinnedTarget);
+    VertexBuffers3D::write(skinnedNormals, normalTarget);
     return 0;
 }
 

@@ -212,6 +212,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/3d/animation/ClipPlayer3D.cpp
   src/3d/animation/GltfClip3DReader.cpp
   src/3d/animation/GltfNodeNames3D.cpp
+  src/3d/animation/MorphTargets3D.cpp
   src/3d/animation/Pose3D.cpp
   src/3d/animation/PoseBatch3D.cpp
   src/3d/animation/PoseSampler3D.cpp
