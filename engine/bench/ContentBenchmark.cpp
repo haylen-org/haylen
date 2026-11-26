@@ -73,7 +73,7 @@ class ContentBenchmark final {
         auto signing = std::make_shared<const content::SigningKey>(makeKey(101));
         const lua::content::BytecodeCompiler compiler;
         const content::ReleaseBuilder builder(keys, keyId, signing);
-        const content::Compatibility compatibility{.application = content::Manifest::identifyApplication(kIdentifier), .appBuild = 1, .profile = "desktop"};
+        const content::Compatibility compatibility{.application = content::Manifest::identifyApplication(kIdentifier), .appBuild = 1, .profile = "desktop", .luaAbi = compiler.getAbi()};
         const content::VerifyingKey trusted = signing->getVerifyingKey();
 
         std::printf("%-52s %16s %14s\n", "Measurement", "Result", "Largest alloc");
