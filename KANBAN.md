@@ -8782,10 +8782,12 @@ Os comandos de lote da ferramenta ligam a máquina, mandam a árvore, rodam a ve
 
 O sanitizer de threads do GCC 13 morre com "unexpected memory mapping" em kernels com muita entropia de ASLR, como o kernel 7.0 da AWS. A máquina Linux de lote deixa `vm.mmap_rnd_bits` em 28, como as imagens do GitHub, e `docs/tools/hardware-testing.md` explica isso.
 
+Decisão do dono: ao fim de cada lote, antes de a máquina parar, o lote apaga as pastas de build do que testou e todo arquivo temporário que nenhum lote seguinte usa. Assim, o disco guarda só as ferramentas instaladas e não acumula trabalho velho que custa espaço.
+
 #### Acceptance criteria
 
 - [ ] Um lote do Windows compila e testa a engine com o MSVC numa máquina Windows de verdade, incluindo os testes de GPU do Direct3D 11 e 12.
-- [ ] As máquinas da nuvem ficam paradas com o disco pronto, e um lote as liga, roda e desliga.
+- [ ] As máquinas da nuvem ficam paradas com o disco pronto, e um lote as liga, roda, limpa o build e os temporários e desliga.
 
 #### Attachments
 
