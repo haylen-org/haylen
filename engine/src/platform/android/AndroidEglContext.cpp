@@ -40,7 +40,7 @@ AndroidEglContext::AndroidEglContext(int sampleCount, bool validation) : display
 // A window surface of EGL on another window, which the context of the activity draws into while it is current on it.
 class AndroidEglContext::Drawable final : public gpu::GlContext {
   public:
-    Drawable(EGLDisplay owner, EGLConfig config, EGLContext shared, ANativeWindow& window) : display(owner), context(shared), surface(eglCreateWindowSurface(owner, config, &window, nullptr)) {
+    Drawable(EGLDisplay owner, EGLConfig windowConfig, EGLContext shared, ANativeWindow& window) : display(owner), context(shared), surface(eglCreateWindowSurface(owner, windowConfig, &window, nullptr)) {
         if (surface == EGL_NO_SURFACE) {
             throw std::runtime_error("EGL could not make a surface of the window of the output.");
         }
