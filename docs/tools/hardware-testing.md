@@ -114,6 +114,28 @@ Every platform but the Apple TV and the Apple Vision Pro, which no cloud rents a
 | Browser, real GPU | EC2 `g4dn.xlarge` or Azure `Standard_NG8ads_V620_v1`, with Chrome started with `--enable-gpu` | The same pages as [Browser](#browser). | The price of the machine |
 | Browsers on Device Farm | Device Farm desktop browsers, such as Chrome, Firefox and Edge | A Selenium session that opens the page of `haylen app run --target web`, served where the browsers reach it. | About US$ 0.005 per browser minute |
 
+### Batch machines
+
+A batch machine runs the checks of many changes at once and starts warm, so a batch spends its time on builds and tests instead of installing tools. Work is grouped into batches: each line of work queues its commits with the checks they need, and one machine runs every queued job in one session.
+
+The Linux batch machine starts from a machine image of EC2 that holds what the Linux jobs of continuous integration install, at the versions of the runner image:
+
+- The GCC and Clang of the Ubuntu release of the runners, the newest CMake, Ninja, and uv, which installs the Python that `.python-version` names.
+- Xvfb with Mesa lavapipe for Vulkan and llvmpipe for OpenGL, and Chrome for the checks of the web.
+- The Android SDK with the NDK, CMake, platform, emulator and system image that the Android jobs install, with their two virtual devices.
+- The pinned Emscripten and shader compiler, and sccache.
+- A clone of the repository with the sources of the dependencies in `.cache/cpm`, so CPM downloads only the pins that changed since the image was made.
+
+The image holds no build folder, no log, no key and no credential. A new image replaces the old one when the toolchain of continuous integration changes, and only one image and its snapshot are kept.
+
+A batch launches one machine from the image with a fresh key pair, a security group that lets in SSH from the address of the machine that runs the batch alone, and a shutdown timer that terminates the machine on its own. It takes a spot instance in the zone with the lowest spot price, and an on-demand one when spot capacity or quota is missing. An instance type with nested virtualization, such as the `c8i` types of EC2, gives the Android emulator the KVM it needs. The machine sets the kernel setting `vm.mmap_rnd_bits` to 28, as the images of the runners do, since the thread sanitizer of GCC maps its shadow memory at fixed addresses that the larger address randomization of the kernels of EC2 can overlap, and then stops with `unexpected memory mapping`.
+
+Each job of a batch names a commit, a compiler and its steps, such as the engine tests, the GPU tests on Vulkan and OpenGL under Xvfb, the sanitizers, the fuzzers, the test project and the web and Android builds. Every commit reaches the machine as a git bundle, and every job builds in a fresh worktree of its own, so no result comes from the build folder of another tree. The jobs run in parallel, each step writes a log, and the batch ends with one summary of every step and of the compiler cache. Then the worktrees and their build folders are removed and the machine is deleted with its volume, its key pair and its security group, and the listings of EC2 confirm that nothing is left.
+
+Every compile goes through sccache with the bucket of continuous integration, as [the compiler cache](testing.md#the-compiler-cache) describes. The endpoint and the token of the bucket travel from the environment of the machine that starts the batch through the input of SSH into the environment of the batch alone, and never into a file, an argument or a log. sccache hashes every path inside a worktree and inside the shared clone relative to them, through `SCCACHE_BASEDIRS`, so the jobs share their objects with each other, with later batches and with continuous integration. A batch whose commits continuous integration or an earlier batch compiled builds in minutes.
+
+The Windows batch machine is a virtual machine of Azure that stays deallocated between batches, so only its disk is billed while it waits. It runs Windows 11 on a size with a GPU, such as `Standard_NG8ads_V620_v1` with a part of an AMD Radeon PRO V620, which runs Direct3D 11, Direct3D 12, Vulkan and OpenGL, with WARP for the software runs. Its disk holds the build tools that [Building](build.md#requirements) lists for the target `windows`, the Direct3D debug layer, sccache and a clone of the repository with its caches, while the builds run on the temporary disk of the size, which a deallocation empties. A batch user signs in on the console at every start through autologon, with a password that only the LSA secret of autologon keeps, so the GPU tests that need a desktop, the swapchains of windows and OpenGL, run in that session through a scheduled task, after SSH built their programs with the compiler cache. A batch starts the machine, gives it a public address and an SSH rule for the address of the machine that runs the batch, runs every queued job, copies the logs back, deletes the build trees, the bundles and the files that the tests leave in the temporary folder, deallocates the machine and removes the address and the rule.
+
 ### Amazon Web Services
 
 Amazon rents GPU machines by the hour and real Android and iOS devices by the minute. The tools are the AWS command line (`aws`) with your access keys in the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Never write the keys into a file, a log or the repository.
