@@ -89,7 +89,7 @@ The engine names every moment of the system, of the app and of its screen with o
 | The network comes or goes. | `networkOnline`, `networkOffline` | [`haylen.networkState()`](../lua-api/haylen.md#haylennetworkstate) |
 | The accessibility settings change. | `accessibilitySettingsChanged` | [`accessibility.settings()`](../lua-api/accessibility.md#accessibilitysettings) |
 | The system takes the audio and gives it back, or the output moves. | `audioInterrupted`, `audioResumed`, `audioRouteChanged` | [`audio.interrupted()`](../lua-api/audio.md#audiointerrupted) |
-| The window shows or hides. | `appActive` and `appBackground` | `'background'` while it hides. |
+| The window is minimized and restored, or a phone, a tablet, a TV or a browser hides the app and shows it again. | `appBackground` and `appActive` | `'background'` while it hides. A desktop window that hides without being minimized, such as with Command+H, only makes the app `'inactive'`. |
 | The window changes size, orientation, fold, safe area or display. | `windowResized`, `windowOrientationChanged`, `windowFoldChanged`, `windowSafeAreaChanged`, `windowDisplayChanged` | [`haylen.window`](../lua-api/window.md) and [`haylen.viewport`](../lua-api/viewport.md) |
 | A display connects, disconnects or changes. | `displayConnected`, `displayDisconnected`, `displayChanged` | [`haylen.display`](../lua-api/display.md) |
 | The on-screen keyboard shows or hides. | `keyboardShown`, `keyboardHidden` | The frame of the keyboard comes with `keyboardShown`. |
@@ -255,7 +255,9 @@ end)
 
 Every event of the engine reaches the app on every platform where its source exists. The tables below say where each event of the platform comes from, where it never fires, and why. Native UI of plugins makes the app `'inactive'` on every platform while it [covers the app](#covered-by-native-ui). The test `PLT-006` of the test project lists these events for the platform it runs on and marks each one as it fires.
 
-The other events come from the engine itself and fire the same way everywhere: `appStarted`, `appStopping`, `appError`, `appRecovered`, `paused`, `unpaused`, every scene event, `pluginStarted`, `pluginStopped`, `autoloadStarted`, `autoloadStopped`, `guiMounted`, `guiUnmounted`, the asset events, `moduleReloaded`, `objectCreated`, `objectDestroyed` and the WebSocket events.
+Some sources reach every platform beside what each table lists. The safe area that `debug.safeArea` of `haylen.json` or [`viewport.setSafeAreaSimulation`](../lua-api/viewport.md#viewportsetsafeareasimulationvalue) simulates publishes `windowSafeAreaChanged` and `windowCutoutsChanged`, and the fold that `debug.fold` or [`window.setFoldSimulation`](../lua-api/window.md#windowsetfoldsimulationvalue) simulates publishes `windowFoldChanged`, also where a table says that the device reports none. The safe area is in design units, so a new size of the window also publishes `windowSafeAreaChanged` under a scaling that shows more or less of the design, such as `expand`, `fill`, `fitWidth` and `none`. The events of outputs, `outputShown`, `outputHidden`, `outputResized`, `outputClosed` and `outputInput`, follow the windows of the outputs of the app wherever the platform has outputs, as the [displays guide](../platform/displays.md) describes. The event `systemLanguagesChanged` follows the languages that the person prefers, from the source of each platform that the [localization guide](localization.md#where-the-languages-come-from) lists.
+
+The other events come from the engine itself and fire the same way everywhere: `appStarted`, `appStopping`, `appError`, `appRecovered`, `paused`, `unpaused`, every scene event, `pluginStarted`, `pluginStopped`, `autoloadStarted`, `autoloadStopped`, `guiMounted`, `guiUnmounted`, `languageChanged`, `saveSlotWritten`, `breadcrumbAdded`, the asset events, the events of content updates, `contentUpdateAvailable`, `contentUpdateReady`, `contentUpdateFailed` and `contentRecovered`, `moduleReloaded`, `objectCreated`, `objectDestroyed` and the WebSocket events.
 
 ### macOS
 
@@ -267,8 +269,9 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appQuitRequested` | The close button of the window, Quit in the menu, Command+Q, the Dock and logging out, as the [desktop guide](../platform/desktop.md#menus-and-quitting) describes. |
 | `linkOpened` | The links of the schemes of `CFBundleURLTypes`, which the application delegate receives, for an app bundle. The desktop player has no bundle, so no scheme opens it. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its key state and its full screen mode. |
-| `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and no Mac folds. |
-| `windowSafeAreaChanged` | The camera housing of a Mac with a notch, for a full screen or borderless window that reaches it, the native views of plugins and the simulation. |
+| `windowOrientationChanged`, `windowFoldChanged` | Never from the device, because a desktop window counts as landscape and no Mac folds. |
+| `windowSafeAreaChanged` | The camera housing of a Mac with a notch, for a full screen or borderless window that reaches it, the native views of plugins and the new sizes of the window. |
+| `windowCutoutsChanged` | The camera housing of a Mac with a notch, for a full screen or borderless window that reaches it. |
 | `windowMoved` | The moves of the window, through AppKit. |
 | `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The changes of the screens and their work areas, through AppKit, and the screen of the window. |
 | `keyboardShown`, `keyboardHidden` | Never, because a Mac types with its keyboard and has no keyboard on the screen. |
@@ -291,8 +294,9 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appQuitRequested` | The close button of the window and Alt+F4. |
 | `linkOpened` | The links of the schemes that the installer or `run` registers, which a new process of the app hands to the one that runs through its named pipe, as the [distribution guide](../tools/distribution.md) describes. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
-| `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Windows offers desktop apps no API for the fold of a device. |
-| `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
+| `windowOrientationChanged`, `windowFoldChanged` | Never from the device, because a desktop window counts as landscape and Windows offers desktop apps no API for the fold of a device. |
+| `windowSafeAreaChanged` | The native views of plugins and the new sizes of the window, because nothing of the system covers a window. |
+| `windowCutoutsChanged` | Never from the device, because nothing of the system cuts into a window. |
 | `windowMoved` | The moves of the window, through the messages of the window. |
 | `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The changes of the displays, their settings and the work area, through the messages of the window, and the monitor of the window. |
 | `keyboardShown`, `keyboardHidden` | Never, because the engine follows no keyboard on the screen on Windows. |
@@ -315,10 +319,11 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appQuitRequested` | The close button of the window and the close shortcut of the window manager, usually Alt+F4. |
 | `linkOpened` | The links of the schemes of the desktop entry, which a new process of the app hands to the one that runs through the session bus, as the [distribution guide](../tools/distribution.md) describes. |
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
-| `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Linux desktops report no folds to windows. |
-| `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
+| `windowOrientationChanged`, `windowFoldChanged` | Never from the device, because a desktop window counts as landscape and Linux desktops report no folds to windows. |
+| `windowSafeAreaChanged` | The native views of plugins and the new sizes of the window, because nothing of the system covers a window. |
+| `windowCutoutsChanged` | Never from the device, because nothing of the system cuts into a window. |
 | `windowMoved` | The moves of the window, through X11. |
-| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The changes of the monitors of RandR and the work area, through X11, and the monitor that holds most of the window. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The changes of the monitors of RandR and the work area, through X11, and the monitor that holds most of the window. A Wayland session without X11 reports the outputs that the compositor announces, through SDL. |
 | `keyboardShown`, `keyboardHidden` | Never, because the engine follows no keyboard on the screen on Linux. |
 | `networkOnline`, `networkOffline` | The network monitor of GIO. Without GIO, `haylen.networkState()` stays `'unknown'`. |
 | `audioInterrupted`, `audioResumed` | Never, because Linux does not interrupt the audio of apps. |
@@ -336,7 +341,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as under the app switcher, Control Center, the Notification Center, a phone call or Siri. An interruption of the audio session alone pauses the voices without changing the state, because iOS does not always report its end. |
 | `appBackground` | The scene in the background, such as after Home, another app or the lock of the device. |
 | `appLowMemory` | The memory warnings of UIKit. |
-| `appQuitRequested` | Never, because iOS apps never quit on request: the system ends them in the background. |
+| `appQuitRequested` | Never from the system, because iOS apps never quit on request: the system ends them in the background. |
 | `linkOpened` | The links of the schemes of `CFBundleURLTypes` and the universal links, which the scene of the app receives. |
 | `windowResized` | The view of the app, such as a rotation or a new size of an iPad window. |
 | `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
@@ -344,6 +349,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowOrientationChanged` | The interface orientation of the scene. |
 | `windowFoldChanged` | The fold of a foldable iPhone, from the division region of the view of the window and its hinge, from iOS 27.1 on. |
 | `windowSafeAreaChanged` | The safe area insets of the view, such as a rotation that moves the notch or the Dynamic Island, and the native views of plugins. |
+| `windowCutoutsChanged` | The regions of the view that the notch, the Dynamic Island and the other elements of the screen occlude, which UIKit reports after each layout. |
 | `windowMoved` | Never, because the window has no desktop. |
 | `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The scenes of external displays that connect and disconnect, and the screen of the window, which Stage Manager on an iPad can move to an external display. |
 | `keyboardShown`, `keyboardHidden` | The keyboard notifications of UIKit while a text field edits. |
@@ -363,12 +369,13 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as under the Control Center of the TV. An interruption of the audio session alone pauses the voices without changing the state, because tvOS does not always report its end. |
 | `appBackground` | The scene in the background, such as after the TV button or another app. |
 | `appLowMemory` | The memory warnings of UIKit. |
-| `appQuitRequested` | Never, because tvOS apps never quit on request. |
+| `appQuitRequested` | Never from the system, because tvOS apps never quit on request. |
 | `linkOpened` | The links of the schemes of `CFBundleURLTypes`, which the scene of the app receives. |
 | `windowResized` | The view of the app. |
 | `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
-| `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never, because the app always fills the TV in landscape. |
+| `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never from the device, because the app always fills the TV in landscape. |
 | `windowSafeAreaChanged` | The safe area insets of the view, the overscan margins of the TV, and the native views of plugins. |
+| `windowCutoutsChanged` | Never from the device, because nothing cuts into the picture of a TV. |
 | `windowMoved` | Never, because the window has no desktop. |
 | `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | Never, because the TV is the only display of the app. |
 | `keyboardShown`, `keyboardHidden` | Never, because the keyboard of tvOS is a screen of the system over the app, which covers no part of it. |
@@ -381,6 +388,33 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController, the Siri Remote included. |
 
+### visionOS
+
+| Event | Source |
+| --- | --- |
+| `appActive`, `appInactive` | The scene of the app becoming and resigning active. An interruption of the audio session alone pauses the voices without changing the state, as on iOS. |
+| `appBackground` | The scene in the background, such as when the person goes back to the Home View. |
+| `appLowMemory` | The memory warnings of UIKit. |
+| `appQuitRequested` | Never from the system, because visionOS apps never quit on request. |
+| `linkOpened` | The links of the schemes of `CFBundleURLTypes` and the universal links, which the scene of the app receives. |
+| `windowResized` | The window of the app, which the person resizes in the space around them, and the sizes that the app asks for with [`window.setFrame`](../lua-api/window.md#windowsetframex-y-width-height). |
+| `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
+| `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never from the device, because the app always fills its window, which counts as landscape. |
+| `windowSafeAreaChanged` | The safe area insets of the window and the native views of plugins. |
+| `windowCutoutsChanged` | Never from the device, because nothing cuts into the window of an app. |
+| `windowMoved` | Never, because the window has no desktop. |
+| `displayChanged` | The window of the app, which is its one display, `main`, as its size or its safe area changes. |
+| `displayConnected`, `displayDisconnected`, `windowDisplayChanged` | Never, because visionOS has no screens and the window of the app is its only display. |
+| `keyboardShown`, `keyboardHidden` | Never, because the keyboard of visionOS floats apart from the window of the app and covers none of it. |
+| `networkOnline`, `networkOffline` | The path monitor of the Network framework. |
+| `audioInterrupted`, `audioResumed` | The interruptions of the audio session. |
+| `audioRouteChanged` | The route changes of the audio session. |
+| `systemThemeChanged`, `batteryChanged` | The trait collection of the app, whose changes visionOS reports to a handler that a view registers, and the battery of the device, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `powerSavingChanged`, `timeZoneChanged` | The low power mode of `NSProcessInfo` and the time zone of the system. |
+| `thermalStateChanged` | The thermal state of `NSProcessInfo`, with every change. |
+| `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
+| `gamepadConnected`, `gamepadDisconnected` | GameController. |
+
 ### Mac Catalyst
 
 | Event | Source |
@@ -392,8 +426,9 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `linkOpened` | The links of the schemes of `CFBundleURLTypes` and the universal links, which the scene of the app receives. |
 | `windowResized` | The window, resized by the player. |
 | `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
-| `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never, because the engine runs the window as the iPad window it is, which counts as landscape. |
+| `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never from the device, because the engine runs the window as the iPad window it is, which counts as landscape. |
 | `windowSafeAreaChanged` | The safe area insets of the view and the native views of plugins. |
+| `windowCutoutsChanged` | Never from the device, because UIKit reports no cutouts for a Mac Catalyst window. |
 | `windowMoved` | Never, because UIKit places Mac Catalyst windows on the desktop without telling apps where. |
 | `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | Never, because UIKit shows a Mac Catalyst app only the screen of its window. |
 | `keyboardShown`, `keyboardHidden` | Never, because a Mac has no keyboard on the screen. |
@@ -421,6 +456,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowOrientationChanged` | The configuration of the activity. |
 | `windowFoldChanged` | Jetpack WindowManager, on foldable and dual-screen devices, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes. |
 | `windowSafeAreaChanged` | The insets of the cutout, of the status bar while it shows and of the system bars that stay visible, and the native views of plugins. |
+| `windowCutoutsChanged` | The display cutout of the window, such as the hole of a camera. |
 | `windowMoved` | Never, because the window has no desktop. |
 | `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The display manager, which reports external displays, cast screens and secondary screens that connect, disconnect or change, and the display of the activity. |
 | `keyboardShown`, `keyboardHidden` | The insets of the input method while a text field edits. |
@@ -438,9 +474,9 @@ The other events come from the engine itself and fire the same way everywhere: `
 | Event | Source |
 | --- | --- |
 | `appActive`, `appInactive` | The window of the page gaining and losing the focus. |
-| `appBackground` | A hidden tab, through `visibilitychange`, and the request `pause` of the [editor contract](../tools/build.md#the-editor-contract) of the page. |
+| `appBackground` | A hidden tab, through `visibilitychange`, a page that goes away or that the browser freezes, through `pagehide` and `freeze`, and the request `pause` of the [editor contract](../tools/build.md#the-editor-contract) of the page. |
 | `appLowMemory` | Never, because browsers tell pages nothing about memory pressure. |
-| `appQuitRequested` | Never, because a page that closes cannot wait for the app. |
+| `appQuitRequested` | Never from the browser, because a page that closes cannot wait for the app. |
 | `linkOpened` | The links that the page or the web module of a plugin hands over with `openLink` of the [runtime API](../tools/build.md#runtime-api), such as a link of the scheme of a plugin that the hash of the page address stands in for, since a page is the link that opened it. |
 | `windowResized` | The size of the canvas, which a `ResizeObserver` follows. |
 | `windowFocusGained`, `windowFocusLost` | The window of the page gaining and losing the focus. |
@@ -448,18 +484,20 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowOrientationChanged` | The Screen Orientation API, or the `orientation` media query. |
 | `windowFoldChanged` | The Viewport Segments and Device Posture APIs where the browser offers them, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes. |
 | `windowSafeAreaChanged` | The part of the CSS `env(safe-area-inset-*)` insets that covers the canvas, and the native views of plugins. |
+| `windowCutoutsChanged` | Never from the device, because browsers tell pages only the insets of the safe area and no shapes of cutouts. |
 | `windowMoved` | Never, because a page has no place on a desktop. |
 | `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The change of the screen of the page, and once the person lets the page see every screen through `display.requestEveryScreen`, the changes of the screens of the Window Management API. |
 | `keyboardShown`, `keyboardHidden` | The `visualViewport` of the page while a text field edits on a phone or a tablet. |
 | `networkOnline`, `networkOffline` | The `online` and `offline` events of the browser. |
 | `audioInterrupted`, `audioResumed` | Never, because browsers suspend the audio of the page without telling it why. The runtime resumes it at the next tap, click or key, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. |
 | `audioRouteChanged` | Never, because the audio output of the page follows the output of the browser without telling the page. |
+| `audioUnlocked` | The first tap, click or key on the page, after which the browser lets the audio play, as the [audio guide](../audio/audio.md#the-browser) describes. |
 | `systemThemeChanged`, `batteryChanged` | The `prefers-color-scheme` media query and the Battery Status API, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `powerSavingChanged` | Never, because browsers tell pages nothing about the power saving mode of the system. |
 | `thermalStateChanged` | Never, because browsers tell pages nothing about how hot the device runs, so `system.thermalState()` stays `'unknown'`. |
 | `timeZoneChanged` | The time zone of `Intl`, which the page reads again each time it becomes visible or its window takes the focus, since browsers announce no change of the zone. |
 | `accessibilitySettingsChanged` | The media queries of reduced motion, contrast and transparency and the default font size of the browser, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
-| `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads the Gamepad API of the browser, once a button of the gamepad is pressed. |
+| `gamepadConnected`, `gamepadDisconnected` | The Gamepad API of the browser, once a button of the gamepad is pressed. A runtime on the page reads it through the gamepad API of SDL, and in the [Worker mode](../tools/build.md#hosting-the-runtime) the page reads the controllers of the standard mapping at every animation frame and posts them to the worker. |
 
 ## Assets, connections and objects
 
