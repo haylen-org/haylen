@@ -4,7 +4,7 @@ struct lua_State;
 
 namespace haylen::lua::animation3d {
 
-// Installs `haylen.animation3d` with its tracks, clips and clip players.
+// Installs `haylen.animation3d` with its tracks, clips, clip players, skeletons, poses, skins, skin weights and pose batches.
 class Animation3DBinding final {
   public:
     static void install(lua_State* L);

@@ -1,5 +1,7 @@
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -7,13 +9,17 @@
 #include <vector>
 
 #include "haylen/3d/animation/Clip3D.hpp"
+#include "haylen/3d/animation/Skeleton3D.hpp"
+#include "haylen/3d/animation/Skin3D.hpp"
+#include "haylen/3d/animation/SkinWeights3D.hpp"
+#include "haylen/3d/animation/Skinning3D.hpp"
 #include "haylen/3d/gltf/AccessorReader.hpp"
 #include "haylen/3d/gltf/Reader.hpp"
 #include "haylen/graphics/Image.hpp"
 
 namespace haylen::gltf {
 
-// Feeds the glTF reader the inputs libFuzzer generates. An input that starts like a GLB file or a JSON object is a whole file, which covers the container, the JSON and the rules of the document. Any other input gives its first byte to pick a document whose shape is fixed and its other bytes to the data of that document: the binary chunk of a GLB file with accessors of every use, so the rules of the data and the reading of accessors run on hostile bytes, or the text of the `data:` URIs of a buffer and an image. A document that reads has every accessor read, every image decoded within 64 pixels and every animation made into a clip that samples at times across it and past both ends. Only the failures of reading a file, of decoding an image and of sampling a rotation that a spline passes through zero may leave, so any other exception, such as a clip that a valid document does not make, is a bug that the fuzzer reports.
+// Feeds the glTF reader the inputs libFuzzer generates. An input that starts like a GLB file or a JSON object is a whole file, which covers the container, the JSON and the rules of the document. Any other input gives its first byte to pick a document whose shape is fixed and its other bytes to the data of that document: the binary chunk of a GLB file with accessors of every use, so the rules of the data and the reading of accessors run on hostile bytes, or the text of the `data:` URIs of a buffer and an image. A document that reads has every accessor read, every image decoded within 64 pixels every animation made into a clip that samples at times across it and past both ends, and every skin made into a skeleton and a skin whose palette bends the vertices of each primitive it bends with 4 and 8 influences. Only the failures of reading a file, of decoding an image, of sampling a rotation that a spline passes through zero and of the dual quaternion of a joint whose inverse bind matrix scales an axis to zero may leave, so any other exception, such as a clip or a skin that a valid document does not make, is a bug that the fuzzer reports.
 class GltfFuzzer final {
   public:
     static void run(std::span<const std::uint8_t> input) {
@@ -54,7 +60,44 @@ class GltfFuzzer final {
             for (std::size_t animation = 0; animation < document.animations.size(); ++animation) {
                 sample(haylen::animation3d::Clip3D::fromGltf(document, animation));
             }
+
+            for (const haylen::gltf::Node& node : document.nodes) {
+                if (node.mesh && node.skin) {
+                    skin(document, *node.mesh, *node.skin);
+                }
+            }
         } catch (const haylen::gltf::ReadError&) {}
+    }
+
+    static void skin(const haylen::gltf::Document& document, std::size_t mesh, std::size_t skin) {
+        auto skeleton = std::make_shared<const haylen::animation3d::Skeleton3D>(haylen::animation3d::Skeleton3D::fromGltf(document, skin));
+        const haylen::animation3d::Skin3D joints = haylen::animation3d::Skin3D::fromGltf(document, skin, skeleton);
+        const haylen::animation3d::Pose3D pose(skeleton);
+        std::vector<haylen::math::Mat4> palette(joints.getJointCount());
+        std::vector<haylen::math::DualQuat> dualQuats(joints.getJointCount());
+        joints.computePalette(pose, palette);
+        try {
+            joints.computeDualQuatPalette(pose, dualQuats);
+        } catch (const std::domain_error&) {}
+
+        for (std::size_t primitive = 0; primitive < document.meshes[mesh].primitives.size(); ++primitive) {
+            const std::optional<std::size_t> accessor = document.meshes[mesh].primitives[primitive].findAttribute("POSITION");
+            if (!accessor) {
+                continue;
+            }
+
+            const std::vector<float> floats = haylen::gltf::AccessorReader::readFloats(document, *accessor);
+            std::vector<haylen::math::Vec3> positions(floats.size() / 3);
+            for (std::size_t vertex = 0; vertex < positions.size(); ++vertex) {
+                positions[vertex] = {floats[vertex * 3], floats[vertex * 3 + 1], floats[vertex * 3 + 2]};
+            }
+
+            std::vector<haylen::math::Vec3> skinned(positions.size());
+            for (const std::size_t influences : {std::size_t{4}, std::size_t{8}}) {
+                const haylen::animation3d::SkinWeights3D weights = haylen::animation3d::SkinWeights3D::fromGltf(document, mesh, primitive, joints.getJointCount(), influences);
+                haylen::animation3d::Skinning3D::applyLinear(weights, palette, {.positions = positions, .skinnedPositions = skinned});
+            }
+        }
     }
 
     static void sample(const haylen::animation3d::Clip3D& clip) {

@@ -212,6 +212,13 @@ set(HAYLEN_ENGINE_SOURCES
   src/3d/animation/ClipPlayer3D.cpp
   src/3d/animation/GltfClip3DReader.cpp
   src/3d/animation/GltfNodeNames3D.cpp
+  src/3d/animation/Pose3D.cpp
+  src/3d/animation/PoseBatch3D.cpp
+  src/3d/animation/PoseSampler3D.cpp
+  src/3d/animation/Skeleton3D.cpp
+  src/3d/animation/Skin3D.cpp
+  src/3d/animation/SkinWeights3D.cpp
+  src/3d/animation/Skinning3D.cpp
   src/3d/animation/Track3D.cpp
   src/3d/gltf/AccessorReader.cpp
   src/3d/gltf/AccessorView.cpp
@@ -1175,6 +1182,12 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   target_link_libraries(haylen-model-benchmark PRIVATE haylen::engine)
   set_target_properties(haylen-model-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-model-benchmark)
+
+  # The 3D animation benchmark times clips, poses, crowds of characters and skinning on the CPU.
+  add_executable(haylen-animation3d-benchmark bench/Animation3DBenchmark.cpp)
+  target_link_libraries(haylen-animation3d-benchmark PRIVATE haylen::engine)
+  set_target_properties(haylen-animation3d-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-animation3d-benchmark)
 
   # The algorithm benchmark times path finding, crowds, spatial queries, ray casts and batch math on the CPU, so it is a plain executable too. The physics world links the debug drawing of the renderer, whose GPU calls the null GPU device of the headless host satisfies.
   add_executable(haylen-algorithm-benchmark bench/AlgorithmBenchmark.cpp)

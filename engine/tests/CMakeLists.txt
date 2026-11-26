@@ -53,6 +53,7 @@ set(HAYLEN_TEST_SOURCES
   2d/tiled/TiledTests.cpp
   3d/animation/Clip3DTests.cpp
   3d/animation/ClipPlayer3DTests.cpp
+  3d/animation/Skeleton3DTests.cpp
   3d/animation/Track3DTests.cpp
   3d/gltf/AccessorReaderTests.cpp
   3d/gltf/ReaderRulesTests.cpp

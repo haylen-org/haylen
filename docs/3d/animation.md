@@ -1,6 +1,6 @@
 # 🏃 3D animation
 
-This guide explains how Haylen animates 3D models and scenes with the module `haylen.animation3d`. It covers tracks, the keys of one property over time, the four ways values run between keys, clips that hold the tracks of one animation, the clips of glTF files, players that run a clip over time and report its events, and the edits that make new clips. The [`haylen.animation3d` reference](../lua-api/animation3d.md) lists every function, option and error.
+This guide explains how Haylen animates 3D models and scenes with the module `haylen.animation3d`. It covers tracks, the keys of one property over time, the four ways values run between keys, clips that hold the tracks of one animation, the clips of glTF files, players that run a clip over time and report its events, and the edits that make new clips, skeletons with their poses, skins with their palettes and the weights of their vertices, skinning on the CPU and crowds of characters posed on the job system. The [`haylen.animation3d` reference](../lua-api/animation3d.md) lists every function, option and error.
 
 ## Tracks
 
@@ -142,9 +142,94 @@ local wave = animation3d.clipFromGltf(document, document.animations[2]):toAdditi
 print(intro.duration, light.memorySize, all.memorySize, wave.name)
 ```
 
+## Skeletons and poses
+
+A skeleton is the hierarchy of the bones of a character. Each bone has a name, a parent and a rest pose, its position, rotation and scale relative to its parent when nothing moves it. A skeleton is shared data, so a hundred characters of one model share one skeleton, and each character keeps its own `Pose3D`, the local transform of each bone.
+
+`animation3d.skeletonFromGltf` makes the skeleton of a skin of a glTF file. Its bones are the joints of the skin and every node above them, so a node between two joints, or the node of the armature above the hips, places the joints as the file does. Each bone takes the name of its node by the same rule as the tracks of clips, so a clip of the file, or of another file of the same rig, moves the bones of the names it targets.
+
+A pose samples a clip with `pose:sample(clip, time)`, which writes the tracks of `position`, `rotation` and `scale` of each bone that the clip moves and leaves the other bones as they are. The other tracks of the clip, such as the morph weights of a face, belong to other parts of the engine. Then `pose:computeModelMatrices()` gives each bone its matrix in the space of the skeleton, its parent's matrix times its own transform, which attaches things to a bone, such as a sword to a hand.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local gltf = require('haylen.gltf')
+
+local document = gltf.read('models/knight.glb')
+local skeleton = animation3d.skeletonFromGltf(document, document.skins[1])
+local walk = animation3d.clipFromGltf(document, document.animations[1])
+local pose = animation3d.newPose(skeleton)
+pose:sample(walk, 0.4)
+pose:computeModelMatrices()
+local hand = pose:modelMatrix('RightHand'):apply({0, 0, 0})
+print(skeleton.boneCount, hand)
+```
+
+## Skins and palettes
+
+A skin names the joints that bend a mesh: bones of a skeleton, each with its inverse bind matrix, which brings a vertex of the mesh into the space of its bone at rest. The palette of a pose holds one matrix for each joint, the model matrix of its bone times its inverse bind matrix, so a joint at rest moves nothing and a joint that turns turns the vertices that follow it. A skin has no limit on its joints other than the bones of a skeleton.
+
+`skin:palette(pose, buffer)` writes twelve floats for each joint, the first three rows of its matrix, which is the layout that a texture or a buffer of joints holds on the GPU. `skin:dualQuatPalette(pose, buffer)` writes the rotation and the translation of each joint as a dual quaternion, which blends without the loss of volume that blended matrices show at twisted joints, such as a forearm that turns at the wrist. Dual quaternions hold no scale, so their rotations come from the rotations of the pose, and a skin whose joints scale, such as a character that grows, blends matrices.
+
+## Skin weights
+
+Each vertex of a skinned mesh follows a few joints by weights that add up to one. A glTF file gives them in sets of four, `JOINTS_0` and `WEIGHTS_0`, then `JOINTS_1` and `WEIGHTS_1` for vertices of more joints. `animation3d.skinWeightsFromGltf` packs every set into the same number of influences for each vertex, 4 or 8, the way a vertex shader reads them: each vertex keeps its largest weights in the order of their size, the joint of the lower index first between equal weights, and they add up to one again. Four influences suit most characters and cost less, and eight keep the faces and hands of detailed characters. Joints that name no joint of the skin and weights that are negative or do not add up to one are refused with a sentence that names the vertex.
+
+## Skinning on the CPU
+
+`weights:skin(pose, skin, positions, skinnedPositions)` bends the positions of a mesh, three floats for each vertex in float buffers, and also its normals with the options `normals` and `skinnedNormals`. It blends the matrices of the joints of each vertex, or their dual quaternions with `dualQuaternions = true`, and spreads a large mesh over the job system. The GPU bends the meshes that draw, so skinning on the CPU serves what needs the bent shape itself, such as the bounds of a posed character, a ray cast against it or a check of the skinning of the GPU.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local collections = require('haylen.collections')
+local gltf = require('haylen.gltf')
+
+local document = gltf.read('models/knight.glb')
+local skeleton = animation3d.skeletonFromGltf(document, document.skins[1])
+local skin = animation3d.skinFromGltf(document, document.skins[1], skeleton)
+local weights = animation3d.skinWeightsFromGltf(document, document.meshes[1], skin, {influences = 4})
+local positions = document:readAccessor(document.meshes[1].primitives[1].attributes.POSITION)
+local pose = animation3d.newPose(skeleton)
+pose:sample(animation3d.clipFromGltf(document, document.animations[1]), 0.4)
+pose:computeModelMatrices()
+local bent = collections.newFloatBuffer(#positions)
+weights:skin(pose, skin, positions, bent, {dualQuaternions = true})
+```
+
+## Crowds
+
+A crowd of characters of one model costs one call per frame with a `PoseBatch3D`. Each character of the batch loops a clip at its own time and speed, and `batch:update(dt)` moves every time, poses every character and writes all the palettes into one buffer, the characters one after another, so one texture of joints feeds an instanced draw of the whole crowd. The characters spread over the job system, and characters of one clip share the binding of the clip to the skeleton.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local collections = require('haylen.collections')
+local gltf = require('haylen.gltf')
+local scene = require('haylen.scene')
+
+local document = gltf.read('models/villager.glb')
+local skeleton = animation3d.skeletonFromGltf(document, document.skins[1])
+local skin = animation3d.skinFromGltf(document, document.skins[1], skeleton)
+local walk = animation3d.clipFromGltf(document, document.animations[1])
+local crowd = animation3d.newPoseBatch(skin)
+for index = 1, 500 do
+    crowd:add(walk, {time = math.random() * walk.duration, speed = 0.8 + math.random() * 0.4})
+end
+local palettes = collections.newFloatBuffer(crowd.count * crowd.paletteSize)
+
+scene.push({
+    update = function(self, dt)
+        crowd:update(dt)
+        crowd:readPalettes(palettes)
+    end,
+})
+```
+
+## Performance
+
+Sampling, posing, palettes and skinning run in C++, and nothing allocates once their buffers exist. The command `haylen engine bench --suite animation3d` measures a clip of 64 bones, a pose with its palette, a crowd of 500 characters of 64 joints on one thread and on the job system, and 10 thousand vertices skinned with matrices and with dual quaternions.
+
 ## From C++
 
-The C++ types live in `haylen/3d/animation/`, in the namespace `haylen::animation3d`: `Track3D`, `Clip3D` and `ClipPlayer3D`. A clip is shared data, so players hold it as a `std::shared_ptr<const Clip3D>`, and its sample writes into a span of floats with a cursor for each track. Sampling allocates nothing, and an update of a player allocates nothing once its events of one update fit what earlier updates held.
+The C++ types live in `haylen/3d/animation/`, in the namespace `haylen::animation3d`: `Track3D`, `Clip3D`, `ClipPlayer3D`, `Skeleton3D`, `Pose3D`, `PoseSampler3D`, which binds a clip to a skeleton once for many characters, `Skin3D`, `SkinWeights3D`, `Skinning3D` and `PoseBatch3D`. A clip is shared data, so players hold it as a `std::shared_ptr<const Clip3D>`, and its sample writes into a span of floats with a cursor for each track. Sampling allocates nothing, and an update of a player allocates nothing once its events of one update fit what earlier updates held.
 
 ```cpp
 #include <memory>

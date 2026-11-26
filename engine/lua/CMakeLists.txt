@@ -58,6 +58,9 @@ set(HAYLEN_LUA_SOURCES
   src/3d/animation/Animation3DBinding.cpp
   src/3d/animation/Clip3DBinding.cpp
   src/3d/animation/ClipPlayer3DBinding.cpp
+  src/3d/animation/PoseBatch3DBinding.cpp
+  src/3d/animation/Skeleton3DBinding.cpp
+  src/3d/animation/Skin3DBinding.cpp
   src/3d/animation/Track3DBinding.cpp
   src/3d/gltf/GltfBinding.cpp
   src/3d/navigation/CrowdBinding.cpp

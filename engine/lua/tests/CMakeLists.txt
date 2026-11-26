@@ -34,6 +34,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   2d/tiled/MapQueryTests.cpp
   2d/tiled/TiledTests.cpp
   3d/animation/Animation3DLuaTests.cpp
+  3d/animation/Skeleton3DLuaTests.cpp
   3d/gltf/GltfTests.cpp
   3d/navigation/Navigation3DLuaTests.cpp
   3d/nodes/NodeTree3DTests.cpp

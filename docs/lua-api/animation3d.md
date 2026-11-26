@@ -1,6 +1,6 @@
 # 📖 `haylen.animation3d`
 
-The module `haylen.animation3d` animates 3D models and scenes. It makes tracks, the keys of one property of a node, a bone or a component over time, gathers them into clips with their events, reads the clips of glTF files, edits clips into new ones and plays them with clip players. Times are in seconds, positions in meters and angles in radians. The [3D animation guide](../3d/animation.md) explains how the parts fit together.
+The module `haylen.animation3d` animates 3D models and scenes. It makes tracks, the keys of one property of a node, a bone or a component over time, gathers them into clips with their events, reads the clips of glTF files, edits clips into new ones and plays them with clip players. It also makes the skeletons, poses, skins and skin weights of characters, bends their vertices on the CPU and poses crowds in pose batches. Times are in seconds, positions in meters and angles in radians. The [3D animation guide](../3d/animation.md) explains how the parts fit together.
 
 ```lua
 local animation3d = require('haylen.animation3d')
@@ -101,6 +101,51 @@ local gltf = require('haylen.gltf')
 local document = gltf.read('models/robot.glb')
 local player = animation3d.newClipPlayer(animation3d.clipFromGltf(document, document.animations[1]), {loop = 'pingPong', speed = 0.5})
 ```
+
+### animation3d.newSkeleton(bones)
+
+Returns a [`Skeleton3D`](#skeleton3d) of a list of bones, each `{name, parent, position, rotation, scale}`, whose unknown keys raise `Unknown option "<key>".`. The `name` of each bone is its own, the `parent` is the place of a bone before it in the list, counted from 1, or nil for a root, and the rest pose takes `position` (default `{0, 0, 0}`), `rotation` (default no turn) and `scale` (default `{1, 1, 1}`). A skeleton holds from 1 to 65536 bones.
+
+```lua
+local animation3d = require('haylen.animation3d')
+
+local arm = animation3d.newSkeleton({{name = 'Shoulder'}, {name = 'Elbow', parent = 1, position = {0.3, 0, 0}}, {name = 'Wrist', parent = 2, position = {0.25, 0, 0}}})
+print(arm.boneCount) -- 3
+```
+
+### animation3d.skeletonFromGltf(document, skin)
+
+Returns the [`Skeleton3D`](#skeleton3d) of a skin table of a `Document` of [`haylen.gltf`](gltf.md): the joints of the skin and every node above them, parents first, named after their nodes by the rule of [`animation3d.clipFromGltf`](#animation3dclipfromgltfdocument-animation), with the rest poses of the nodes.
+
+### animation3d.newPose(skeleton)
+
+Returns a [`Pose3D`](#pose3d) of a skeleton at its rest pose.
+
+### animation3d.newSkin(skeleton, joints)
+
+Returns a [`Skin3D`](#skin3d) of a skeleton with a list of joints, each `{bone, inverseBindMatrix}`, whose unknown keys raise `Unknown option "<key>".`. The `bone` is the place of a bone of the skeleton counted from 1, and the `inverseBindMatrix` a `Mat4`, the identity by default.
+
+### animation3d.skinFromGltf(document, skin, skeleton)
+
+Returns the [`Skin3D`](#skin3d) of a skin table of a `Document` for the skeleton that `animation3d.skeletonFromGltf` made of it, with an identity for each joint when the skin has no inverse bind matrices.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local gltf = require('haylen.gltf')
+
+local document = gltf.read('models/knight.glb')
+local skeleton = animation3d.skeletonFromGltf(document, document.skins[1])
+local skin = animation3d.skinFromGltf(document, document.skins[1], skeleton)
+print(skeleton.boneCount, skin.jointCount)
+```
+
+### animation3d.skinWeightsFromGltf(document, mesh, skin, options)
+
+Returns the [`SkinWeights3D`](#skinweights3d) of a primitive of a mesh table of a `Document`, which the skin bends. The optional table `options` takes `primitive`, the place of the primitive in the mesh counted from 1 (default `1`), and `influences`, `4` (the default) or `8`, and other keys raise `Unknown option "<key>".`. Each vertex keeps its largest weights, the joint of the lower index first between equal weights, and they add up to one again.
+
+### animation3d.newPoseBatch(skin)
+
+Returns an empty [`PoseBatch3D`](#posebatch3d) of the characters of a skin.
 
 ## Track3D
 
@@ -272,6 +317,142 @@ scene.push({
 })
 ```
 
+## Skeleton3D
+
+A `Skeleton3D` holds the bones of a character. It never changes once made, and many poses and skins share it.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `boneCount` | integer | The number of bones. |
+| `bones` | list | The bones, each `{name, parent, position, rotation, scale}`, with `parent` counted from 1 and nil for a root. |
+
+### skeleton:findBone(name)
+
+Returns the place of the bone of a name, counted from 1, or nil.
+
+## Pose3D
+
+A `Pose3D` holds the local transform of each bone of one character, which clips write, and the matrix of each bone in the space of the skeleton, which skins read. Its methods name a bone by its name or by its place counted from 1, and a bone the skeleton lacks raises `The skeleton has no bone "<name>".` or `The skeleton has <count> bones, counted from 1, so it has no bone <place>.`.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `skeleton` | Skeleton3D | The skeleton it poses. |
+
+### pose:sample(clip, time)
+
+Writes the `position`, `rotation` and `scale` of each bone that the clip moves at a time, and leaves the other bones as they are. A track of a bone of another type raises `The "<property>" track of "<bone>" of the clip "<name>" holds <type> values, while the <property> of a bone takes <type> values.`.
+
+### pose:setRest()
+
+Puts every bone back at its rest pose.
+
+### pose:transform(bone) and pose:setTransform(bone, transform)
+
+Read and write the local transform of a bone as a `Transform3D` of [`haylen.math`](math.md).
+
+### pose:computeModelMatrices()
+
+Computes the matrix of every bone in the space of the skeleton from the local transforms.
+
+### pose:modelMatrix(bone)
+
+Returns the `Mat4` of a bone in the space of the skeleton as of the last `pose:computeModelMatrices`.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local gltf = require('haylen.gltf')
+local m = require('haylen.math')
+
+local document = gltf.read('models/knight.glb')
+local pose = animation3d.newPose(animation3d.skeletonFromGltf(document, document.skins[1]))
+pose:sample(animation3d.clipFromGltf(document, document.animations[1]), 0.4)
+pose:setTransform('Head', m.transform3d({0, 0.2, 0}, m.fromAxisAngle(m.up(), 0.5)))
+pose:computeModelMatrices()
+print(pose:modelMatrix('Head'):apply({0, 0, 0}))
+```
+
+## Skin3D
+
+A `Skin3D` holds the joints that bend a mesh, bones of a skeleton with their inverse bind matrices.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `jointCount` | integer | The number of joints. |
+| `joints` | list | The joints, each `{bone, inverseBindMatrix}`, with `bone` counted from 1. |
+| `skeleton` | Skeleton3D | The skeleton whose bones bend it. |
+
+### skin:palette(pose, buffer, first)
+
+Writes the palette of a pose of the skeleton of the skin into a `FloatBuffer`, from its value `first` on, `1` by default: twelve floats for each joint, the first three rows of the model matrix of its bone times its inverse bind matrix, as of the last `pose:computeModelMatrices`. A pose of another skeleton raises `The pose belongs to another skeleton than the skin.`, and a buffer without room raises `The palette of <count> joints takes <values> values, while the buffer holds <size> from its first one.`.
+
+### skin:dualQuatPalette(pose, buffer, first)
+
+Writes the palette of a pose as dual quaternions, eight floats for each joint: the real part and then the dual part, each `x, y, z, w`. The rotation of each joint comes from the rotations of the pose, since dual quaternions hold no scale. A joint whose inverse bind matrix scales an axis to zero raises `The inverse bind matrix of joint <index> of the skin scales an axis to zero, so it holds no rotation for dual quaternion skinning. Skin it with matrices.`.
+
+## SkinWeights3D
+
+`SkinWeights3D` hold the joints and weights of the vertices of a primitive, the same number of influences for each vertex.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `influenceCount` | integer | The influences of each vertex, 4 or 8. |
+| `vertexCount` | integer | The number of vertices. |
+| `jointCount` | integer | The joints of the skin that the joints of the vertices name. |
+
+### weights:readJoints(buffer, first) and weights:readWeights(buffer, first)
+
+Write the joints of every vertex, counted from zero as a shader reads them, or their weights into a `FloatBuffer`, the influences of each vertex one after another.
+
+### weights:skin(pose, skin, positions, skinnedPositions, options)
+
+Bends the positions of the vertices, three floats for each vertex in the float buffer `positions`, into the float buffer `skinnedPositions`, by the palette of a pose as of its last `pose:computeModelMatrices`. The optional table `options` takes `normals` and `skinnedNormals`, float buffers of the normals and of the bent normals, and `dualQuaternions`, which blends dual quaternions instead of matrices (default `false`), and other keys raise `Unknown option "<key>".`. A normal that a joint scaled to zero folds stays zero. A large mesh spreads over the job system.
+
+## PoseBatch3D
+
+A `PoseBatch3D` poses many characters of one skin, each looping a clip at its own time and speed. Its characters are numbered from 1, and removing a character moves the characters after it one place down.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `count` | integer | The number of characters. |
+| `paletteSize` | integer | The floats of the palette of one character, twelve for each joint. |
+
+### batch:add(clip, options)
+
+Adds a character that loops a clip and returns its place. The optional table `options` takes `time` (default `0`) and `speed` (default `1`, negative to play backward), and other keys raise `Unknown option "<key>".`.
+
+### batch:remove(character), batch:setClip(character, clip), batch:setTime(character, time), batch:setSpeed(character, speed) and batch:time(character)
+
+Remove a character, give it another clip, set its time or its speed, and read its time. A place past the characters raises `The pose batch holds <count> characters, so it has no character <index>.`, with the index counted from zero.
+
+### batch:setTimes(buffer, first)
+
+Sets the time of every character, one number each from the value `first` of a `FloatBuffer` on, `1` by default.
+
+### batch:update(dt)
+
+Moves the time of every character by `dt` seconds times its speed, wrapped into its clip, poses it and writes its palette, spreading the characters over the job system.
+
+### batch:readPalettes(buffer, first)
+
+Writes the palettes of every character as of the last update into a `FloatBuffer`, the joints of each character one after another, twelve floats each.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local collections = require('haylen.collections')
+local gltf = require('haylen.gltf')
+
+local document = gltf.read('models/villager.glb')
+local skeleton = animation3d.skeletonFromGltf(document, document.skins[1])
+local crowd = animation3d.newPoseBatch(animation3d.skinFromGltf(document, document.skins[1], skeleton))
+local walk = animation3d.clipFromGltf(document, document.animations[1])
+for index = 1, 100 do
+    crowd:add(walk, {time = index * 0.1})
+end
+crowd:update(1 / 60)
+local palettes = collections.newFloatBuffer(crowd.count * crowd.paletteSize)
+crowd:readPalettes(palettes)
+```
+
 ## Enum names
 
 | Field | Names |
@@ -300,3 +481,9 @@ Keys that break the rules of a track raise a sentence that names the track and t
 | `The clip "<name>" lasts <duration> seconds, while its keys and events run until <end> seconds.` | The `duration` of a clip is shorter than its keys or events. |
 | `The clip "<name>" has an event without a name at <time> seconds. Give every event a name.` | An event has no name. |
 | `The animation <index> of the glTF file "<path>" does not make a clip, since <problem>. Export the model again from the tool that made it, so it follows glTF 2.0.` | A document made in code holds an animation that breaks a rule of glTF. |
+| `Every bone of a skeleton needs a name of its own, while the name "<name>" of bone <index> is empty or taken.` | Two bones share a name, or a bone has none. |
+| `The bone "<name>" names the parent <index>, while the parent of a bone comes before it.` | A bone names a parent that comes after it. |
+| `Joint <index> of a skin names bone <bone> of a skeleton of <count> bones.` | A joint of a skin names a bone the skeleton lacks. |
+| `Vertex <index> of the skin weights names joint <joint> of a skin with <count> joints.` | A vertex names a joint the skin lacks. |
+| `The weights of vertex <index> of the skin weights add up to <sum> and not to 1.` | The weights of a vertex do not add up to one. |
+| `A vertex takes 4 or 8 influences, while <count> were asked for.` | `skinWeightsFromGltf` got other influences. |

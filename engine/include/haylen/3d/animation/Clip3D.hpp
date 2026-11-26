@@ -48,7 +48,7 @@ class Clip3D final {
     // Throws `std::invalid_argument` for two tracks of the same property of one target, an event at a time that is not finite or below zero or without a name, and a duration shorter than a track or an event.
     explicit Clip3D(Description description);
 
-    // Makes the clip of an animation of a glTF document. Its tracks name each node by its name when no other node of the file takes it, or by the glTF pointer of the node, such as `/nodes/3`, otherwise, so a clip of another file whose nodes carry the same names moves the same nodes. Throws `std::out_of_range` for an animation the document lacks and `std::invalid_argument` with a sentence that names the file and the animation for data that does not make a clip.
+    // Makes the clip of an animation of a glTF document. Its tracks name each node by its name when no other node of the file takes it, or by the glTF pointer of the node, such as `/nodes/3`, otherwise, so a clip of another file whose nodes carry the same names moves the same nodes, and the bones of `Skeleton3D::fromGltf` take the same names. Throws `std::out_of_range` for an animation the document lacks and `std::invalid_argument` with a sentence that names the file and the animation for data that does not make a clip.
     [[nodiscard]] static Clip3D fromGltf(const gltf::Document& document, std::size_t animation);
 
     // Throws `std::invalid_argument` for no targets, a rate that is not positive or more keys than `Track3D::kMaxKeys`.
