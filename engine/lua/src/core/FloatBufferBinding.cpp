@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <stdexcept>
+#include <string>
 
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
@@ -124,6 +126,41 @@ int FloatBufferBinding::create(lua_State* L) {
 
     lua::Userdata::emplace<haylen::core::FloatBuffer>(L, std::make_shared<haylen::core::FloatBuffer>(static_cast<std::size_t>(size), lua::Converter<float>::readOr(L, 2, 0.0)));
     return 1;
+}
+
+void FloatBufferBinding::readNumbers(lua_State* L, int index, std::string_view what, std::vector<float>& values) {
+    values.clear();
+    if (const haylen::core::FloatBuffer* buffer = lua::Userdata::test<haylen::core::FloatBuffer>(L, index)) {
+        values.assign(buffer->getValues().begin(), buffer->getValues().end());
+        return;
+    }
+
+    if (!lua_istable(L, index)) {
+        luaL_error(L, "The %s are a list of numbers or a float buffer.", std::string(what).c_str());
+        return;
+    }
+
+    const lua_Integer count = luaL_len(L, index);
+    for (lua_Integer place = 1; place <= count; ++place) {
+        if (lua_rawgeti(L, index, place) != LUA_TNUMBER) {
+            luaL_error(L, "The %s are a list of numbers, and entry %d is not a number.", std::string(what).c_str(), static_cast<int>(place));
+        }
+
+        values.push_back(lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1)));
+        lua_pop(L, 1);
+    }
+}
+
+std::span<float> FloatBufferBinding::readRange(lua_State* L, int index) {
+    haylen::core::FloatBuffer& buffer = lua::Userdata::check<haylen::core::FloatBuffer>(L, index);
+    const lua_Integer first = lua_isnoneornil(L, index + 1) ? 1 : lua::Stack::read<lua_Integer>(L, index + 1);
+    luaL_argcheck(L, first >= 1, index + 1, "the values of a buffer are numbered from one");
+    const std::span<float> values = buffer.getValues();
+    if (static_cast<std::uint64_t>(first - 1) > values.size()) {
+        throw std::invalid_argument("The buffer holds " + std::to_string(values.size()) + " values, so it has no value " + std::to_string(first) + ".");
+    }
+
+    return values.subspan(static_cast<std::size_t>(first - 1));
 }
 
 void FloatBufferBinding::install(lua_State* L) {

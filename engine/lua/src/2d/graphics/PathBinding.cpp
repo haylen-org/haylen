@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "2d/graphics/StrokeBinding.hpp"
+#include "core/FloatBufferBinding.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
@@ -136,7 +137,7 @@ int PathBinding::stroke(lua_State* L) {
             } else if (key == "textureLength") {
                 lua::Table::readValue(L, key, style.textureLength);
             } else if (key == "dashes") {
-                StrokeBinding::readNumbers(L, lua_gettop(L), "dashes", dashes);
+                lua::core::FloatBufferBinding::readNumbers(L, lua_gettop(L), "dashes", dashes);
             } else if (key == "dashOffset") {
                 lua::Table::readValue(L, key, style.dashOffset);
             } else if (key == "rotation") {

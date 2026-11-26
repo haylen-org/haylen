@@ -5,7 +5,6 @@
 #include <optional>
 #include <utility>
 
-#include "2d/graphics/StrokeBinding.hpp"
 #include "core/FloatBufferBinding.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
@@ -100,7 +99,7 @@ int MeshBinding::setPositions(lua_State* L) {
         return 0;
     }
 
-    StrokeBinding::readNumbers(L, 2, "positions", positionScratch);
+    lua::core::FloatBufferBinding::readNumbers(L, 2, "positions", positionScratch);
     mesh.setPositions(positionScratch, first);
     return 0;
 }

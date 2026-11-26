@@ -4,16 +4,12 @@
 
 #include <algorithm>
 #include <optional>
-#include <stdexcept>
-#include <string>
-#include <utility>
 
 #include "3d/navigation/NavMeshBinding.hpp"
 #include "3d/navigation/NavigationOptions.hpp"
 #include "3d/navigation/QueryFilterBinding.hpp"
 #include "core/FloatBufferBinding.hpp"
 #include "haylen/core/Engine.hpp"
-#include "haylen/core/FloatBuffer.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -80,18 +76,6 @@ haylen::navigation3d::Crowd::AgentOptions CrowdBinding::readAgent(lua_State* L, 
     return options;
 }
 
-std::span<float> CrowdBinding::readBuffer(lua_State* L, int index) {
-    haylen::core::FloatBuffer& buffer = lua::Userdata::check<haylen::core::FloatBuffer>(L, index);
-    const lua_Integer first = lua_isnoneornil(L, index + 1) ? 1 : lua::Stack::read<lua_Integer>(L, index + 1);
-    luaL_argcheck(L, first >= 1, index + 1, "the values of a buffer are numbered from one");
-    const std::span<float> values = buffer.getValues();
-    if (static_cast<std::uint64_t>(first - 1) > values.size()) {
-        throw std::invalid_argument("The buffer holds " + std::to_string(values.size()) + " values, so it has no value " + std::to_string(first) + ".");
-    }
-
-    return values.subspan(static_cast<std::size_t>(first - 1));
-}
-
 int CrowdBinding::addAgent(lua_State* L) {
     ScriptedCrowd& self = checkSelf(L);
     const haylen::navigation3d::Crowd::AgentOptions options = readAgent(L, self, 2);
@@ -117,7 +101,7 @@ int CrowdBinding::setTarget(lua_State* L) {
 // Sends every agent at once with `setTargets(buffer[, first])`, three numbers for each agent in the order of `crowd.agents`.
 int CrowdBinding::setTargets(lua_State* L) {
     ScriptedCrowd& self = checkSelf(L);
-    self.crowd->setTargets(readBuffer(L, 2));
+    self.crowd->setTargets(lua::core::FloatBufferBinding::readRange(L, 2));
     return 0;
 }
 
@@ -181,12 +165,12 @@ int CrowdBinding::target(lua_State* L) {
 
 // Writes the positions of every agent with `readPositions(buffer[, first])`, three numbers for each agent in the order of `crowd.agents`.
 int CrowdBinding::readPositions(lua_State* L) {
-    checkSelf(L).crowd->readPositions(readBuffer(L, 2));
+    checkSelf(L).crowd->readPositions(lua::core::FloatBufferBinding::readRange(L, 2));
     return 0;
 }
 
 int CrowdBinding::readVelocities(lua_State* L) {
-    checkSelf(L).crowd->readVelocities(readBuffer(L, 2));
+    checkSelf(L).crowd->readVelocities(lua::core::FloatBufferBinding::readRange(L, 2));
     return 0;
 }
 

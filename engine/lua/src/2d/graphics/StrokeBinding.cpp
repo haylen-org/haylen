@@ -17,31 +17,8 @@
 
 namespace haylen::lua::graphics2d {
 
-void StrokeBinding::readNumbers(lua_State* L, int index, std::string_view what, std::vector<float>& values) {
-    values.clear();
-    if (const haylen::core::FloatBuffer* buffer = lua::Userdata::test<haylen::core::FloatBuffer>(L, index)) {
-        values.assign(buffer->getValues().begin(), buffer->getValues().end());
-        return;
-    }
-
-    if (!lua_istable(L, index)) {
-        luaL_error(L, "The %s are a list of numbers or a float buffer.", std::string(what).c_str());
-        return;
-    }
-
-    const lua_Integer count = luaL_len(L, index);
-    for (lua_Integer place = 1; place <= count; ++place) {
-        if (lua_rawgeti(L, index, place) != LUA_TNUMBER) {
-            luaL_error(L, "The %s are a list of numbers, and entry %d is not a number.", std::string(what).c_str(), static_cast<int>(place));
-        }
-
-        values.push_back(lua::Converter<float>::fromNumber(L, lua_tonumber(L, -1)));
-        lua_pop(L, 1);
-    }
-}
-
 void StrokeBinding::readPoints(lua_State* L, int index, std::vector<haylen::math::Vec2>& target) {
-    readNumbers(L, index, "points", numbers);
+    lua::core::FloatBufferBinding::readNumbers(L, index, "points", numbers);
     if (numbers.size() % 2 != 0) {
         luaL_error(L, "The points are x and y pairs, and %d numbers leave one alone.", static_cast<int>(numbers.size()));
     }
@@ -74,7 +51,7 @@ int StrokeBinding::drawStroke(lua_State* L) {
             } else if (key == "width") {
                 lua::Table::readValue(L, key, stroke.width);
             } else if (key == "widths") {
-                readNumbers(L, lua_gettop(L), "widths", widths);
+                lua::core::FloatBufferBinding::readNumbers(L, lua_gettop(L), "widths", widths);
             } else if (key == "color") {
                 lua::Table::readValue(L, key, stroke.color);
             } else if (key == "colors") {
@@ -94,7 +71,7 @@ int StrokeBinding::drawStroke(lua_State* L) {
             } else if (key == "textureLength") {
                 lua::Table::readValue(L, key, stroke.textureLength);
             } else if (key == "dashes") {
-                readNumbers(L, lua_gettop(L), "dashes", dashes);
+                lua::core::FloatBufferBinding::readNumbers(L, lua_gettop(L), "dashes", dashes);
             } else {
                 lua::Table::readValue(L, key, stroke.dashOffset);
             }

@@ -50,8 +50,7 @@ class StrokeBinding final {
   public:
     static int drawStroke(lua_State* L);
 
-    // Reads the numbers of a list or a float buffer at the index, and pairs of them as points.
-    static void readNumbers(lua_State* L, int index, std::string_view what, std::vector<float>& values);
+    // Reads pairs of the numbers of a list or a float buffer at the index as points.
     static void readPoints(lua_State* L, int index, std::vector<haylen::math::Vec2>& target);
 
   private:

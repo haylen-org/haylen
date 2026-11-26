@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <memory>
-#include <span>
 #include <vector>
 
 #include "haylen/3d/navigation/Crowd.hpp"
@@ -47,9 +46,6 @@ class CrowdBinding final {
     [[nodiscard]] static haylen::navigation3d::Crowd::AgentId checkAgent(lua_State* L, int index);
     [[nodiscard]] static std::size_t findFilter(ScriptedCrowd& self, const haylen::navigation3d::QueryFilter& filter);
     [[nodiscard]] static haylen::navigation3d::Crowd::AgentOptions readAgent(lua_State* L, ScriptedCrowd& self, int index);
-
-    // Returns the values of the float buffer at the stack index from the one-based value at the next index on, which defaults to 1.
-    [[nodiscard]] static std::span<float> readBuffer(lua_State* L, int index);
 
     static int addAgent(lua_State* L);
     static int removeAgent(lua_State* L);

@@ -3,6 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
+#include <string_view>
+#include <vector>
 
 #include "haylen/core/FloatBuffer.hpp"
 #include "haylen/lua/Type.hpp"
@@ -27,6 +30,12 @@ class FloatBufferBinding final {
 
     // Creates a buffer with `collections.newFloatBuffer(size[, value])`.
     static int create(lua_State* L);
+
+    // Reads the numbers of a list or a float buffer at the index into `values`, which `what` names in errors, such as `points`.
+    static void readNumbers(lua_State* L, int index, std::string_view what, std::vector<float>& values);
+
+    // Returns the values of the float buffer at the stack index from the one-based value at the next index on, which defaults to 1, for the bulk reads and writes of other modules.
+    [[nodiscard]] static std::span<float> readRange(lua_State* L, int index);
 
   private:
     [[nodiscard]] static haylen::core::FloatBuffer& check(lua_State* L);
