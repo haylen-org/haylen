@@ -569,6 +569,10 @@ Jolt picks the x86 instructions it compiles with from the generator and the mach
 
 Jolt finds ThreadSanitizer and AddressSanitizer through `__has_feature` wherever a compiler or a header defines it, and through the macros of GCC only otherwise. The sanitizer headers of GCC define `__has_feature` as a macro that answers 0, so a source that included one of them before Jolt, as GoogleTest does under ThreadSanitizer, saw no sanitizer, while the sources that included Jolt first saw it. The inline functions of Jolt then compiled two ways in one program, and the ones that took the fences that ThreadSanitizer refuses failed to build. The patch reads the macros `__SANITIZE_THREAD__` and `__SANITIZE_ADDRESS__` first, so every source sees the same sanitizers.
 
+#### jolt-quadtree-buffers.patch
+
+The broad phase of Jolt keeps the bodies of each of its layers in a tree, which it rebuilds in a step whenever a moving body leaves the bounds of its node, so a world whose bodies move rebuilds a tree almost every step. Each rebuild allocated the node ids and the centers it sorts with `new`, so a step of a world with moving bodies allocated memory. The patch makes both buffers once, for the most bodies of the world, when the broad phase starts, and each rebuild reuses them. A tree rebuilds only under the exclusive update lock of the broad phase, so one tree never rebuilds twice at once and its buffers are never shared. Adding bodies, which builds a small tree of the new bodies outside the steps, keeps its own buffer.
+
 #### clipper2-iterator.patch
 
 The core header of Clipper2 uses `std::back_inserter` without including the header `iterator`, which the standard library of Emscripten does not bring in through another header. The patch includes it.

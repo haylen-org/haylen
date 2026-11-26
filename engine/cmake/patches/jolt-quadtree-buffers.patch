@@ -1,0 +1,131 @@
+--- a/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp
++++ b/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp
+@@ -46,7 +46,7 @@
+ 	mLayers = new QuadTree [mNumLayers];
+ 	for (uint l = 0; l < mNumLayers; ++l)
+ 	{
+-		mLayers[l].Init(mAllocator);
++		mLayers[l].Init(mAllocator, mMaxBodies);
+ 
+ #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+ 		// Set the name of the layer
+--- a/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp
++++ b/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp
+@@ -234,11 +234,15 @@
+ 	return index;
+ }
+ 
+-void QuadTree::Init(Allocator &inAllocator)
++void QuadTree::Init(Allocator &inAllocator, uint inMaxBodies)
+ {
+ 	// Store allocator
+ 	mAllocator = &inAllocator;
+ 
++	// Make the buffers that rebuild the tree
++	mUpdateNodeIDs.resize(inMaxBodies);
++	mUpdateCenters.resize(inMaxBodies);
++
+ 	// Allocate root node
+ 	mRootNode[mRootNodeIndex].mIndex = AllocateNode(false);
+ }
+@@ -297,7 +301,8 @@
+ #endif
+ 
+ 	// Create space for all body ID's
+-	NodeID *node_ids = mNumBodies > 0? new NodeID [mNumBodies] : nullptr;
++	JPH_ASSERT(mNumBodies <= mUpdateNodeIDs.size());
++	NodeID *node_ids = mUpdateNodeIDs.data();
+ 	NodeID *cur_node_id = node_ids;
+ 
+ 	// Collect all bodies
+@@ -367,7 +372,7 @@
+ 
+ 		// Build new tree
+ 		AABox root_bounds;
+-		root_node_id = BuildTree(inBodies, ioTracking, node_ids, num_node_ids, cMaxDepthMarkChanged, root_bounds);
++		root_node_id = BuildTree(inBodies, ioTracking, node_ids, mUpdateCenters.data(), num_node_ids, cMaxDepthMarkChanged, root_bounds);
+ 
+ 		if (root_node_id.IsBody())
+ 		{
+@@ -387,9 +392,6 @@
+ 		root_node_id = NodeID::sFromNodeIndex(root_idx);
+ 	}
+ 
+-	// Delete temporary data
+-	delete [] node_ids;
+-
+ 	outUpdateState.mRootNodeID = root_node_id;
+ }
+ 
+@@ -518,7 +520,7 @@
+ 	}
+ }
+ 
+-QuadTree::NodeID QuadTree::BuildTree(const BodyVector &inBodies, TrackingVector &ioTracking, NodeID *ioNodeIDs, int inNumber, uint inMaxDepthMarkChanged, AABox &outBounds)
++QuadTree::NodeID QuadTree::BuildTree(const BodyVector &inBodies, TrackingVector &ioTracking, NodeID *ioNodeIDs, Vec3 *ioCenters, int inNumber, uint inMaxDepthMarkChanged, AABox &outBounds)
+ {
+ 	// Trivial case: No bodies in tree
+ 	if (inNumber == 0)
+@@ -541,7 +543,7 @@
+ 	}
+ 
+ 	// Calculate centers of all bodies that are to be inserted
+-	Vec3 *centers = new Vec3 [inNumber];
++	Vec3 *centers = ioCenters != nullptr? ioCenters : new Vec3 [inNumber];
+ 	JPH_ASSERT(IsAligned(centers, JPH_VECTOR_ALIGNMENT));
+ 	Vec3 *c = centers;
+ 	for (const NodeID *n = ioNodeIDs, *n_end = ioNodeIDs + inNumber; n < n_end; ++n, ++c)
+@@ -651,7 +653,8 @@
+ 	}
+ 
+ 	// Delete temporary data
+-	delete [] centers;
++	if (ioCenters == nullptr)
++		delete [] centers;
+ 
+ 	// Store bounding box of root
+ 	outBounds.mMin = stack[0].mNodeBoundsMin;
+@@ -826,7 +829,7 @@
+ 
+ 	// Build subtree for the new bodies, note that we mark all nodes as 'not changed'
+ 	// so they will stay together as a batch and will make the tree rebuild cheaper
+-	outState.mLeafID = BuildTree(inBodies, ioTracking, (NodeID *)ioBodyIDs, inNumber, 0, outState.mLeafBounds);
++	outState.mLeafID = BuildTree(inBodies, ioTracking, (NodeID *)ioBodyIDs, nullptr, inNumber, 0, outState.mLeafBounds);
+ 
+ #ifdef JPH_DEBUG
+ 	if (outState.mLeafID.IsNode())
+--- a/Jolt/Physics/Collision/BroadPhase/QuadTree.h
++++ b/Jolt/Physics/Collision/BroadPhase/QuadTree.h
+@@ -210,8 +210,8 @@
+ 	/// Check if this tree can get an UpdatePrepare/Finalize() or if it needs a DiscardOldTree() first
+ 	inline bool					CanBeUpdated() const				{ return mFreeNodeBatch.mNumObjects == 0; }
+ 
+-	/// Initialization
+-	void						Init(Allocator &inAllocator);
++	/// Initialization, inMaxBodies is the most bodies the tree holds, for which the buffers that rebuild the tree are made once
++	void						Init(Allocator &inAllocator, uint inMaxBodies);
+ 
+ 	struct UpdateState
+ 	{
+@@ -326,7 +326,8 @@
+ 	inline bool					TryCreateNewRoot(TrackingVector &ioTracking, atomic<uint32> &ioRootNodeIndex, NodeID inLeafID, const AABox &inLeafBounds, int inLeafNumBodies);
+ 
+ 	/// Build a tree for ioBodyIDs, returns the NodeID of the root (which will be the ID of a single body if inNumber = 1). All tree levels up to inMaxDepthMarkChanged will be marked as 'changed'.
+-	NodeID						BuildTree(const BodyVector &inBodies, TrackingVector &ioTracking, NodeID *ioNodeIDs, int inNumber, uint inMaxDepthMarkChanged, AABox &outBounds);
++	/// ioCenters holds inNumber centers, or is nullptr to allocate them.
++	NodeID						BuildTree(const BodyVector &inBodies, TrackingVector &ioTracking, NodeID *ioNodeIDs, Vec3 *ioCenters, int inNumber, uint inMaxDepthMarkChanged, AABox &outBounds);
+ 
+ 	/// Sorts ioNodeIDs spatially into 2 groups. Second groups starts at ioNodeIDs + outMidPoint.
+ 	/// After the function returns ioNodeIDs and ioNodeCenters will be shuffled
+@@ -366,6 +367,11 @@
+ 
+ 	/// Flag to keep track of changes to the broadphase, if false, we don't need to UpdatePrepare/Finalize()
+ 	atomic<bool>				mIsDirty = false;
++
++	/// The node ids and centers that UpdatePrepare rebuilds the tree in, made once in Init so a rebuild never allocates.
++	/// UpdatePrepare/Finalize run under the exclusive update lock of the broadphase (LockModifications), so one tree never rebuilds twice at once and the buffers are never shared.
++	Array<NodeID>				mUpdateNodeIDs;
++	Array<Vec3>					mUpdateCenters;
+ 
+ #ifdef JPH_TRACK_BROADPHASE_STATS
+ 	/// Mutex protecting the various LayerToStats members

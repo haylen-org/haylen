@@ -126,6 +126,24 @@ TEST_F(SimulationTest, StepsABoxThatStaysAwakeWithoutAllocating) {
     EXPECT_EQ(simulation.getStats().activeBodies, 1);
 }
 
+// Boxes that fall, hit the ground and topple leave the bounds of their nodes in the broad phase, which rebuilds its trees in most steps in the buffers it made when the world started.
+TEST_F(SimulationTest, StepsAPileOfMovingBoxesWithoutAllocating) {
+    Simulation simulation(WorldSettings{.sleepEnabled = false}, nullptr);
+    addGround(simulation);
+    for (int index = 0; index < 40; ++index) {
+        addBox(simulation, JPH::RVec3(static_cast<float>(index % 5) * 1.2F - 2.4F, 1.0F + static_cast<float>(index / 5) * 1.5F, static_cast<float>(index % 3) * 0.3F));
+    }
+
+    static_cast<void>(simulation.step(kStep));
+    const test::AllocationTracker tracker;
+    for (int step = 0; step < 180; ++step) {
+        static_cast<void>(simulation.step(kStep));
+    }
+
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_EQ(simulation.getStats().activeBodies, 40);
+}
+
 TEST_F(SimulationTest, AllocatesWhatAStepNeedsBeyondItsTemporaryMemoryAndRecordsIt) {
     StepAllocator allocator(256);
     void* inside = allocator.Allocate(128);

@@ -301,8 +301,8 @@ CPMAddPackage(
 haylen_disable_warnings(box2d)
 
 # Jolt Physics simulates the 3D worlds in single precision. The worlds run its jobs on the job system of the engine and its memory through the allocator of the engine, so its own job system, profiler, object streams and GPU compute stay out, and its debug renderer builds into Debug alone.
-# Jolt picks its SIMD instructions when it compiles, so x64 builds take SSE4.2 and POPCNT, which every x64 processor of the platforms of the engine runs, the web takes the SIMD of WebAssembly, and ARM takes Neon where it has it. A patch makes the instructions follow the architecture of the target instead of the generator and the machine that builds, and another one finds the sanitizers of GCC whatever a source included before Jolt.
-set(jolt_patches "${CMAKE_CURRENT_LIST_DIR}/patches/jolt-x86-instructions.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/jolt-sanitizer-detection.patch")
+# Jolt picks its SIMD instructions when it compiles, so x64 builds take SSE4.2 and POPCNT, which every x64 processor of the platforms of the engine runs, the web takes the SIMD of WebAssembly, and ARM takes Neon where it has it. A patch makes the instructions follow the architecture of the target instead of the generator and the machine that builds, another one finds the sanitizers of GCC whatever a source included before Jolt, and a third one makes the broad phase rebuild its trees in buffers it made once, so a step allocates nothing.
+set(jolt_patches "${CMAKE_CURRENT_LIST_DIR}/patches/jolt-x86-instructions.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/jolt-sanitizer-detection.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/jolt-quadtree-buffers.patch")
 set(jolt_hash 9a0a405f2375dc4bd9f72486c56e1cbc7794c6a62e42fc48fadea45dfc93dacc)
 haylen_patched_package_key(jolt_cache_key ${jolt_hash} ${jolt_patches})
 CPMAddPackage(

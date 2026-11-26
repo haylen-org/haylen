@@ -63,7 +63,7 @@ Lua never runs on a worker. A step finishes before `world:step` returns, so ever
 
 ## Memory
 
-A world reserves its memory when it is made, and a step allocates nothing. The data of one step lives in the temporary memory of the world, `temporaryMemory` megabytes, which every step reuses. A step that needs more than that still runs: it allocates the rest, which costs time, and the engine writes once in the log which setting to raise.
+A world reserves its memory when it is made, and a step allocates nothing, whether its bodies rest or move. The broad phase, which finds the pairs of bodies whose bounds touch, rebuilds its trees as bodies move in memory that the world reserves for `maxBodies` bodies, and the data of one step lives in the temporary memory of the world, `temporaryMemory` megabytes, which every step reuses. A step that needs more than that still runs: it allocates the rest, which costs time, and the engine writes once in the log which setting to raise.
 
 ## Limits
 
