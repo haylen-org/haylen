@@ -4688,6 +4688,8 @@ Corpos moles: tecido e volumes a partir de uma malha, vértices presos, pressão
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Vento sobre corpos moles: o campo de força de vento de `physics3d.newForceField` (`kind = 'wind'`, KB-178) hoje age só em corpos rígidos; com os corpos moles ele passa a empurrar cada vértice pela área que a malha mostra ao vento e pela diferença entre a velocidade do ar e a do vértice, no passo em C++, sem chamada Lua por corpo.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
