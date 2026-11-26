@@ -1,6 +1,7 @@
 #include "haylen/3d/spatial/BvhNodes.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <limits>
 #include <numeric>
 #include <stdexcept>
@@ -54,15 +55,20 @@ std::uint32_t BvhNodes::split(std::span<const math::Box> boxes, std::vector<std:
 }
 
 std::uint32_t BvhNodes::splitAtMedian(std::span<const math::Box> boxes, std::vector<std::uint32_t>& order, std::uint32_t first, std::uint32_t count, int axis) {
-    const auto begin = order.begin() + first;
     const std::uint32_t half = count / 2;
-    std::nth_element(begin, begin + half, begin + count, [&boxes, axis](std::uint32_t lhs, std::uint32_t rhs) { return along(centroidOf(boxes[lhs]), axis) < along(centroidOf(boxes[rhs]), axis); });
+    const auto offset = static_cast<std::ptrdiff_t>(first);
+    const auto middle = static_cast<std::ptrdiff_t>(half);
+    const auto length = static_cast<std::ptrdiff_t>(count);
+    const auto begin = order.begin() + offset;
+    std::nth_element(begin, begin + middle, begin + length, [&boxes, axis](std::uint32_t lhs, std::uint32_t rhs) { return along(centroidOf(boxes[lhs]), axis) < along(centroidOf(boxes[rhs]), axis); });
     return half;
 }
 
 std::uint32_t BvhNodes::partition(std::span<const math::Box> boxes, std::vector<std::uint32_t>& order, std::uint32_t first, std::uint32_t count, int level) {
-    const auto begin = order.begin() + first;
-    const auto end = begin + count;
+    const auto offset = static_cast<std::ptrdiff_t>(first);
+    const auto length = static_cast<std::ptrdiff_t>(count);
+    const auto begin = order.begin() + offset;
+    const auto end = begin + length;
     math::Box centroids{centroidOf(boxes[*begin]), centroidOf(boxes[*begin])};
     for (auto position = begin + 1; position != end; ++position) {
         centroids = centroids.merged(centroidOf(boxes[*position]));
