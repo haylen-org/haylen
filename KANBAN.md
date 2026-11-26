@@ -19,8 +19,8 @@
 | **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | **[KB-172 · Restrições](#kb-172)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-190 · Estruturas espaciais em haylen::spatial3d (engine/src/3d/spatial/, Lua haylen.spatial3d)](#kb-190)**<br>🟡 medium · `feature` · 5/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
 | **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | **[KB-183 · Malha de navegação 3D em haylen::navigation3d pela Recast e Detour](#kb-183)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-230 · Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake](#kb-230)**<br>🟡 medium · `feature` · 7/10 | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
 | **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | **[KB-184 · Obstáculos e ligações](#kb-184)**<br>🟡 medium · `feature` · 3/10 | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
+| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
 | **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
 | **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
 | **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
@@ -8551,16 +8551,18 @@ A execução completa 45711109150 falhou no teste de UI do Android `TextInputTes
 ### KB-331
 
 - **Title:** A verificação de cada commit pega os avisos que só o GCC e o MSVC dão
-- **Status:** doing
+- **Status:** testing
 - **Type:** improvement
 - **Priority:** medium
 - **Complexity:** 5
-- **Progress:** Já existem, na pasta do trabalho:
-  - o clang com `-Wshadow-field-in-constructor`;
-  - o `haylen test` compilando todos os alvos;
-  - a verificação com o GCC num contêiner, que leva 1297 s na primeira vez, 1 s sem mudança, 13 s com um arquivo e 101 s com um cabeçalho comum.
+- **Progress:** No `main` (`2b194f9d2` a `39aa809e3`), em cinco commits:
+  - as opções dos cabeçalhos do Windows passam pelo CMake;
+  - o código do Windows não dá mais avisos com o GCC;
+  - o clang ganha `-Wshadow-field-in-constructor`;
+  - o benchmark de conteúdo usa a ABI certa do Lua;
+  - o `haylen test` compila todos os alvos, e `--compiler gcc` roda a verificação com o GCC só em hosts Linux.
 
-O MinGW não serve para conferir o código do Windows, porque a toolchain dele não tem partes do Windows SDK que a engine usa e o Poco esconde as APIs novas sob o MinGW. Decisão do dono: o código do Windows é conferido com o clang-cl e os cabeçalhos reais do MSVC e do Windows SDK, baixados em cada máquina, e a licença da Microsoft é aceita de forma explícita. A mudança do MinGW no Varn sai. O GCC achou cerca de 60 avisos reais no código do Windows, que vão ser corrigidos.
+O gate do Mac passou com 3157 testes, e o gate da nuvem, feito com `git archive` em pastas novas, passou com clang e GCC, 3152 testes cada, mais a verificação do GCC, o pytest e o format. O código do Windows é conferido numa máquina Windows, e a próxima execução completa dá a prova do MSVC.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
