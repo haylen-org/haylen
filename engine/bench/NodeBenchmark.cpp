@@ -11,6 +11,7 @@
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/nodes/NodeTree.hpp"
+#include "haylen/3d/nodes/NodeTree3D.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JobSystem.hpp"
@@ -20,12 +21,14 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/math/Quat.hpp"
+#include "haylen/math/Vec3.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/BenchmarkGpu.hpp"
 
 namespace haylen::bench {
 
-// Times node trees on the CPU: the update of a large tree after every root moved and after a few moved, on one thread and on the job system, and the draw of a large tree with every node in view and with most of them culled. The frames that draw go through the null device of the headless host or offscreen through the device that `--graphics-api` names, which adds the whole frame and the time of the GPU to their rows.
+// Times node trees on the CPU: the update of a large 2D tree and of a large 3D tree after every root moved and after a few moved, on one thread and on the job system, and the draw of a large 2D tree with every node in view and with most of them culled. The frames that draw go through the null device of the headless host or offscreen through the device that `--graphics-api` names, which adds the whole frame and the time of the GPU to their rows.
 class NodeBenchmark final {
   public:
     static int run(BenchmarkGpu& gpu) {
@@ -49,6 +52,11 @@ class NodeBenchmark final {
         for (const bool parallel : {false, true}) {
             measureUpdate(engine, texture, parallel, 1);
             measureUpdate(engine, texture, parallel, 100);
+        }
+
+        for (const bool parallel : {false, true}) {
+            measureUpdate3D(engine, parallel, 1);
+            measureUpdate3D(engine, parallel, 100);
         }
 
         measureDraw(engine, host, gpu, texture, false);
@@ -103,6 +111,33 @@ class NodeBenchmark final {
 
         const std::string moved = stride == 1 ? "every root moved" : "1 root in 100 moved";
         report("Update of 100000 nodes, " + moved + ", " + (parallel ? "job system" : "one thread"), total / kFrames);
+    }
+
+    // Moves every `stride`-th root of a 3D tree of `kRoots` roots with `kChildren` children each and times the update that follows, which computes the world matrices of the subtrees that moved.
+    static void measureUpdate3D(core::Engine& engine, bool parallel, int stride) {
+        const std::shared_ptr<nodes3d::NodeTree3D> tree = nodes3d::NodeTree3D::create();
+        std::vector<nodes3d::Node3D> roots;
+        for (int root = 0; root < kRoots; ++root) {
+            roots.push_back(tree->add({.position = {static_cast<float>(root % 32) * 20.0F, 0.0F, static_cast<float>(root / 32) * -20.0F}}));
+            for (int child = 0; child < kChildren; ++child) {
+                (void)roots.back().add({.position = {static_cast<float>(child % 10) * 0.5F, static_cast<float>(child / 10) * 0.5F, 0.0F}, .rotation = math::Quat::fromAxisAngle(math::Vec3::up(), 0.1F)});
+            }
+        }
+
+        tree->update();
+        double total = 0.0;
+        for (int frame = 0; frame < kFrames; ++frame) {
+            for (std::size_t root = static_cast<std::size_t>(frame % stride); root < roots.size(); root += static_cast<std::size_t>(stride)) {
+                roots[root].setRotation(math::Quat::fromAxisAngle(math::Vec3::up(), static_cast<float>(frame) * 0.01F));
+            }
+
+            const auto start = std::chrono::steady_clock::now();
+            tree->update(parallel ? &engine.getJobs() : nullptr);
+            total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+        }
+
+        const std::string moved = stride == 1 ? "every root moved" : "1 root in 100 moved";
+        report("Update of 100000 3D nodes, " + moved + ", " + (parallel ? "job system" : "one thread"), total / kFrames);
     }
 
     // Times the draw of the whole tree into a world canvas whose view covers every node, or a corner of 2000 by 1000 units.

@@ -56,6 +56,7 @@ set(HAYLEN_TEST_SOURCES
   3d/gltf/ReaderTests.cpp
   3d/navigation/CrowdTests.cpp
   3d/navigation/NavMeshTests.cpp
+  3d/nodes/NodeTree3DTests.cpp
   3d/physics/BackendRegistryTests.cpp
   3d/physics/BodyTests.cpp
   3d/physics/CollisionFilterTests.cpp

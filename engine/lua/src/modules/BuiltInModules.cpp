@@ -21,6 +21,7 @@
 #include "modules/Navigation3DModule.hpp"
 #include "modules/NetModule.hpp"
 #include "modules/Nodes2DModule.hpp"
+#include "modules/Nodes3DModule.hpp"
 #include "modules/Particles2DModule.hpp"
 #include "modules/Physics2DModule.hpp"
 #include "modules/Physics3DModule.hpp"
@@ -49,6 +50,7 @@ void BuiltInModules::registerAll(Modules& modules) {
     modules.add(std::make_unique<TiledModule>());
     modules.add(std::make_unique<GltfModule>());
     modules.add(std::make_unique<Nodes2DModule>());
+    modules.add(std::make_unique<Nodes3DModule>());
     modules.add(std::make_unique<Spatial2DModule>());
     modules.add(std::make_unique<Spatial3DModule>());
     modules.add(std::make_unique<Procedural2DModule>());

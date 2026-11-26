@@ -237,6 +237,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/3d/navigation/TileBaker.cpp
   src/3d/navigation/TileGrid.cpp
   src/3d/navigation/TileIndex.cpp
+  src/3d/nodes/Node3D.cpp
+  src/3d/nodes/NodeTree3D.cpp
   src/3d/physics/Backend.cpp
   src/3d/physics/BackendRegistry.cpp
   src/3d/physics/Body.cpp

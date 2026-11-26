@@ -62,6 +62,7 @@ set(HAYLEN_LUA_SOURCES
   src/3d/navigation/Navigation3DBinding.cpp
   src/3d/navigation/NavigationOptions.cpp
   src/3d/navigation/QueryFilterBinding.cpp
+  src/3d/nodes/Nodes3DBinding.cpp
   src/3d/physics/BodyBinding.cpp
   src/3d/physics/JointBinding.cpp
   src/3d/physics/Physics3DBinding.cpp
@@ -162,6 +163,7 @@ set(HAYLEN_LUA_SOURCES
   src/modules/Navigation3DModule.cpp
   src/modules/NetModule.cpp
   src/modules/Nodes2DModule.cpp
+  src/modules/Nodes3DModule.cpp
   src/modules/Particles2DModule.cpp
   src/modules/Physics2DModule.cpp
   src/modules/Physics3DModule.cpp
