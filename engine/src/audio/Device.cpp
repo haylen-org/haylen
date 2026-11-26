@@ -30,7 +30,8 @@ Device::~Device() {
     }
 }
 
-void Device::start(ma_engine& source) {
+void Device::start(ma_engine& source, TapSet& taps) {
+    shared->taps = &taps;
     shared->engine.store(&source, std::memory_order_release);
     apply();
 }
@@ -130,9 +131,11 @@ std::vector<Mixer::DeviceEvent> Device::takeEvents() {
 }
 
 void Device::onData(ma_device* playback, void* output, const void*, ma_uint32 frames) {
-    ma_engine* source = static_cast<Connection*>(playback->pUserData)->shared->engine.load(std::memory_order_acquire);
+    const Shared& target = *static_cast<Connection*>(playback->pUserData)->shared;
+    ma_engine* source = target.engine.load(std::memory_order_acquire);
     if (source != nullptr) {
         ma_engine_read_pcm_frames(source, output, frames, nullptr);
+        target.taps->deliver(static_cast<const float*>(output), frames);
     }
 }
 

@@ -1,6 +1,6 @@
 # 🔊 Audio
 
-This guide explains how a Haylen app plays sound. It covers sounds and how they load, voices, buses, music, the game pause, effects, loudness and positional audio. It also shows how each platform shares the speaker with the system and with other apps. Read it before you add sound effects, music or a volume screen to an app. The [`haylen.audio` reference](../lua-api/audio.md) lists every function, option and error.
+This guide explains how a Haylen app plays sound. It covers sounds and how they load, voices, buses, music, the game pause, effects, loudness and positional audio. It also shows how an app records its own mix and how each platform shares the speaker with the system and with other apps. Read it before you add sound effects, music or a volume screen to an app. The [`haylen.audio` reference](../lua-api/audio.md) lists every function, option and error.
 
 Haylen mixes sound with the [miniaudio](https://miniaud.io) library. Every audio call runs on the frame thread and returns at once. The mixing itself runs on the audio thread of the platform, which Lua code never touches. When the app has [no audio output](#without-an-audio-output), the mixing runs on the frame thread instead. The [architecture guide](../core/architecture.md) describes the threads.
 
@@ -587,6 +587,37 @@ A frame of the app that takes much longer than usual therefore does not starve t
 
 Browsers keep audio silent until the player interacts with the page. The runtime resumes the output at every tap, click or key while the app plays in the foreground. This also brings the sound back after Safari on iOS suspends it for an interruption. Until the unlock, the output fills its 50 ms and then asks for no more blocks. So voices that started earlier, such as the menu music, begin when the player first clicks or taps. The engine adds no unlock screen of its own. A web app whose first screen matters for sound should wait for a click, as a title screen with a start button does.
 
+## Recording the mix
+
+A tap hears the mix of the master bus, the sound that the output plays, so an app records its own sound together with a capture of its screen, or hands its sound to a plugin that streams or saves it. [`audio.tapMaster`](../lua-api/audio.md#audiotapmasteroptions) opens one.
+
+- **What a tap hears.** The mix as it leaves the master bus for the output, after the effects of every bus and the mute of the output. A tap hears the same frames on every platform: the audio device of a desktop or a phone, the output of a browser page or of a port, and the time that a mixer without an output keeps. While the output is stopped, such as in the background, no frames arrive. The tap hears each block when the mix makes it, a little before the output plays it, so the part of the last block that the output still holds when it stops never plays.
+- **How the frames cross.** The thread that mixes writes every block into a ring of the tap, which the tap allocates once when it opens. It never allocates, locks or waits there. A reader that falls behind loses the newest frames, which the tap counts in `dropped`, and the mix goes on.
+- **How Lua reads them.** The app reads a tap once per frame, and one call takes every frame that arrived since the last read, as a string of float samples or into a float buffer. So the sound never reaches Lua one block at a time.
+- **What it costs.** Nothing while no tap is open, besides one check for each block the mix makes. Each open tap costs one copy of the mix.
+- **When it ends.** A tap ends with its owner, with `close`, when nothing holds it any longer and when the app ends. A closed tap keeps the frames that wait in it.
+
+```lua
+local audio = require('haylen.audio')
+local scene = require('haylen.scene')
+
+-- Keeps the last frames of the mix of the scene in memory, for a clip that the player shares.
+scene.push({
+    enter = function(self)
+        self.tap = audio.tapMaster({owner = self})
+        self.parts = {}
+    end,
+    update = function(self, dt)
+        self.parts[#self.parts + 1] = self.tap:read()
+        if #self.parts > 600 then
+            table.remove(self.parts, 1)
+        end
+    end,
+})
+```
+
+A plugin reaches the same tap from C++ with `Mixer::tapMaster`, as [From C++](#from-c) shows, and reads it on a thread of its own, such as the thread of an encoder.
+
 ## Without an audio output
 
 An app never stops because it has no audio output. These cases leave the mixer without one:
@@ -689,6 +720,7 @@ C++ code reaches the same audio through these classes:
 - The class `haylen::audio::Sound` of `haylen/audio/Sound.hpp` holds decoded or streamed sound data. The method `Sound::decode` makes it from encoded bytes, and `Sound::fromSamples` from spans of float or 16-bit samples. The method `Sound::stream` makes it from a `std::shared_ptr<io::PackageReader>` of an encoded file, such as the one `Package::openAssetReader` returns.
 - The effects are `audio::Filter`, `audio::Delay`, `audio::Reverb` and `audio::Limiter`, made with `std::make_shared` and their settings structures.
 - The class `audio::Session` is the audio session of `haylen.json`.
+- The class `haylen::audio::Tap` of `haylen/audio/Tap.hpp` is a tap on the master bus, which `Mixer::tapMaster` opens with room for a number of frames. One thread at a time reads it with `Tap::read` into a span of floats, the frame thread or a thread of a plugin, and `Tap::close` ends it on the frame thread.
 
 The engine applies its pause through `Mixer::setProcessPaused`. The method `Mixer::deviceEventReceived` delivers device events on the frame thread, and the audio plugin turns them into the interruptions and events above. The method `Mixer::isOutputAvailable` tells whether the mix reaches an audio device. A mixer made without a device mixes on demand through `render`, which tests and offline tools use. Every mixer takes the `core::JobSystem` whose I/O pool decodes its streamed voices.
 
@@ -701,5 +733,28 @@ void muffleMusic(haylen::core::Engine& engine) {
     auto muffle = std::make_shared<haylen::audio::Filter>(haylen::audio::Filter::Kind::Lowpass, haylen::audio::Filter::Settings{.cutoff = 600.0F});
     engine.getAudio().addBusEffect("music", muffle);
     engine.getAudio().setSpatialization({.model = haylen::audio::Mixer::Spatialization::Model::Inverse, .minDistance = 50.0F});
+}
+```
+
+A plugin that streams the sound of the app opens a tap when it starts and reads it on its own thread.
+
+```cpp
+#include <span>
+#include <vector>
+
+#include "haylen/audio/Mixer.hpp"
+#include "haylen/audio/Tap.hpp"
+#include "haylen/core/Engine.hpp"
+
+// Opens a tap that holds half a second of the mix, which the thread of the encoder reads.
+std::shared_ptr<haylen::audio::Tap> openStreamTap(haylen::core::Engine& engine) {
+    haylen::audio::Mixer& mixer = engine.getAudio();
+    return mixer.tapMaster(mixer.getSampleRate() / 2);
+}
+
+// Moves the frames that arrived into the buffer of the encoder and returns how many it moved.
+std::size_t readForEncoder(haylen::audio::Tap& tap, std::vector<float>& samples) {
+    samples.resize(tap.getAvailableFrames() * tap.getChannels());
+    return tap.read(samples);
 }
 ```

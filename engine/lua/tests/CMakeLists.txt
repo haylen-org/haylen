@@ -40,6 +40,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   assets/AssetsLuaTests.cpp
   assets/AssetTests.cpp
   audio/AudioLuaTests.cpp
+  audio/AudioTapLuaTests.cpp
   audio/AudioOutputTests.cpp
   audio/MixerLuaTests.cpp
   content/BootstrapTests.cpp

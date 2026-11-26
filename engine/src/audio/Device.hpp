@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "audio/HostedOutput.hpp"
+#include "audio/TapSet.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/audio/Session.hpp"
 
@@ -54,8 +55,8 @@ class Device final {
     Device(const Device&) = delete;
     Device& operator=(const Device&) = delete;
 
-    // Starts the output, which reads the engine from then on, and `stop` lets the engine go before the mixer destroys it.
-    void start(ma_engine& source);
+    // Starts the output, which reads the engine from then on and hands every block it read to the taps, and `stop` lets the engine go before the mixer destroys it.
+    void start(ma_engine& source, TapSet& taps);
     void stop() noexcept;
 
     void suspend();
@@ -115,9 +116,10 @@ class Device final {
     [[nodiscard]] std::vector<Mixer::DeviceEvent> takeEvents();
 
   private:
-    // What the audio thread and the threads that open devices share with the frame thread: the engine the output reads, or null while it reads none, and the events that wait for the frame thread.
+    // What the audio thread and the threads that open devices share with the frame thread: the engine the output reads, or null while it reads none, the taps of its mix, which the release of the engine publishes, and the events that wait for the frame thread.
     struct Shared {
         std::atomic<ma_engine*> engine = nullptr;
+        TapSet* taps = nullptr;
         std::mutex mutex;
         std::vector<Mixer::DeviceEvent> events;
     };

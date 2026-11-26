@@ -232,6 +232,7 @@ void MixerState::advance(float deltaSeconds) {
     while (frames > 0) {
         const ma_uint64 block = std::min(frames, kSilentBlockFrames);
         ma_engine_read_pcm_frames(&engine, silentBlock.data(), block, nullptr);
+        taps.deliver(silentBlock.data(), block);
         frames -= block;
     }
 }

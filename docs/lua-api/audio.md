@@ -1,6 +1,6 @@
 # 📖 `haylen.audio`
 
-The module `haylen.audio` plays sounds and music. Use it to play voices and music, group sounds into buses with effects, place sounds in the world and read the state of the audio output. The [audio guide](../audio/audio.md) explains voices, buses, process modes, positional audio and the sessions of each platform.
+The module `haylen.audio` plays sounds and music. Use it to play voices and music, group sounds into buses with effects, place sounds in the world, record the mix and read the state of the audio output. The [audio guide](../audio/audio.md) explains voices, buses, process modes, positional audio and the sessions of each platform.
 
 ```lua
 local audio = require('haylen.audio')
@@ -964,6 +964,41 @@ scene.push({
 })
 ```
 
+## Recording the mix
+
+A tap hears the mix of the master bus as the output plays it, at the sample rate and in the channels of the mixer, such as to record the sound of the app together with a capture of its screen or to send it to a plugin. The [audio guide](../audio/audio.md#recording-the-mix) explains how a tap works.
+
+### audio.tapMaster(options)
+
+Opens a tap and returns its [`AudioTap`](#audiotap). It hears every frame that the mix makes from then on, until it closes. The options are:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `seconds` | `1` | The seconds of mix that the tap holds between two reads, more than `0` and at most `60`. A tap that holds no more room drops the newest frames and counts them in `dropped`. |
+| `owner` | the default owner | The owner that the tap ends with, such as a scene. |
+
+At most 8 taps are open at once. Another one raises `The audio has as many taps open as it holds. Close a tap before opening another one.`.
+
+```lua
+local audio = require('haylen.audio')
+local scene = require('haylen.scene')
+
+-- Records the sound of the scene, and makes a sound of the recording when the scene ends.
+scene.push({
+    enter = function(self)
+        self.tap = audio.tapMaster({seconds = 0.5, owner = self})
+        self.parts = {}
+    end,
+    update = function(self, dt)
+        self.parts[#self.parts + 1] = self.tap:read()
+    end,
+    exit = function(self)
+        local samples = table.concat(self.parts) .. self.tap:read()
+        lastTake = audio.newSound(samples, {format = 'float32', sampleRate = self.tap.sampleRate, channels = self.tap.channels})
+    end,
+})
+```
+
 ## Sound
 
 A `Sound`, named `haylen.Sound` in messages, is the audio data of a file. The functions `assets.load` and `assets.loadAsync` of [`haylen.assets`](assets.md) return one for a sound file, and [`audio.newSound`](#audionewsoundbytes-options) makes one from bytes. Two handles of the same loaded sound compare equal with `==`. Every property is read-only, and reading a member that a sound does not have raises `The type "haylen.Sound" has no member "<name>".`.
@@ -981,6 +1016,54 @@ local assets = require('haylen.assets')
 
 local hit = assets.load('sfx/hit.wav')
 print(hit.duration, hit.channels, hit.sampleRate, hit.frameCount, hit.streamed)
+```
+
+## AudioTap
+
+An `AudioTap`, named `haylen.AudioTap` in messages, is a tap that [`audio.tapMaster`](#audiotapmasteroptions) opened. The app reads it once per frame, in one call that takes every frame that arrived since the last read, so the sound never reaches Lua one block at a time.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `sampleRate` | integer | The sample rate of the mix in hertz. |
+| `channels` | integer | The channels of the mix. |
+| `available` | integer | The frames that wait for the next read. |
+| `dropped` | integer | The frames that the tap dropped because it held no more room. |
+| `closed` | boolean | `true` once the tap closed, by `close`, its owner or the end of the app. |
+
+### tap:read(buffer)
+
+Without a buffer, returns every frame that waits as a string of 32-bit float samples, interleaved, the raw samples that [`audio.newSound`](#audionewsoundbytes-options) takes with `format = 'float32'`. With a float buffer of [`haylen.collections`](collections.md), moves as many whole frames as fit into it, interleaved from its first value, and returns how many values it wrote, which allocates nothing. A closed tap keeps the frames that wait in it.
+
+```lua
+local audio = require('haylen.audio')
+local collections = require('haylen.collections')
+
+local tap = audio.tapMaster()
+local buffer = collections.newFloatBuffer(4096)
+
+-- Measures the loudest sample of the frames that arrived.
+local count = tap:read(buffer)
+local loudest = 0
+for index = 1, count do
+    loudest = math.max(loudest, math.abs(buffer[index]))
+end
+print(loudest)
+
+-- Plays the samples that arrive later again as a sound.
+local samples = tap:read()
+local replay = audio.newSound(samples, {format = 'float32', sampleRate = tap.sampleRate, channels = tap.channels})
+```
+
+### tap:close()
+
+Stops the tap. Closing a closed tap does nothing. A tap also closes when its owner ends, and when nothing holds it any longer.
+
+```lua
+local audio = require('haylen.audio')
+
+local tap = audio.tapMaster()
+tap:close()
+print(tap.closed)
 ```
 
 ## Filter
@@ -1138,6 +1221,8 @@ end)
 | `Audio needs a fade from 0 to 86400 seconds.` | A fade is below `0`, longer than a day or not a number: the `fadeIn` of `audio.play`, the `fade` of `audio.playMusic`, or the fade of `audio.stop`, `audio.stopAll`, `audio.stopMusic` or `audio.setBusVolume`. |
 | `A loop needs 0 <= loopStart < loopEnd <= the length of the sound.` | The function `audio.play` or `audio.playMusic` got loop points outside the sound or in the wrong order. |
 | `A loop needs to span at least one frame of the sound.` | The loop points lie closer than one frame of the sound. |
+| `A tap of the audio holds more than 0 and at most 60 seconds of mix between two reads.` | The function `audio.tapMaster` got `seconds` out of range. |
+| `The audio has as many taps open as it holds. Close a tap before opening another one.` | The function `audio.tapMaster` was called while 8 taps are open. |
 | `The voice of a live audio stream has no cursor to move.` | The function `audio.setCursor` got the voice of an audio stream. |
 | `The "steal" of a sound limit must be "oldest", "quietest" or "none".` | The function `audio.setLimit` got another `steal`. |
 | `The cooldown of a sound must be a finite number of seconds from 0.` | The function `audio.setLimit` got a negative cooldown, or one that is not finite. |

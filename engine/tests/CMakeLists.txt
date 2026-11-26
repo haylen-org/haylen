@@ -65,6 +65,7 @@ set(HAYLEN_TEST_SOURCES
   audio/AudioInterruptionTests.cpp
   audio/AudioPauseTests.cpp
   audio/AudioStreamTests.cpp
+  audio/AudioTapTests.cpp
   audio/FormattedOutputTests.cpp
   audio/FreeverbTests.cpp
   audio/MixerTests.cpp

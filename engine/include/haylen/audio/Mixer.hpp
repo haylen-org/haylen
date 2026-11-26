@@ -15,6 +15,7 @@
 #include "haylen/audio/OutputSettings.hpp"
 #include "haylen/audio/Session.hpp"
 #include "haylen/audio/Sound.hpp"
+#include "haylen/audio/Tap.hpp"
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/core/Signal.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -46,6 +47,9 @@ class Mixer final {
 
     static constexpr float kMaxFadeSeconds = 86400.0F;
     static constexpr std::uint8_t kDefaultPriority = 128;
+
+    // The taps of the master bus that may be open at once.
+    static constexpr std::size_t kMaxTaps = 8;
 
     // Every stop, pause and steal fades over this long at least, so a waveform cut far from zero never clicks.
     static constexpr float kDeclickSeconds = 0.005F;
@@ -295,6 +299,9 @@ class Mixer final {
 
     // Mixes the next frames into interleaved samples, or silence while the output is stopped. Only a mixer without a device that keeps no time renders this way, which tests and offline tools use.
     void render(std::span<float> samples);
+
+    // Opens a tap on the master bus that holds `capacityFrames` frames between two reads and hears every frame the mix makes from then on, which is what the output plays, its mute included, and nothing while the output is stopped. Several taps hear the same frames. Throws `std::invalid_argument` for a capacity of 0 and `std::length_error` while `kMaxTaps` taps are open.
+    [[nodiscard]] std::shared_ptr<Tap> tapMaster(std::size_t capacityFrames);
 
     core::Signal<DeviceEvent> deviceEventReceived;
 

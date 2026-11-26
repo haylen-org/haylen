@@ -98,7 +98,7 @@ Mixer::Mixer(const Setup& setup, core::JobSystem& jobs) {
     state->getBus("ui").processMode = core::ProcessMode::Always;
     state->getBus("sfx").processMode = core::ProcessMode::Pausable;
     state->getBus("ambience").processMode = core::ProcessMode::Pausable;
-    state->output.start(state->engine);
+    state->output.start(state->engine, state->taps);
 }
 
 Mixer::~Mixer() = default;
@@ -649,6 +649,7 @@ void Mixer::update(float deltaSeconds) {
     }
 
     state->advance(deltaSeconds);
+    state->taps.collect();
     state->releaseFinished();
     state->spatialize(deltaSeconds);
 
@@ -714,6 +715,11 @@ void Mixer::render(std::span<float> samples) {
 
     const ma_uint64 frames = samples.size() / getChannels();
     ma_engine_read_pcm_frames(&state->engine, samples.data(), frames, nullptr);
+    state->taps.deliver(samples.data(), frames);
+}
+
+std::shared_ptr<Tap> Mixer::tapMaster(std::size_t capacityFrames) {
+    return state->taps.open(getSampleRate(), getChannels(), capacityFrames);
 }
 
 } // namespace haylen::audio

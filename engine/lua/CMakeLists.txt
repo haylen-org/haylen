@@ -67,6 +67,7 @@ set(HAYLEN_LUA_SOURCES
   src/assets/AssetsBinding.cpp
   src/audio/AudioBinding.cpp
   src/audio/EffectBinding.cpp
+  src/audio/TapBinding.cpp
   src/content/ContentBinding.cpp
   src/content/BytecodeAbi.cpp
   src/content/BytecodeCompiler.cpp

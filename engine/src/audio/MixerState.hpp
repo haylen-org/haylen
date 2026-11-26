@@ -18,6 +18,7 @@
 #include "audio/EffectChain.hpp"
 #include "audio/ReaderSource.hpp"
 #include "audio/StreamSource.hpp"
+#include "audio/TapSet.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/audio/Sound.hpp"
 #include "haylen/core/ProcessMode.hpp"
@@ -174,6 +175,7 @@ struct MixerState {
     // The output stops reading the engine first thing in the destructor, before the voices, the buses and the engine go.
     Device output;
     core::JobSystem& jobs;
+    TapSet taps;
     ma_engine engine{};
     bool engineReady = false;
     std::size_t maxVoices = 0;
