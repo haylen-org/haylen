@@ -17,12 +17,12 @@
 | **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | **[KB-106 · Leitor de glTF 2.0 em haylen::gltf (engine/src/3d/gltf/)](#kb-106)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 |
 | **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | **[KB-107 · O núcleo do glTF 2.0 inteiro, sem nada para depois](#kb-107)**<br>🟡 medium · `feature` · 8/10 | — | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 |
 | **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | **[KB-168 · Mundo physics3d::World (engine/src/3d/physics/)](#kb-168)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
-| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | **[KB-230 · Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake](#kb-230)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
-| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | **[KB-183 · Malha de navegação 3D em haylen::navigation3d pela Recast e Detour](#kb-183)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | **[KB-184 · Obstáculos e ligações](#kb-184)**<br>🟡 medium · `feature` · 3/10 | — | — | — | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
+| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | **[KB-230 · Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake](#kb-230)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
+| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
 | **[KB-048 · Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno](#kb-048)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
 | **[KB-049 · Barreiras e hazards](#kb-049)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 |
 | **[KB-050 · Draws indiretos](#kb-050)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 |
@@ -151,9 +151,6 @@
 | **[KB-180 · Gravar e restaurar o estado do mundo para rollback em rede, repetição e testes, com o hash de estado](#kb-180)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-181 · Fratura 3D](#kb-181)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-182 · Guia docs/3d/physics.md com os problemas comuns da física 3D e a solução de cada um, e um teste do projeto de…](#kb-182)**<br>🟡 medium · `docs` · 5/10 | — | — | — | — | — |
-| **[KB-183 · Malha de navegação 3D em haylen::navigation3d pela Recast e Detour](#kb-183)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-184 · Obstáculos e ligações](#kb-184)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
-| **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-186 · Navegação no espaço para agentes que voam e nadam](#kb-186)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-187 · Grafos de caminhos genéricos em 3D para apps que montam suas próprias redes, como as faixas do trânsito de…](#kb-187)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-188 · Sentidos da IA](#kb-188)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
@@ -257,6 +254,8 @@
 | **[KB-296 · Texturas HDR carregadas de arquivo no 2D e no 3D](#kb-296)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-304 · Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo](#kb-304)**<br>🟡 medium · `task` · 7/10 | — | — | — | — | — |
 | **[KB-319 · Juntar famílias de métodos que descrevem um só estado num método com um enum](#kb-319)**<br>🟡 medium · `refactor` · 6/10 | — | — | — | — | — |
+| **[KB-336 · As árvores 3D móveis consultam tão rápido quanto o BVH estático](#kb-336)**<br>🟡 medium · `improvement` · 4/10 | — | — | — | — | — |
+| **[KB-337 · O `haylen engine bench` roda os benchmarks num celular de verdade](#kb-337)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -4838,10 +4837,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-183
 
 - **Title:** Malha de navegação 3D em haylen::navigation3d pela Recast e Detour
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** Começou no trabalho da navegação 3D, junto com o KB-183, o KB-184 e o KB-185. A parte dos agentes como componente de nó espera os nós 3D.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4863,10 +4863,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-184
 
 - **Title:** Obstáculos e ligações
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 3
+- **Progress:** Começou no trabalho da navegação 3D, junto com o KB-183, o KB-184 e o KB-185. A parte dos agentes como componente de nó espera os nós 3D.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4888,10 +4889,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-185
 
 - **Title:** Consultas e agentes
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** Começou no trabalho da navegação 3D, junto com o KB-183, o KB-184 e o KB-185. A parte dos agentes como componente de nó espera os nós 3D.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -8648,6 +8650,50 @@ No ramo temporário do Varn, a execução 45780994354 do Windows arm64 falhou no
 
 - None
 
+### KB-336
+
+- **Title:** As árvores 3D móveis consultam tão rápido quanto o BVH estático
+- **Status:** todo
+- **Type:** improvement
+- **Priority:** medium
+- **Complexity:** 4
+- **Progress:** Ainda não começou.
+- **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
+
+#### Description
+
+O benchmark do [KB-190](#kb-190) mostra que as consultas por caixa, raio e vizinho mais próximo do `AabbTree3D` e da `Octree` são cerca de 10 vezes mais lentas que as do `Bvh`, porque as árvores montadas uma entrada por vez ficam de pior qualidade. As árvores dinâmicas das engines grandes mantêm a qualidade com inserção pelo custo de área e rotações, e refazem as partes que se degradam. O esperado é que as árvores móveis fiquem perto do BVH nas consultas, medido no benchmark e registrado no guia.
+
+#### Acceptance criteria
+
+- [ ] As consultas do `AabbTree3D` e da `Octree` ficam perto das do `Bvh` no benchmark, com os números no guia.
+
+#### Attachments
+
+- None
+
+### KB-337
+
+- **Title:** O `haylen engine bench` roda os benchmarks num celular de verdade
+- **Status:** todo
+- **Type:** feature
+- **Priority:** medium
+- **Complexity:** 5
+- **Progress:** Ainda não começou.
+- **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
+
+#### Description
+
+O `haylen engine bench` roda só na máquina do host, então nenhum benchmark mede um celular modesto. O `AGENTS.md`, porém, pede medidas num aparelho modesto, como uma GPU Adreno 610. O comando passa a rodar os benchmarks no emulador e num aparelho do Android e no simulador e num aparelho da Apple, e também no AWS Device Farm, com os mesmos números P50, P95 e P99 e o mesmo relatório.
+
+#### Acceptance criteria
+
+- [ ] O `haylen engine bench --target android` e o `--target ios` rodam num aparelho e no Device Farm e mostram o relatório.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8670,7 +8716,7 @@ No ramo temporário do Varn, a execução 45780994354 do Windows arm64 falhou no
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-336. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-338. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
