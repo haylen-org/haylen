@@ -256,6 +256,7 @@
 | **[KB-337 · O `haylen engine bench` roda os benchmarks num celular de verdade](#kb-337)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-338 · O hash FNV-1a fica num lugar só da engine](#kb-338)**<br>🟡 medium · `refactor` · 2/10 | — | — | — | — | — |
 | **[KB-339 · Medir e afinar a física 2D com várias threads contra o caso de 2500 corpos ativos](#kb-339)**<br>🟡 medium · `improvement` · 3/10 | — | — | — | — | — |
+| **[KB-343 · Os testes parametrizados têm nomes estáveis no CTest](#kb-343)**<br>🟡 medium · `bug` · 2/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -8851,6 +8852,29 @@ Num gate do Linux com GCC e o sanitizer de threads, os testes `JobsLuaTest.Split
 
 - None
 
+### KB-343
+
+- **Title:** Os testes parametrizados têm nomes estáveis no CTest
+- **Status:** todo
+- **Type:** bug
+- **Priority:** medium
+- **Complexity:** 2
+- **Progress:** Ainda não começou.
+- **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
+
+#### Description
+
+No Windows com MSVC, o CTest dá aos testes `Callbacks/ErrorReportTest.*` nomes feitos dos bytes crus do parâmetro `FailingCode`, como `56-byte object <DC-EF C6-0C F7-7F ...>`, com ponteiros e o preenchimento do MSVC. O `gtest_discover_tests` troca o índice pelo valor impresso, e o parâmetro não tem nome, então o nome do teste muda a cada build. Um nome que muda quebra a comparação entre runs, os shards e a busca de um teste pelo nome.
+
+#### Acceptance criteria
+
+- [ ] Todo teste parametrizado do engine tem um nome de parâmetro legível e fixo, dado por um gerador de nomes ou por `PrintTo`.
+- [ ] Um teste da tooling ou do repositório falha se um nome de teste listado pelo CTest trouxer bytes crus de um objeto.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8873,7 +8897,7 @@ Num gate do Linux com GCC e o sanitizer de threads, os testes `JobsLuaTest.Split
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-343. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-344. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
