@@ -8460,7 +8460,12 @@ O trabalho da plataforma achou cerca de 18 mensagens em `engine/src/platform/sdl
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 7
-- **Progress:** Começou num trabalho próprio, a partir do desenho que o trabalho dos defeitos da RHI deixou. O `gpu::Device::waitForDisplay()` espera até toda superfície que o último quadro apresentou poder receber outro, e a camada de plataforma o chama antes de ler os eventos de cada quadro.
+- **Progress:** No branch `frame-pacing` (`30815560c`), em três commits:
+  1. a espera pela tela entre os quadros, em todo dispositivo de GPU;
+  2. a idade da entrada em `debug.stats().frame.inputAge`;
+  3. o ritmo da Apple com o `CAMetalDisplayLink` do dispositivo Metal, com o `HaylenFramePacer` em toda plataforma da Apple e um patch do SDL para o iOS seguir o `waitevent`.
+
+A execução completa 45790248384 do branch está rodando.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -8547,7 +8552,12 @@ A execução completa 45711109150 falhou no teste de UI do Android `TextInputTes
 - **Type:** improvement
 - **Priority:** medium
 - **Complexity:** 5
-- **Progress:** Começou no trabalho das ferramentas.
+- **Progress:** Já existem, na pasta do trabalho:
+  - o clang com `-Wshadow-field-in-constructor`;
+  - o `haylen test` compilando todos os alvos;
+  - a verificação com o GCC num contêiner, que leva 1297 s na primeira vez, 1 s sem mudança, 13 s com um arquivo e 101 s com um cabeçalho comum.
+
+O MinGW não serve para conferir o código do Windows, porque a toolchain dele não tem partes do Windows SDK que a engine usa e o Poco esconde as APIs novas sob o MinGW. Decisão do dono: o código do Windows é conferido com o clang-cl e os cabeçalhos reais do MSVC e do Windows SDK, baixados em cada máquina, e a licença da Microsoft é aceita de forma explícita. A mudança do MinGW no Varn sai. O GCC achou cerca de 60 avisos reais no código do Windows, que vão ser corrigidos.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
@@ -8641,7 +8651,7 @@ O `haylen app verify` de um produto da Apple falha com a frase de que o projeto 
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
-- **Progress:** Começou num trabalho próprio no repositório do Varn. A correção entra no mesmo commit único do Varn que o [KB-331](#kb-331) refaz.
+- **Progress:** No trabalho próprio do Varn. Com a decisão do clang-cl, o commit único do Varn passa a levar só a correção do TLS, refeito a partir do `main` do Varn, sem a mudança do MinGW.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
