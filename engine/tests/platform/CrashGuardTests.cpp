@@ -42,7 +42,7 @@ class CrashGuardTest : public ::testing::Test {
     static void crashThroughTheFilter() {
         SetUnhandledExceptionFilter(&exitFromThePreviousFilter);
         CrashGuard::install();
-        EXCEPTION_RECORD record{.ExceptionCode = EXCEPTION_ACCESS_VIOLATION};
+        EXCEPTION_RECORD record{.ExceptionCode = EXCEPTION_ACCESS_VIOLATION, .ExceptionFlags = 0, .ExceptionRecord = nullptr, .ExceptionAddress = nullptr, .NumberParameters = 0, .ExceptionInformation = {}};
         CONTEXT context{};
         EXCEPTION_POINTERS pointers{.ExceptionRecord = &record, .ContextRecord = &context};
         UnhandledExceptionFilter(&pointers);

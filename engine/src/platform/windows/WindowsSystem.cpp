@@ -57,7 +57,9 @@ void WindowsSystem::reportTimeZone() {
 // Reads the real version from `ntdll`, because `GetVersionEx` reports an older one to applications without a compatibility manifest.
 std::string WindowsSystem::getSystemVersion() {
     using RtlGetVersion = LONG(WINAPI*)(PRTL_OSVERSIONINFOW);
-    const auto readVersion = reinterpret_cast<RtlGetVersion>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion"));
+    // The function that `GetProcAddress` answers has no type of its own, so it takes its type through the function type that stands for any function.
+    const FARPROC found = GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
+    const auto readVersion = reinterpret_cast<RtlGetVersion>(reinterpret_cast<void (*)()>(found));
     RTL_OSVERSIONINFOW info{};
     info.dwOSVersionInfoSize = sizeof(info);
     if (readVersion == nullptr || readVersion(&info) != 0) {
@@ -99,7 +101,8 @@ std::string WindowsSystem::getTimeZone() {
         return {};
     }
 
-    const auto convert = reinterpret_cast<TimeZoneForWindowsId>(GetProcAddress(icu, "ucal_getTimeZoneIDForWindowsID"));
+    const FARPROC found = GetProcAddress(icu, "ucal_getTimeZoneIDForWindowsID");
+    const auto convert = reinterpret_cast<TimeZoneForWindowsId>(reinterpret_cast<void (*)()>(found));
     if (convert == nullptr) {
         return {};
     }

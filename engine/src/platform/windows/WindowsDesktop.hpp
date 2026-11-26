@@ -36,7 +36,7 @@ class WindowsDesktop final {
     static constexpr GUID kPowerSavingStatus{0xe00958c0, 0xc213, 0x4ace, {0xac, 0x77, 0xfe, 0xcc, 0xed, 0x2e, 0xee, 0xa5}};
 
     struct DisplayList {
-        std::vector<Display> displays;
+        std::vector<Display> displays{};
         float desktopScale = 1.0F;
     };
 

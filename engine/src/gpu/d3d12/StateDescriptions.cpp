@@ -108,6 +108,10 @@ D3D12_PRIMITIVE_TOPOLOGY_TYPE StateDescriptions::toTopologyType(Device::Primitiv
     return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 }
 
+D3D12_HEAP_PROPERTIES StateDescriptions::makeHeap(D3D12_HEAP_TYPE type) noexcept {
+    return {.Type = type, .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN, .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN, .CreationNodeMask = 0, .VisibleNodeMask = 0};
+}
+
 D3D12_BLEND StateDescriptions::toBlend(Device::BlendFactor factor) noexcept {
     using BlendFactor = Device::BlendFactor;
     switch (factor) {

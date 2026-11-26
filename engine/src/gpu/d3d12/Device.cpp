@@ -379,7 +379,7 @@ ID3D12GraphicsCommandList4& Device::getTransferList() {
 }
 
 ComPtr<ID3D12Resource> Device::makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 size, D3D12_RESOURCE_STATES state, std::string_view label) {
-    const D3D12_HEAP_PROPERTIES properties{.Type = heap};
+    const D3D12_HEAP_PROPERTIES properties = StateDescriptions::makeHeap(heap);
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Width = size;
@@ -500,8 +500,7 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
 
             footprint.Offset += staged.offset;
             const D3D12_TEXTURE_COPY_LOCATION destination{.pResource = image.resource.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = layer * static_cast<UINT>(image.mipLevels) + index};
-            D3D12_TEXTURE_COPY_LOCATION from{.pResource = staged.resource, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT};
-            from.PlacedFootprint = footprint;
+            const D3D12_TEXTURE_COPY_LOCATION from{.pResource = staged.resource, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = footprint};
             list.CopyTextureRegion(&destination, 0, 0, 0, &from, nullptr);
         }
     }
@@ -528,7 +527,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
 
     ImageRecord record{.type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .format = desc.format, .kind = desc.kind};
     record.home = depth ? D3D12_RESOURCE_STATE_DEPTH_READ | kShaderResource : kShaderResource;
-    const D3D12_HEAP_PROPERTIES heap{.Type = D3D12_HEAP_TYPE_DEFAULT};
+    const D3D12_HEAP_PROPERTIES heap = StateDescriptions::makeHeap(D3D12_HEAP_TYPE_DEFAULT);
     HResult::check(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &made, record.home, nullptr, IID_PPV_ARGS(record.resource.GetAddressOf())), std::format("create the {}x{} image \"{}\"", desc.width, desc.height, desc.label));
     setName(*record.resource.Get(), desc.label);
     makeTextureView(record);
@@ -746,8 +745,7 @@ void Device::stageRegion(const ImageRecord& image, const Region& region, std::sp
 
     footprint.Offset = staged.offset;
     const D3D12_TEXTURE_COPY_LOCATION destination{.pResource = image.resource.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
-    D3D12_TEXTURE_COPY_LOCATION from{.pResource = staged.resource, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT};
-    from.PlacedFootprint = footprint;
+    const D3D12_TEXTURE_COPY_LOCATION from{.pResource = staged.resource, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = footprint};
     list.CopyTextureRegion(&destination, static_cast<UINT>(region.x), static_cast<UINT>(region.y), 0, &from, nullptr);
 
     const D3D12_RESOURCE_BARRIER toHome = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, image.home);
@@ -826,7 +824,7 @@ void Device::makeSwapchainTargets(SurfaceChain& chain) {
     desc.MipLevels = 1;
     desc.SampleDesc.Count = static_cast<UINT>(pipelineSampleCount);
     desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    const D3D12_HEAP_PROPERTIES heap{.Type = D3D12_HEAP_TYPE_DEFAULT};
+    const D3D12_HEAP_PROPERTIES heap = StateDescriptions::makeHeap(D3D12_HEAP_TYPE_DEFAULT);
 
     // Flip model swapchains hold one sample, so a multisampled window draws into a texture of its own that resolves into the swapchain when the frame is presented.
     if (desc.SampleDesc.Count > 1) {
@@ -1432,8 +1430,8 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     ID3D12GraphicsCommandList4& list = getTransferList();
     const D3D12_RESOURCE_BARRIER toCopy = makeTransition(record.resource.Get(), record.home, D3D12_RESOURCE_STATE_COPY_SOURCE, 0);
     list.ResourceBarrier(1, &toCopy);
-    D3D12_TEXTURE_COPY_LOCATION destination{.pResource = buffer.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT};
-    destination.PlacedFootprint = {.Offset = 0, .Footprint = {.Format = Formats::getViewFormat(record.format), .Width = static_cast<UINT>(width), .Height = static_cast<UINT>(height), .Depth = 1, .RowPitch = pitch}};
+    const D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{.Offset = 0, .Footprint = {.Format = Formats::getViewFormat(record.format), .Width = static_cast<UINT>(width), .Height = static_cast<UINT>(height), .Depth = 1, .RowPitch = pitch}};
+    const D3D12_TEXTURE_COPY_LOCATION destination{.pResource = buffer.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = footprint};
     const D3D12_TEXTURE_COPY_LOCATION source{.pResource = record.resource.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
     const D3D12_BOX box{.left = 0, .top = 0, .front = 0, .right = static_cast<UINT>(width), .bottom = static_cast<UINT>(height), .back = 1};
     list.CopyTextureRegion(&destination, 0, 0, 0, &source, &box);

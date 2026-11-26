@@ -25,8 +25,8 @@ class BufferArena final {
     };
 
     struct Allocation {
-        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        Range range;
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource{};
+        Range range{};
     };
 
     explicit BufferArena(ID3D12Device& owner);
@@ -46,9 +46,9 @@ class BufferArena final {
     static constexpr UINT64 kAlignment = 256;
 
     struct Block {
-        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource{};
         UINT64 size = 0;
-        std::vector<Range> available;
+        std::vector<Range> available{};
     };
 
     [[nodiscard]] Microsoft::WRL::ComPtr<ID3D12Resource> makeResource(UINT64 size) const;

@@ -5,6 +5,7 @@
 #include <format>
 #include <utility>
 
+#include "gpu/d3d12/StateDescriptions.hpp"
 #include "gpu/direct3d/HResult.hpp"
 
 namespace haylen::gpu::d3d12 {
@@ -18,7 +19,7 @@ UploadAllocator::UploadAllocator(ID3D12Device& owner, std::size_t frames) : devi
 }
 
 UploadAllocator::Page UploadAllocator::makePage(UINT64 size) {
-    const D3D12_HEAP_PROPERTIES heap{.Type = D3D12_HEAP_TYPE_UPLOAD};
+    const D3D12_HEAP_PROPERTIES heap = StateDescriptions::makeHeap(D3D12_HEAP_TYPE_UPLOAD);
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Width = size;

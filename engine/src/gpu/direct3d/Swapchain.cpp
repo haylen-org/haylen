@@ -19,7 +19,7 @@ Swapchain::Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface&
 
     // Composition swapchains never tear, so only the swapchains of windows take the flag of tearing, and every resize repeats the flags.
     tearing = !surface.transparent && Adapter::canTear(factory);
-    flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT | (tearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0U);
+    flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT | (tearing ? static_cast<UINT>(DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) : 0U);
 
     DXGI_SWAP_CHAIN_DESC1 desc{};
     desc.Width = static_cast<UINT>(size.width);

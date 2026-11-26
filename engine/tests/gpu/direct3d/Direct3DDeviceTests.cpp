@@ -497,6 +497,6 @@ TEST_P(Direct3DDeviceTest, MeasuresTheCopiesOfAFrame) {
     EXPECT_GT(*seconds, 0.001);
 }
 
-INSTANTIATE_TEST_SUITE_P(Direct3D, Direct3DDeviceTest, ::testing::ValuesIn(Direct3DDeviceTest::getCompiledApis()), [](const ::testing::TestParamInfo<Device::Api>& info) { return info.param == Device::Api::Direct3D11 ? std::string("Direct3D11") : std::string("Direct3D12"); });
+INSTANTIATE_TEST_SUITE_P(Direct3D, Direct3DDeviceTest, ::testing::ValuesIn(Direct3DDeviceTest::getCompiledApis()), [](const ::testing::TestParamInfo<Device::Api>& parameter) { return parameter.param == Device::Api::Direct3D11 ? std::string("Direct3D11") : std::string("Direct3D12"); });
 
 } // namespace haylen::gpu::direct3d

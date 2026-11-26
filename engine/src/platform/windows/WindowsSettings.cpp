@@ -11,7 +11,7 @@ Theme WindowsSettings::readTheme() {
 
 // The text size of the accessibility settings is a percentage from 100 to 225, and turning off the animations of Windows clears the client area animations.
 AccessibilitySettings WindowsSettings::readAccessibility() {
-    HIGHCONTRASTW contrast{.cbSize = static_cast<UINT>(sizeof(HIGHCONTRASTW))};
+    HIGHCONTRASTW contrast{.cbSize = static_cast<UINT>(sizeof(HIGHCONTRASTW)), .dwFlags = 0, .lpszDefaultScheme = nullptr};
     const bool highContrast = SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(contrast), &contrast, 0) != FALSE && (contrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
     BOOL animations = TRUE;
     SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations, 0);

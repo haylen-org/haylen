@@ -15,7 +15,7 @@ TEST(WindowsSettingsTest, ReadsTheAccessibilitySettingsOfTheUser) {
     BOOL animations = TRUE;
     ASSERT_NE(SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations, 0), FALSE);
     EXPECT_EQ(settings.reducedMotion, animations == FALSE);
-    HIGHCONTRASTW contrast{.cbSize = static_cast<UINT>(sizeof(HIGHCONTRASTW))};
+    HIGHCONTRASTW contrast{.cbSize = static_cast<UINT>(sizeof(HIGHCONTRASTW)), .dwFlags = 0, .lpszDefaultScheme = nullptr};
     ASSERT_NE(SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(contrast), &contrast, 0), FALSE);
     EXPECT_EQ(settings.highContrast, (contrast.dwFlags & HCF_HIGHCONTRASTON) != 0);
 }

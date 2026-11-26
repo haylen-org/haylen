@@ -217,7 +217,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     made.ByteWidth = static_cast<UINT>(size);
     made.Usage = desc.usage == Usage::Immutable ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC;
     made.BindFlags = desc.index ? D3D11_BIND_INDEX_BUFFER : D3D11_BIND_VERTEX_BUFFER;
-    made.CPUAccessFlags = desc.usage == Usage::Dynamic ? D3D11_CPU_ACCESS_WRITE : 0U;
+    made.CPUAccessFlags = desc.usage == Usage::Dynamic ? static_cast<UINT>(D3D11_CPU_ACCESS_WRITE) : 0U;
     const D3D11_SUBRESOURCE_DATA initial{.pSysMem = desc.data.data(), .SysMemPitch = 0, .SysMemSlicePitch = 0};
 
     BufferRecord record{.size = size, .usage = desc.usage};
@@ -290,8 +290,8 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     ImageRules::check(desc, capabilities);
 
     UINT bind = D3D11_BIND_SHADER_RESOURCE;
-    bind |= desc.kind == ImageKind::RenderTarget ? D3D11_BIND_RENDER_TARGET : 0U;
-    bind |= desc.kind == ImageKind::DepthStencil ? D3D11_BIND_DEPTH_STENCIL : 0U;
+    bind |= desc.kind == ImageKind::RenderTarget ? static_cast<UINT>(D3D11_BIND_RENDER_TARGET) : 0U;
+    bind |= desc.kind == ImageKind::DepthStencil ? static_cast<UINT>(D3D11_BIND_DEPTH_STENCIL) : 0U;
     const D3D11_USAGE usage = desc.kind == ImageKind::Texture ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DEFAULT;
     const std::vector<D3D11_SUBRESOURCE_DATA> data = desc.kind == ImageKind::Texture ? describeLevels(desc) : std::vector<D3D11_SUBRESOURCE_DATA>{};
     const D3D11_SUBRESOURCE_DATA* initial = data.empty() ? nullptr : data.data();
@@ -319,7 +319,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         made.SampleDesc.Count = static_cast<UINT>(desc.sampleCount);
         made.Usage = usage;
         made.BindFlags = bind;
-        made.MiscFlags = desc.type == TextureType::Cube ? D3D11_RESOURCE_MISC_TEXTURECUBE : 0U;
+        made.MiscFlags = desc.type == TextureType::Cube ? static_cast<UINT>(D3D11_RESOURCE_MISC_TEXTURECUBE) : 0U;
         ComPtr<ID3D11Texture2D> texture;
         HResult::check(device->CreateTexture2D(&made, initial, texture.GetAddressOf()), std::format("create the {}x{} image \"{}\"", desc.width, desc.height, desc.label));
         record.resource = texture;
@@ -504,7 +504,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
 
         const bool whole = region.width == image.width && region.height == image.height;
         const D3D11_BOX box{.left = static_cast<UINT>(region.x), .top = static_cast<UINT>(region.y), .front = 0, .right = static_cast<UINT>(region.x + region.width), .bottom = static_cast<UINT>(region.y + region.height), .back = 1};
-        context->UpdateSubresource1(image.resource.Get(), 0, &box, write.pixels.data(), static_cast<UINT>(row), static_cast<UINT>(bytes), whole ? D3D11_COPY_DISCARD : 0U);
+        context->UpdateSubresource1(image.resource.Get(), 0, &box, write.pixels.data(), static_cast<UINT>(row), static_cast<UINT>(bytes), whole ? static_cast<UINT>(D3D11_COPY_DISCARD) : 0U);
     }
 }
 
@@ -743,8 +743,8 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         width = width > 0 ? width : image.width;
         height = height > 0 ? height : image.height;
 
-        UINT clear = attachment.depthLoad == Load::Clear ? D3D11_CLEAR_DEPTH : 0U;
-        clear |= stencil && attachment.stencilLoad == Load::Clear ? D3D11_CLEAR_STENCIL : 0U;
+        UINT clear = attachment.depthLoad == Load::Clear ? static_cast<UINT>(D3D11_CLEAR_DEPTH) : 0U;
+        clear |= stencil && attachment.stencilLoad == Load::Clear ? static_cast<UINT>(D3D11_CLEAR_STENCIL) : 0U;
         if (clear != 0) {
             context->ClearDepthStencilView(pass.depthStencil, clear, attachment.clearDepth, attachment.clearStencil);
         } else if (attachment.depthLoad == Load::DontCare && (!stencil || attachment.stencilLoad == Load::DontCare)) {

@@ -65,7 +65,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::GetPatternProvider(PATTERNID pattern
     *provider = nullptr;
     const std::optional<AccessibilityElement> element = read();
     if (!element) {
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     if (hasPattern(*element, pattern)) {
@@ -80,7 +80,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::GetPropertyValue(PROPERTYID property
     value->vt = VT_EMPTY;
     const std::optional<AccessibilityElement> element = read();
     if (!element) {
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     // clang-format off
@@ -162,7 +162,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::Navigate(NavigateDirection direction
     const std::shared_ptr<WindowsAccessibilityTree> owner = lockTree();
     const std::optional<AccessibilityElement> element = owner != nullptr ? owner->find(id) : std::nullopt;
     if (!element) {
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     switch (direction) {
@@ -224,7 +224,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_BoundingRectangle(UiaRect* recta
     const std::shared_ptr<WindowsAccessibilityTree> owner = lockTree();
     const std::optional<AccessibilityElement> element = owner != nullptr ? owner->find(id) : std::nullopt;
     if (!element) {
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     const math::Rect screen = owner->toScreen(element->bounds);
@@ -245,7 +245,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_FragmentRoot(IRawElementProvider
     *found = nullptr;
     const std::shared_ptr<WindowsAccessibilityTree> owner = lockTree();
     if (owner == nullptr) {
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     *found = owner->getRoot().Detach();
@@ -263,14 +263,14 @@ IFACEMETHODIMP WindowsAccessibilityElement::Toggle() {
 IFACEMETHODIMP WindowsAccessibilityElement::get_ToggleState(ToggleState* state) {
     const std::optional<AccessibilityElement> element = read();
     *state = element && element->has(AccessibilityElement::Checked) ? ToggleState_On : ToggleState_Off;
-    return element ? S_OK : UIA_E_ELEMENTNOTAVAILABLE;
+    return element ? S_OK : kElementNotAvailable;
 }
 
 // The engine knows the number of a value and not its range, so a new value moves the control one step toward it.
 IFACEMETHODIMP WindowsAccessibilityElement::SetValue(double value) {
     const std::optional<AccessibilityElement> element = read();
     if (!element) {
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     const double current = readNumber(element->value);
@@ -288,7 +288,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::SetValue(double value) {
 IFACEMETHODIMP WindowsAccessibilityElement::get_Value(double* value) {
     const std::optional<AccessibilityElement> element = read();
     *value = element ? readNumber(element->value) : 0.0;
-    return element ? S_OK : UIA_E_ELEMENTNOTAVAILABLE;
+    return element ? S_OK : kElementNotAvailable;
 }
 
 // A range moves while the control takes steps. A field takes what a person types into the native field that it opens, so screen readers hear that it can be edited, while UI Automation itself sets no text.
@@ -296,7 +296,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_IsReadOnly(BOOL* readOnly) {
     const std::optional<AccessibilityElement> element = read();
     if (!element) {
         *readOnly = TRUE;
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     const bool steps = hasRange(*element) && element->can(AccessibilityElement::Increment);
@@ -327,11 +327,11 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_SmallChange(double* value) {
 IFACEMETHODIMP WindowsAccessibilityElement::SetValue(LPCWSTR value) {
     const std::optional<AccessibilityElement> element = read();
     if (!element) {
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     if (!hasRange(*element)) {
-        return UIA_E_INVALIDOPERATION;
+        return kInvalidOperation;
     }
 
     wchar_t* end = nullptr;
@@ -342,7 +342,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::SetValue(LPCWSTR value) {
 IFACEMETHODIMP WindowsAccessibilityElement::get_Value(BSTR* value) {
     const std::optional<AccessibilityElement> element = read();
     *value = SysAllocString(element ? WindowsText::toWide(element->value).c_str() : L"");
-    return element ? S_OK : UIA_E_ELEMENTNOTAVAILABLE;
+    return element ? S_OK : kElementNotAvailable;
 }
 
 IFACEMETHODIMP WindowsAccessibilityElement::Select() {
@@ -354,13 +354,13 @@ IFACEMETHODIMP WindowsAccessibilityElement::AddToSelection() {
 }
 
 IFACEMETHODIMP WindowsAccessibilityElement::RemoveFromSelection() {
-    return UIA_E_INVALIDOPERATION;
+    return kInvalidOperation;
 }
 
 IFACEMETHODIMP WindowsAccessibilityElement::get_IsSelected(BOOL* selected) {
     const std::optional<AccessibilityElement> element = read();
     *selected = element && isSelected(*element) ? TRUE : FALSE;
-    return element ? S_OK : UIA_E_ELEMENTNOTAVAILABLE;
+    return element ? S_OK : kElementNotAvailable;
 }
 
 IFACEMETHODIMP WindowsAccessibilityElement::get_SelectionContainer(IRawElementProviderSimple** container) {
@@ -387,7 +387,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::Collapse() {
 IFACEMETHODIMP WindowsAccessibilityElement::get_ExpandCollapseState(ExpandCollapseState* state) {
     const std::optional<AccessibilityElement> element = read();
     *state = element && element->has(AccessibilityElement::Expanded) ? ExpandCollapseState_Expanded : ExpandCollapseState_Collapsed;
-    return element ? S_OK : UIA_E_ELEMENTNOTAVAILABLE;
+    return element ? S_OK : kElementNotAvailable;
 }
 
 CONTROLTYPEID WindowsAccessibilityElement::getControlType(AccessibilityElement::Role role) noexcept {
@@ -478,15 +478,15 @@ HRESULT WindowsAccessibilityElement::perform(AccessibilityElement::Action action
     const std::shared_ptr<WindowsAccessibilityTree> owner = lockTree();
     const std::optional<AccessibilityElement> element = owner != nullptr ? owner->find(id) : std::nullopt;
     if (!element) {
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     if (element->has(AccessibilityElement::Disabled)) {
-        return UIA_E_ELEMENTNOTENABLED;
+        return kElementNotEnabled;
     }
 
     if (!element->can(action)) {
-        return UIA_E_INVALIDOPERATION;
+        return kInvalidOperation;
     }
 
     owner->perform(id, action);
@@ -496,7 +496,7 @@ HRESULT WindowsAccessibilityElement::perform(AccessibilityElement::Action action
 HRESULT WindowsAccessibilityElement::returnFragment(std::uint64_t element, IRawElementProviderFragment** found) const {
     const std::shared_ptr<WindowsAccessibilityTree> owner = lockTree();
     if (owner == nullptr) {
-        return UIA_E_ELEMENTNOTAVAILABLE;
+        return kElementNotAvailable;
     }
 
     *found = owner->getProvider(element).Detach();

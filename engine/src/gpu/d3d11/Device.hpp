@@ -116,7 +116,7 @@ class Device final : public gpu::Device {
 
     // A dynamic buffer remembers the frame that wrote it last, since the first write of a frame hands the GPU a fresh copy of it.
     struct BufferRecord {
-        Microsoft::WRL::ComPtr<ID3D11Buffer> buffer;
+        Microsoft::WRL::ComPtr<ID3D11Buffer> buffer{};
         std::size_t size = 0;
         Usage usage = Usage::Immutable;
         std::uint64_t writtenFrame = 0;
@@ -126,14 +126,14 @@ class Device final : public gpu::Device {
     struct Attachment {
         int mipLevel = 0;
         int layer = 0;
-        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> color;
-        Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depth;
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> color{};
+        Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depth{};
     };
 
     struct ImageRecord {
-        Microsoft::WRL::ComPtr<ID3D11Resource> resource;
-        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> view;
-        std::vector<Attachment> attachments;
+        Microsoft::WRL::ComPtr<ID3D11Resource> resource{};
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> view{};
+        std::vector<Attachment> attachments{};
         TextureType type = TextureType::Flat;
         int width = 0;
         int height = 0;
@@ -153,29 +153,29 @@ class Device final : public gpu::Device {
     };
 
     struct ProgramRecord {
-        Microsoft::WRL::ComPtr<ID3D11VertexShader> vertex;
-        Microsoft::WRL::ComPtr<ID3D11PixelShader> fragment;
-        Microsoft::WRL::ComPtr<ID3DBlob> vertexCode;
+        Microsoft::WRL::ComPtr<ID3D11VertexShader> vertex{};
+        Microsoft::WRL::ComPtr<ID3D11PixelShader> fragment{};
+        Microsoft::WRL::ComPtr<ID3DBlob> vertexCode{};
         std::array<std::optional<Register>, kMaxBlocks> blocks{};
-        std::vector<Register> textures;
-        std::vector<Register> samplers;
+        std::vector<Register> textures{};
+        std::vector<Register> samplers{};
     };
 
     // A pipeline holds its program's shaders and registers itself, so it outlives a program destroyed before it.
     struct PipelineRecord {
-        Microsoft::WRL::ComPtr<ID3D11VertexShader> vertex;
-        Microsoft::WRL::ComPtr<ID3D11PixelShader> fragment;
-        Microsoft::WRL::ComPtr<ID3D11InputLayout> layout;
-        Microsoft::WRL::ComPtr<ID3D11BlendState> blend;
-        Microsoft::WRL::ComPtr<ID3D11RasterizerState> rasterizer;
-        Microsoft::WRL::ComPtr<ID3D11DepthStencilState> depthStencil;
+        Microsoft::WRL::ComPtr<ID3D11VertexShader> vertex{};
+        Microsoft::WRL::ComPtr<ID3D11PixelShader> fragment{};
+        Microsoft::WRL::ComPtr<ID3D11InputLayout> layout{};
+        Microsoft::WRL::ComPtr<ID3D11BlendState> blend{};
+        Microsoft::WRL::ComPtr<ID3D11RasterizerState> rasterizer{};
+        Microsoft::WRL::ComPtr<ID3D11DepthStencilState> depthStencil{};
         D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         std::array<UINT, kMaxVertexBuffers> strides{};
         UINT bufferCount = 0;
         DXGI_FORMAT indexFormat = DXGI_FORMAT_UNKNOWN;
         std::array<std::optional<Register>, kMaxBlocks> blocks{};
-        std::vector<Register> textures;
-        std::vector<Register> samplers;
+        std::vector<Register> textures{};
+        std::vector<Register> samplers{};
     };
 
     // The state that the context holds, so a call that would set what it holds already is skipped. Bound objects stay alive in the context, so no other object takes the address of one of them while it is bound.
@@ -220,12 +220,12 @@ class Device final : public gpu::Device {
 
     // The swapchain of a surface, the window or one that `addSurface` made, with the views that its passes draw into and whether the frame drew into it. The window keeps its place while it has no surface, and a surface makes its swapchain once it has pixels.
     struct SurfaceChain {
-        std::optional<Surface> surface;
-        std::unique_ptr<direct3d::Swapchain> swapchain;
-        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> backBufferView;
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> multisampleColor;
-        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> multisampleView;
-        Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depthView;
+        std::optional<Surface> surface{};
+        std::unique_ptr<direct3d::Swapchain> swapchain{};
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> backBufferView{};
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> multisampleColor{};
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> multisampleView{};
+        Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depthView{};
         bool presentPending = false;
         bool presented = false;
     };

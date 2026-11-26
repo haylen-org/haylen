@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <format>
 
+#include "gpu/d3d12/StateDescriptions.hpp"
 #include "gpu/direct3d/HResult.hpp"
 
 namespace haylen::gpu::d3d12 {
@@ -12,7 +13,7 @@ using Microsoft::WRL::ComPtr;
 BufferArena::BufferArena(ID3D12Device& owner) : device(owner) {}
 
 ComPtr<ID3D12Resource> BufferArena::makeResource(UINT64 size) const {
-    const D3D12_HEAP_PROPERTIES heap{.Type = D3D12_HEAP_TYPE_DEFAULT};
+    const D3D12_HEAP_PROPERTIES heap = StateDescriptions::makeHeap(D3D12_HEAP_TYPE_DEFAULT);
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Width = size;
@@ -42,7 +43,7 @@ BufferArena::Allocation BufferArena::allocate(UINT64 size) {
 
     // The ranges of buffers name their block by its place, so a new block takes the place of a block that a trim released.
     const auto released = std::ranges::find_if(blocks, [](const Block& block) { return block.resource == nullptr; });
-    const auto index = static_cast<std::uint32_t>(released != blocks.end() ? released - blocks.begin() : blocks.size());
+    const auto index = static_cast<std::uint32_t>(std::ranges::distance(blocks.begin(), released));
     if (released == blocks.end()) {
         blocks.emplace_back();
     }

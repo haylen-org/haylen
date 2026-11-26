@@ -292,7 +292,9 @@ bool PocoWebSocket::connectSocket(Connection& target, Poco::Net::StreamSocket& s
 
         const int error = socket.impl()->socketError();
         if (error != 0) {
-            throw Poco::Net::NetException(Poco::Error::getMessage(error), address.toString(), error);
+            // The errors of the system that Poco describes are a `DWORD` on Windows and an `int` elsewhere, which its function that reads the last error answers.
+            const auto code = static_cast<decltype(Poco::Error::last())>(error);
+            throw Poco::Net::NetException(Poco::Error::getMessage(code), address.toString(), error);
         }
 
         return true;

@@ -1,5 +1,6 @@
 #include "gpu/d3d12/FrameTimer.hpp"
 
+#include "gpu/d3d12/StateDescriptions.hpp"
 #include "gpu/direct3d/HResult.hpp"
 
 namespace haylen::gpu::d3d12 {
@@ -8,7 +9,7 @@ FrameTimer::FrameTimer(ID3D12Device& device, ID3D12CommandQueue& queue, std::siz
     const D3D12_QUERY_HEAP_DESC heap{.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP, .Count = static_cast<UINT>(frames * kTimestamps), .NodeMask = 0};
     direct3d::HResult::check(device.CreateQueryHeap(&heap, IID_PPV_ARGS(queries.GetAddressOf())), "create the timestamp queries of the frames");
 
-    const D3D12_HEAP_PROPERTIES readback{.Type = D3D12_HEAP_TYPE_READBACK};
+    const D3D12_HEAP_PROPERTIES readback = StateDescriptions::makeHeap(D3D12_HEAP_TYPE_READBACK);
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Width = frames * kTimestamps * sizeof(std::uint64_t);

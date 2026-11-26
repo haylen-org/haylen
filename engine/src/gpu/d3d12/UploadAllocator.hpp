@@ -37,7 +37,7 @@ class UploadAllocator final {
     static constexpr UINT64 kPageSize = 4ULL << 20U;
 
     struct Page {
-        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource{};
         std::byte* data = nullptr;
         D3D12_GPU_VIRTUAL_ADDRESS address = 0;
         UINT64 size = 0;

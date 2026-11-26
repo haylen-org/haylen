@@ -80,6 +80,11 @@ class WindowsAccessibilityElement final : public IRawElementProviderSimple, publ
     [[nodiscard]] static double readNumber(const std::string& text) noexcept;
 
   private:
+    // The errors of UI Automation, which its header defines as unsigned numbers, while its methods answer them as an `HRESULT`.
+    static constexpr HRESULT kElementNotAvailable = static_cast<HRESULT>(UIA_E_ELEMENTNOTAVAILABLE);
+    static constexpr HRESULT kElementNotEnabled = static_cast<HRESULT>(UIA_E_ELEMENTNOTENABLED);
+    static constexpr HRESULT kInvalidOperation = static_cast<HRESULT>(UIA_E_INVALIDOPERATION);
+
     [[nodiscard]] std::shared_ptr<WindowsAccessibilityTree> lockTree() const;
     [[nodiscard]] std::optional<AccessibilityElement> read() const;
     [[nodiscard]] HRESULT perform(AccessibilityElement::Action action) const;

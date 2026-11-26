@@ -6,7 +6,7 @@
 
 namespace haylen::gpu::d3d12 {
 
-// The descriptions of Direct3D 12 that the pipelines and samplers of the device turn into, which pipeline state objects and sampler descriptors take as they are.
+// The descriptions of Direct3D 12 that the pipelines, samplers and resources of the device turn into, which pipeline state objects, sampler descriptors and committed resources take as they are.
 class StateDescriptions final {
   public:
     [[nodiscard]] static D3D12_BLEND_DESC makeBlend(const Device::PipelineDesc& desc) noexcept;
@@ -15,6 +15,7 @@ class StateDescriptions final {
     [[nodiscard]] static D3D12_SAMPLER_DESC makeSampler(const Device::SamplerDesc& desc) noexcept;
     [[nodiscard]] static D3D12_PRIMITIVE_TOPOLOGY toTopology(Device::Primitive primitive) noexcept;
     [[nodiscard]] static D3D12_PRIMITIVE_TOPOLOGY_TYPE toTopologyType(Device::Primitive primitive) noexcept;
+    [[nodiscard]] static D3D12_HEAP_PROPERTIES makeHeap(D3D12_HEAP_TYPE type) noexcept;
 
   private:
     [[nodiscard]] static D3D12_BLEND toBlend(Device::BlendFactor factor) noexcept;

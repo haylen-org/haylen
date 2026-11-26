@@ -119,8 +119,8 @@ class Device final : public gpu::Device {
     // Buffers rest in the common state, from which each list promotes them to what it does with them, and to which they return when the list ends.
     // A buffer holds a range of a block of the arena, or a resource of its own when it is large, at the offset of the range.
     struct BufferRecord {
-        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        BufferArena::Range range;
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource{};
+        BufferArena::Range range{};
         D3D12_GPU_VIRTUAL_ADDRESS address = 0;
         std::size_t size = 0;
         Usage usage = Usage::Immutable;
@@ -133,9 +133,9 @@ class Device final : public gpu::Device {
     };
 
     struct ImageRecord {
-        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource{};
         D3D12_CPU_DESCRIPTOR_HANDLE view{};
-        std::vector<Attachment> attachments;
+        std::vector<Attachment> attachments{};
         TextureType type = TextureType::Flat;
         int width = 0;
         int height = 0;
@@ -149,23 +149,23 @@ class Device final : public gpu::Device {
     };
 
     struct ProgramRecord {
-        RootSignatures::Layout layout;
-        Microsoft::WRL::ComPtr<ID3DBlob> vertexCode;
-        Microsoft::WRL::ComPtr<ID3DBlob> fragmentCode;
+        RootSignatures::Layout layout{};
+        Microsoft::WRL::ComPtr<ID3DBlob> vertexCode{};
+        Microsoft::WRL::ComPtr<ID3DBlob> fragmentCode{};
     };
 
     // A pipeline that draws into the swapchain keeps its description, so it is made again when the window takes another sample count.
     struct PipelineRecord {
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> state;
-        RootSignatures::Layout layout;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> state{};
+        RootSignatures::Layout layout{};
         D3D12_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         std::array<UINT, kMaxVertexBuffers> strides{};
         UINT bufferCount = 0;
         DXGI_FORMAT indexFormat = DXGI_FORMAT_UNKNOWN;
         bool swapchain = false;
-        Microsoft::WRL::ComPtr<ID3DBlob> vertexCode;
-        Microsoft::WRL::ComPtr<ID3DBlob> fragmentCode;
-        std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
+        Microsoft::WRL::ComPtr<ID3DBlob> vertexCode{};
+        Microsoft::WRL::ComPtr<ID3DBlob> fragmentCode{};
+        std::vector<D3D12_INPUT_ELEMENT_DESC> elements{};
         D3D12_GRAPHICS_PIPELINE_STATE_DESC description{};
     };
 
@@ -178,12 +178,12 @@ class Device final : public gpu::Device {
     // An object, a descriptor of a heap, the views of the attachments of an image or a range of the buffer arena, that the GPU may use until the fence passes the value. A destroyed object leaves exactly one entry, whose place the device holds from the moment the object was made.
     struct Garbage {
         std::uint64_t fence = 0;
-        Microsoft::WRL::ComPtr<IUnknown> object;
+        Microsoft::WRL::ComPtr<IUnknown> object{};
         DescriptorHeap* heap = nullptr;
         D3D12_CPU_DESCRIPTOR_HANDLE handle{};
         DescriptorHeap* attachmentHeap = nullptr;
-        std::vector<Attachment> attachments;
-        BufferArena::Range range;
+        std::vector<Attachment> attachments{};
+        BufferArena::Range range{};
     };
 
     // The state that the list of the frame holds, so a call that would set what it holds already is skipped.
@@ -212,13 +212,13 @@ class Device final : public gpu::Device {
     static void enableDebugLayers(bool validation);
     // The swapchain of a surface, the window or one that `addSurface` made, with the views of its buffers and attachments, which stay in their heaps while the surface lives, and the buffer that the frame draws into. The window keeps its place while it has no surface, and a surface makes its swapchain once it has pixels.
     struct SurfaceChain {
-        std::optional<Surface> surface;
-        std::unique_ptr<direct3d::Swapchain> swapchain;
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, direct3d::Swapchain::kBufferCount> backBuffers;
+        std::optional<Surface> surface{};
+        std::unique_ptr<direct3d::Swapchain> swapchain{};
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, direct3d::Swapchain::kBufferCount> backBuffers{};
         std::array<D3D12_CPU_DESCRIPTOR_HANDLE, direct3d::Swapchain::kBufferCount> backBufferViews{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> multisampleColor;
+        Microsoft::WRL::ComPtr<ID3D12Resource> multisampleColor{};
         D3D12_CPU_DESCRIPTOR_HANDLE multisampleView{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> depth;
+        Microsoft::WRL::ComPtr<ID3D12Resource> depth{};
         D3D12_CPU_DESCRIPTOR_HANDLE depthView{};
         UINT backBufferIndex = 0;
         bool presentPending = false;
