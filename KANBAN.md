@@ -8563,7 +8563,7 @@ No mesmo dia, três commits passaram na verificação do Mac e quebraram a CI co
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 3
-- **Progress:** No `main` em `63c600d9a`. O teste espera a linha de texto do teclado do sistema ter o foco, digita nela e confere que ela mostra o texto, sem atraso fixo. Ele passou 6 de 6 vezes num simulador vazio do Apple TV 4K. Numa rodada do código antigo apareceu outra falha, um tempo esgotado do XCUITest na abertura: a linha de quadros do app ficou parada cerca de 90 segundos depois de abrir. O trabalho do Mac investiga a causa com 20 rodadas que guardam o resultado de qualquer falha. Falta a execução completa da CI.
+- **Progress:** No `main` em `c45fed69e`. O teste espera a linha de texto do teclado do sistema ter o foco, digita nela e confere que ela mostra o texto, sem atraso fixo. Ele passou 6 de 6 vezes num simulador vazio do Apple TV 4K. Numa rodada do código antigo apareceu outra falha, um tempo esgotado do XCUITest na abertura: a linha de quadros do app ficou parada cerca de 90 segundos depois de abrir. O trabalho do Mac investiga a causa com 20 rodadas que guardam o resultado de qualquer falha. Falta a execução completa da CI.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
