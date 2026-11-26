@@ -8056,7 +8056,14 @@ Um app sem `identifier` que roda pelo `haylen app run` recebe o identificador ge
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** Caminho decidido: os quadros que apresentam seguem os avisos de quadro da superfície; enquanto nenhum aviso chega, um timer no ritmo de janela escondida roda os quadros sem apresentar; e o estado `suspended` para a apresentação na hora. Os testes de integração rodam em Docker, sem máquina na nuvem:
+- **Progress:** Funciona em Docker, com um app que conta por segundo os updates, os desenhos, os ticks de um timer e as respostas HTTP:
+  - Sway, com Vulkan e GL: com a saída desligada ou a área de trabalho escondida, os desenhos param e o resto continua. Os desenhos voltam no primeiro segundo.
+  - Mutter, com GL: quando a janela fica coberta, o Mutter manda `suspended`, e os desenhos param enquanto o resto continua.
+  - Mutter, com Vulkan: o Mutter sem tela para de mostrar qualquer cliente Vulkan depois de cerca de 1 s, e o app continua rodando sem desenhar.
+  - Weston, com Vulkan e GL: quando as telas dormem, os desenhos param e o resto continua.
+  - X11: igual a antes.
+
+Os 3040 testes da engine passam no Linux. Num compositor que redesenha a cerca de 33 Hz, o timer fazia updates a mais. Agora o timer só começa quando os avisos de quadro ficam parados por um quarto de segundo, e enquanto os avisos chegam, cada update segue um aviso.
   - o Sway sem tela, onde desligar e religar a saída para e devolve os avisos;
   - o Mutter sem tela, que manda `suspended` quando a janela é minimizada;
   - o Weston, onde a tela apagada para os avisos.
