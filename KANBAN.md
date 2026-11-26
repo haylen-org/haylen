@@ -9036,7 +9036,7 @@ O `engine/cmake/haylen-release.cmake` já troca, nas macros como `__FILE__`, a r
 
 #### Description
 
-O dono decidiu que os nomes de todos os tipos de uma dimensão são consistentes: todo tipo de uma pasta `2d` ou `3d`, a geometria de uma dimensão em `haylen::math` e os plugins de uma dimensão levam `2D` ou `3D` no nome, mesmo quando a outra dimensão não tem um tipo igual, no C++ e no Lua. Assim somem as misturas de hoje, como `Skeleton3D` ao lado de `Pose` e `Skin`, ou `Sphere` e `Frustum` sem a dimensão. `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4` e `Quat` ficam como são, pela convenção das linguagens de shader. Código, testes, docs, samples e templates usam só os nomes com a dimensão.
+O dono decidiu que os nomes de todos os tipos de uma dimensão são consistentes: todo tipo de uma pasta `2d` ou `3d`, a geometria de uma dimensão em `haylen::math` e os plugins de uma dimensão levam `2D` ou `3D` no nome, mesmo quando a outra dimensão não tem um tipo igual, no C++ e no Lua. Assim somem as misturas de hoje, como `Skeleton3D` ao lado de `Pose` e `Skin`, ou `Sphere` e `Frustum` sem a dimensão. `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4` e `Quat` ficam como são, pela convenção das linguagens de shader. Os tipos internos das pastas `2d` e `3d` levam a dimensão também, e a classe que liga um tipo ao Lua tem o nome do tipo seguido de `Binding`, como `Body3DBinding` e `World2DBinding`. Código, testes, docs, samples e templates usam só os nomes com a dimensão.
 
 #### Acceptance criteria
 
