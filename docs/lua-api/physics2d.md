@@ -366,9 +366,9 @@ world.hitThreshold = 300
 print(world.gravity.x, world.gravity.y, world.bodyCount, world.awakeBodyCount, world.pixelsPerMeter, world.threads)
 ```
 
-## Body
+## Body2D
 
-A `Body`, named `haylen.Body` in messages, is an object that moves. The method `world:createBody()` makes one. A body has no collision until shapes are added to it with [`body:addBox`](#bodyaddboxwidth-height-options), [`body:addCircle`](#bodyaddcircleradius-options), [`body:addCapsule`](#bodyaddcapsulex1-y1-x2-y2-radius-options), [`body:addSegment`](#bodyaddsegmentx1-y1-x2-y2-options), [`body:addPolygon`](#bodyaddpolygonpoints-options) or [`body:addChain`](#bodyaddchainpoints-loop-options), which the [Shape](#shape) section describes.
+A `Body2D`, named `haylen.Body2D` in messages, is an object that moves. The method `world:createBody()` makes one. A body has no collision until shapes are added to it with [`body:addBox`](#bodyaddboxwidth-height-options), [`body:addCircle`](#bodyaddcircleradius-options), [`body:addCapsule`](#bodyaddcapsulex1-y1-x2-y2-radius-options), [`body:addSegment`](#bodyaddsegmentx1-y1-x2-y2-options), [`body:addPolygon`](#bodyaddpolygonpoints-options) or [`body:addChain`](#bodyaddchainpoints-loop-options), which the [Shape2D](#shape2d) section describes.
 
 Every member except `valid`, `world` and `destroy` raises `The body was destroyed.` once the body is gone. Two handles of the same body compare equal with `==`.
 
@@ -738,7 +738,7 @@ rock = rock:moveToWorld(space) -- It floats on from here, with the speed it had.
 print(rock.world == space, rock.data.name)
 ```
 
-### Body properties
+### Body2D properties
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -795,13 +795,13 @@ crate.x = 50
 print(crate.position.x, crate.velocity.x, crate.mass, crate.inertia, crate.worldCenter.y, crate.awake, crate.world == world)
 ```
 
-## Shape
+## Shape2D
 
-A `Shape`, named `haylen.Shape` in messages, gives a body its collision. The `add` methods of a body make shapes, and `body:shapes()`, queries, casts and events return them. Every member except `valid` and `destroy` raises `The shape was destroyed.` once the shape is gone. Two handles of the same shape compare equal with `==`.
+A `Shape2D`, named `haylen.Shape2D` in messages, gives a body its collision. The `add` methods of a body make shapes, and `body:shapes()`, queries, casts and events return them. Every member except `valid` and `destroy` raises `The shape was destroyed.` once the shape is gone. Two handles of the same shape compare equal with `==`.
 
 ### body:addBox(width, height, options)
 
-Adds a box centered on the body origin and returns its shape. The optional table `options` holds the [shape options](#shape-options), and invalid options raise their error before the shape exists. A size that is not positive raises `A physics box needs a positive size.`.
+Adds a box centered on the body origin and returns its shape. The optional table `options` holds the [shape options](#shape2d-options), and invalid options raise their error before the shape exists. A size that is not positive raises `A physics box needs a positive size.`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -896,7 +896,7 @@ local rock = world:createBody({type = 'static', x = 0, y = 0})
 rock:addChain({{-60, -40}, {60, -40}, {60, 40}, {-60, 40}}, true)
 ```
 
-### Shape options
+### Shape2D options
 
 Every `add` method takes the same optional table of options. An unknown key raises `Unknown option "<key>".`.
 
@@ -918,7 +918,7 @@ Every `add` method takes the same optional table of options. An unknown key rais
 | `hitEvents` | boolean | `true` | Lets the contacts of the shape call `onHit`. |
 | `sensorEvents` | boolean | `true` | For a sensor, whether it detects visitors. For any other shape, whether sensors detect it. |
 
-A density, friction, restitution or rolling resistance that is negative or not finite raises `A physics shape needs a finite density, friction, restitution and rolling resistance of zero or more.`. A zero `oneWay` direction raises `A one-way direction cannot be zero.`. Both raise before the shape is created. The materials and the event switches also change while the shape exists, as [Shape properties](#shape-properties) lists.
+A density, friction, restitution or rolling resistance that is negative or not finite raises `A physics shape needs a finite density, friction, restitution and rolling resistance of zero or more.`. A zero `oneWay` direction raises `A one-way direction cannot be zero.`. Both raise before the shape is created. The materials and the event switches also change while the shape exists, as [Shape properties](#shape2d-properties) lists.
 
 ### shape:destroy()
 
@@ -979,14 +979,14 @@ scene.push({
 })
 ```
 
-### Shape properties
+### Shape2D properties
 
 The geometry properties return new values on every read. The `points` are in the space of the body, with the offset and rotation of the shape options applied. The `worldPoints` are the same points in world units, where the body is now.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
 | `valid` | boolean | read | The value is `false` once the shape or its body is destroyed. |
-| `body` | Body | read | The body the shape belongs to. |
+| `body` | Body2D | read | The body the shape belongs to. |
 | `kind` | string | read | `'circle'`, `'capsule'`, `'segment'`, `'polygon'` or `'chainSegment'`, one segment of a chain. |
 | `points` | list of Vec2 | read | The points that place the shape on its body: the center of a circle, the two centers of a capsule, the two ends of a segment or a chain segment, or the corners of a polygon in order around it. |
 | `worldPoints` | list of Vec2 | read | The `points` in world units. |
@@ -1109,9 +1109,9 @@ scene.push({
 })
 ```
 
-## Joint
+## Joint2D
 
-A `Joint`, named `haylen.Joint` in messages, connects two bodies of the same world. The method `world:createJoint()` makes one. Every setting a joint type takes at creation also changes while the joint runs, and a change wakes the bodies of the joint. Every member except `valid` and `destroy` raises `The physics joint was destroyed.` once the joint or one of its bodies is gone. A member that the type of the joint lacks raises an error that names the joint types that have it. Two handles of the same joint compare equal with `==`.
+A `Joint2D`, named `haylen.Joint2D` in messages, connects two bodies of the same world. The method `world:createJoint()` makes one. Every setting a joint type takes at creation also changes while the joint runs, and a change wakes the bodies of the joint. Every member except `valid` and `destroy` raises `The physics joint was destroyed.` once the joint or one of its bodies is gone. A member that the type of the joint lacks raises an error that names the joint types that have it. Two handles of the same joint compare equal with `==`.
 
 ### world:createJoint(type, a, b, options)
 
@@ -1149,7 +1149,7 @@ Connects the bodies `a` and `b` of this world with a joint of the given `type` a
 | `breakForce` | number | `nil` | Force at which a step breaks the joint, as [breaking joints](#breaking-joints) describes. Without it, the joint never breaks from a force. |
 | `breakTorque` | number | `nil` | Torque at which a step breaks the joint. Without it, the joint never breaks from a torque. |
 
-Mouse joints have their own values for the settings left at 0. Their `hertz` is 4 and their `dampingRatio` is 1. Their `maxMotorForce` is a pull that accelerates `b` at up to `1000 * pixelsPerMeter` units per second squared. They also keep `b` from spinning around the point they hold, with a torque of a hundredth of their pull at the radius of gyration of `b`, the distance from its center of mass at which its whole mass would turn the same way. Motor joints drive both their offset and their angle with a `hertz` of 10 and a `dampingRatio` of 1 when those are left at 0, which closes most of the gap within a frame. Their spring pulls with at most `maxMotorForce` and turns with at most `maxMotorTorque`, so a motor joint without them does nothing. Filter joints ignore every option. Every setting also changes while the joint runs, as [Joint properties](#joint-properties) lists.
+Mouse joints have their own values for the settings left at 0. Their `hertz` is 4 and their `dampingRatio` is 1. Their `maxMotorForce` is a pull that accelerates `b` at up to `1000 * pixelsPerMeter` units per second squared. They also keep `b` from spinning around the point they hold, with a torque of a hundredth of their pull at the radius of gyration of `b`, the distance from its center of mass at which its whole mass would turn the same way. Motor joints drive both their offset and their angle with a `hertz` of 10 and a `dampingRatio` of 1 when those are left at 0, which closes most of the gap within a frame. Their spring pulls with at most `maxMotorForce` and turns with at most `maxMotorTorque`, so a motor joint without them does nothing. Filter joints ignore every option. Every setting also changes while the joint runs, as [Joint2D properties](#joint2d-properties) lists.
 
 Box2D checks limits even while `enableLimit` is `false`. So the joint is not created when its limits are out of range:
 
@@ -1213,7 +1213,7 @@ link:destroy()
 print(link.valid)
 ```
 
-### Joint properties
+### Joint2D properties
 
 | Property | Joints | Access | Meaning |
 | --- | --- | --- | --- |
@@ -1384,8 +1384,8 @@ Every ray cast and shape cast returns its hits as tables with these fields.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `shape` | Shape | The shape the cast hit. |
-| `body` | Body | The body of that shape. |
+| `shape` | Shape2D | The shape the cast hit. |
+| `body` | Body2D | The body of that shape. |
 | `x`, `y` | number | The hit point. |
 | `normalX`, `normalY` | number | The surface normal at the hit point, as a unit vector. |
 | `fraction` | number | How far along the cast the hit is, from 0 at the start to 1 at the end. |
@@ -1955,7 +1955,7 @@ Set a function on a callback property of the world to receive its events. Every 
 
 Body and shape handles passed to callbacks are new userdata every time. So compare them with `==`, and keep per-body state in `body.data` instead of using handles as table keys.
 
-Shapes decide which events they raise with the switches of the [shape options](#shape-options). A contact calls `onContactBegin` and `onContactEnd` when either of its shapes has `contactEvents` on, and `onHit` when either has `hitEvents` on. So quiet shapes, such as the debris of an explosion, turn them off on both sides. A sensor reports a visitor only when both shapes have `sensorEvents` on.
+Shapes decide which events they raise with the switches of the [shape options](#shape2d-options). A contact calls `onContactBegin` and `onContactEnd` when either of its shapes has `contactEvents` on, and `onHit` when either has `hitEvents` on. So quiet shapes, such as the debris of an explosion, turn them off on both sides. A sensor reports a visitor only when both shapes have `sensorEvents` on.
 
 ### Contact tables
 
@@ -2110,13 +2110,13 @@ With `limitLength`, on by default, a slack distance joint between the two ends k
 | `planks` | boolean | `false` | Makes the segments boxes instead of capsules. |
 | `pinStart`, `pinEnd` | boolean | `false` | Pins an end that has no body to a static anchor. |
 | `limitLength` | boolean | `true` | Adds the slack joint that keeps the rope from stretching past its length while the rope is whole. |
-| `startBody`, `endBody` | Body | `nil` | Hangs an end from a body, at the end point. |
+| `startBody`, `endBody` | Body2D | `nil` | Hangs an end from a body, at the end point. |
 | `category`, `mask`, `group` | integer | `1`, all bits, `0` | Collision filter of the segments. |
 
 These errors can happen, and a rope that fails leaves none of its bodies in the world:
 
 - A rope with a segment count outside 1 to 4096, with both ends in the same place or without thickness raises `A rope needs from 1 to 4096 segments, two distinct ends and a positive thickness.`.
-- An invalid material or damping raises the errors of the [shape options](#shape-options) and of [`world:createBody`](#worldcreatebodyoptions).
+- An invalid material or damping raises the errors of the [shape options](#shape2d-options) and of [`world:createBody`](#worldcreatebodyoptions).
 - An end body that is destroyed or belongs to another world raises `A joint needs two bodies of this world.`.
 
 ```lua
@@ -2267,7 +2267,7 @@ Every joint resists bending with a motor that aims at no motion, whose torque co
 | `group` | integer | `-1` | Negative collision group of the parts. |
 | `vx`, `vy` | number | `0` | Starting velocity of every part. |
 
-A height that is not positive, a group that is not negative or a stiffness outside 0 to 1 raise `A ragdoll needs a positive height, a negative collision group and a stiffness from 0 to 1.`. An invalid material raises the error of the [shape options](#shape-options), without leaving any part in the world.
+A height that is not positive, a group that is not negative or a stiffness outside 0 to 1 raise `A ragdoll needs a positive height, a negative collision group and a stiffness from 0 to 1.`. An invalid material raises the error of the [shape options](#shape2d-options), without leaving any part in the world.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -2391,7 +2391,7 @@ Bad options raise `A vehicle needs a chassis and wheels with a size, a suspensio
 - A negative air control.
 - An anti-roll outside 0 to 1.
 
-An unknown `drive` raises a bad argument error with `unknown value '<name>'`. An invalid material raises the error of the [shape options](#shape-options), without leaving any part in the world.
+An unknown `drive` raises a bad argument error with `unknown value '<name>'`. An invalid material raises the error of the [shape options](#shape2d-options), without leaving any part in the world.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -2458,7 +2458,7 @@ print(vehicle.valid) -- false
 | `brake` | number | read and write | From 0 to 1, the share of the full brake that holds the wheels. Values outside are clamped. |
 | `grounded` | boolean | read | Whether a wheel touched the ground in the last step. |
 | `speed` | number | read | Speed of the chassis along its own axis in units per second, positive toward its front. |
-| `chassis`, `rearWheel`, `frontWheel` | Body | read | The bodies of the car. |
+| `chassis`, `rearWheel`, `frontWheel` | Body2D | read | The bodies of the car. |
 | `drive` | string | read | The driven wheels. |
 | `valid` | boolean | read | The value is `false` once a part was destroyed. |
 
@@ -2512,7 +2512,7 @@ Bad options raise `A top-down vehicle needs a size, a front axle ahead of the re
 - A handbrake grip or a high speed lock outside 0 to 1.
 - A front axle that is not ahead of the rear one.
 
-An unknown `drive` raises a bad argument error with `unknown value '<name>'`. An invalid material raises the error of the [shape options](#shape-options), without leaving the body in the world.
+An unknown `drive` raises a bad argument error with `unknown value '<name>'`. An invalid material raises the error of the [shape options](#shape2d-options), without leaving the body in the world.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -2566,7 +2566,7 @@ print(car.valid) -- false
 | `speed` | number | read | Speed along the car in units per second, positive forward. |
 | `slip` | number | read | Sideways speed of the rear axle in units per second, which grows while the car drifts. |
 | `drifting` | boolean | read | Whether a tire slid in the last step, because the turn asked for more grip than it has. |
-| `body` | Body | read | The body of the car. |
+| `body` | Body2D | read | The body of the car. |
 | `valid` | boolean | read | The value is `false` once the body was destroyed. |
 
 Every member except `valid` and `destroy` raises `The vehicle was destroyed.` once the body is gone.
@@ -2733,10 +2733,10 @@ print(hero.valid) -- false
 | `x`, `y` | number | read | The center of the mover. |
 | `grounded` | boolean | read | Whether the mover stands on walkable ground. |
 | `groundNormal` | Vec2 | read | The normal of the ground under the mover, `{0, -1}` in the air. |
-| `groundBody` | Body or nil | read | The body the mover stands on. |
+| `groundBody` | Body2D or nil | read | The body the mover stands on. |
 | `groundVelocity` | Vec2 | read | The velocity of the ground under the feet, which a jump from a moving platform adds. |
 | `onWall`, `onCeiling` | boolean | read | Whether the mover touches a wall or a ceiling. |
-| `body` | Body | read | The kinematic body that follows the mover. |
+| `body` | Body2D | read | The kinematic body that follows the mover. |
 | `radius`, `height`, `stepHeight` | number | read | The size of the mover. |
 | `maxSlope` | number | read and write | The steepest walkable ground in radians. |
 | `snapDistance` | number | read and write | How far below its feet the mover finds ground to stay on. |
@@ -2864,7 +2864,7 @@ print(grabber.holding, grabber.force) -- false 0.0
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
 | `holding` | boolean | read | Whether the grabber holds a body. |
-| `body` | Body or nil | read | The body it holds. |
+| `body` | Body2D or nil | read | The body it holds. |
 | `target` | Vec2 | read | The target of the pull. |
 | `handle` | Vec2 | read | Where the held point of the body is, which draws the line of the drag. It is the target while nothing is held. |
 | `force` | number | read | The most force of the pull in world units, which `grab` sized for the bodies joined to the held one. It is 0 while nothing is held. |
@@ -3086,7 +3086,7 @@ Sample `(column, row)` lies at `{x, y} + {column, row} * cellSize`. So the terra
 | `friction`, `restitution` | number | `0.6`, `0` | Material of the ground. |
 | `category`, `mask`, `group` | integer | `1`, all bits, `0` | Collision filter of the ground. |
 
-Fewer than 2 by 2 samples, a cell or chunk size that is not positive or a negative tolerance raise `A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.`. More than 16777216 samples raise `A terrain holds at most 16777216 samples.`. An invalid material raises the error of the [shape options](#shape-options).
+Fewer than 2 by 2 samples, a cell or chunk size that is not positive or a negative tolerance raise `A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.`. More than 16777216 samples raise `A terrain holds at most 16777216 samples.`. An invalid material raises the error of the [shape options](#shape2d-options).
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -3555,7 +3555,7 @@ print(water.size, water.radius, water.stepMilliseconds)
 
 ## Tiled collision
 
-The method [`map:buildCollision(world)`](tiled.md#mapbuildcollisionworld) of `haylen.tiled` creates static bodies in a world for the collision of a Tiled map, and returns them as a list of `Body` handles. On orthogonal maps the solid shapes of touching tiles merge into chain loops, so bodies slide along them without catching. Tiled shapes can also become sensors and [one-way platforms](#one-way-platforms). Chain loops have no inside, so `world:queryPoint()` finds nothing inside a merged region, and rays hit its outline only from outside. The reference of `map:buildCollision` lists every rule.
+The method [`map:buildCollision(world)`](tiled.md#mapbuildcollisionworld) of `haylen.tiled` creates static bodies in a world for the collision of a Tiled map, and returns them as a list of `Body2D` handles. On orthogonal maps the solid shapes of touching tiles merge into chain loops, so bodies slide along them without catching. Tiled shapes can also become sensors and [one-way platforms](#one-way-platforms). Chain loops have no inside, so `world:queryPoint()` finds nothing inside a merged region, and rays hit its outline only from outside. The reference of `map:buildCollision` lists every rule.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -3598,8 +3598,8 @@ Invalid input raises Lua errors with these messages.
 | --- | --- |
 | `Unknown option "<key>".` | An options or filter table has a key that the call does not take. |
 | `unknown value '<name>'` | A body type, joint type, drive, force field kind or falloff is not one of the names this page lists. It comes inside a bad argument error. |
-| `The type "haylen.Body" has no member "<name>".` | A member of a body, shape, joint, world or helper does not exist. The type name changes with the userdata. |
-| `The type "haylen.Body" has no writable property "<name>".` | A read-only property was written. The type name changes with the userdata. |
+| `The type "haylen.Body2D" has no member "<name>".` | A member of a body, shape, joint, world or helper does not exist. The type name changes with the userdata. |
+| `The type "haylen.Body2D" has no writable property "<name>".` | A read-only property was written. The type name changes with the userdata. |
 | `A physics world needs positive pixels per meter, from 1 to 64 sub-steps and at least one thread.` | The function `physics2d.newWorld()` got a bad scale, sub-step count or thread count. |
 | `Too many physics worlds exist at once to create another one.` | The function `physics2d.newWorld()` ran while Box2D holds as many worlds as it can. |
 | `A physics world takes from 1 to 64 sub-steps.` | The property `world.subSteps` got a count outside 1 to 64. |
@@ -3654,7 +3654,7 @@ Invalid input raises Lua errors with these messages.
 | `A joint needs a finite maximum motor force of zero or more.` | The property `joint.maxMotorForce` got a negative or infinite value. |
 | `A joint needs a finite maximum motor torque of zero or more.` | The property `joint.maxMotorTorque` got a negative or infinite value. |
 | `A joint spring needs a finite stiffness and damping ratio of zero or more.` | The property `joint.hertz` or `joint.dampingRatio` got a negative or infinite value. |
-| `Only mouse joints have a target.` and the other messages that start with `Only` | A joint property was used on a joint type that lacks it, as [Joint properties](#joint-properties) lists. |
+| `Only mouse joints have a target.` and the other messages that start with `Only` | A joint property was used on a joint type that lacks it, as [Joint2D properties](#joint2d-properties) lists. |
 | `The physics joint was destroyed.` | A destroyed joint was used. |
 | `A rope needs from 1 to 4096 segments, two distinct ends and a positive thickness.` | The function `physics2d.newRope()` or `physics2d.newBridge()` got bad options. |
 | `A ragdoll needs a positive height, a negative collision group and a stiffness from 0 to 1.` | The function `physics2d.newRagdoll()` got bad options. |

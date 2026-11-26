@@ -27,17 +27,17 @@ template <> struct Type<haylen::physics2d::World> {
 };
 
 template <> struct Type<lua::physics2d::ScriptedHandle<haylen::physics2d::Body>> {
-    static constexpr const char* name = "haylen.Body";
+    static constexpr const char* name = "haylen.Body2D";
     using Storage = lua::physics2d::ScriptedHandle<haylen::physics2d::Body>;
 };
 
 template <> struct Type<lua::physics2d::ScriptedHandle<haylen::physics2d::Shape>> {
-    static constexpr const char* name = "haylen.Shape";
+    static constexpr const char* name = "haylen.Shape2D";
     using Storage = lua::physics2d::ScriptedHandle<haylen::physics2d::Shape>;
 };
 
 template <> struct Type<lua::physics2d::ScriptedHandle<haylen::physics2d::Joint>> {
-    static constexpr const char* name = "haylen.Joint";
+    static constexpr const char* name = "haylen.Joint2D";
     using Storage = lua::physics2d::ScriptedHandle<haylen::physics2d::Joint>;
 };
 
@@ -76,7 +76,7 @@ template <> struct EnumNames<haylen::physics2d::Joint::Type> {
 
 namespace haylen::lua::physics2d {
 
-// Installs `haylen.physics2d` with the `PhysicsWorld2D`, `Body`, `Shape` and `Joint` classes, and the ropes, ragdolls, vehicles, movers, grabbers, force fields, terrains, explosions, fractures and fluids built on them.
+// Installs `haylen.physics2d` with the `PhysicsWorld2D`, `Body2D`, `Shape2D` and `Joint2D` classes, and the ropes, ragdolls, vehicles, movers, grabbers, force fields, terrains, explosions, fractures and fluids built on them.
 class Physics2DBinding final {
   public:
     static void install(lua_State* L);

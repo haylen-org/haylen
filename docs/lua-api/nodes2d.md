@@ -149,7 +149,7 @@ Adds a node at the root, after the roots the tree already has, and returns its [
 | `text` | string or table | Text in the default font, or a table with `text`, `font` (a `Font`), the style keys of [`graphics2d.drawText`](graphics2d.md#graphics2ddrawtextfont-text-x-y-style) and the draw order keys. |
 | `frame` | table | A frame with `slice` (a [`NineSlice`](graphics2d.md#nineslice)), `width`, `height`, `pivotX` and `pivotY` (both `0.5` by default), `color`, `borderScale` and the draw order keys. |
 | `particles` | ParticleEmitter, ParticleSystem or string | Particles that the node places, or the package path of an effect file. |
-| `body` | Body | A [`Body`](physics2d.md#body) that the node follows, as [`node.body`](#node) does. |
+| `body` | Body2D | A [`Body2D`](physics2d.md#body2d) that the node follows, as [`node.body`](#node) does. |
 | `data` | table | The table that [`node.data`](#node) returns. |
 | `children` | list | Properties tables of children, added in order. |
 
@@ -357,7 +357,7 @@ The number properties and `color` are native properties, so [tweens](tween.md) a
 | `content` | string | read | What the node shows: `'none'`, `'sprite'`, `'text'`, `'frame'` or `'particles'`. |
 | `sprite` | Sprite | read and write | Reading returns a copy of the sprite the node shows, and writing shows a new sprite. Reading a node without a sprite raises `The node shows no sprite.`. |
 | `text` | string or nil | read and write | The text the node shows, or `nil`. Setting it keeps the font and the style, and a node without text shows it in the default font. |
-| `body` | Body or nil | read and write | A body whose position and rotation in the world the node takes on every update, between the last two steps when its world interpolates, whatever its parent. The tree holds the body, which keeps its world alive, until the node stops following with `nil`. |
+| `body` | Body2D or nil | read and write | A body whose position and rotation in the world the node takes on every update, between the last two steps when its world interpolates, whatever its parent. The tree holds the body, which keeps its world alive, until the node stops following with `nil`. |
 | `data` | table | read | A table for the app, the same for every handle of the node, which goes with the node. |
 | `key` | integer | read | A number that names the node among every node its tree has held. |
 | `valid` | boolean | read | Whether the node exists. |

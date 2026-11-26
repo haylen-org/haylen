@@ -12,7 +12,7 @@ struct lua_State;
 
 namespace haylen::lua::physics2d {
 
-// Installs the `Body` class of `haylen.physics2d`. The data of a body lives in the state table of its world, keyed by the body id.
+// Installs the `Body2D` class of `haylen.physics2d`. The data of a body lives in the state table of its world, keyed by the body id.
 class BodyBinding final {
   public:
     // A drop of a body or a mover through one-way platforms lasts this many seconds unless the call names its time.

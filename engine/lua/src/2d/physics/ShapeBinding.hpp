@@ -10,7 +10,7 @@ struct lua_State;
 
 namespace haylen::lua::physics2d {
 
-// Installs the `Shape` class of `haylen.physics2d` and reads the shape options that bodies and queries take.
+// Installs the `Shape2D` class of `haylen.physics2d` and reads the shape options that bodies and queries take.
 class ShapeBinding final {
   public:
     static void install(lua_State* L);

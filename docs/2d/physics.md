@@ -651,7 +651,7 @@ local racer = physics2d.newTopDownVehicle(space, {grip = 1600, handbrakeGrip = 0
 
 ### Tall bodies that tip over
 
-A body's center of mass is where its shapes put it, usually in its middle. A tall block with its center of mass high falls over at a small push. Write the body property [`centerOfMass`](../lua-api/physics2d.md#body-properties) to move it low in the body, like the keel of a boat. The block then rocks back upright. The method `body:resetMass()` puts the center of mass back where the shapes put it.
+A body's center of mass is where its shapes put it, usually in its middle. A tall block with its center of mass high falls over at a small push. Write the body property [`centerOfMass`](../lua-api/physics2d.md#body2d-properties) to move it low in the body, like the keel of a boat. The block then rocks back upright. The method `body:resetMass()` puts the center of mass back where the shapes put it.
 
 ```lua
 local physics2d = require('haylen.physics2d')

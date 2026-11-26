@@ -7,7 +7,7 @@ class Joint;
 }
 
 namespace haylen::lua::physics2d {
-// Installs the `Joint` class of `haylen.physics2d`, whose properties read and change every setting a joint has at creation and read what it does while it runs.
+// Installs the `Joint2D` class of `haylen.physics2d`, whose properties read and change every setting a joint has at creation and read what it does while it runs.
 class JointBinding final {
   public:
     static void install(lua_State* L);
