@@ -330,6 +330,7 @@ The tooling sets these cache variables for you. A project that adds the engine i
 | `HAYLEN_SANITIZERS` | `OFF` | The sanitizers of builds for this machine that do not use MSVC, a desktop or a port that builds with the compiler of this machine, such as the test port, and any other build stops with a sentence: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the targets of the engine and AddressSanitizer on the libraries it compiles from the sources of the dependencies that read the bytes of apps, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
 | `HAYLEN_DEBUG_INFO` | `FULL`, or the variable `HAYLEN_DEBUG_INFO` of the environment | The debug information of the Debug and RelWithDebInfo configurations: `FULL` for a debugger, or `LINES` for the file and line of each instruction alone, which stack traces and sanitizer reports read, in objects about a third of the size. GCC takes `-g1` for it and Clang `-gline-tables-only`. MSVC has no format with lines alone, so its Debug objects carry no debug information with `LINES`. The Release configuration always compiles with the file and line of each instruction, and with MSVC with the full debug information that the PDB of an app needs, so the Release SDKs carry them into the [symbols of every release app](distribution.md#symbols-for-crash-reports), while the binaries that ship are stripped. The [CI workflow](testing.md#the-compiler-cache) sets `LINES`. |
 | `HAYLEN_WARNINGS_AS_ERRORS` | off, or the variable `HAYLEN_WARNINGS_AS_ERRORS` of the environment | Fails the build of the targets of the engine on any compiler warning, through the `COMPILE_WARNING_AS_ERROR` property of CMake, which `haylen_enable_warnings` sets on each of them. The code of the dependencies never fails the build, as [warnings of dependencies](#warnings-of-dependencies) explains. The [CI workflow](testing.md#continuous-integration) turns it on for every build. |
+| `HAYLEN_LINK_JOBS` | empty | The links that a Ninja build runs at once. Empty, the configure divides the memory of the machine by the memory that one link of the kind of build takes, as [links of large programs](#links-of-large-programs) explains, with one link at least. A whole number sets the count, such as `1` on a machine whose memory other work shares. |
 | `HAYLEN_BUILD_FUZZERS` | off | Builds the fuzzers `haylen-bitmap-font-fuzzer`, `haylen-content-fuzzer`, `haylen-font-fuzzer`, `haylen-gltf-fuzzer`, `haylen-image-fuzzer`, `haylen-input-fuzzer`, `haylen-messagepack-fuzzer`, `haylen-navmesh-fuzzer`, `haylen-ogg-fuzzer`, `haylen-physics-shape-fuzzer`, `haylen-placeholder-fuzzer` and `haylen-vector-image-fuzzer`, and instruments every target for libFuzzer and AddressSanitizer. It needs a Clang that links libFuzzer, which Apple Clang does not ship. |
 
 The workspace `CMakeLists.txt` at the root of the repository is the project `haylen-workspace`. It adds `engine/` and turns the player, the tests, the benchmarks and the content tool on. The function [`haylen_add_app`](#haylen_add_app) builds the binaries of apps.
@@ -353,6 +354,25 @@ A compiler cache, such as ccache, speeds up builds that compile the same sources
 export CMAKE_C_COMPILER_LAUNCHER=ccache CMAKE_CXX_COMPILER_LAUNCHER=ccache CMAKE_OBJC_COMPILER_LAUNCHER=ccache CMAKE_OBJCXX_COMPILER_LAUNCHER=ccache
 haylen test
 ```
+
+### Links of large programs
+
+A link of a large program takes several times the memory of a compile, such as `haylen-lua-tests`, which links the engine, the Lua layer and every test. AddressSanitizer, ThreadSanitizer, link-time optimization and the full debug information take more again. So a Ninja build runs its compiles with every job that `--jobs` gives it, and its links in the pool `haylen-link`, which `engine/cmake/haylen-link-jobs.cmake` defines through `JOB_POOLS` and `CMAKE_JOB_POOL_LINK`. The pool holds every link of a program, a shared library or a static library of the engine and its dependencies, the tests, the benchmarks and the tools.
+
+The configure sizes the pool. It divides the memory of the machine, which `cmake_host_system_information` reads, by the memory of one link of the kind of build, and keeps one link at least. The memory of one link is the peak of the largest link of that kind with a third more for the compiles that run beside it, rounded up to a whole gibibyte. The cache variable `HAYLEN_LINK_JOBS` sets the count instead. The Xcode and Visual Studio generators have no pools, so they ignore it.
+
+| Kind of build | Largest link | Peak | Memory of one link |
+| --- | --- | --- | --- |
+| AddressSanitizer and UndefinedBehaviorSanitizer, or the fuzzers, with `HAYLEN_DEBUG_INFO` set to `LINES` | `haylen-lua-tests` | 12.2 GiB | 17 GiB |
+| AddressSanitizer and UndefinedBehaviorSanitizer, or the fuzzers, with the full debug information | `haylen-lua-tests` | 18.6 GiB | 25 GiB |
+| ThreadSanitizer | `haylen-lua-tests` | 7.6 GiB | 11 GiB |
+| Release with link-time optimization | `haylen-lua-tests` | 4.3 GiB | 6 GiB |
+| Debug or RelWithDebInfo with `LINES`, or Release without link-time optimization | `haylen-lua-tests` | 3.4 GiB | 5 GiB |
+| Debug or RelWithDebInfo with the full debug information | `haylen-lua-tests` | 5.3 GiB | 8 GiB |
+
+The peaks come from GCC 13 and GNU ld on Ubuntu 24.04 on x86-64, measured with the memory controller of Linux for each link, on a machine of 16 processors. The link-time optimization of GCC spreads its code generation over the processors of the machine, so it takes less memory on a smaller machine. The player library of Android, which Clang links with thin LTO and lld, peaks at 1.3 GiB.
+
+A machine of 16 GB, such as a hosted runner of continuous integration, therefore links one program at a time with the sanitizers and three at a time in a plain Debug build. The link of `haylen-lua-tests` with AddressSanitizer and the full debug information needs more memory than such a machine holds, so a build with the sanitizers there sets `HAYLEN_DEBUG_INFO` to `LINES`, as the [CI workflow](testing.md#the-compiler-cache) does.
 
 ### Settings of release binaries
 

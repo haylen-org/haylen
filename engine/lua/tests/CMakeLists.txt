@@ -181,8 +181,7 @@ set(HAYLEN_LUA_TEST_SOURCES
 )
 
 add_executable(haylen-lua-tests ${HAYLEN_LUA_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/headless/HeadlessPlayer.cpp")
-# It links in the pool of the links of the test programs, one link at a time.
-set_target_properties(haylen-lua-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" JOB_POOL_LINK haylen-test-link)
+set_target_properties(haylen-lua-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
 target_link_libraries(haylen-lua-tests PRIVATE haylen-test-support haylen::headless haylen::lua haylen::player haylen-content-tool)
 # The tests of the Lua layer reach into its private headers and those of the core on purpose, and find their own helpers before the shared ones.
 target_include_directories(haylen-lua-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/lua/src")

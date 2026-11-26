@@ -284,11 +284,8 @@ target_include_directories(haylen-test-support PUBLIC "${CMAKE_CURRENT_LIST_DIR}
 haylen_enable_warnings(haylen-test-support)
 haylen_enable_coverage(haylen-test-support)
 
-# A link of a test program takes gigabytes of memory, and most under AddressSanitizer, so the two test programs link one at a time and a machine that builds both never runs out of memory. The pool binds the generators that run jobs side by side, such as Ninja.
-set_property(GLOBAL APPEND PROPERTY JOB_POOLS haylen-test-link=1)
-
 add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/NativeHost.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/Player.cpp" "${HAYLEN_ENGINE_DIR}/src/port/PortHost.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FullscreenRequest.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Gamepads.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/GlContext.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Hints.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/OutputPlacement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/PostedEvents.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/TextInput.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/WaylandDisplays.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Window.cpp")
-set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" JOB_POOL_LINK haylen-test-link)
+set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
 # The tests export the variables that the drivers of a laptop with two GPUs read, like the player and the apps.
 if(WIN32)
   target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/windows/GpuPreferenceExports.cpp")
@@ -352,6 +349,11 @@ if(TARGET haylen AND TARGET haylen-headless)
     VERBATIM
   )
   target_compile_definitions(haylen-test-support PUBLIC HAYLEN_PLAYER_FOLDER="${player_folder}" HAYLEN_HEADLESS_PLAYER_FOLDER="$<TARGET_FILE_DIR:haylen-headless>")
+endif()
+
+# The links of a Ninja build run in the pool of links, which the memory of the machine sizes, so a build that links many large programs at once never runs the machine out of memory.
+if(CMAKE_GENERATOR STREQUAL "Ninja")
+  add_test(NAME LinkJobsTest.LinksRunInThePoolOfLinks COMMAND "${CMAKE_COMMAND}" "-DTREE=${CMAKE_BINARY_DIR}" "-DDEPTH=${haylen_link_jobs}" -P "${CMAKE_CURRENT_LIST_DIR}/cmake/link-pool-check.cmake")
 endif()
 
 # Every test runs with a time limit far above the slowest one, so a test that hangs fails alone and the rest of the suite still runs. The tests find their data through absolute paths, so discovery and every test run in the build tree and write nothing into the sources.
