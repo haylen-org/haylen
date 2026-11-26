@@ -2895,7 +2895,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
-- **Progress:** Começou no trabalho do glTF, junto com o KB-107 e a parte do glTF do KB-122, em paralelo com o fim da estabilização.
+- **Progress:** O desenho foi aprovado. O leitor fica em `haylen::gltf`, com tipos simples para cada objeto do glTF, e lê em três fases:
+  1. o contêiner GLB ou o texto `.gltf`, com o JSON e as regras de esquema e de ligações;
+  2. os arquivos ao lado, lidos por faixa;
+  3. as regras de dados.
+
+Os 124 erros do validador oficial do glTF são a lista de conferência, com regras de dados estritas, como manda a especificação. Cada recusa diz o arquivo, o elemento em palavras e a regra. O leitor tem limites de bytes e de contagens, conferidos em 64 bits, e percorre os grafos sem recursão. As fixtures são feitas para o projeto, por um gerador determinístico, e o fuzzer tem quatro modos. O Lua ganha `haylen.gltf`, com `read`, `readAsync`, `readAccessor`, `readIndices` e `decodeImage`.
+
+A prova de 100% do [KB-110](#kb-110) planeja usar as amostras oficiais do glTF, o corpus de testes do validador e as suítes do gerador de assets, baixados na CI.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -3098,6 +3105,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** Vai para o trabalho do glTF, logo depois do KB-106 e do KB-107.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
