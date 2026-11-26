@@ -25,6 +25,9 @@ class GraphicsBinding final {
     static int updateTexture(lua_State* L);
     static int maxTextureSize(lua_State* L);
     static int trim(lua_State* L);
+    static int maxVolumeSize(lua_State* L);
+    static int maxCubeSize(lua_State* L);
+    static int sampleCounts(lua_State* L);
     static int whiteTexture(lua_State* L);
     static int apiName(lua_State* L);
 

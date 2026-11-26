@@ -118,6 +118,53 @@ TEST_P(GpuLifetimeTest, RunsManyFramesWithoutGrowing) {
     device().destroy(buffer);
 }
 
+// The destroys of a device must not fail, so destroying objects that a frame in flight drew with allocates nothing, whichever kinds they are.
+TEST_P(GpuLifetimeTest, DestroysObjectsWithoutAllocating) {
+    const std::array<Device::ColorTarget, 1> formats{};
+    const std::array<std::byte, 4> texel{std::byte{255}, std::byte{0}, std::byte{0}, std::byte{255}};
+    const std::array<std::span<const std::byte>, 1> levels{texel};
+    const std::array<float, 4> lookup{0.0F, 0.0F, 0.0F, 1.0F};
+    std::vector<Device::Image> madeImages;
+    std::vector<Device::Pipeline> pipelines;
+    std::vector<Device::Sampler> samplers;
+    std::vector<Device::Buffer> buffers;
+    for (int object = 0; object < 8; ++object) {
+        madeImages.push_back(device().makeImage({.width = 1, .height = 1, .levels = levels, .label = "haylen-test-destroyed-texture"}));
+        madeImages.push_back(device().makeImage({.width = kSize, .height = kSize, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-destroyed-target"}));
+        pipelines.push_back(device().makePipeline({.program = program("textured"), .colors = formats, .label = "haylen-test-destroyed-pipeline"}));
+        samplers.push_back(device().makeSampler({.label = "haylen-test-destroyed-sampler"}));
+        buffers.push_back(device().makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "haylen-test-destroyed-buffer"}));
+    }
+
+    for (std::size_t object = 0; object < pipelines.size(); ++object) {
+        const std::array<float, 4> written{1.0F, 1.0F, 1.0F, 1.0F};
+        device().writeBuffer(buffers[object], 0, std::as_bytes(std::span(written)));
+        const std::array<Device::ColorAttachment, 1> colors{{{.image = madeImages[(object * 2) + 1]}}};
+        device().beginPass({.colors = colors});
+        device().applyPipeline(pipelines[object]);
+        Device::Bindings bindings;
+        bindings.textures[0] = madeImages[object * 2];
+        bindings.samplers[0] = samplers[object];
+        device().applyBindings(bindings);
+        device().applyUniforms(0, std::as_bytes(std::span(lookup)));
+        device().draw(0, 3, 1);
+        device().endPass();
+    }
+
+    device().commit();
+
+    const test::AllocationTracker tracker;
+    for (std::size_t object = 0; object < pipelines.size(); ++object) {
+        device().destroy(madeImages[object * 2]);
+        device().destroy(madeImages[(object * 2) + 1]);
+        device().destroy(pipelines[object]);
+        device().destroy(samplers[object]);
+        device().destroy(buffers[object]);
+    }
+
+    EXPECT_EQ(tracker.getTotal(), 0U);
+}
+
 // A device that measures the GPU reports the time of the frames it finished.
 TEST_P(GpuLifetimeTest, MeasuresTheFramesOfTheGpuWhereItCan) {
     if (!capabilities().gpuTiming) {

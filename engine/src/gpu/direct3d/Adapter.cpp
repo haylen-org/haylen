@@ -28,9 +28,12 @@ std::vector<ComPtr<IDXGIAdapter1>> Adapter::list(IDXGIFactory6& factory, bool lo
     std::vector<ComPtr<IDXGIAdapter1>> adapters;
     for (UINT index = 0;; ++index) {
         ComPtr<IDXGIAdapter1> adapter;
-        if (factory.EnumAdapterByGpuPreference(index, preference, IID_PPV_ARGS(adapter.GetAddressOf())) == DXGI_ERROR_NOT_FOUND) {
+        const HRESULT result = factory.EnumAdapterByGpuPreference(index, preference, IID_PPV_ARGS(adapter.GetAddressOf()));
+        if (result == DXGI_ERROR_NOT_FOUND) {
             break;
         }
+
+        HResult::check(result, "list the GPUs of the machine");
 
         DXGI_ADAPTER_DESC1 desc{};
         adapter->GetDesc1(&desc);

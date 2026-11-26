@@ -47,7 +47,8 @@ Uniform blocks take the buffer indices from 0 of each stage, and vertex buffers 
 | --- | --- |
 | Largest image | 16384 pixels a side, or 8192 on the A7 and A8. |
 | Array layers | 2048. |
-| Samples | 8, 4 or 2, the most that the GPU takes. |
+| Largest volume and cube | 2048 pixels along each side of a volume, and cubes as large as flat images. |
+| Samples | 2, 4 and 8 where the GPU takes them, for every format, except the 32-bit floats, which resolve only on a GPU that filters them, as the feature set tables of Metal list. |
 | Sample and draw into a format | Every format of the contract. `Depth24Stencil8` takes `Depth32FloatStencil8`, the depth and stencil format of every Metal GPU. |
 | Blend into a format | Every color format, except the 32-bit floats on Apple GPUs before the A14 and M1. |
 | Filter a format | Every color format, and the 32-bit floats only where the GPU reports that it filters them. |

@@ -217,7 +217,6 @@ class Device final : public gpu::Device {
     [[nodiscard]] static Capabilities describeCapabilities(const Connection& connection);
     [[nodiscard]] static std::uint64_t alignTo(std::uint64_t value, std::uint64_t alignment) noexcept;
 
-    void validateImage(const ImageDesc& desc) const;
     void writeLevel(WGPUTexture texture, int level, int width, int height, int depth, PixelFormat format, std::span<const std::byte> pixels);
     [[nodiscard]] WGPUTextureView getAttachmentView(ImageRecord& image, int mipLevel, int layer);
     [[nodiscard]] WGPUShaderModule acquireModule(std::string_view source, std::string_view label, const std::string*& key);
@@ -239,6 +238,8 @@ class Device final : public gpu::Device {
     void bindBlocks(const ProgramRecord& program);
     void bindImages(const ProgramRecord& program);
     void bindIndexBuffer(WGPUIndexFormat format);
+    void holdRetirements(std::size_t count);
+    [[nodiscard]] bool isRecordingPass() const;
     void retire(Retired::Kind kind, void* handle) noexcept;
     void releaseRetired() noexcept;
     void releaseImage(ImageRecord& image) noexcept;
@@ -251,7 +252,8 @@ class Device final : public gpu::Device {
 
     // The canvases beyond the window, at their surface numbers less one, with an empty place for a surface that went away.
     std::vector<std::unique_ptr<Swapchain>> surfaces;
-    PixelFormat swapchainFormat = PixelFormat::Bgra8;
+    // The format of every canvas, which the browser prefers for the whole page, and the samples of the canvas of the window, which every canvas draws with.
+    const PixelFormat swapchainFormat = Swapchain::getPreferredFormat();
     int swapchainSamples = 1;
     UniformRing ring;
     std::unique_ptr<FrameTimer> timer;
@@ -266,7 +268,9 @@ class Device final : public gpu::Device {
     std::map<std::vector<std::uint64_t>, std::unique_ptr<BlockLayout>> blockLayouts;
     std::map<std::vector<std::uint64_t>, WGPUBindGroupLayout> imageLayouts;
     std::map<std::pair<WGPUBindGroupLayout, WGPUBindGroupLayout>, WGPUPipelineLayout> pipelineLayouts;
+    // The objects that wait for the submit of their frame, with room for every handle that the device made and a destroy retires later, which `retirable` counts.
     std::vector<Retired> retired;
+    std::size_t retirable = 0;
     std::vector<std::byte> padded;
 
     WGPUCommandEncoder encoder = nullptr;

@@ -34,8 +34,11 @@ template <typename Record> class HandleTable final {
                 throw std::runtime_error(std::format("The graphics device has no room for another {}. At most {} can exist at once.", name, kMaxSlots));
             }
 
-            freeSlots.push_back(slots.size());
             slots.emplace_back();
+
+            // The free slots have room for every slot, so a removal never allocates.
+            freeSlots.reserve(slots.size());
+            freeSlots.push_back(slots.size() - 1);
         }
 
         const std::size_t index = freeSlots.back();
@@ -71,8 +74,8 @@ template <typename Record> class HandleTable final {
         return *record;
     }
 
-    // Takes the record out of its slot, or nothing when the id names no live object.
-    std::optional<Record> remove(std::uint64_t id) {
+    // Takes the record out of its slot, or nothing when the id names no live object, without allocating, so the destroys of a device never fail.
+    std::optional<Record> remove(std::uint64_t id) noexcept {
         Slot* slot = findSlot(id);
         if (slot == nullptr) {
             return std::nullopt;
@@ -86,7 +89,7 @@ template <typename Record> class HandleTable final {
     }
 
     // Drops every record, whose objects the caller released, and keeps the generations, so no id made before finds a record made after.
-    void clear() {
+    void clear() noexcept {
         for (std::size_t index = 0; index < slots.size(); ++index) {
             Slot& slot = slots[index];
             if (slot.record) {

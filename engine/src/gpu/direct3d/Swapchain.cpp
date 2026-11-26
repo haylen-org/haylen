@@ -17,9 +17,9 @@ Swapchain::Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface&
 
     const auto window = static_cast<HWND>(surface.window);
 
-    // Composition swapchains never tear, so only the swapchains of windows take the flag, which every resize must repeat.
+    // Composition swapchains never tear, so only the swapchains of windows take the flag of tearing, and every resize repeats the flags.
     tearing = !surface.transparent && Adapter::canTear(factory);
-    flags = tearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+    flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT | (tearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0U);
 
     DXGI_SWAP_CHAIN_DESC1 desc{};
     desc.Width = static_cast<UINT>(size.width);
@@ -44,30 +44,28 @@ Swapchain::Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface&
     }
 
     HResult::check(made.As(&swapchain), "reach the swapchain of DXGI 1.4");
+    HResult::check(swapchain->SetMaximumFrameLatency(kFrameLatency), "set how many frames of the swapchain wait to be shown");
+    frameReady.Attach(swapchain->GetFrameLatencyWaitableObject());
+    if (!frameReady.IsValid()) {
+        throw std::runtime_error("The swapchain of the window gave no object to wait for the display with.");
+    }
 
     if (surface.transparent) {
         compose(window);
     }
-}
 
-Swapchain::~Swapchain() {
-    visual.Reset();
-    target.Reset();
-    composition.Reset();
-
-    if (compositionLibrary != nullptr) {
-        FreeLibrary(compositionLibrary);
-    }
+    // The first frame waits like every later one, so one frame at most waits to be shown from the start.
+    waitForFrame();
 }
 
 // DirectComposition loads at run time, since only transparent windows need it. The visual shows the swapchain over the window, which the platform makes without a redirection bitmap so nothing else draws behind it.
 void Swapchain::compose(HWND window) {
-    compositionLibrary = LoadLibraryExW(L"dcomp.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    compositionLibrary.reset(LoadLibraryExW(L"dcomp.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32));
     if (compositionLibrary == nullptr) {
         throw std::runtime_error("The transparent window needs DirectComposition, and \"dcomp.dll\" is missing from the system.");
     }
 
-    const auto create = reinterpret_cast<CreateComposition>(reinterpret_cast<void*>(GetProcAddress(compositionLibrary, "DCompositionCreateDevice2")));
+    const auto create = reinterpret_cast<CreateComposition>(reinterpret_cast<void*>(GetProcAddress(compositionLibrary.get(), "DCompositionCreateDevice2")));
     if (create == nullptr) {
         throw std::runtime_error("The transparent window needs DirectComposition, and \"dcomp.dll\" has no function \"DCompositionCreateDevice2\".");
     }
@@ -91,6 +89,11 @@ void Swapchain::scaleVisual() {
 
 HRESULT Swapchain::present() {
     return swapchain->Present(vsync ? 1 : 0, !vsync && tearing ? DXGI_PRESENT_ALLOW_TEARING : 0);
+}
+
+// A wait that runs out lets the frame go on, and the next frame waits again.
+void Swapchain::waitForFrame() const noexcept {
+    WaitForSingleObjectEx(frameReady.Get(), kFrameWaitMilliseconds, TRUE);
 }
 
 HRESULT Swapchain::resize(const Surface::Size& value) {

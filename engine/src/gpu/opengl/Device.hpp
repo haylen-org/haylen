@@ -16,9 +16,9 @@
 #include "gpu/opengl/Context.hpp"
 #include "gpu/opengl/Conversions.hpp"
 #include "gpu/opengl/DebugOutput.hpp"
+#include "gpu/opengl/DrawnClear.hpp"
 #include "gpu/opengl/FramebufferCache.hpp"
 #include "gpu/opengl/GpuTimer.hpp"
-#include "gpu/opengl/LayerClear.hpp"
 #include "gpu/opengl/ScaledDrawable.hpp"
 #include "gpu/opengl/ShaderProgram.hpp"
 #include "gpu/opengl/UploadRing.hpp"
@@ -177,9 +177,7 @@ class Device final : public gpu::Device {
     void applyDriverIssues();
     void readCapabilities();
     [[nodiscard]] bool isRenderable(const Conversions::Pixel& pixel) const noexcept;
-    void checkSampleCount(const ImageDesc& desc, const Conversions::Pixel& pixel) const;
-    void checkImage(const ImageDesc& desc, const Conversions::Pixel& pixel) const;
-    void checkLevels(const ImageDesc& desc, const Conversions::Pixel& pixel) const;
+    [[nodiscard]] std::uint8_t getSampleCounts(const Conversions::Pixel& pixel) const;
     [[nodiscard]] Gl::Uint makeRenderbuffer(const ImageDesc& desc, const Conversions::Pixel& pixel);
     [[nodiscard]] Gl::Uint makeTexture(const ImageDesc& desc, const Conversions::Pixel& pixel, Gl::Enum target);
     void uploadTexture(const ImageDesc& desc, const ImageRecord& record);
@@ -208,7 +206,7 @@ class Device final : public gpu::Device {
     void beginSwapchainPass(const PassDesc& desc);
     void beginOffscreenPass(const PassDesc& desc);
     void loadAttachments();
-    void clearLayersByDrawing();
+    void clearByDrawing();
     [[nodiscard]] bool isClearedByDrawing(const ColorAttachment& color);
     void resolveAttachments();
     void discardAttachments();
@@ -231,8 +229,6 @@ class Device final : public gpu::Device {
     int currentSurface = 0;
     std::string adapterName;
     Capabilities capabilities;
-    int maxVolumeSize = 0;
-    int maxCubeSize = 0;
     bool noFloatFiltering = false;
     // Whether samplers filter anisotropically where the context can, which the driver issues turn off for a driver whose anisotropic filtering ignores the slopes of a lookup.
     bool anisotropic = true;
@@ -244,8 +240,12 @@ class Device final : public gpu::Device {
     GpuTimer timer;
     std::unique_ptr<UploadRing> ring;
     FramebufferCache framebuffers;
-    // The clear of the attachments at a later layer of an array or a volume, which the driver issues ask of a driver whose clears reach only the first layer.
-    std::unique_ptr<LayerClear> layerClear;
+    // Whether a pass clears its attachments at a later layer of an array or a volume by drawing, which the driver issues ask of a driver whose clears reach only the first layer.
+    bool layersClearedByDrawing = false;
+    // Whether a pass clears its multisampled attachments by drawing, which the driver issues ask of a driver whose clears reach only one sample.
+    bool samplesClearedByDrawing = false;
+    // The clear by drawing, which the device makes only for a driver whose issues ask for it.
+    std::unique_ptr<DrawnClear> drawnClear;
     Gl::Uint uploadVertexArray = 0;
 
     HandleTable<BufferRecord> buffers{"buffer"};

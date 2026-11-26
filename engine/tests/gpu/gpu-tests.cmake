@@ -34,7 +34,7 @@ endif()
 target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES})
 target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
 
-# The surfaces beyond the window are a `CAMetalLayer` on Apple platforms, a hidden window on Windows and a window of X11 on Linux, whose display server the tests reach when one runs.
+# The surfaces beyond the window are a `CAMetalLayer` on Apple platforms, a hidden window on Windows, a window of X11 on Linux, whose display server the tests reach when one runs, and a canvas of the page on the web.
 if(APPLE)
   target_sources(haylen-gpu-tests PRIVATE "${haylen_tests_dir}/gpu/support/apple/SecondSurface.mm")
   set_source_files_properties("${haylen_tests_dir}/gpu/support/apple/SecondSurface.mm" PROPERTIES COMPILE_OPTIONS "-fobjc-arc")

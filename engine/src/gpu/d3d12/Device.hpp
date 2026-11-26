@@ -8,7 +8,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -176,12 +175,14 @@ class Device final : public gpu::Device {
         std::uint64_t fence = 0;
     };
 
-    // An object, a descriptor of a heap or a range of the buffer arena, that the GPU may use until the fence passes the value.
+    // An object, a descriptor of a heap, the views of the attachments of an image or a range of the buffer arena, that the GPU may use until the fence passes the value. A destroyed object leaves exactly one entry, whose place the device holds from the moment the object was made.
     struct Garbage {
         std::uint64_t fence = 0;
         Microsoft::WRL::ComPtr<IUnknown> object;
         DescriptorHeap* heap = nullptr;
         D3D12_CPU_DESCRIPTOR_HANDLE handle{};
+        DescriptorHeap* attachmentHeap = nullptr;
+        std::vector<Attachment> attachments;
         BufferArena::Range range;
     };
 
@@ -221,20 +222,24 @@ class Device final : public gpu::Device {
         D3D12_CPU_DESCRIPTOR_HANDLE depthView{};
         UINT backBufferIndex = 0;
         bool presentPending = false;
+        bool presented = false;
     };
 
     void createDevice(bool validation);
     void readCapabilities();
     void openFrame();
+    void waitForDisplays() noexcept;
     void checkFrame(HRESULT result, std::string_view action);
     void submit(ID3D12GraphicsCommandList& list);
     [[nodiscard]] ID3D12GraphicsCommandList4& getTransferList();
     void waitFor(std::uint64_t value);
     void waitIdle();
     void release(std::uint64_t completedValue);
-    void retire(Microsoft::WRL::ComPtr<IUnknown> object, DescriptorHeap* heap = nullptr, D3D12_CPU_DESCRIPTOR_HANDLE handle = {});
-    void loseDevice(HRESULT reason) noexcept;
-    void describeRemoval() noexcept;
+    void reserveGarbage();
+    void retire(Microsoft::WRL::ComPtr<IUnknown> object);
+    void discard(Garbage&& entry) noexcept;
+    void loseDevice(HRESULT reason);
+    void describeRemoval();
     void setHeaps();
     [[nodiscard]] int getSwapchainSampleCount() const noexcept;
     [[nodiscard]] std::unique_ptr<SurfaceChain> makeChain(const std::optional<Surface>& target);
@@ -243,6 +248,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] bool prepareSwapchain(SurfaceChain& chain);
     void makeSwapchainTargets(SurfaceChain& chain);
     static void releaseSwapchainTargets(SurfaceChain& chain);
+    void releaseChainViews(const SurfaceChain& chain);
     void rebuildSwapchainPipelines();
     void beginSwapchainPass(const PassDesc& desc);
     void beginOffscreenPass(const PassDesc& desc);
@@ -294,7 +300,8 @@ class Device final : public gpu::Device {
     HandleTable<D3D12_CPU_DESCRIPTOR_HANDLE> samplers{"sampler"};
     HandleTable<ProgramRecord> programs{"program"};
     HandleTable<PipelineRecord> pipelines{"pipeline"};
-    std::deque<Garbage> garbage;
+    // The entries in the order of their fences, with room for one more entry for every object that lives.
+    std::vector<Garbage> garbage;
 
     std::array<Frame, kFramesInFlight> frames;
     std::size_t frameIndex = 0;
@@ -303,7 +310,7 @@ class Device final : public gpu::Device {
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> transfers;
     bool transfersOpen = false;
 
-    // The swapchains of the surfaces at their numbers, the window at 0, with an empty place for a surface that went away.
+    // The swapchains of the surfaces at their numbers, the window at 0, with an empty place for a surface that went away, and the samples of the window, which the pipelines of the swapchain and every surface draw with.
     std::vector<std::unique_ptr<SurfaceChain>> chains;
     int pipelineSampleCount = 1;
 

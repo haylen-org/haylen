@@ -4,12 +4,20 @@
 #include <stdexcept>
 #include <utility>
 
+#include <emscripten/emscripten.h>
+
 #include "gpu/webgpu/Conversion.hpp"
+
+// The browser prefers one format for every canvas of the page, `rgba8unorm` or `bgra8unorm`, which it names as text.
+// clang-format off
+EM_JS(int, haylen_js_prefers_rgba_canvas, (), {
+    return navigator.gpu.getPreferredCanvasFormat() === "rgba8unorm" ? 1 : 0;
+});
+// clang-format on
 
 namespace haylen::gpu::webgpu {
 
-// The first format the surface reports is the one the browser prefers for the canvas, which draws without a conversion when the page composites it.
-Swapchain::Swapchain(WGPUInstance instance, WGPUAdapter adapter, WGPUDevice owner, const Surface& target) : device(owner), canvas(target.canvas), sampleCount(target.sampleCount), size(target.size) {
+Swapchain::Swapchain(WGPUInstance instance, WGPUDevice owner, const Surface& target, Device::PixelFormat canvasFormat, int samples) : device(owner), canvas(target.canvas), format(canvasFormat), sampleCount(samples), size(target.size) {
     if (target.kind != Surface::Kind::WebCanvas) {
         throw std::runtime_error("The WebGPU device draws only into the canvas of a page.");
     }
@@ -28,12 +36,6 @@ Swapchain::Swapchain(WGPUInstance instance, WGPUAdapter adapter, WGPUDevice owne
         throw std::runtime_error("The canvas of the page gave no WebGPU context.");
     }
 
-    WGPUSurfaceCapabilities capabilities = WGPU_SURFACE_CAPABILITIES_INIT;
-    if (wgpuSurfaceGetCapabilities(surface, adapter, &capabilities) == WGPUStatus_Success && capabilities.formatCount > 0) {
-        format = capabilities.formats[0];
-        wgpuSurfaceCapabilitiesFreeMembers(capabilities);
-    }
-
     alphaMode = target.transparent ? WGPUCompositeAlphaMode_Premultiplied : WGPUCompositeAlphaMode_Opaque;
 }
 
@@ -49,15 +51,8 @@ Swapchain::~Swapchain() {
     wgpuSurfaceRelease(surface);
 }
 
-Device::PixelFormat Swapchain::toPixelFormat(WGPUTextureFormat value) noexcept {
-    switch (value) {
-    case WGPUTextureFormat_RGBA8Unorm:
-        return Device::PixelFormat::Rgba8;
-    case WGPUTextureFormat_RGBA16Float:
-        return Device::PixelFormat::Rgba16Float;
-    default:
-        return Device::PixelFormat::Bgra8;
-    }
+Device::PixelFormat Swapchain::getPreferredFormat() {
+    return haylen_js_prefers_rgba_canvas() == 1 ? Device::PixelFormat::Rgba8 : Device::PixelFormat::Bgra8;
 }
 
 void Swapchain::resize(const Surface::Size& value) noexcept {
@@ -66,6 +61,15 @@ void Swapchain::resize(const Surface::Size& value) noexcept {
     }
 
     size = value;
+    stale = true;
+}
+
+void Swapchain::setSampleCount(int value) noexcept {
+    if (value == sampleCount) {
+        return;
+    }
+
+    sampleCount = value;
     stale = true;
 }
 
@@ -83,6 +87,7 @@ WGPUTexture Swapchain::makeAttachment(WGPUTextureFormat attachmentFormat, const 
 void Swapchain::configure() {
     releaseAttachments();
     stale = false;
+    configuredSize = size;
 
     if (size.width <= 0 || size.height <= 0) {
         return;
@@ -90,7 +95,7 @@ void Swapchain::configure() {
 
     WGPUSurfaceConfiguration configuration = WGPU_SURFACE_CONFIGURATION_INIT;
     configuration.device = device;
-    configuration.format = format;
+    configuration.format = Conversion::toTextureFormat(format);
     configuration.usage = WGPUTextureUsage_RenderAttachment;
     configuration.width = static_cast<std::uint32_t>(size.windowWidth);
     configuration.height = static_cast<std::uint32_t>(size.windowHeight);
@@ -103,7 +108,7 @@ void Swapchain::configure() {
     depthView = wgpuTextureCreateView(depth, nullptr);
 
     if (sampleCount > 1) {
-        multisampled = makeAttachment(format, "haylen-swapchain-color");
+        multisampled = makeAttachment(Conversion::toTextureFormat(format), "haylen-swapchain-color");
         multisampledView = wgpuTextureCreateView(multisampled, nullptr);
     }
 
@@ -113,7 +118,7 @@ void Swapchain::configure() {
     }
 
     if (scaled == nullptr) {
-        scaled = std::make_unique<ScaledDrawable>(device, format, size);
+        scaled = std::make_unique<ScaledDrawable>(device, Conversion::toTextureFormat(format), size);
         return;
     }
 
@@ -202,7 +207,7 @@ WGPUTextureView Swapchain::getDepthView() const noexcept {
 }
 
 Device::PixelFormat Swapchain::getFormat() const noexcept {
-    return toPixelFormat(format);
+    return format;
 }
 
 int Swapchain::getSampleCount() const noexcept {
@@ -210,11 +215,11 @@ int Swapchain::getSampleCount() const noexcept {
 }
 
 int Swapchain::getWidth() const noexcept {
-    return size.width;
+    return configuredSize.width;
 }
 
 int Swapchain::getHeight() const noexcept {
-    return size.height;
+    return configuredSize.height;
 }
 
 } // namespace haylen::gpu::webgpu

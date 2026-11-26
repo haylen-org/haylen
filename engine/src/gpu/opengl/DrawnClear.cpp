@@ -1,15 +1,15 @@
-#include "gpu/opengl/LayerClear.hpp"
+#include "gpu/opengl/DrawnClear.hpp"
 
 #include <span>
 
 namespace haylen::gpu::opengl {
 
-const std::array<Device::BlockBinding, 1> LayerClear::kBlocks{{
+const std::array<Device::BlockBinding, 1> DrawnClear::kBlocks{{
     {.slot = 0, .stage = Device::Stage::Fragment, .size = 16, .glslName = "clear_color", .glslCount = 1},
 }};
 
 // One triangle covers the viewport, and every output takes the color, so the draw buffers of the framebuffer choose the attachment it reaches.
-const Device::ProgramDesc LayerClear::kProgram{
+const Device::ProgramDesc DrawnClear::kProgram{
     .vertex = {.source = "#version 300 es\n"
                          "void main() {\n"
                          "    vec2 corner = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));\n"
@@ -29,19 +29,19 @@ const Device::ProgramDesc LayerClear::kProgram{
                            "    color3 = clear_color[0];\n"
                            "}\n"},
     .blocks = kBlocks,
-    .label = "haylen-layer-clear",
+    .label = "haylen-drawn-clear",
 };
 
-LayerClear::LayerClear(Gl& functions, StateCache& cache) : gl(functions), state(cache), program(functions, cache, kProgram) {
+DrawnClear::DrawnClear(Gl& functions, StateCache& cache) : gl(functions), state(cache), program(functions, cache, kProgram) {
     gl.genVertexArrays(1, &vertexArray);
 }
 
-LayerClear::~LayerClear() {
+DrawnClear::~DrawnClear() {
     gl.deleteVertexArrays(1, &vertexArray);
     state.forgetVertexArray(vertexArray);
 }
 
-void LayerClear::clear(std::size_t attachment, std::size_t colorCount, const math::Color& color, int width, int height) {
+void DrawnClear::clear(std::size_t attachment, std::size_t colorCount, const math::Color& color, int width, int height) {
     state.useProgram(program.getName());
     state.applyRaster({});
     state.setViewport({.x = 0, .y = 0, .width = width, .height = height});

@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <bit>
 #include <cmath>
 #include <cstring>
 #include <format>
@@ -14,6 +13,8 @@
 
 #include "gpu/DriverIssues.hpp"
 #include "gpu/ImageInfo.hpp"
+#include "gpu/ImageRules.hpp"
+#include "gpu/ProgramSlots.hpp"
 #include "gpu/vulkan/Context.hpp"
 #include "gpu/vulkan/Conversions.hpp"
 #include "gpu/vulkan/ImageLayouts.hpp"
@@ -113,25 +114,40 @@ void Device::createFrames() {
     }
 }
 
+// A format takes the kind of image that `makeImage` makes of it only with every use that `makeImage` gives that kind: a texture is sampled and copied into, a render target is drawn into, sampled, copied into and read back, and a depth stencil image is drawn into, sampled and copied into. The sample counts of a format are the ones the GPU takes for its attachments of that use.
 void Device::fillCapabilities() {
     const VkPhysicalDeviceLimits& limits = context->getProperties().limits;
     capabilities.maxImageSize = static_cast<int>(limits.maxImageDimension2D);
     capabilities.maxArrayLayers = static_cast<int>(limits.maxImageArrayLayers);
-    const VkSampleCountFlags counts = limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
-    capabilities.maxSampleCount = static_cast<int>(std::bit_floor(counts & 0x7FU));
+    capabilities.maxVolumeSize = static_cast<int>(limits.maxImageDimension3D);
+    capabilities.maxCubeSize = static_cast<int>(limits.maxImageDimensionCube);
     capabilities.originTopLeft = true;
     capabilities.independentBlend = context->getEnabledFeatures().independentBlend == VK_TRUE;
-    capabilities.multisampledRenderTargets = true;
     capabilities.gpuTiming = context->getTimestampBits() > 0 && limits.timestampPeriod > 0.0F;
     for (std::size_t index = 0; index < capabilities.blendableFormats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const VkFormat vulkanFormat = resolveFormat(format);
         const bool depth = ImageInfo::isDepth(format);
-        capabilities.textureFormats[index] = context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
-        capabilities.renderFormats[index] = context->hasFormatFeatures(vulkanFormat, depth ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);
+        const VkFormatFeatureFlags sampled = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+        const VkFormatFeatureFlags drawn = depth ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | sampled : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | sampled;
+        capabilities.textureFormats[index] = context->hasFormatFeatures(vulkanFormat, sampled);
+        capabilities.renderFormats[index] = context->hasFormatFeatures(vulkanFormat, drawn);
         capabilities.blendableFormats[index] = !depth && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT);
         capabilities.filterableFormats[index] = !depth && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
+        capabilities.sampleCounts[index] = capabilities.renderFormats[index] ? getSampleCounts(vulkanFormat, depth) : std::uint8_t{0};
+        capabilities.renderFormats[index] = capabilities.sampleCounts[index] != 0;
     }
+}
+
+// The counts come from the image format properties of an attachment of the format, among the counts of the contract, and a format whose attachments the GPU does not make takes none.
+std::uint8_t Device::getSampleCounts(VkFormat format, bool depth) const {
+    const VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | (depth ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    VkImageFormatProperties supported{};
+    if (vkGetPhysicalDeviceImageFormatProperties(context->getPhysicalDevice(), format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0, &supported) != VK_SUCCESS) {
+        return 0;
+    }
+
+    return static_cast<std::uint8_t>(supported.sampleCounts & kContractSampleCounts);
 }
 
 // The device waits for the GPU and destroys what it made in the order its objects need: the ones that frames used, the frames, and the swapchains before the logical device.
@@ -343,6 +359,7 @@ void Device::commit() {
     }
 
     if (lost) {
+        abandonFrame();
         return;
     }
 
@@ -413,22 +430,27 @@ void Device::commit() {
     const VkResult submitted = vk.vkQueueSubmit(context->getQueue(), 1, &submit, frame.fence);
     if (submitted == VK_ERROR_DEVICE_LOST) {
         markLost(submitted);
+        abandonFrame();
         return;
     }
 
     Context::check(submitted, "submit a frame");
     frame.submitted = true;
 
+    // Every surface presents, and a present that fails for another reason than the ones that make a swapchain again or lose the device fails the commit once the frame is done.
+    VkResult failure = VK_SUCCESS;
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
         if (chain == nullptr || !chain->acquired) {
             continue;
         }
 
         const VkResult presented = chain->swapchain->present(chain->imageIndex);
-        if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_SUBOPTIMAL_KHR || presented == VK_ERROR_SURFACE_LOST_KHR) {
+        if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_SUBOPTIMAL_KHR || presented == VK_ERROR_SURFACE_LOST_KHR || presented == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
             chain->dirty = true;
         } else if (presented == VK_ERROR_DEVICE_LOST) {
             markLost(presented);
+        } else if (presented != VK_SUCCESS && failure == VK_SUCCESS) {
+            failure = presented;
         }
 
         chain->acquired = false;
@@ -441,6 +463,17 @@ void Device::commit() {
     descriptors.trim(completedSerial);
     finishTrim();
     readbacks.sweep();
+    Context::check(failure, "present the swapchain of a surface");
+}
+
+// The frame of a lost device submits nothing, so it lets go of the images it acquired, and the surfaces go and come back without a frame that holds them.
+void Device::abandonFrame() noexcept {
+    frameOpen = false;
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain != nullptr) {
+            chain->acquired = false;
+        }
+    }
 }
 
 // What the GPU finished goes at once, and the rest goes as the frames in flight finish, so a trim never waits for the GPU. Between frames, once every frame finished, the objects released since then carry the serial of a frame that no GPU work reads yet, so they go at once too.
@@ -541,9 +574,9 @@ void Device::attachSurface(const Surface& surface) {
     window.dirty = true;
 }
 
-// A surface beyond the window draws through the pipelines of the swapchain, so its swapchain takes the sample count of the window and must take its color format.
+// A surface beyond the window draws through the pipelines of the swapchain, so its swapchain takes the sample count of the window and must take its color format. It may come between the passes of a frame, whose later swapchain passes draw into it.
 int Device::addSurface(const Surface& surface) {
-    if (frameOpen) {
+    if (pass.open) {
         throw ContractError(ContractError::Rule::Surface);
     }
 
@@ -658,9 +691,11 @@ bool Device::acquireSwapchainImage(SurfaceChain& chain) {
         return true;
     }
 
-    if (!chain.swapchain) {
+    if (!chain.swapchain || chain.refusedSerial == nextSerial) {
         return false;
     }
+
+    chain.refusedSerial = nextSerial;
 
     if (chain.dirty) {
         reconfigureSwapchain(chain);
@@ -697,6 +732,7 @@ bool Device::acquireSwapchainImage(SurfaceChain& chain) {
     }
 
     chain.acquired = true;
+    chain.refusedSerial = 0;
     return true;
 }
 
@@ -731,7 +767,9 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     }
 
     VmaAllocationInfo allocated{};
+    ReleaseQueue::Hold room = releases.hold();
     Context::check(vmaCreateBuffer(context->getAllocator(), &info, &memory, &record.buffer, &record.allocation, &allocated), std::format("make a buffer of {} bytes", size));
+    room.keep();
     record.mapped = static_cast<std::byte*>(allocated.pMappedData);
     context->setName(VK_OBJECT_TYPE_BUFFER, record.buffer, desc.label);
 
@@ -768,25 +806,13 @@ void Device::uploadBuffer(const BufferRecord& record, std::span<const std::byte>
     bufferCopies = true;
 }
 
-// The GPU holds images of a format and a usage only up to the extent, the mip levels and the layers that it reports for them.
+// The GPU holds images of a format and a usage only up to the extent, the mip levels and the layers that it reports for them, which may stay below the capabilities of the device for some formats, so an image within the capabilities that the format cannot hold finds no room on the GPU.
 void Device::checkImageLimits(const ImageDesc& desc, const VkImageCreateInfo& info, const VkImageFormatProperties& supported) {
-    if (desc.type == TextureType::Flat && desc.layers != 1) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
     const VkExtent3D& extent = info.extent;
     const VkExtent3D& largest = supported.maxExtent;
-    if (extent.width > largest.width || extent.height > largest.height || extent.depth > largest.depth) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    const std::uint32_t maxLevels = std::min(supported.maxMipLevels, static_cast<std::uint32_t>(ImageInfo::getMaxMipLevels(desc)));
-    if (info.mipLevels > maxLevels) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (info.arrayLayers > supported.maxArrayLayers) {
-        throw ContractError(ContractError::Rule::Image);
+    const bool fits = extent.width <= largest.width && extent.height <= largest.height && extent.depth <= largest.depth;
+    if (!fits || info.mipLevels > supported.maxMipLevels || info.arrayLayers > supported.maxArrayLayers) {
+        throw std::runtime_error(std::format("The GPU of the Vulkan device has no room for the image \"{}\" of {} by {} pixels with {} layers and {} mip levels in its format.", desc.label, desc.width, desc.height, desc.layers, desc.mipLevels));
     }
 }
 
@@ -795,14 +821,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no image.");
     }
 
-    if (desc.width < 1 || desc.height < 1 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.layers < 1 || desc.mipLevels < 1 || (desc.type == TextureType::Cube && desc.layers != 6)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
+    ImageRules::check(desc, capabilities);
     const VkFormat format = resolveFormat(desc.format);
     const bool depth = ImageInfo::isDepth(desc.format);
     const VkSampleCountFlagBits samples = Conversions::toSampleCount(desc.sampleCount);
@@ -859,7 +878,9 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     }
 
     const VmaAllocationCreateInfo memory{.flags = 0, .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
+    ReleaseQueue::Hold imageRoom = releases.hold();
     Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &record.image, &record.allocation, nullptr), std::format("make the image \"{}\"", desc.label));
+    imageRoom.keep();
     context->setName(VK_OBJECT_TYPE_IMAGE, record.image, desc.label);
 
     try {
@@ -867,7 +888,9 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
             // A view that shaders sample reads the depth of a depth and stencil image.
             const VkImageAspectFlags aspect = depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
             const VkImageViewCreateInfo viewInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .pNext = nullptr, .flags = 0, .image = record.image, .viewType = Conversions::toViewType(desc.type), .format = format, .components = {}, .subresourceRange = {.aspectMask = aspect, .baseMipLevel = 0, .levelCount = VK_REMAINING_MIP_LEVELS, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS}};
+            ReleaseQueue::Hold viewRoom = releases.hold();
             Context::check(vk.vkCreateImageView(context->getDevice(), &viewInfo, nullptr, &record.sampleView), "make the view of an image");
+            viewRoom.keep();
             context->setName(VK_OBJECT_TYPE_IMAGE_VIEW, record.sampleView, desc.label);
         }
 
@@ -980,10 +1003,13 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         .unnormalizedCoordinates = VK_FALSE,
     };
     SamplerRecord record;
+    ReleaseQueue::Hold room = releases.hold();
     Context::check(vk.vkCreateSampler(context->getDevice(), &info, nullptr, &record.sampler), "make a sampler");
     context->setName(VK_OBJECT_TYPE_SAMPLER, record.sampler, desc.label);
     try {
-        return {samplers.add(std::move(record))};
+        const Sampler made{samplers.add(std::move(record))};
+        room.keep();
+        return made;
     } catch (...) {
         vk.vkDestroySampler(context->getDevice(), record.sampler, nullptr);
         throw;
@@ -995,6 +1021,8 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     if (lost) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no program.");
     }
+
+    ProgramSlots::check(desc);
 
     for (const StageCode* stage : {&desc.vertex, &desc.fragment}) {
         if (stage->bytecode.empty() || stage->bytecode.size() % 4 != 0) {
@@ -1093,10 +1121,15 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         return module;
     };
     // clang-format on
+    ReleaseQueue::Hold vertexRoom = releases.hold();
+    ReleaseQueue::Hold fragmentRoom = releases.hold();
     record.vertex = makeModule(desc.vertex.bytecode);
     try {
         record.fragment = makeModule(desc.fragment.bytecode);
-        return {programs.add(std::move(record))};
+        const Program made{programs.add(std::move(record))};
+        vertexRoom.keep();
+        fragmentRoom.keep();
+        return made;
     } catch (...) {
         vk.vkDestroyShaderModule(context->getDevice(), record.vertex, nullptr);
         vk.vkDestroyShaderModule(context->getDevice(), record.fragment, nullptr);
@@ -1138,10 +1171,12 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         record.stored = storePipeline(desc);
     }
 
+    ReleaseQueue::Hold room = releases.hold();
     record.pipeline = buildPipeline(desc, *program);
     try {
         const std::uint64_t id = pipelines.add(std::move(record));
         ++program->pipelines;
+        room.keep();
         return {id};
     } catch (...) {
         vk.vkDestroyPipeline(context->getDevice(), record.pipeline, nullptr);
@@ -1264,7 +1299,9 @@ VkPipeline Device::buildPipeline(const PipelineDesc& desc, const ProgramRecord& 
 // The frames in flight may still draw with the old pipeline, which waits for them.
 void Device::rebuildPipeline(PipelineRecord& record) {
     const ProgramRecord& program = *programs.find(record.program);
+    ReleaseQueue::Hold room = releases.hold();
     const VkPipeline rebuilt = buildPipeline(record.stored->desc, program);
+    room.keep();
     releases.push(ReleaseQueue::Pipeline{.pipeline = record.pipeline}, nextSerial);
     record.pipeline = rebuilt;
     record.generation = swapchainTarget.generation;
@@ -1367,7 +1404,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
-    if (offset + data.size() > record.size) {
+    if (offset % 4 != 0 || offset + data.size() > record.size) {
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
@@ -1632,7 +1669,10 @@ VkImageView Device::getAttachmentView(ImageRecord& record, int mipLevel, int lay
 
     const VkImageViewCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .pNext = nullptr, .flags = 0, .image = record.image, .viewType = VK_IMAGE_VIEW_TYPE_2D, .format = record.format, .components = {}, .subresourceRange = {.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(mipLevel), .levelCount = 1, .baseArrayLayer = static_cast<std::uint32_t>(layer), .layerCount = 1}};
     VkImageView view = VK_NULL_HANDLE;
+    record.attachmentViews.reserve(record.attachmentViews.size() + 1);
+    ReleaseQueue::Hold room = releases.hold();
     Context::check(vk.vkCreateImageView(context->getDevice(), &info, nullptr, &view), "make the view of an attachment");
+    room.keep();
     record.attachmentViews.push_back({.mipLevel = mipLevel, .layer = layer, .view = view});
     return view;
 }

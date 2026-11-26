@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 #include "gpu/direct3d/HResult.hpp"
-#include "haylen/gpu/ContractError.hpp"
+#include "gpu/direct3d/ShaderRegisters.hpp"
 
 namespace haylen::gpu::d3d12 {
 
@@ -17,15 +17,13 @@ D3D12_SHADER_VISIBILITY RootSignatures::toVisibility(std::size_t stage) noexcept
 }
 
 RootSignatures::Layout RootSignatures::make(const Device::ProgramDesc& desc) {
+    direct3d::ShaderRegisters::check(desc);
+
     Layout layout;
     layout.blockParameters.fill(-1);
     std::vector<D3D12_ROOT_PARAMETER1> parameters;
 
     for (const Device::BlockBinding& block : desc.blocks) {
-        if (block.slot < 0 || block.slot >= static_cast<int>(Device::kMaxBlocks) || block.size == 0 || block.binding < 0) {
-            throw ContractError(ContractError::Rule::Program);
-        }
-
         D3D12_ROOT_PARAMETER1 parameter{};
         parameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         parameter.Descriptor = {.ShaderRegister = static_cast<UINT>(block.binding), .RegisterSpace = 0, .Flags = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE};
@@ -38,20 +36,12 @@ RootSignatures::Layout RootSignatures::make(const Device::ProgramDesc& desc) {
     // The ranges of the four tables, which the parameters point into until the description is serialized.
     std::array<std::vector<D3D12_DESCRIPTOR_RANGE1>, 4> ranges;
     for (const Device::TextureBinding& texture : desc.textures) {
-        if (texture.slot < 0 || texture.slot >= static_cast<int>(Device::kMaxTextures) || texture.binding < 0) {
-            throw ContractError(ContractError::Rule::Program);
-        }
-
         const std::size_t stage = texture.stage == Device::Stage::Vertex ? 0 : 1;
         layout.textures[stage].slots.push_back(texture.slot);
         ranges[stage].push_back({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV, .NumDescriptors = 1, .BaseShaderRegister = static_cast<UINT>(texture.binding), .RegisterSpace = 0, .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE, .OffsetInDescriptorsFromTableStart = static_cast<UINT>(ranges[stage].size())});
     }
 
     for (const Device::SamplerBinding& sampler : desc.samplers) {
-        if (sampler.slot < 0 || sampler.slot >= static_cast<int>(Device::kMaxSamplers) || sampler.binding < 0) {
-            throw ContractError(ContractError::Rule::Program);
-        }
-
         const std::size_t stage = sampler.stage == Device::Stage::Vertex ? 0 : 1;
         layout.samplers[stage].slots.push_back(sampler.slot);
         ranges[2 + stage].push_back({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, .NumDescriptors = 1, .BaseShaderRegister = static_cast<UINT>(sampler.binding), .RegisterSpace = 0, .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE, .OffsetInDescriptorsFromTableStart = static_cast<UINT>(ranges[2 + stage].size())});

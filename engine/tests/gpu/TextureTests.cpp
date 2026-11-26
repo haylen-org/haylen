@@ -239,6 +239,71 @@ TEST_P(GpuTextureTest, RendersIntoEveryFormatTheDeviceRenders) {
     }
 }
 
+// Every color format that the device renders reads back as RGBA8, with the channels it lacks as 0 and its missing alpha as 1, also the float formats of OpenGL ES and WebGL2. The bytes of an sRGB target hold its encoded values, which the test leaves out.
+TEST_P(GpuTextureTest, ReadsBackEveryFormatTheDeviceRenders) {
+    for (const Device::PixelFormat format : kColorFormats) {
+        const auto index = static_cast<std::size_t>(format);
+        if (!capabilities().renderFormats[index] || format == Device::PixelFormat::Rgba8Srgb) {
+            continue;
+        }
+
+        const Device::Image target = makeTarget(1, 1, format);
+        const std::array<Device::ColorAttachment, 1> colors{{{.image = target, .clear = storedColor(format)}}};
+        device().beginPass({.colors = colors});
+        device().endPass();
+        device().commit();
+        EXPECT_TRUE(isNear(read(target, 1, 1).at(0, 0), sampledColor(format), 3)) << static_cast<int>(format);
+    }
+}
+
+// Every color format that takes more samples than one draws with them and resolves into a target of one sample, which a draw samples back, so a count that the device reports is a count it draws with.
+TEST_P(GpuTextureTest, ResolvesEveryFormatWithTheSampleCountsTheDeviceReports) {
+    const Device::Sampler sampler = makeSampler(kNearest);
+    for (const Device::PixelFormat format : kColorFormats) {
+        const auto index = static_cast<std::size_t>(format);
+        if (!capabilities().textureFormats[index]) {
+            continue;
+        }
+
+        for (const int samples : {2, 4, 8}) {
+            if ((capabilities().sampleCounts[index] & static_cast<unsigned>(samples)) == 0) {
+                continue;
+            }
+
+            const Device::Image multisampled = makeTarget(1, 1, format, samples);
+            const Device::Image resolved = makeTarget(1, 1, format);
+            const std::array<Device::ColorAttachment, 1> colors{{{.image = multisampled, .store = Device::Store::Discard, .clear = storedColor(format), .resolve = resolved}}};
+            device().beginPass({.colors = colors});
+            device().endPass();
+            const Pixels pixels = sample(samplingProgram(format), resolved, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
+            EXPECT_TRUE(isNear(pixels.at(0, 0), sampledColor(format), 3)) << static_cast<int>(format) << " with " << samples << " samples";
+        }
+    }
+}
+
+// An image takes only the sizes and the samples that the capabilities give its type and its format, which every device checks before it makes the image.
+TEST_P(GpuTextureTest, RefusesImagesBeyondTheCapabilities) {
+    const Device::Capabilities& limits = capabilities();
+    const int volume = limits.maxVolumeSize + 1;
+    const int cube = limits.maxCubeSize + 1;
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.type = Device::TextureType::Volume, .width = volume, .height = 1, .layers = 1, .kind = Device::ImageKind::RenderTarget}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.type = Device::TextureType::Volume, .width = 1, .height = 1, .layers = volume, .kind = Device::ImageKind::RenderTarget}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.type = Device::TextureType::Cube, .width = cube, .height = cube, .layers = 6, .kind = Device::ImageKind::RenderTarget}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.type = Device::TextureType::Cube, .width = 4, .height = 8, .layers = 6, .kind = Device::ImageKind::RenderTarget}); }), gpu::ContractError::Rule::Image);
+
+    for (std::size_t index = 0; index < limits.sampleCounts.size(); ++index) {
+        const auto format = static_cast<Device::PixelFormat>(index);
+        const Device::ImageKind kind = ImageInfo::isDepth(format) ? Device::ImageKind::DepthStencil : Device::ImageKind::RenderTarget;
+        for (const int samples : {2, 4, 8}) {
+            if (!limits.renderFormats[index] || (limits.sampleCounts[index] & static_cast<unsigned>(samples)) != 0) {
+                continue;
+            }
+
+            EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.width = 4, .height = 4, .sampleCount = samples, .format = format, .kind = kind}); }), gpu::ContractError::Rule::Image) << index << " with " << samples << " samples";
+        }
+    }
+}
+
 // Arrays, volumes and cubes read the layer, the slice and the face that a draw asks for.
 TEST_P(GpuTextureTest, SamplesArraysVolumesAndCubes) {
     const Device::Sampler sampler = makeSampler(kNearest);

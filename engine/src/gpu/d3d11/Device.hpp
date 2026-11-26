@@ -1,8 +1,9 @@
 #pragma once
 
-#include <d3d11_1.h>
+#include <d3d11_4.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
+#include <wrl/wrappers/corewrappers.h>
 
 #include <array>
 #include <cstddef>
@@ -31,7 +32,7 @@ class Swapchain;
 
 namespace haylen::gpu::d3d11 {
 
-// The device of Direct3D 11, on GPUs of feature level 11_0 and later with the runtime of Direct3D 11.1, which binds parts of one constant buffer to each draw. Uniforms go through a ring of one dynamic buffer and dynamic buffers take their data straight from the CPU, both mapped without waiting, images take their pixels through the staging of the driver, and the context state it keeps skips every binding that would change nothing. The GPU runs at most `kFramesInFlight` frames behind the CPU, which event queries enforce. Validation turns on the debug layer and moves its messages into the log.
+// The device of Direct3D 11, on GPUs of feature level 11_0 and later with the runtime of Direct3D 11.4 and a driver that has its fences, which binds parts of one constant buffer to each draw. Uniforms go through a ring of one dynamic buffer and dynamic buffers take their data straight from the CPU, both mapped without waiting, images take their pixels through the staging of the driver, and the context state it keeps skips every binding that would change nothing. The GPU runs at most `kFramesInFlight` frames behind the CPU, which a fence enforces, whose event the CPU sleeps on while it waits. Validation turns on the debug layer and moves its messages into the log.
 class Device final : public gpu::Device {
   public:
     static constexpr std::size_t kFramesInFlight = 2;
@@ -226,12 +227,14 @@ class Device final : public gpu::Device {
         Microsoft::WRL::ComPtr<ID3D11RenderTargetView> multisampleView;
         Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depthView;
         bool presentPending = false;
+        bool presented = false;
     };
 
     void createDevice(bool validation);
     void readCapabilities();
     void openFrame();
-    void loseDevice(HRESULT reason) noexcept;
+    void waitForDisplays() noexcept;
+    void loseDevice(HRESULT reason);
     [[nodiscard]] SurfaceChain& requireChain(int number) const;
     [[nodiscard]] SurfaceChain& requireAddedChain(int number) const;
     [[nodiscard]] bool prepareSwapchain(SurfaceChain& chain);
@@ -256,8 +259,8 @@ class Device final : public gpu::Device {
 
     Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
     Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
-    Microsoft::WRL::ComPtr<ID3D11Device1> device;
-    Microsoft::WRL::ComPtr<ID3D11DeviceContext1> context;
+    Microsoft::WRL::ComPtr<ID3D11Device5> device;
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext4> context;
     // The in-application API of RenderDoc when RenderDoc launched the app, which captures its frames.
     std::unique_ptr<renderdoc::Capturer> renderDoc = renderdoc::Capturer::find();
     Microsoft::WRL::ComPtr<ID3DUserDefinedAnnotation> annotation;
@@ -279,14 +282,18 @@ class Device final : public gpu::Device {
     std::array<std::vector<std::byte>, kMaxBlocks> blockBytes;
     std::array<bool, kMaxBlocks> blocksApplied{};
     std::unique_ptr<FrameTimer> timer;
-    std::array<Microsoft::WRL::ComPtr<ID3D11Query>, kFramesInFlight> frameFinished;
-    std::array<bool, kFramesInFlight> frameSubmitted{};
+    // The fence that the context signals at the end of each frame, with the value that each frame in flight signaled.
+    Microsoft::WRL::ComPtr<ID3D11Fence> fence;
+    Microsoft::WRL::Wrappers::Event fenceEvent;
+    std::uint64_t fenceValue = 0;
+    std::array<std::uint64_t, kFramesInFlight> frameFences{};
     std::size_t frameIndex = 0;
     std::uint64_t frameNumber = 1;
     bool frameOpen = false;
 
-    // The swapchains of the surfaces at their numbers, the window at 0, with an empty place for a surface that went away.
+    // The swapchains of the surfaces at their numbers, the window at 0, with an empty place for a surface that went away, and the samples of the window, which every surface draws with, so the pipelines of the swapchain draw into each of them.
     std::vector<std::unique_ptr<SurfaceChain>> chains;
+    int swapchainSampleCount = 1;
 
     ContextState bound;
     PassState pass;

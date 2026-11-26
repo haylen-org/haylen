@@ -96,7 +96,7 @@ void ShaderProgram::readBlocks(const Device::ProgramDesc& desc) {
     blockIndices.fill(-1);
     blocks.reserve(desc.blocks.size());
     for (const Device::BlockBinding& binding : desc.blocks) {
-        if (binding.slot < 0 || binding.slot >= static_cast<int>(Device::kMaxBlocks) || binding.glslName.empty() || static_cast<std::uint32_t>(binding.glslCount) * 16U != binding.size) {
+        if (binding.glslName.empty() || static_cast<std::uint32_t>(binding.glslCount) * 16U != binding.size) {
             throw ContractError(ContractError::Rule::Program);
         }
 

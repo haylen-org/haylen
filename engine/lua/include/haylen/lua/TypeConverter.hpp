@@ -34,6 +34,7 @@
 #include "haylen/core/EnumNames.hpp"
 #include "haylen/core/MotionReduction.hpp"
 #include "haylen/core/ProcessMode.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Shader.hpp"
@@ -613,6 +614,16 @@ template <> struct EnumNames<haylen::text::LineHeight> {
     }
     static std::string_view name(haylen::text::LineHeight value) {
         return haylen::text::Style::lineHeightName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::gpu::Device::PixelFormat> {
+    static std::optional<haylen::gpu::Device::PixelFormat> fromName(std::string_view name) {
+        const auto found = std::ranges::find(haylen::gpu::Device::kPixelFormatNames, name, &std::pair<std::string_view, haylen::gpu::Device::PixelFormat>::first);
+        return found != haylen::gpu::Device::kPixelFormatNames.end() ? std::optional(found->second) : std::nullopt;
+    }
+    static std::string_view name(haylen::gpu::Device::PixelFormat value) {
+        return std::ranges::find(haylen::gpu::Device::kPixelFormatNames, value, &std::pair<std::string_view, haylen::gpu::Device::PixelFormat>::second)->first;
     }
 };
 

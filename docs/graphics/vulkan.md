@@ -43,7 +43,7 @@ The viewport of every pass flips the vertical axis, so clip space and the rows o
 
 ## Windows and swapchains
 
-The swapchain takes eight bits a channel without the conversion of sRGB formats, since the engine blends in the values it stores. A window with multisampling draws into a multisampled image that resolves into the swapchain image, and the depth and stencil of the window live in memory that tile GPUs never allocate, since no pass stores them. A swapchain pass that keeps the contents and directly follows the swapchain pass of the same surface keeps that depth, stencil and multisampled color too, and after any other pass they start anew, so a multisampled window keeps no color across an offscreen pass, as the [render hardware interface](rhi.md#passes-and-draws) says. An acquire of an image of the swapchain waits for at most a second, and a frame that gets none in that time draws nothing into the window, which a compositor that keeps every image of a hidden window can cause.
+The swapchain takes eight bits a channel without the conversion of sRGB formats, since the engine blends in the values it stores. A window with multisampling draws into a multisampled image that resolves into the swapchain image, and the depth and stencil of the window live in memory that tile GPUs never allocate, since no pass stores them. A swapchain pass that keeps the contents and directly follows the swapchain pass of the same surface keeps that depth, stencil and multisampled color too, and after any other pass or a debug group between them they start anew, since a debug group between passes ends the render pass that the two would share, so a multisampled window keeps no color across an offscreen pass, as the [render hardware interface](rhi.md#passes-and-draws) says. An acquire of an image of the swapchain waits for at most a second, and a frame that gets none in that time draws nothing into the window, which a compositor that keeps every image of a hidden window can cause.
 
 | Setting | What the device does |
 | --- | --- |
@@ -64,8 +64,9 @@ Shader packages carry SPIR-V modules, the `spirv` language, with the descriptor 
 | --- | --- |
 | Largest image | `maxImageDimension2D` of the GPU. |
 | Array layers | `maxImageArrayLayers` of the GPU. |
-| Samples | The most samples that the GPU gives both color and depth attachments. |
-| Sample, draw into, blend and filter a format | The format features that the GPU reports for each format. |
+| Largest volume and cube | `maxImageDimension3D` and `maxImageDimensionCube` of the GPU. |
+| Samples | The counts of 2, 4 and 8 that the image format properties of the GPU give the attachments of each format. |
+| Sample, draw into, blend and filter a format | The format features that the GPU reports for each format, with every use that the device gives the images of each kind: a render target is drawn into, sampled, copied into and read back. |
 | Separate blend for each color target | Where the GPU has the feature `independentBlend`. |
 | GPU time of a frame | Timestamp queries, where the queue writes timestamps. |
 | First row of a render target | The top row. |

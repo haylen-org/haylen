@@ -10,6 +10,29 @@
 #include <windows.h>
 #elif defined(__linux__) && !defined(__ANDROID__)
 #include <X11/Xlib.h>
+#elif defined(__EMSCRIPTEN__)
+#include <string>
+
+#include <emscripten/emscripten.h>
+
+// clang-format off
+EM_JS(void, haylen_js_add_test_canvas, (const char* name, int width, int height), {
+    const canvas = document.createElement("canvas");
+    canvas.id = UTF8ToString(name);
+    canvas.width = width;
+    canvas.height = height;
+    document.body.appendChild(canvas);
+});
+
+EM_JS(void, haylen_js_remove_test_canvas, (const char* name), {
+    document.getElementById(UTF8ToString(name)).remove();
+});
+
+EM_JS(int, haylen_js_is_headless_chrome_on_linux, (), {
+    const agent = navigator.userAgent;
+    return agent.includes("HeadlessChrome/") && agent.includes("Linux") && !agent.includes("Android") ? 1 : 0;
+});
+// clang-format on
 #endif
 
 namespace haylen::test {
@@ -18,7 +41,7 @@ namespace haylen::test {
 class SecondSurface::Native final {
   public:
 #if defined(_WIN32)
-    Native(int width, int height) {
+    Native(int width, int height, const gpu::Device&) {
         const HINSTANCE instance = GetModuleHandleW(nullptr);
         WNDCLASSW windowClass{};
         windowClass.lpfnWndProc = DefWindowProcW;
@@ -45,7 +68,7 @@ class SecondSurface::Native final {
   private:
     HWND window = nullptr;
 #elif defined(__linux__) && !defined(__ANDROID__)
-    Native(int width, int height) : display(openDisplay()) {
+    Native(int width, int height, const gpu::Device&) : display(openDisplay()) {
         if (display == nullptr) {
             throw std::runtime_error("No display server of X11 runs, so the tests have no window for the surface.");
         }
@@ -75,8 +98,33 @@ class SecondSurface::Native final {
   private:
     Display* display = nullptr;
     Window window = 0;
+#elif defined(__EMSCRIPTEN__)
+    // A canvas of the page that the tests add for the surface and take away after it, which WebGPU configures with the device of the window.
+    Native(int width, int height, const gpu::Device& device) : name("haylen-second-surface-" + std::to_string(nextCanvas++)), selector("#" + name) {
+        if (haylen_js_is_headless_chrome_on_linux() == 1 && device.getAdapterName().find("swiftshader") != std::string::npos) {
+            throw std::runtime_error("Headless Chrome on Linux draws WebGPU through SwiftShader, which cannot share the swapchain of a canvas with the compositor of the browser, so the browser takes the device away from a page that presents a canvas and the page has no surface beyond the window.");
+        }
+
+        haylen_js_add_test_canvas(name.c_str(), width, height);
+    }
+
+    Native(const Native&) = delete;
+    Native& operator=(const Native&) = delete;
+
+    ~Native() {
+        haylen_js_remove_test_canvas(name.c_str());
+    }
+
+    [[nodiscard]] gpu::Surface describe() const noexcept {
+        return {.kind = gpu::Surface::Kind::WebCanvas, .canvas = selector};
+    }
+
+  private:
+    static inline int nextCanvas = 1;
+    std::string name;
+    std::string selector;
 #else
-    Native(int, int) {
+    Native(int, int, const gpu::Device&) {
         throw std::runtime_error("The tests open no window on this platform for a surface beyond the window.");
     }
 
@@ -86,12 +134,12 @@ class SecondSurface::Native final {
 #endif
 };
 
-SecondSurface::SecondSurface(gpu::Device::Api api, OffscreenSurface& offscreen, int width, int height) {
-    if (gpu::DeviceFactory::usesGlContext(api)) {
+SecondSurface::SecondSurface(const gpu::Device& device, OffscreenSurface& offscreen, int width, int height) {
+    if (gpu::DeviceFactory::usesGlContext(device.getApi())) {
         drawable = offscreen.makeDrawable(width, height);
         surface = {.kind = gpu::Surface::Kind::Gl, .gl = drawable.get()};
     } else {
-        native = std::make_unique<Native>(width, height);
+        native = std::make_unique<Native>(width, height, device);
         surface = native->describe();
     }
 

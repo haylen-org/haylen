@@ -73,6 +73,16 @@ TEST(DriverIssuesTest, ClearsLayersByDrawingOnlyOnTheTranslatorOfTheEmulatorOnSw
     EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Adreno (TM) 830", .version = "OpenGL ES 3.2 V@0800.37"}, Issue::ClearLayersByDrawing).has_value());
 }
 
+// Only the OpenGL ES of SwiftShader 4.0.0, directly or through the translator of the Android emulator, whose clears reach one sample of a multisampled attachment, clears multisampled attachments by drawing, while SwiftShader through ANGLE and other drivers clear them.
+TEST(DriverIssuesTest, ClearsSamplesByDrawingOnlyOnTheOpenGlEsOfSwiftShader4) {
+    const DriverIssues::Driver translator{.api = Device::Api::OpenGlEs, .renderer = "Android Emulator OpenGL ES Translator (Google SwiftShader)", .version = "OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)"};
+    EXPECT_TRUE(DriverIssues::find(translator, Issue::ClearSamplesByDrawing).has_value());
+    EXPECT_TRUE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Google SwiftShader", .version = "OpenGL ES 3.0 SwiftShader 4.0.0.1"}, Issue::ClearSamplesByDrawing).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Android Emulator OpenGL ES Translator (ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver-5.0.0))", .version = "OpenGL ES 3.1 (OpenGL ES 3.1.0 (ANGLE 2.1.1 git hash: fbf66f49c7cc))"}, Issue::ClearSamplesByDrawing).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = translator.renderer, .version = translator.version}, Issue::ClearSamplesByDrawing).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Adreno (TM) 830", .version = "OpenGL ES 3.2 V@0800.37"}, Issue::ClearSamplesByDrawing).has_value());
+}
+
 // Only the OpenGL ES of SwiftShader 4.0.0, directly or through the translator of the Android emulator, gives textures of 32-bit float depth a stencil plane, while SwiftShader through ANGLE and other drivers make them as they are asked.
 TEST(DriverIssuesTest, MakesFloatDepthWithStencilOnlyOnTheOpenGlEsOfSwiftShader4) {
     const DriverIssues::Driver translator{.api = Device::Api::OpenGlEs, .renderer = "Android Emulator OpenGL ES Translator (Google SwiftShader)", .version = "OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)"};

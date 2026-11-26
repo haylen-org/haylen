@@ -192,6 +192,35 @@ TEST_F(NullDeviceTest, ChecksTheShapeLevelsAndFormatOfImages) {
     EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 2, .height = 2, .mipLevels = 1, .levels = volumeLevels, .label = "texture"}); }), gpu::ContractError::Rule::Image);
 }
 
+// An image, a pipeline and a window take only the sample counts that the capabilities give their formats, and a volume and a cube only the sizes of their own limits.
+TEST_F(NullDeviceTest, ChecksTheSampleCountsAndTheSizesOfEachKindOfImage) {
+    Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
+    capabilities.sampleCounts[static_cast<std::size_t>(Device::PixelFormat::R32Float)] = 1;
+    capabilities.sampleCounts[static_cast<std::size_t>(Device::PixelFormat::Depth24Stencil8)] = 1 | 4;
+    capabilities.maxVolumeSize = 16;
+    capabilities.maxCubeSize = 32;
+    NullDevice device(Device::Language::None, capabilities);
+
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .format = Device::PixelFormat::R32Float, .kind = Device::ImageKind::RenderTarget, .label = "floats"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_NO_THROW((void)device.makeImage({.width = 4, .height = 4, .sampleCount = 8, .format = Device::PixelFormat::Rgba16Float, .kind = Device::ImageKind::RenderTarget, .label = "halves"}));
+
+    const Device::Program program = device.makeProgram({.label = "empty"});
+    const std::array<Device::ColorTarget, 1> floats{{{.format = Device::PixelFormat::R32Float}}};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makePipeline({.program = program, .colors = floats, .sampleCount = 4, .label = "floats"}); }), gpu::ContractError::Rule::Pipeline);
+    const std::array<Device::ColorTarget, 1> colors{};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makePipeline({.program = program, .colors = colors, .depthStencil = {.format = Device::PixelFormat::Depth24Stencil8}, .sampleCount = 2, .label = "depth"}); }), gpu::ContractError::Rule::Pipeline);
+
+    device.detachSurface();
+    const Surface::Size size{.width = 8, .height = 8, .windowWidth = 8, .windowHeight = 8};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.attachSurface({.size = size, .sampleCount = 2}); }), gpu::ContractError::Rule::Surface);
+    EXPECT_NO_THROW(device.attachSurface({.size = size, .sampleCount = 4}));
+
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.type = Device::TextureType::Volume, .width = 16, .height = 16, .layers = 17, .kind = Device::ImageKind::RenderTarget, .label = "volume"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_NO_THROW((void)device.makeImage({.type = Device::TextureType::Volume, .width = 16, .height = 16, .layers = 16, .kind = Device::ImageKind::RenderTarget, .label = "volume"}));
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.type = Device::TextureType::Cube, .width = 64, .height = 64, .layers = 6, .kind = Device::ImageKind::RenderTarget, .label = "cube"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_NO_THROW((void)device.makeImage({.type = Device::TextureType::Cube, .width = 32, .height = 32, .layers = 6, .kind = Device::ImageKind::RenderTarget, .label = "cube"}));
+}
+
 // The attachments of a pass share one size and sample count, a multisampled color resolves into a render target of one sample of its format, and every pipeline drawn in a pass draws into its attachments.
 TEST_F(NullDeviceTest, ChecksTheAttachmentsOfPassesAndThePipelinesDrawnInThem) {
     NullDevice device;
@@ -252,6 +281,30 @@ TEST_F(NullDeviceTest, RequiresTheBindingsAndUniformsOfEveryDraw) {
     EXPECT_NO_THROW(device.draw(0, 3, 1));
     device.applyPipeline(pipeline);
     EXPECT_EQ(test::ContractRule::of([&] { (void)device.draw(0, 3, 1); }), gpu::ContractError::Rule::PipelineState);
+    device.endPass();
+    device.commit();
+}
+
+// The image that a multisampled attachment resolves into takes the pixels of the pass as it ends, so a draw of that pass never samples it.
+TEST_F(NullDeviceTest, SamplesNoImageThatThePassResolvesInto) {
+    NullDevice device;
+    const std::array<Device::TextureBinding, 1> textures{{{.slot = 0}}};
+    const std::array<Device::SamplerBinding, 1> samplers{{{.slot = 0}}};
+    const std::array<Device::ColorTarget, 1> targets{};
+    const Device::Pipeline pipeline = device.makePipeline({.program = device.makeProgram({.textures = textures, .samplers = samplers, .label = "textured"}), .colors = targets, .sampleCount = 4, .label = "textured"});
+    const Device::Image samples = device.makeImage({.width = 2, .height = 2, .sampleCount = 4, .kind = Device::ImageKind::RenderTarget, .label = "samples"});
+    const Device::Image resolved = device.makeImage({.width = 2, .height = 2, .kind = Device::ImageKind::RenderTarget, .label = "resolved"});
+    const Device::Image other = device.makeImage({.width = 2, .height = 2, .kind = Device::ImageKind::RenderTarget, .label = "other"});
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = samples, .resolve = resolved}}};
+
+    device.beginPass({.colors = colors});
+    device.applyPipeline(pipeline);
+    Device::Bindings bindings;
+    bindings.textures[0] = resolved;
+    bindings.samplers[0] = device.makeSampler({});
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
+    bindings.textures[0] = other;
+    EXPECT_NO_THROW(device.applyBindings(bindings));
     device.endPass();
     device.commit();
 }
@@ -377,6 +430,26 @@ TEST_F(NullDeviceTest, KeepsThePassesOfAFrameIntoOneSurfaceTogether) {
     device.beginPass({.surface = board});
     device.endPass();
     device.beginPass({});
+    device.endPass();
+    device.commit();
+}
+
+// A debug group between two swapchain passes ends the run of passes that a multisampled window keeps its samples in, as an offscreen pass does, while a group inside a pass does not.
+TEST_F(NullDeviceTest, RefusesToKeepTheColorOfAMultisampledWindowAcrossADebugGroup) {
+    NullDevice device;
+    device.detachSurface();
+    device.attachSurface({.size = {.width = 8, .height = 8, .windowWidth = 8, .windowHeight = 8}, .sampleCount = 4});
+
+    device.beginPass({});
+    device.pushDebugGroup("inside");
+    device.popDebugGroup();
+    device.endPass();
+    EXPECT_NO_THROW(device.beginPass({.load = Device::Load::Keep}));
+    device.endPass();
+    device.pushDebugGroup("between");
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.beginPass({.load = Device::Load::Keep}); }), gpu::ContractError::Rule::Surface);
+    device.popDebugGroup();
+    EXPECT_NO_THROW(device.beginPass({.load = Device::Load::Clear}));
     device.endPass();
     device.commit();
 }

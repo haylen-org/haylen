@@ -23,7 +23,8 @@ Both devices run on Windows 10 version 1903 and later, the oldest version that t
 | Need | Direct3D 11 | Direct3D 12 |
 | --- | --- | --- |
 | GPU | Feature level 11_0 or later. | Feature level 11_0 or later. |
-| Runtime | Direct3D 11.1 with constant buffer offsets and constant buffers that map without waiting, which every driver of Windows 10 has. | Root signatures of version 1.1 and render passes, which Windows 10 version 1809 and later have. |
+| Runtime | Direct3D 11.4, which Windows 10 has, with the constant buffer offsets and constant buffers that map without waiting of Direct3D 11.1, which every driver of Windows 10 has. | Root signatures of version 1.1 and render passes, which Windows 10 version 1809 and later have. |
+| Driver | The display driver model WDDM 2.0 or later, whose fences the device waits for the GPU with. A GPU with an older driver does not start the device, and the player moves on to the next graphics API with the reason in the log. | WDDM 2.0 or later, which Direct3D 12 needs. |
 | Shader compiler | `d3dcompiler_47.dll`, which Windows ships in its system folder. | The same compiler. |
 | Transparent windows | `dcomp.dll`, which Windows ships in its system folder. | The same library. |
 
@@ -33,11 +34,11 @@ The devices load the shader compiler and DirectComposition when they start, so a
 
 The Direct3D 12 device records each frame into two command lists. The transfer list holds the copies into buffers and images and the copies out of render targets. The list of passes holds the passes and their draws. The transfer list runs first, so a pass always sees the data that its frame wrote.
 
-The CPU runs at most two frames ahead of the GPU. A fence marks the end of each frame, and the device reuses the memory of a frame only once the GPU has finished it. Objects that the engine destroys wait for the same fence before they go, so the GPU never reads a destroyed object.
+The CPU runs at most two frames ahead of the GPU. A fence marks the end of each frame, and the device reuses the memory of a frame only once the GPU has finished it. Objects that the engine destroys wait for the same fence before they go, so the GPU never reads a destroyed object. The device holds the place of that wait from the moment it makes an object, so destroying an object never allocates memory.
 
 Buffers up to a megabyte take a range of a large block of GPU memory instead of memory of their own, since memory of its own costs a call to the kernel and 64 kilobytes however small the buffer is. A range comes back to its block once the GPU finished the frames that used it, and free ranges next to each other join, so making and destroying many small buffers every frame stays cheap.
 
-The device keeps the data of each frame in memory that the CPU writes and the GPU reads. That memory stays mapped, so writing uniforms and buffers costs one copy and no call to the driver. Uniform blocks bind as root constant buffer views that point into this memory. Textures and samplers bind as descriptor tables in heaps that the shaders read. When a frame binds the same textures twice, the second draw reads the table of the first one, so redundant bindings cost nothing.
+The device keeps the data of each frame in memory that the CPU writes and the GPU reads. That memory stays mapped, so writing uniforms and buffers costs one copy and no call to the driver. Uniform blocks bind as root constant buffer views that point into this memory. Textures and samplers bind as descriptor tables in heaps that the shaders read. When a frame binds the same textures twice, the second draw reads the table of the first one, so redundant bindings cost nothing. The tables promise Direct3D 12 that the images they point to stay as they are while a table is set, and a pass may draw into an image that a table of an earlier pass points to, so each pass sets its tables again.
 
 The root signature of each program comes from the reflection of its shader package. Each uniform block becomes a root constant buffer view, and the textures and samplers of each stage become one descriptor table each. Programs with the same layout share one root signature, so switching between their pipelines keeps every binding.
 
@@ -47,13 +48,15 @@ Images rest in the state that shaders read. A pass moves its attachments into th
 
 The Direct3D 11 device draws on the immediate context. It writes uniforms into one large dynamic buffer and binds a window of that buffer to each draw, which Direct3D 11.1 allows. Each piece of data goes after the previous one without waiting for the GPU, and when the buffer is full the driver hands the device a fresh copy while the GPU keeps reading the old one. The fresh copy lacks the blocks that the pipeline applied before, which its next draws still read, so the device keeps the bytes of each block it applied since the pipeline and writes them into the fresh copy again. A uniform block holds at most 64 kilobytes, the largest constant buffer of Direct3D 11, so the buffer always holds every block of a pipeline. A dynamic buffer holds in a frame only what that frame wrote into it, so the first write of a frame asks the driver for a fresh copy of the buffer and the CPU writes straight into it, while the GPU keeps reading the copy of the frame before.
 
-The device remembers what the context holds: the pipeline, the shaders, the states, the buffers, the textures and the samplers. A call that would set what the context already holds is skipped. Event queries keep the CPU at most two frames ahead of the GPU.
+The device remembers what the context holds: the pipeline, the shaders, the states, the buffers, the textures and the samplers. A call that would set what the context already holds is skipped. A fence of Direct3D 11.4 keeps the CPU at most two frames ahead of the GPU: the context signals it at the end of each frame, and a frame that must wait for the GPU sleeps on its event instead of asking the GPU again and again.
 
 ## Windows and swapchains
 
 Both devices show frames through a flip model swapchain of three buffers. A window with vertical sync waits for the refresh of the display. A window without vertical sync presents at once and lets the display tear where it supports it, so frames reach the screen as soon as they are ready.
 
-A flip model swapchain holds one sample per pixel. A window with multisampling draws into a multisampled image of its own, and the device resolves that image into the swapchain when it presents the frame. A window takes 1, 2, 4 or 8 samples, up to the most that the GPU takes for the color and the depth of the swapchain together, and a device whose window asks for another count fails to start with a sentence that names both counts, so the platform can try another API.
+The swapchains pace the frames through the frame latency waitable object of DXGI, with one frame at most waiting to be shown. Presenting never blocks. Instead, the commit of each frame ends once every surface that the frame presented can take the next frame, so the next frame reads its input only when the display can show it soon, which keeps the time from a key or a touch to the screen as short as the display allows. Each swapchain also waits once when it is made, so the first frame follows the same pace. A wait gives up after the second that the documentation of DXGI waits with, and the frame then goes on.
+
+A flip model swapchain holds one sample per pixel. A window with multisampling draws into a multisampled image of its own, and the device resolves that image into the swapchain when it presents the frame. A window takes 1, 2, 4 or 8 samples, up to the most that the GPU takes for the color and the depth of the swapchain together, and a device whose window asks for another count fails to start with a sentence that names both counts, so the platform can try another API. A surface beyond the window, such as the window of an output on another display, draws with the samples of the window through the pipelines of the swapchain, and a window that comes back with another sample count makes the multisampled images of every surface again. A surface that the device cannot draw into fails to be added and gives back every view it took.
 
 A transparent window shows what lies behind it through the alpha of its pixels. Only a swapchain for composition keeps that alpha, so the devices show a transparent window through DirectComposition, which composites the frames over the desktop with premultiplied alpha. The window must have no redirection bitmap, which the platform asks for with the extended style `WS_EX_NOREDIRECTIONBITMAP`, or Windows draws an opaque background behind the frames.
 
@@ -61,7 +64,7 @@ A window that changes size resizes the swapchain before its next frame. Direct3D
 
 ## Shaders
 
-Shader packages carry HLSL for shader model 5.0, the `hlsl5` language, which both devices run. The devices compile it with `D3DCompile` when a program is made. Uniform blocks use the `b` registers, textures the `t` registers and samplers the `s` registers, and vertex inputs use the semantic `TEXCOORD` with the location as its index.
+Shader packages carry HLSL for shader model 5.0, the `hlsl5` language, which both devices run. The devices compile it with `D3DCompile` when a program is made. Uniform blocks use the `b` registers, textures the `t` registers and samplers the `s` registers, and vertex inputs use the semantic `TEXCOORD` with the location as its index. Each block, texture and sampler of a stage takes a slot and a register of its own, and a program whose bindings of one stage share a slot or a register breaks the contract of the device, which throws `gpu::ContractError` with the rule `Program`.
 
 Compiling a shader takes time, so the engine asks the device to prepare programs as soon as it knows them. The device then compiles them on threads of its own, and making the program later takes the result, waits only for its own compilation while it runs, or compiles it at once when it still waits behind other compilations. The compiler of Direct3D unrolls loops that sample textures, so a shader with nested loops, such as an outline that searches around each pixel, can take more than ten seconds to compile. No compilation can stop, so the device never runs them on the pools of the engine, which a quit or a restart waits for. When the device goes away, the compilations that did not start never run, and the ones that run finish on their threads.
 
@@ -71,12 +74,12 @@ Compiling a shader takes time, so the engine asks the device to prepare programs
 | --- | --- | --- |
 | Largest image | 16384 pixels a side. | 16384 pixels a side. |
 | Layers of an array | 2048. | 2048. |
-| Samples | The most that the GPU gives both 8-bit color and depth, up to 8. | The same. |
+| Largest volume and cube | 2048 pixels along each side of a volume and 16384 pixels a side of a cube. | The same. |
+| Samples | 2, 4 and 8 for each format that the GPU draws into with them and, for a color, resolves, from `CheckMultisampleQualityLevels` and the format support of the driver. A window takes the counts that both its color and its depth take. | The same, from `CheckFeatureSupport`. |
 | Sample and draw into a format | Every format that the GPU samples and draws into, which the device reads from the driver. | The same. |
 | Blend into a color format | Every color format that the GPU blends into, which the device reads from the driver. | The same. |
-| Multisampled render targets with a resolve | Yes. | Yes, as part of the render pass. |
 | Separate blend for each color target | Yes. | Yes. |
-| GPU time of a frame | Timestamp queries inside a disjoint query. | Timestamp queries that the fence of the frame hands over. |
+| GPU time of a frame | Timestamp queries inside a disjoint query. | Timestamp queries from the start of the transfer list, which runs first, to the end of the passes, which the fence of the frame hands over. |
 | First row of a render target | The top row. | The top row. |
 
 ## Debugging
@@ -87,9 +90,11 @@ On Direct3D 12, validation also turns on the breadcrumbs and page faults of remo
 
 Every buffer, image, sampler, shader, pipeline and pass takes the label the engine gives it, and debug groups become markers. GPU debuggers such as PIX show those names in their captures.
 
+Besides the pools of every device, the Direct3D 12 device reports the views that its passes draw through in the pools `renderTargetViews` and `depthStencilViews`, the descriptors that the render targets, the depth stencil images and the swapchains take, so a leak of views shows in `debug.stats()`.
+
 ## Lost devices
 
-A device is lost when the GPU is removed or reset, or when its driver fails or updates. The device notices it when it presents a frame or checks the GPU at the end of each frame, and it logs the reason that Windows gives. A Direct3D 12 command list that fails to close, or a queue that refuses to signal the end of a frame, loses the device the same way, since the GPU cannot run that frame. The platform then makes a new device and starts the app again. A lost device never blocks: every wait for the GPU ends at once.
+A device is lost when the GPU is removed or reset, or when its driver fails or updates. The device notices it when it presents a frame or checks the GPU at the end of each frame, and it logs the reason that Windows gives. A Direct3D 12 command list that fails to close, or a queue that refuses to signal the end of a frame, loses the device the same way, since the GPU cannot run that frame. The platform then makes a new device and starts the app again. A lost device never blocks: every wait for the GPU ends at once. A present that fails for another reason makes the commit throw `std::runtime_error` with the reason, once every surface presented and the frame ended.
 
 ## Limits
 

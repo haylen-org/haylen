@@ -2,8 +2,9 @@
 
 #import <Foundation/Foundation.h>
 
+#include <cstddef>
 #include <cstdint>
-#include <deque>
+#include <vector>
 
 namespace haylen::gpu::metal {
 
@@ -18,7 +19,10 @@ class Graveyard final {
         frame = value;
     }
 
-    void retire(id object);
+    // Holds room for one more entry for each of the objects that live, which every method that makes an object calls before it makes one, so `retire` never allocates.
+    void reserve(std::size_t living);
+
+    void retire(id object) noexcept;
 
     // Releases the objects that wait for frames up to the one the GPU finished last.
     void release(std::uint64_t completed);
@@ -29,7 +33,8 @@ class Graveyard final {
         std::uint64_t frame = 0;
     };
 
-    std::deque<Entry> entries;
+    // The entries in the order of their frames.
+    std::vector<Entry> entries;
     std::uint64_t frame;
 };
 

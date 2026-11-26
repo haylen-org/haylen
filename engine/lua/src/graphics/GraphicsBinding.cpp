@@ -135,6 +135,32 @@ int GraphicsBinding::trim(lua_State* L) {
     return 0;
 }
 
+int GraphicsBinding::maxVolumeSize(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities().maxVolumeSize);
+    return 1;
+}
+
+int GraphicsBinding::maxCubeSize(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities().maxCubeSize);
+    return 1;
+}
+
+// The counts that the images of the format take, from one sample up, and none for a format that the device draws not into.
+int GraphicsBinding::sampleCounts(lua_State* L) {
+    const auto format = lua::Stack::read<haylen::gpu::Device::PixelFormat>(L, 1);
+    const std::uint8_t counts = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities().sampleCounts[static_cast<std::size_t>(format)];
+    lua_createtable(L, 4, 0);
+    int index = 0;
+    for (unsigned count = 1; count <= 128; count *= 2) {
+        if ((counts & count) != 0) {
+            lua::Stack::push(L, static_cast<int>(count));
+            lua_rawseti(L, -2, ++index);
+        }
+    }
+
+    return 1;
+}
+
 int GraphicsBinding::whiteTexture(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getWhiteTexture());
     return 1;
@@ -295,6 +321,9 @@ int GraphicsBinding::open(lua_State* L) {
         {"apiName", &apiName},
         {"maxTextureSize", &maxTextureSize},
         {"trim", &lua::Binding::native<&trim>},
+        {"maxVolumeSize", &maxVolumeSize},
+        {"maxCubeSize", &maxCubeSize},
+        {"sampleCounts", &lua::Binding::native<&sampleCounts>},
         {"newFontFamily", &lua::Binding::native<&FontBinding::newFontFamily>},
         {"systemFonts", &FontBinding::systemFonts},
         {"newBitmapFont", &lua::Binding::native<&FontBinding::newBitmapFont>},

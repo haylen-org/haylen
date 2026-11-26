@@ -28,6 +28,8 @@ class DriverIssues final {
         CompileOnCallingThread,
         // The clears of a pass reach only the first layer of an array or a volume texture, so a pass clears an attachment at a later layer by drawing.
         ClearLayersByDrawing,
+        // The clears of a multisampled color attachment reach only one of its samples, so a pass clears a multisampled attachment by drawing.
+        ClearSamplesByDrawing,
         // Textures filter without anisotropy, since the anisotropic filtering of the driver ignores the slopes that a shader gives a lookup.
         NoAnisotropy,
         // The swapchain waits for its next image without a timeout, since its platform takes no other wait and warns at every bounded one.
@@ -60,7 +62,7 @@ class DriverIssues final {
         std::string_view reason;
     };
 
-    static const std::array<Entry, 10> kEntries;
+    static const std::array<Entry, 11> kEntries;
 
     // Mesa numbers its Vulkan drivers with 10 bits for the minor version and 12 bits for the patch, so larger parts saturate there.
     [[nodiscard]] static constexpr std::uint64_t makeMesaVersion(std::uint64_t major, std::uint64_t minor, std::uint64_t patch) noexcept {

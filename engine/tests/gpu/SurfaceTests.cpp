@@ -21,8 +21,8 @@ class GpuSurfaceTest : public test::GpuFixture {
         }
 
         try {
-            first = std::make_unique<test::SecondSurface>(GetParam(), offscreen(), 64, 48);
-            second = std::make_unique<test::SecondSurface>(GetParam(), offscreen(), 16, 16);
+            first = std::make_unique<test::SecondSurface>(device(), offscreen(), 64, 48);
+            second = std::make_unique<test::SecondSurface>(device(), offscreen(), 16, 16);
         } catch (const std::runtime_error& error) {
             GTEST_SKIP() << error.what();
         }
@@ -108,6 +108,68 @@ TEST_P(GpuSurfaceTest, DrawsIntoSurfacesBeyondTheWindow) {
     // Only a surface that "addSurface" made and that is still there goes away, never the window, which is the surface 0.
     EXPECT_EQ(test::ContractRule::of([&] { (void)device().removeSurface(board); }), gpu::ContractError::Rule::Surface);
     EXPECT_EQ(test::ContractRule::of([&] { (void)device().removeSurface(0); }), gpu::ContractError::Rule::Surface);
+}
+
+// A surface comes between the passes of a frame, as the window of an output that opens while the app draws does, and takes the swapchain passes of that frame.
+TEST_P(GpuSurfaceTest, AddsASurfaceBetweenThePassesOfAFrame) {
+    const Device::Image target = makeTarget(4, 4);
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = target, .clear = math::Color::black()}}};
+    device().beginPass({.colors = colors, .label = "haylen-test-before-surface"});
+    device().endPass();
+
+    int board = 0;
+    try {
+        board = device().addSurface(first->getSurface());
+    } catch (const std::runtime_error& error) {
+        if (std::string(error.what()).find("no desktop") == std::string::npos) {
+            throw;
+        }
+
+        device().commit();
+        GTEST_SKIP() << error.what();
+    }
+
+    drawInto(board, {0.1F, 0.2F, 0.3F, 1.0F});
+    device().commit();
+    device().removeSurface(board);
+    device().commit();
+    EXPECT_FALSE(device().isLost());
+}
+
+// A surface that resizes between the passes of a frame keeps the size of the frame until the next one, so the later passes of the frame draw and cut their scissors within the drawable they started with.
+TEST_P(GpuSurfaceTest, KeepsTheSizeOfAFrameWhileItsSurfaceResizes) {
+    int board = 0;
+    try {
+        board = device().addSurface(first->getSurface());
+    } catch (const std::runtime_error& error) {
+        if (std::string(error.what()).find("no desktop") == std::string::npos) {
+            throw;
+        }
+
+        GTEST_SKIP() << error.what();
+    }
+
+    drawInto(board, {0.1F, 0.2F, 0.3F, 1.0F});
+    device().commit();
+
+    device().beginPass({.clear = math::Color::black(), .label = "haylen-test-before-resize", .surface = board});
+    device().applyPipeline(plane);
+    drawPlane(math::Color::white());
+    device().endPass();
+    device().resizeSurface(board, {.width = 128, .height = 96, .windowWidth = 128, .windowHeight = 96});
+    device().beginPass({.load = Device::Load::Keep, .label = "haylen-test-after-resize", .surface = board});
+    device().applyPipeline(plane);
+    device().applyViewport({0.0F, 0.0F, 128.0F, 96.0F});
+    device().applyScissor({0.0F, 0.0F, 128.0F, 96.0F});
+    drawPlane(math::Color::white());
+    device().endPass();
+    device().commit();
+
+    drawInto(board, {0.3F, 0.2F, 0.1F, 1.0F});
+    device().commit();
+    device().removeSurface(board);
+    device().commit();
+    EXPECT_FALSE(device().isLost());
 }
 
 // A drawable of fewer pixels than its window, as when the app caps its pixel density, takes the passes of each frame, which the system or the device stretches over the window, and follows the window as it resizes, scaled and not, with the validation of its API watching.

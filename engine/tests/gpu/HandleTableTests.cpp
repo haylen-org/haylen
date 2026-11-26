@@ -3,9 +3,11 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "gpu/HandleTable.hpp"
 #include "haylen/gpu/ContractError.hpp"
+#include "support/AllocationTracker.hpp"
 
 namespace haylen::gpu {
 
@@ -59,6 +61,23 @@ TEST(HandleTableTest, KeepsTheGenerationsOfItsSlotsThroughAClear) {
     EXPECT_EQ(table.find(before), nullptr);
     ASSERT_NE(table.find(after), nullptr);
     EXPECT_EQ(*table.find(after), 2);
+}
+
+// The destroys of a device take records out of their tables and must not fail, so taking out every record allocates nothing, whatever order the records leave in.
+TEST(HandleTableTest, RemovesRecordsWithoutAllocating) {
+    HandleTable<int> table("pipeline");
+    std::vector<std::uint64_t> ids;
+    for (int record = 0; record < 100; ++record) {
+        ids.push_back(table.add(int{record}));
+    }
+
+    const test::AllocationTracker tracker;
+    for (auto id = ids.rbegin(); id != ids.rend(); ++id) {
+        EXPECT_TRUE(table.remove(*id).has_value());
+    }
+
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_EQ(table.size(), 0);
 }
 
 } // namespace haylen::gpu

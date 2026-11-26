@@ -102,6 +102,25 @@ class Device {
         Depth32FloatStencil8,
     };
 
+    static constexpr std::array<std::pair<std::string_view, PixelFormat>, 16> kPixelFormatNames{{
+        {"r8", PixelFormat::R8},
+        {"rg8", PixelFormat::Rg8},
+        {"rgba8", PixelFormat::Rgba8},
+        {"rgba8Srgb", PixelFormat::Rgba8Srgb},
+        {"bgra8", PixelFormat::Bgra8},
+        {"rgb10A2", PixelFormat::Rgb10A2},
+        {"r16Float", PixelFormat::R16Float},
+        {"rg16Float", PixelFormat::Rg16Float},
+        {"rgba16Float", PixelFormat::Rgba16Float},
+        {"r32Float", PixelFormat::R32Float},
+        {"rg32Float", PixelFormat::Rg32Float},
+        {"rgba32Float", PixelFormat::Rgba32Float},
+        {"depth16", PixelFormat::Depth16},
+        {"depth32Float", PixelFormat::Depth32Float},
+        {"depth24Stencil8", PixelFormat::Depth24Stencil8},
+        {"depth32FloatStencil8", PixelFormat::Depth32FloatStencil8},
+    }};
+
     // The formats of vertex attributes. The normalized and float formats feed float inputs of the shader, and `UByte4`, `Short2` and `UInt` feed integer inputs.
     enum class VertexFormat : std::uint8_t {
         Float,
@@ -313,18 +332,17 @@ class Device {
 
     // What the device and its graphics API can do, which the renderers read instead of the API. A capability that a device lacks is never used by the engine.
     struct Capabilities {
+        // The largest side of a flat image and of the layers of an array, the most layers of an array, the largest side and the most slices of a volume, and the largest side of the faces of a cube, in pixels.
         int maxImageSize = 0;
         int maxArrayLayers = 0;
-        int maxSampleCount = 1;
+        int maxVolumeSize = 0;
+        int maxCubeSize = 0;
 
         // Whether the first row of a render target is its top row, as on Metal, Direct3D, Vulkan and WebGPU, rather than its bottom row, as on OpenGL.
         bool originTopLeft = true;
 
         // Whether each color target of a pipeline takes a blend and a write mask of its own, rather than all of them those of the first target.
         bool independentBlend = false;
-
-        // Whether a render target of one sample can resolve a multisampled one at the end of a pass.
-        bool multisampledRenderTargets = false;
 
         // Whether the device measures the time the GPU takes for each frame.
         bool gpuTiming = false;
@@ -340,6 +358,9 @@ class Device {
 
         // The color formats that draws can sample with linear filters, through texture slots of the type `SampleType::Float`. The others are sampled only through slots of `SampleType::UnfilterableFloat` with samplers of `SamplerType::NonFiltering`.
         std::array<bool, 16> filterableFormats{};
+
+        // The sample counts that render targets and depth stencil images of each format take, by `PixelFormat`, as bits whose values are the counts, so 5 holds one sample and four. A multisampled color format also resolves into an image of one sample, and a format that the device does not draw into takes none.
+        std::array<std::uint8_t, 16> sampleCounts{};
     };
 
     struct BufferDesc {
@@ -530,7 +551,7 @@ class Device {
         std::uint8_t clearStencil = 0;
     };
 
-    // A pass draws into the swapchain of a surface when it names no attachment, the window for the surface 0 or a surface that `addSurface` made, clearing its color, depth and stencil as its loads say. The swapchain passes of a frame into one surface follow one another, since a device may present a surface once a pass into another surface leaves it. A swapchain pass that keeps the contents keeps the depth, the stencil and the multisampled color only when it directly follows the swapchain pass of the same surface whose contents it keeps. After an offscreen pass between them, a window of one sample keeps its color alone, and a multisampled window keeps no color, so a renderer of a multisampled window draws the offscreen passes of a frame before its swapchain passes.
+    // A pass draws into the swapchain of a surface when it names no attachment, the window for the surface 0 or a surface that `addSurface` made, clearing its color, depth and stencil as its loads say. The swapchain passes of a frame into one surface follow one another, since a device may present a surface once a pass into another surface leaves it. A swapchain pass that keeps the contents keeps the depth, the stencil and the multisampled color only when it directly follows the swapchain pass of the same surface whose contents it keeps, with no debug group pushed or popped between them. After an offscreen pass or a debug group between them, a window of one sample keeps its color alone, and a multisampled window keeps no color, so a renderer of a multisampled window draws the offscreen passes of a frame before its swapchain passes.
     struct PassDesc {
         std::span<const ColorAttachment> colors{};
         std::optional<DepthStencilAttachment> depthStencil{};

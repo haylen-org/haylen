@@ -15,6 +15,15 @@ class DescriptorHeap final {
     [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE allocate();
     void free(D3D12_CPU_DESCRIPTOR_HANDLE handle);
 
+    // How many descriptors are taken, out of the descriptors of every heap made so far.
+    [[nodiscard]] int getUsed() const noexcept {
+        return getSize() - static_cast<int>(freed.size());
+    }
+
+    [[nodiscard]] int getSize() const noexcept {
+        return static_cast<int>(heaps.size() * pageSize);
+    }
+
   private:
     ID3D12Device& device;
     D3D12_DESCRIPTOR_HEAP_TYPE type;

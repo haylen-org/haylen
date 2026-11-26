@@ -20,6 +20,8 @@
 #include <vector>
 
 #include "gpu/HandleTable.hpp"
+#include "gpu/ImageRules.hpp"
+#include "gpu/ProgramSlots.hpp"
 #include "gpu/metal/EncoderState.hpp"
 #include "gpu/metal/Formats.hpp"
 #include "gpu/metal/Graveyard.hpp"
@@ -152,10 +154,14 @@ struct Device::Native {
     [[nodiscard]] id<MTLBlitCommandEncoder> getTransferBlit();
     [[nodiscard]] id<MTLDepthStencilState> getDepthStencilState(const DepthStencil& desc, bool depth, bool stencil);
     [[nodiscard]] NSUInteger getRegionOffset(const BufferEntry& entry) const noexcept;
-    void checkImage(const ImageDesc& desc) const;
     static void checkPipeline(const PipelineDesc& desc);
     [[nodiscard]] MTLTextureDescriptor* describeImage(const ImageDesc& desc) const;
     void releaseLibraries(const ProgramEntry& entry);
+
+    // Holds the place in the graveyard of the object that the device makes next, and of every object that lives, so a destroy never allocates.
+    void reserveRetirement() {
+        graveyard.reserve(static_cast<std::size_t>(buffers.size() + images.size() + samplers.size() + pipelines.size()) + 1);
+    }
     static void copyLevel(id<MTLBlitCommandEncoder> blit, id<MTLBuffer> source, NSUInteger offset, const ImageEntry& image, int level);
 
     id<MTLDevice> device = nil;
@@ -253,22 +259,24 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     passDesc = [MTLRenderPassDescriptor new];
 }
 
-// Every Metal GPU samples and draws into every format of the contract, with `Depth24Stencil8` as `Depth32FloatStencil8`, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats. A GPU outside the Apple families is the GPU of an Intel Mac, which takes images of 16384 pixels and blends into every format.
+// Every Metal GPU samples and draws into every format of the contract, with `Depth24Stencil8` as `Depth32FloatStencil8`, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats. The sizes and the samples follow the feature set tables of Metal: volumes of 2048 pixels on a side, cubes as large as flat images, and the sample counts the GPU takes for every format, except that a format of 32 bit floats resolves only on a GPU that filters it. A GPU outside the Apple families is the GPU of an Intel Mac, which takes images of 16384 pixels and blends, filters and resolves every format.
 gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     Capabilities made;
     const bool apple = [metal supportsFamily:MTLGPUFamilyApple1];
     made.maxImageSize = [metal supportsFamily:MTLGPUFamilyApple3] || !apple ? 16384 : 8192;
     made.maxArrayLayers = 2048;
-    for (const int samples : {8, 4, 2}) {
+    made.maxVolumeSize = 2048;
+    made.maxCubeSize = made.maxImageSize;
+
+    std::uint8_t counts = 1;
+    for (const int samples : {2, 4, 8}) {
         if ([metal supportsTextureSampleCount:static_cast<NSUInteger>(samples)]) {
-            made.maxSampleCount = samples;
-            break;
+            counts |= static_cast<std::uint8_t>(samples);
         }
     }
 
     made.originTopLeft = true;
     made.independentBlend = true;
-    made.multisampledRenderTargets = true;
     made.gpuTiming = true;
 
     const bool floats = [metal supportsFamily:MTLGPUFamilyApple7] || !apple;
@@ -280,6 +288,7 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
         made.renderFormats[index] = true;
         made.blendableFormats[index] = !Formats::isDepth(format) && (!wide || floats);
         made.filterableFormats[index] = !Formats::isDepth(format) && (!wide || floatFiltering);
+        made.sampleCounts[index] = !wide || floatFiltering || !apple ? counts : std::uint8_t{1};
     }
 
     return made;
@@ -458,33 +467,6 @@ id<MTLDepthStencilState> Device::Native::getDepthStencilState(const DepthStencil
 
 NSUInteger Device::Native::getRegionOffset(const BufferEntry& entry) const noexcept {
     return entry.dynamic ? frameSlot * entry.region : 0;
-}
-
-void Device::Native::checkImage(const ImageDesc& desc) const {
-    const int maxSize = capabilities.maxImageSize;
-    if (desc.width <= 0 || desc.height <= 0 || desc.width > maxSize || desc.height > maxSize || desc.layers <= 0 || desc.mipLevels <= 0) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.type == TextureType::Cube && desc.layers != 6) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.sampleCount > 1 && (desc.kind == ImageKind::Texture || desc.kind == ImageKind::Dynamic || desc.mipLevels > 1 || desc.type == TextureType::Volume || desc.type == TextureType::Cube || ![device supportsTextureSampleCount:static_cast<NSUInteger>(desc.sampleCount)])) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (Formats::isDepth(desc.format) != (desc.kind == ImageKind::DepthStencil)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if ((desc.kind == ImageKind::Texture) != !desc.levels.empty()) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.kind == ImageKind::Texture && desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
 }
 
 void Device::Native::checkPipeline(const PipelineDesc& desc) {
@@ -706,11 +688,12 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         entry.buffer.label = Native::toText(desc.label);
     }
 
+    native->reserveRetirement();
     return {native->buffers.add(std::move(entry))};
 }
 
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
-    native->checkImage(desc);
+    ImageRules::check(desc, native->capabilities);
 
     Native::ImageEntry entry{.type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .format = desc.format, .kind = desc.kind};
     @autoreleasepool {
@@ -725,6 +708,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         entry.texture.label = Native::toText(desc.label);
     }
 
+    native->reserveRetirement();
     const Image image{native->images.add(std::move(entry))};
     if (desc.kind == ImageKind::Texture) {
         try {
@@ -799,18 +783,21 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         throw std::runtime_error(std::format("Metal could not make the sampler \"{}\".", desc.label));
     }
 
+    native->reserveRetirement();
     return {native->samplers.add(std::move(sampler))};
 }
 
 // The stages come from the library cache, where a program that `prepareProgram` announced finds its libraries made or in the making on the I/O pool.
 gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
+    ProgramSlots::check(desc);
+
     if (desc.vertex.source.empty() || desc.fragment.source.empty()) {
         throw ContractError(ContractError::Rule::Program);
     }
 
     Native::ProgramEntry entry;
     for (const BlockBinding& block : desc.blocks) {
-        if (block.slot < 0 || block.slot >= static_cast<int>(kMaxBlocks) || block.size == 0 || block.binding < 0 || block.binding >= static_cast<int>(Native::kFirstVertexBuffer)) {
+        if (block.binding >= static_cast<int>(Native::kFirstVertexBuffer)) {
             throw ContractError(ContractError::Rule::Program);
         }
 
@@ -818,7 +805,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     }
 
     for (const TextureBinding& texture : desc.textures) {
-        if (texture.slot < 0 || texture.slot >= static_cast<int>(kMaxTextures) || texture.binding < 0 || texture.binding >= static_cast<int>(EncoderState::kTextureSlots)) {
+        if (texture.binding >= static_cast<int>(EncoderState::kTextureSlots)) {
             throw ContractError(ContractError::Rule::Program);
         }
 
@@ -830,7 +817,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     }
 
     for (const SamplerBinding& sampler : desc.samplers) {
-        if (sampler.slot < 0 || sampler.slot >= static_cast<int>(kMaxSamplers) || sampler.binding < 0 || sampler.binding >= static_cast<int>(EncoderState::kSamplerSlots)) {
+        if (sampler.binding >= static_cast<int>(EncoderState::kSamplerSlots)) {
             throw ContractError(ContractError::Rule::Program);
         }
 
@@ -946,6 +933,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     }
 
     entry.depthStencil = native->getDepthStencilState(desc.depthStencil, depth, stencil);
+    native->reserveRetirement();
     return {native->pipelines.add(std::move(entry))};
 }
 
@@ -990,7 +978,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
-    if (offset + data.size() > entry.size) {
+    if (offset % 4 != 0 || offset + data.size() > entry.size) {
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 

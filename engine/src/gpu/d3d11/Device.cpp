@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "gpu/ImageRules.hpp"
 #include "gpu/d3d11/ImageReadback.hpp"
 #include "gpu/d3d11/StateObjects.hpp"
 #include "gpu/direct3d/Adapter.hpp"
@@ -17,6 +18,7 @@
 #include "gpu/direct3d/HResult.hpp"
 #include "gpu/direct3d/MipLevels.hpp"
 #include "gpu/direct3d/ShaderCompiler.hpp"
+#include "gpu/direct3d/ShaderRegisters.hpp"
 #include "gpu/direct3d/Swapchain.hpp"
 #include "gpu/direct3d/WindowSamples.hpp"
 #include "haylen/core/Log.hpp"
@@ -46,18 +48,14 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& target
 Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, const std::optional<Surface>& target, bool validation) : factory(std::move(dxgiFactory)), adapter(std::move(card)) {
     createDevice(validation);
     readCapabilities();
-    direct3d::WindowSamples::check(target, capabilities.maxSampleCount, "Direct3D 11");
+    direct3d::WindowSamples::check(target, direct3d::WindowSamples::getSwapchainCounts(capabilities), "Direct3D 11");
     compiler = std::make_shared<direct3d::ShaderCompiler>(validation);
     uniforms = std::make_unique<DynamicRing>(*device.Get(), kUniformRingSize, D3D11_BIND_CONSTANT_BUFFER, kUniformAlignment, "haylen-uniform-ring");
     timer = std::make_unique<FrameTimer>(*device.Get());
 
-    const D3D11_QUERY_DESC event{.Query = D3D11_QUERY_EVENT, .MiscFlags = 0};
-    for (ComPtr<ID3D11Query>& query : frameFinished) {
-        HResult::check(device->CreateQuery(&event, query.GetAddressOf()), "create the query that marks the end of a frame");
-    }
-
     // A window that has a drawable takes its swapchain now, so a window that Direct3D 11 cannot draw into fails the device while the platform can still try another API.
     chains.push_back(std::make_unique<SurfaceChain>(SurfaceChain{.surface = target}));
+    swapchainSampleCount = target ? std::max(1, target->sampleCount) : 1;
     SurfaceChain& window = *chains.front();
     if (target && target->size.width > 0 && target->size.height > 0) {
         window.swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), *target);
@@ -94,8 +92,9 @@ void Device::createDevice(bool validation) {
     }
 
     HResult::check(result, "start Direct3D 11 at feature level 11_0");
-    HResult::check(made.As(&device), "reach the runtime of Direct3D 11.1");
-    HResult::check(immediate.As(&context), "reach the context of Direct3D 11.1");
+    if (FAILED(made.As(&device)) || FAILED(immediate.As(&context))) {
+        throw std::runtime_error("Windows lacks the runtime of Direct3D 11.4, which Windows 10 version 1703 and later have.");
+    }
 
     D3D11_FEATURE_DATA_D3D11_OPTIONS options{};
     device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS, &options, sizeof(options));
@@ -103,11 +102,17 @@ void Device::createDevice(bool validation) {
         throw std::runtime_error("The driver of the GPU lacks the constant buffer offsets of Direct3D 11.1 and the maps of constant buffers that do not wait.");
     }
 
-    static_cast<void>(context.As(&annotation));
-    ComPtr<IDXGIDevice1> dxgiDevice;
-    if (SUCCEEDED(device.As(&dxgiDevice))) {
-        dxgiDevice->SetMaximumFrameLatency(static_cast<UINT>(kFramesInFlight));
+    // The CPU sleeps on the event of the fence while the GPU finishes a frame, and only drivers of the display driver model WDDM 2.0 and later make fences.
+    if (FAILED(device->CreateFence(0, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(fence.GetAddressOf())))) {
+        throw std::runtime_error("The driver of the GPU lacks the fences of Direct3D 11.4, which drivers of the display driver model WDDM 2.0 and later have.");
     }
+
+    fenceEvent.Attach(CreateEventW(nullptr, FALSE, FALSE, nullptr));
+    if (!fenceEvent.IsValid()) {
+        throw std::runtime_error("The graphics device could not create the event that waits for the GPU.");
+    }
+
+    static_cast<void>(context.As(&annotation));
 
     if (validation && SUCCEEDED(device.As(&infoQueue))) {
         messages = std::make_unique<direct3d::DebugMessages>();
@@ -119,24 +124,13 @@ void Device::createDevice(bool validation) {
 void Device::readCapabilities() {
     capabilities.maxImageSize = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
     capabilities.maxArrayLayers = D3D11_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
+    capabilities.maxVolumeSize = D3D11_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
+    capabilities.maxCubeSize = D3D11_REQ_TEXTURECUBE_DIMENSION;
     capabilities.originTopLeft = true;
     capabilities.independentBlend = true;
-    capabilities.multisampledRenderTargets = true;
     capabilities.gpuTiming = true;
 
-    // The swapchain and the render targets of every color format share the sample counts of the formats that draws use most.
-    for (const UINT count : {8U, 4U, 2U}) {
-        UINT color = 0;
-        UINT depth = 0;
-        device->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, count, &color);
-        device->CheckMultisampleQualityLevels(DXGI_FORMAT_D24_UNORM_S8_UINT, count, &depth);
-        if (color > 0 && depth > 0) {
-            capabilities.maxSampleCount = static_cast<int>(count);
-            break;
-        }
-    }
-
-    // Images sample through the view of their format, and depth images draw through the view of their depth.
+    // Images sample through the view of their format, depth images draw through the view of their depth, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
     for (std::size_t index = 0; index < Formats::kPixelFormatCount; ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const bool depth = Formats::isDepth(format);
@@ -148,6 +142,19 @@ void Device::readCapabilities() {
         capabilities.renderFormats[index] = (target & static_cast<UINT>(depth ? D3D11_FORMAT_SUPPORT_DEPTH_STENCIL : D3D11_FORMAT_SUPPORT_RENDER_TARGET)) != 0;
         capabilities.blendableFormats[index] = !depth && capabilities.renderFormats[index] && (target & static_cast<UINT>(D3D11_FORMAT_SUPPORT_BLENDABLE)) != 0;
         capabilities.filterableFormats[index] = !depth && (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_SHADER_SAMPLE)) != 0;
+        capabilities.sampleCounts[index] = capabilities.renderFormats[index] ? std::uint8_t{1} : std::uint8_t{0};
+
+        const UINT multisampled = static_cast<UINT>(depth ? D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET : D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET | D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE);
+        if (!capabilities.renderFormats[index] || (target & multisampled) != multisampled) {
+            continue;
+        }
+
+        for (const UINT count : {2U, 4U, 8U}) {
+            UINT levels = 0;
+            if (SUCCEEDED(device->CheckMultisampleQualityLevels(depth ? Formats::getDepthFormat(format) : Formats::getViewFormat(format), count, &levels)) && levels > 0) {
+                capabilities.sampleCounts[index] |= static_cast<std::uint8_t>(count);
+            }
+        }
     }
 }
 
@@ -180,7 +187,7 @@ bool Device::isLost() const noexcept {
     return lost;
 }
 
-void Device::loseDevice(HRESULT reason) noexcept {
+void Device::loseDevice(HRESULT reason) {
     if (lost) {
         return;
     }
@@ -221,7 +228,6 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
 
 // Direct3D orders the subresources of a texture by layer and then by mip level, and those of a volume by mip level alone.
 std::vector<D3D11_SUBRESOURCE_DATA> Device::describeLevels(const ImageDesc& desc) {
-    direct3d::MipLevels::check(desc);
     const bool volume = desc.type == TextureType::Volume;
     std::vector<D3D11_SUBRESOURCE_DATA> data(volume ? desc.levels.size() : desc.levels.size() * static_cast<std::size_t>(desc.layers));
     for (std::size_t index = 0; index < desc.levels.size(); ++index) {
@@ -281,18 +287,7 @@ ComPtr<ID3D11ShaderResourceView> Device::makeTextureView(ID3D11Resource& resourc
 }
 
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
-    if (desc.width <= 0 || desc.height <= 0 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    const bool depth = Formats::isDepth(desc.format);
-    if (depth != (desc.kind == ImageKind::DepthStencil)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.kind != ImageKind::Texture && !desc.levels.empty()) {
-        throw ContractError(ContractError::Rule::Image);
-    }
+    ImageRules::check(desc, capabilities);
 
     UINT bind = D3D11_BIND_SHADER_RESOURCE;
     bind |= desc.kind == ImageKind::RenderTarget ? D3D11_BIND_RENDER_TARGET : 0U;
@@ -343,11 +338,12 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     return {samplers.add(std::move(sampler))};
 }
 
+// The context keeps the views it binds by their registers, as many as the slots of the device.
 std::vector<Device::Register> Device::readRegisters(std::span<const TextureBinding> textures) {
     std::vector<Register> registers;
     for (const TextureBinding& texture : textures) {
-        if (texture.slot < 0 || texture.slot >= static_cast<int>(kMaxTextures) || texture.binding < 0 || texture.binding >= static_cast<int>(kMaxTextures)) {
-            throw ContractError(ContractError::Rule::Bindings);
+        if (texture.binding >= static_cast<int>(kMaxTextures)) {
+            throw ContractError(ContractError::Rule::Program);
         }
 
         registers.push_back({.slot = texture.slot, .stage = texture.stage == Stage::Vertex ? 0U : 1U, .number = static_cast<UINT>(texture.binding)});
@@ -359,8 +355,8 @@ std::vector<Device::Register> Device::readRegisters(std::span<const TextureBindi
 std::vector<Device::Register> Device::readRegisters(std::span<const SamplerBinding> samplersOfProgram) {
     std::vector<Register> registers;
     for (const SamplerBinding& sampler : samplersOfProgram) {
-        if (sampler.slot < 0 || sampler.slot >= static_cast<int>(kMaxSamplers) || sampler.binding < 0 || sampler.binding >= static_cast<int>(kMaxSamplers)) {
-            throw ContractError(ContractError::Rule::Bindings);
+        if (sampler.binding >= static_cast<int>(kMaxSamplers)) {
+            throw ContractError(ContractError::Rule::Program);
         }
 
         registers.push_back({.slot = sampler.slot, .stage = sampler.stage == Stage::Vertex ? 0U : 1U, .number = static_cast<UINT>(sampler.binding)});
@@ -370,9 +366,11 @@ std::vector<Device::Register> Device::readRegisters(std::span<const SamplerBindi
 }
 
 gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
+    direct3d::ShaderRegisters::check(desc);
+
     ProgramRecord record;
     for (const BlockBinding& block : desc.blocks) {
-        if (block.slot < 0 || block.slot >= static_cast<int>(kMaxBlocks) || block.size == 0 || block.size > kMaxBlockSize || block.binding < 0 || block.binding >= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
+        if (block.size > kMaxBlockSize || block.binding >= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
             throw ContractError(ContractError::Rule::Program);
         }
 
@@ -462,7 +460,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
-    if (offset + data.size() > record.size) {
+    if (offset % 4 != 0 || offset + data.size() > record.size) {
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
@@ -510,18 +508,19 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     }
 }
 
-// The frame waits for the GPU to finish the frame that used the same slot, so the GPU runs at most `kFramesInFlight` frames behind. A lost device answers every query at once.
+// The frame waits for the GPU to finish the frame that used the same slot, so the GPU runs at most `kFramesInFlight` frames behind. The signal of that frame may still wait in the commands that the driver holds, which the context hands over before the CPU sleeps. A removed device passes every fence value at once, so no wait outlives it.
 void Device::openFrame() {
     if (frameOpen) {
         return;
     }
 
     frameOpen = true;
+    const std::uint64_t value = frameFences[frameIndex];
+    if (!lost && fence->GetCompletedValue() < value) {
+        context->Flush();
 
-    if (frameSubmitted[frameIndex]) {
-        while (context->GetData(frameFinished[frameIndex].Get(), nullptr, 0, 0) == S_FALSE) {
-            SwitchToThread();
-        }
+        HResult::check(fence->SetEventOnCompletion(value, fenceEvent.Get()), "wait for a frame of the GPU");
+        WaitForSingleObject(fenceEvent.Get(), INFINITE);
     }
 
     timer->begin(*context.Get());
@@ -573,7 +572,7 @@ void Device::makeSwapchainTargets(SurfaceChain& chain) {
     desc.Height = static_cast<UINT>(chain.swapchain->getSize().height);
     desc.MipLevels = 1;
     desc.ArraySize = 1;
-    desc.SampleDesc.Count = static_cast<UINT>(std::max(1, chain.surface->sampleCount));
+    desc.SampleDesc.Count = static_cast<UINT>(swapchainSampleCount);
     desc.Usage = D3D11_USAGE_DEFAULT;
 
     // Flip model swapchains hold one sample, so a multisampled window draws into a texture of its own that resolves into the swapchain when the frame is presented.
@@ -1029,6 +1028,10 @@ void Device::applyBlendColor(math::Color value) {
 }
 
 void Device::draw(int first, int count, int instances) {
+    if (!passOpen) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
     if (skipping || count <= 0 || instances <= 0) {
         return;
     }
@@ -1101,12 +1104,22 @@ void Device::commit() {
 
     // The queries close the work of the frame before it is presented, so the time of the GPU leaves out the wait for the display.
     timer->end(*context.Get());
-    context->End(frameFinished[frameIndex].Get());
-    frameSubmitted[frameIndex] = true;
+
+    // A value that the context never signals would hold the frame that waits for it, so the frames count only the values the context took.
+    const HRESULT signaled = context->Signal(fence.Get(), fenceValue + 1);
+    if (FAILED(signaled)) {
+        loseDevice(signaled);
+    } else {
+        ++fenceValue;
+        frameFences[frameIndex] = fenceValue;
+    }
+
     frameIndex = (frameIndex + 1) % kFramesInFlight;
     ++frameNumber;
     frameOpen = false;
 
+    // Every surface presents and the frame ends before a present that failed for another reason than a loss of the device throws.
+    HRESULT failedPresent = S_OK;
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
         if (chain == nullptr || !chain->presentPending) {
             continue;
@@ -1114,8 +1127,11 @@ void Device::commit() {
 
         chain->presentPending = false;
         const HRESULT result = chain->swapchain->present();
+        chain->presented = SUCCEEDED(result);
         if (HResult::isDeviceLoss(result)) {
             loseDevice(result);
+        } else if (FAILED(result) && SUCCEEDED(failedPresent)) {
+            failedPresent = result;
         }
     }
 
@@ -1125,6 +1141,19 @@ void Device::commit() {
     }
 
     drainMessages();
+    waitForDisplays();
+    HResult::check(failedPresent, "present the swapchain of a window");
+}
+
+// The commit ends once every surface that presented can take the next frame, so the platform reads the input of that frame only then, as late as the displays allow.
+void Device::waitForDisplays() noexcept {
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain == nullptr || !std::exchange(chain->presented, false) || lost) {
+            continue;
+        }
+
+        chain->swapchain->waitForFrame();
+    }
 }
 
 // The driver gives back only what no object of the context holds, so the context lets go of every bound object first, and the next draws bind their state again.
@@ -1164,9 +1193,23 @@ void Device::detachSurface() {
     window.surface.reset();
 }
 
+// A window that comes back with another sample count makes the attachments of every surface beyond it again, which the context let go of as the window went.
 void Device::attachSurface(const Surface& target) {
     detachSurface();
     chains.front()->surface = target;
+
+    const int samples = std::max(1, target.sampleCount);
+    if (samples == swapchainSampleCount) {
+        return;
+    }
+
+    swapchainSampleCount = samples;
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain != nullptr && chain->swapchain != nullptr) {
+            releaseSwapchainTargets(*chain);
+            makeSwapchainTargets(*chain);
+        }
+    }
 }
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
@@ -1203,7 +1246,7 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     return std::make_unique<ImageReadback>(context, std::move(staging), std::move(finished), record.format, width, height);
 }
 
-// A surface beyond the window makes its swapchain now, so a surface that Direct3D 11 cannot draw into fails at once.
+// A surface beyond the window draws through the pipelines of the swapchain, so its attachments take the samples of the window, and it makes its swapchain now, so a surface that Direct3D 11 cannot draw into fails at once.
 int Device::addSurface(const Surface& added) {
     auto chain = std::make_unique<SurfaceChain>(SurfaceChain{.surface = added});
     if (added.size.width > 0 && added.size.height > 0) {

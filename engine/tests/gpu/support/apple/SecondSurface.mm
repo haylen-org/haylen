@@ -21,8 +21,8 @@ class SecondSurface::Native final {
     CAMetalLayer* layer;
 };
 
-SecondSurface::SecondSurface(gpu::Device::Api api, OffscreenSurface&, int width, int height) {
-    if (api != gpu::Device::Api::Metal) {
+SecondSurface::SecondSurface(const gpu::Device& device, OffscreenSurface&, int width, int height) {
+    if (device.getApi() != gpu::Device::Api::Metal) {
         throw std::runtime_error("Apple platforms draw only through Metal.");
     }
 

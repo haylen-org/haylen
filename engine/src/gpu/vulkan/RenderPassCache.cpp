@@ -100,9 +100,16 @@ VkFramebuffer RenderPassCache::getFramebuffer(VkRenderPass pass, std::span<const
 
     const VkFramebufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, .pNext = nullptr, .flags = 0, .renderPass = pass, .attachmentCount = key.viewCount, .pAttachments = views.data(), .width = extent.width, .height = extent.height, .layers = 1};
     VkFramebuffer framebuffer = VK_NULL_HANDLE;
+    ReleaseQueue::Hold room = releaseQueue.hold();
     Context::check(context.getFunctions().vkCreateFramebuffer(context.getDevice(), &info, nullptr, &framebuffer), "make a framebuffer");
-    framebuffers.emplace(key, framebuffer);
-    return framebuffer;
+    try {
+        framebuffers.emplace(key, framebuffer);
+        room.keep();
+        return framebuffer;
+    } catch (...) {
+        context.getFunctions().vkDestroyFramebuffer(context.getDevice(), framebuffer, nullptr);
+        throw;
+    }
 }
 
 void RenderPassCache::forgetView(VkImageView view, std::uint64_t serial) {

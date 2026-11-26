@@ -57,7 +57,6 @@ class Gl final {
     static constexpr Enum kMax3dTextureSize = 0x8073;
     static constexpr Enum kMaxCubeMapTextureSize = 0x851C;
     static constexpr Enum kMaxArrayTextureLayers = 0x88FF;
-    static constexpr Enum kMaxSamples = 0x8D57;
     static constexpr Enum kMaxTextureMaxAnisotropy = 0x84FF;
     static constexpr Enum kGpuDisjoint = 0x8FBB;
 

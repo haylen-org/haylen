@@ -6,7 +6,7 @@
 
 namespace haylen::gpu {
 
-const std::array<DriverIssues::Entry, 10> DriverIssues::kEntries{{
+const std::array<DriverIssues::Entry, 11> DriverIssues::kEntries{{
     {
         .api = Device::Api::Vulkan,
         .issue = Issue::AvoidApi,
@@ -61,6 +61,13 @@ const std::array<DriverIssues::Entry, 10> DriverIssues::kEntries{{
         .renderer = "Android Emulator OpenGL ES Translator (Google SwiftShader)",
         .version = "SwiftShader 4.0.0",
         .reason = "The OpenGL ES translator of the Android emulator on SwiftShader 4.0.0.1 clears, reads and blits the first layer of an array or a volume texture whatever layer the framebuffer attaches, while its draws reach that layer, which the x86_64 images of Android 17 showed on a Linux host, so a pass clears an attachment at a later layer by drawing.",
+    },
+    {
+        .api = Device::Api::OpenGlEs,
+        .issue = Issue::ClearSamplesByDrawing,
+        .renderer = "Google SwiftShader",
+        .version = "SwiftShader 4.0.0",
+        .reason = "The OpenGL ES of SwiftShader 4.0.0.1, which the Android emulator draws through on a Linux host, clears only one sample of a multisampled renderbuffer of the sRGB, 10-bit and float formats, so its resolve reads the clear color divided by the count of samples, while its draws reach every sample, which the x86_64 images of Android 17 and SwiftShader on Linux showed, so a pass clears a multisampled attachment by drawing.",
     },
     {
         .api = Device::Api::OpenGlEs,

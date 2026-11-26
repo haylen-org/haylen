@@ -4,14 +4,14 @@
 
 namespace haylen::gpu::d3d12 {
 
-FrameTimer::FrameTimer(ID3D12Device& device, ID3D12CommandQueue& queue, std::size_t frames) : measured(frames, false) {
-    const D3D12_QUERY_HEAP_DESC heap{.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP, .Count = static_cast<UINT>(frames * 2), .NodeMask = 0};
+FrameTimer::FrameTimer(ID3D12Device& device, ID3D12CommandQueue& queue, std::size_t frames) : measured(frames, false), transferred(frames, false) {
+    const D3D12_QUERY_HEAP_DESC heap{.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP, .Count = static_cast<UINT>(frames * kTimestamps), .NodeMask = 0};
     direct3d::HResult::check(device.CreateQueryHeap(&heap, IID_PPV_ARGS(queries.GetAddressOf())), "create the timestamp queries of the frames");
 
     const D3D12_HEAP_PROPERTIES readback{.Type = D3D12_HEAP_TYPE_READBACK};
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    desc.Width = frames * 2 * sizeof(std::uint64_t);
+    desc.Width = frames * kTimestamps * sizeof(std::uint64_t);
     desc.Height = 1;
     desc.DepthOrArraySize = 1;
     desc.MipLevels = 1;
@@ -29,13 +29,21 @@ FrameTimer::FrameTimer(ID3D12Device& device, ID3D12CommandQueue& queue, std::siz
 }
 
 void FrameTimer::begin(ID3D12GraphicsCommandList& list, std::size_t frame) {
-    list.EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, static_cast<UINT>(frame * 2));
+    transferred[frame] = false;
+    list.EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, static_cast<UINT>(frame * kTimestamps + 1));
 }
 
+void FrameTimer::beginTransfers(ID3D12GraphicsCommandList& list, std::size_t frame) {
+    transferred[frame] = true;
+    list.EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, static_cast<UINT>(frame * kTimestamps));
+}
+
+// The commands run after the transfers on the same queue, so they resolve the timestamps of both lists, and a frame without transfers resolves only its own two.
 void FrameTimer::end(ID3D12GraphicsCommandList& list, std::size_t frame) {
-    const auto first = static_cast<UINT>(frame * 2);
-    list.EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, first + 1);
-    list.ResolveQueryData(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, first, 2, results.Get(), first * sizeof(std::uint64_t));
+    const auto first = static_cast<UINT>(frame * kTimestamps);
+    list.EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, first + 2);
+    const UINT resolved = transferred[frame] ? first : first + 1;
+    list.ResolveQueryData(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, resolved, first + kTimestamps - resolved, results.Get(), resolved * sizeof(std::uint64_t));
     measured[frame] = true;
 }
 
@@ -44,8 +52,8 @@ void FrameTimer::collect(std::size_t frame) {
         return;
     }
 
-    const std::uint64_t start = mapped[frame * 2];
-    const std::uint64_t finish = mapped[frame * 2 + 1];
+    const std::uint64_t start = mapped[frame * kTimestamps + (transferred[frame] ? 0U : 1U)];
+    const std::uint64_t finish = mapped[frame * kTimestamps + 2];
     if (finish >= start) {
         seconds = static_cast<double>(finish - start) / frequency;
     }

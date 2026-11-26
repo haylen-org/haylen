@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "gpu/ImageRules.hpp"
 #include "gpu/d3d12/ImageReadback.hpp"
 #include "gpu/d3d12/StateDescriptions.hpp"
 #include "gpu/direct3d/Adapter.hpp"
@@ -67,7 +68,7 @@ void Device::enableDebugLayers(bool validation) {
 Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, const std::optional<Surface>& target, bool validation) : factory(std::move(dxgiFactory)), adapter(std::move(card)), dred(validation) {
     createDevice(validation);
     readCapabilities();
-    direct3d::WindowSamples::check(target, capabilities.maxSampleCount, "Direct3D 12");
+    direct3d::WindowSamples::check(target, direct3d::WindowSamples::getSwapchainCounts(capabilities), "Direct3D 12");
     compiler = std::make_shared<direct3d::ShaderCompiler>(validation);
 
     textureViews = std::make_unique<DescriptorHeap>(*device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1024);
@@ -145,24 +146,13 @@ void Device::createDevice(bool validation) {
 void Device::readCapabilities() {
     capabilities.maxImageSize = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;
     capabilities.maxArrayLayers = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
+    capabilities.maxVolumeSize = D3D12_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
+    capabilities.maxCubeSize = D3D12_REQ_TEXTURECUBE_DIMENSION;
     capabilities.originTopLeft = true;
     capabilities.independentBlend = true;
-    capabilities.multisampledRenderTargets = true;
     capabilities.gpuTiming = true;
 
-    // The swapchain and the render targets of every color format share the sample counts of the formats that draws use most.
-    for (const UINT count : {8U, 4U, 2U}) {
-        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS color{.Format = DXGI_FORMAT_R8G8B8A8_UNORM, .SampleCount = count, .Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE, .NumQualityLevels = 0};
-        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS depth{.Format = DXGI_FORMAT_D24_UNORM_S8_UINT, .SampleCount = count, .Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE, .NumQualityLevels = 0};
-        device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &color, sizeof(color));
-        device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &depth, sizeof(depth));
-        if (color.NumQualityLevels > 0 && depth.NumQualityLevels > 0) {
-            capabilities.maxSampleCount = static_cast<int>(count);
-            break;
-        }
-    }
-
-    // Images sample through the view of their format, and depth images draw through the view of their depth.
+    // Images sample through the view of their format, depth images draw through the view of their depth, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
     for (std::size_t index = 0; index < Formats::kPixelFormatCount; ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const bool depth = Formats::isDepth(format);
@@ -174,6 +164,19 @@ void Device::readCapabilities() {
         capabilities.renderFormats[index] = (target.Support1 & (depth ? D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL : D3D12_FORMAT_SUPPORT1_RENDER_TARGET)) != 0;
         capabilities.blendableFormats[index] = !depth && capabilities.renderFormats[index] && (target.Support1 & D3D12_FORMAT_SUPPORT1_BLENDABLE) != 0;
         capabilities.filterableFormats[index] = !depth && (view.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
+        capabilities.sampleCounts[index] = capabilities.renderFormats[index] ? std::uint8_t{1} : std::uint8_t{0};
+
+        const D3D12_FORMAT_SUPPORT1 multisampled = depth ? D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RENDERTARGET : D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RENDERTARGET | D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RESOLVE;
+        if (!capabilities.renderFormats[index] || (target.Support1 & multisampled) != multisampled) {
+            continue;
+        }
+
+        for (const UINT count : {2U, 4U, 8U}) {
+            D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS levels{.Format = target.Format, .SampleCount = count, .Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE, .NumQualityLevels = 0};
+            if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &levels, sizeof(levels))) && levels.NumQualityLevels > 0) {
+                capabilities.sampleCounts[index] |= static_cast<std::uint8_t>(count);
+            }
+        }
     }
 }
 
@@ -199,14 +202,14 @@ std::optional<double> Device::getGpuFrameSeconds() const noexcept {
 
 void Device::readPools(std::vector<Pool>& pools) const {
     const auto pool = [](std::string_view name, int used, int size) { return Pool{.name = name, .used = used, .size = size}; };
-    pools.assign({pool("images", images.size(), images.capacity()), pool("buffers", buffers.size(), buffers.capacity()), pool("samplers", samplers.size(), samplers.capacity()), pool("programs", programs.size(), programs.capacity()), pool("pipelines", pipelines.size(), pipelines.capacity())});
+    pools.assign({pool("images", images.size(), images.capacity()), pool("buffers", buffers.size(), buffers.capacity()), pool("samplers", samplers.size(), samplers.capacity()), pool("programs", programs.size(), programs.capacity()), pool("pipelines", pipelines.size(), pipelines.capacity()), pool("renderTargetViews", targetViews->getUsed(), targetViews->getSize()), pool("depthStencilViews", depthViews->getUsed(), depthViews->getSize())});
 }
 
 bool Device::isLost() const noexcept {
     return lost;
 }
 
-void Device::loseDevice(HRESULT reason) noexcept {
+void Device::loseDevice(HRESULT reason) {
     if (lost) {
         return;
     }
@@ -218,7 +221,7 @@ void Device::loseDevice(HRESULT reason) noexcept {
 }
 
 // The breadcrumbs name the last operation that each command list finished on the GPU before it was removed, and the page fault names the address it read where no memory was.
-void Device::describeRemoval() noexcept {
+void Device::describeRemoval() {
     ComPtr<ID3D12DeviceRemovedExtendedData> data;
     if (!dred || FAILED(device.As(&data))) {
         return;
@@ -275,19 +278,40 @@ void Device::waitIdle() {
     release(fence->GetCompletedValue());
 }
 
-void Device::retire(ComPtr<IUnknown> object, DescriptorHeap* heap, D3D12_CPU_DESCRIPTOR_HANDLE handle) {
-    garbage.push_back({.fence = fenceValue + 1, .object = std::move(object), .heap = heap, .handle = handle});
+// The garbage keeps room for an entry of every object that lives, which the make of an object takes before it allocates anything of the object, so a destroy never allocates.
+void Device::reserveGarbage() {
+    const auto living = static_cast<std::size_t>(buffers.size() + images.size() + samplers.size() + pipelines.size());
+    const std::size_t needed = garbage.size() + living + 1;
+    if (garbage.capacity() < needed) {
+        garbage.reserve(std::max(needed, garbage.capacity() * 2));
+    }
+}
+
+// An object that the device replaces while it lives, such as the state of a pipeline made again, takes a place of its own.
+void Device::retire(ComPtr<IUnknown> object) {
+    reserveGarbage();
+    discard({.fence = fenceValue + 1, .object = std::move(object)});
+}
+
+void Device::discard(Garbage&& entry) noexcept {
+    garbage.push_back(std::move(entry));
 }
 
 void Device::release(std::uint64_t completedValue) {
-    while (!garbage.empty() && garbage.front().fence <= completedValue) {
-        if (garbage.front().heap != nullptr) {
-            garbage.front().heap->free(garbage.front().handle);
+    const auto finished = std::ranges::find_if(garbage, [completedValue](const Garbage& entry) { return entry.fence > completedValue; });
+    for (auto entry = garbage.begin(); entry != finished; ++entry) {
+        if (entry->heap != nullptr) {
+            entry->heap->free(entry->handle);
         }
 
-        bufferArena->free(garbage.front().range);
-        garbage.pop_front();
+        for (const Attachment& attachment : entry->attachments) {
+            entry->attachmentHeap->free(attachment.handle);
+        }
+
+        bufferArena->free(entry->range);
     }
+
+    garbage.erase(garbage.begin(), finished);
 
     uploads->release(completedValue);
     textureTables->release(completedValue);
@@ -348,6 +372,7 @@ ID3D12GraphicsCommandList4& Device::getTransferList() {
     if (!transfersOpen) {
         checkFrame(transfers->Reset(frames[frameIndex].transfers.Get(), nullptr), "start the transfers of a frame");
         transfersOpen = true;
+        timer->beginTransfers(*transfers.Get(), frameIndex);
     }
 
     return *transfers.Get();
@@ -380,6 +405,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         throw ContractError(ContractError::Rule::Buffer);
     }
 
+    reserveGarbage();
     BufferArena::Allocation allocation = bufferArena->allocate(size);
     BufferRecord record{.resource = std::move(allocation.resource), .range = allocation.range, .size = size, .usage = desc.usage};
     record.address = record.resource->GetGPUVirtualAddress() + record.range.offset;
@@ -485,21 +511,10 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
 }
 
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
-    if (desc.width <= 0 || desc.height <= 0 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
+    ImageRules::check(desc, capabilities);
     const bool depth = Formats::isDepth(desc.format);
-    if (depth != (desc.kind == ImageKind::DepthStencil)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
 
-    if (desc.kind == ImageKind::Texture) {
-        direct3d::MipLevels::check(desc);
-    } else if (!desc.levels.empty()) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
+    reserveGarbage();
     D3D12_RESOURCE_DESC made{};
     made.Dimension = desc.type == TextureType::Volume ? D3D12_RESOURCE_DIMENSION_TEXTURE3D : D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     made.Width = static_cast<UINT64>(desc.width);
@@ -527,6 +542,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
 
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     const D3D12_SAMPLER_DESC made = StateDescriptions::makeSampler(desc);
+    reserveGarbage();
     D3D12_CPU_DESCRIPTOR_HANDLE handle = samplerViews->allocate();
     device->CreateSampler(&made, handle);
     return {samplers.add(std::move(handle))};
@@ -601,6 +617,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         state.SampleDesc.Count = static_cast<UINT>(std::max(1, desc.sampleCount));
     }
 
+    reserveGarbage();
     HResult::check(device->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(record.state.GetAddressOf())), std::format("create the pipeline \"{}\"", desc.label));
     setName(*record.state.Get(), desc.label);
 
@@ -634,7 +651,7 @@ void Device::rebuildSwapchainPipelines() {
 
 void Device::destroy(Buffer buffer) noexcept {
     if (std::optional<BufferRecord> record = buffers.remove(buffer.id)) {
-        garbage.push_back({.fence = fenceValue + 1, .object = std::move(record->resource), .range = record->range});
+        discard({.fence = fenceValue + 1, .object = std::move(record->resource), .range = record->range});
     }
 }
 
@@ -644,18 +661,13 @@ void Device::destroy(Image image) noexcept {
         return;
     }
 
-    retire(nullptr, textureViews.get(), record->view);
-
-    for (const Attachment& attachment : record->attachments) {
-        retire(nullptr, record->kind == ImageKind::DepthStencil ? depthViews.get() : targetViews.get(), attachment.handle);
-    }
-
-    retire(std::move(record->resource));
+    DescriptorHeap* attachmentHeap = record->kind == ImageKind::DepthStencil ? depthViews.get() : targetViews.get();
+    discard({.fence = fenceValue + 1, .object = std::move(record->resource), .heap = textureViews.get(), .handle = record->view, .attachmentHeap = attachmentHeap, .attachments = std::move(record->attachments)});
 }
 
 void Device::destroy(Sampler sampler) noexcept {
     if (std::optional<D3D12_CPU_DESCRIPTOR_HANDLE> handle = samplers.remove(sampler.id)) {
-        retire(nullptr, samplerViews.get(), *handle);
+        discard({.fence = fenceValue + 1, .heap = samplerViews.get(), .handle = *handle});
     }
 }
 
@@ -665,7 +677,7 @@ void Device::destroy(Program program) noexcept {
 
 void Device::destroy(Pipeline pipeline) noexcept {
     if (std::optional<PipelineRecord> record = pipelines.remove(pipeline.id)) {
-        retire(std::move(record->state));
+        discard({.fence = fenceValue + 1, .object = std::move(record->state)});
     }
 
     if (bound.pipeline == pipeline.id) {
@@ -679,7 +691,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
-    if (offset + data.size() > record.size) {
+    if (offset % 4 != 0 || offset + data.size() > record.size) {
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
@@ -812,7 +824,7 @@ void Device::makeSwapchainTargets(SurfaceChain& chain) {
     desc.Height = static_cast<UINT>(chain.swapchain->getSize().height);
     desc.DepthOrArraySize = 1;
     desc.MipLevels = 1;
-    desc.SampleDesc.Count = static_cast<UINT>(std::max(1, chain.surface->sampleCount));
+    desc.SampleDesc.Count = static_cast<UINT>(pipelineSampleCount);
     desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     const D3D12_HEAP_PROPERTIES heap{.Type = D3D12_HEAP_TYPE_DEFAULT};
 
@@ -856,6 +868,9 @@ void Device::beginPass(const PassDesc& desc) {
 
     openFrame();
     pass.endBarrierCount = 0;
+
+    // The ranges of the tables promise that what their descriptors point to stays as it is while a table is set, and a pass may draw into an image that a table of an earlier pass still points to, so each pass sets its tables again.
+    bound.tablesSet = {};
 
     if (desc.colors.empty() && !desc.depthStencil) {
         beginSwapchainPass(desc);
@@ -1199,6 +1214,10 @@ void Device::applyBlendColor(math::Color value) {
 }
 
 void Device::draw(int first, int count, int instances) {
+    if (!passOpen) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
     if (skipping || count <= 0 || instances <= 0) {
         return;
     }
@@ -1280,6 +1299,8 @@ void Device::commit() {
 
     submit(*commands.Get());
 
+    // Every surface presents and the frame ends before a present that failed for another reason than a loss of the device throws.
+    HRESULT failedPresent = S_OK;
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
         if (chain == nullptr || !chain->presentPending) {
             continue;
@@ -1287,8 +1308,11 @@ void Device::commit() {
 
         chain->presentPending = false;
         const HRESULT result = chain->swapchain->present();
+        chain->presented = SUCCEEDED(result);
         if (HResult::isDeviceLoss(result)) {
             loseDevice(result);
+        } else if (FAILED(result) && SUCCEEDED(failedPresent)) {
+            failedPresent = result;
         }
     }
 
@@ -1314,6 +1338,19 @@ void Device::commit() {
     }
 
     drainMessages();
+    waitForDisplays();
+    HResult::check(failedPresent, "present the swapchain of a window");
+}
+
+// The commit ends once every surface that presented can take the next frame, so the platform reads the input of that frame only then, as late as the displays allow.
+void Device::waitForDisplays() noexcept {
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain == nullptr || !std::exchange(chain->presented, false) || lost) {
+            continue;
+        }
+
+        chain->swapchain->waitForFrame();
+    }
 }
 
 // A list that fails to close holds commands that the GPU cannot run, so the device stops as lost instead of submitting it.
@@ -1358,13 +1395,23 @@ void Device::detachSurface() {
     window.surface.reset();
 }
 
+// A window that comes back with another sample count makes the pipelines of the swapchain and the attachments of every surface beyond it again, which the GPU let go of as the window went.
 void Device::attachSurface(const Surface& target) {
     detachSurface();
     chains.front()->surface = target;
 
-    if (getSwapchainSampleCount() != pipelineSampleCount) {
-        pipelineSampleCount = getSwapchainSampleCount();
-        rebuildSwapchainPipelines();
+    if (getSwapchainSampleCount() == pipelineSampleCount) {
+        return;
+    }
+
+    pipelineSampleCount = getSwapchainSampleCount();
+    rebuildSwapchainPipelines();
+
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain != nullptr && chain->swapchain != nullptr) {
+            releaseSwapchainTargets(*chain);
+            makeSwapchainTargets(*chain);
+        }
     }
 }
 
@@ -1397,14 +1444,17 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     return std::make_unique<ImageReadback>(std::move(buffer), fence, fenceValue + 1, pitch, record.format, width, height);
 }
 
-// A surface beyond the window draws through the pipelines of the swapchain, so it takes their sample count, and it makes its swapchain now, so a surface that Direct3D 12 cannot draw into fails at once.
+// A surface beyond the window draws through the pipelines of the swapchain, so its attachments take their sample count, and it makes its swapchain now, so a surface that Direct3D 12 cannot draw into fails at once and gives back the views it took.
 int Device::addSurface(const Surface& added) {
-    Surface target = added;
-    target.sampleCount = pipelineSampleCount;
-    std::unique_ptr<SurfaceChain> chain = makeChain(target);
-    if (target.size.width > 0 && target.size.height > 0) {
-        chain->swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), target);
-        makeSwapchainTargets(*chain);
+    std::unique_ptr<SurfaceChain> chain = makeChain(added);
+    try {
+        if (added.size.width > 0 && added.size.height > 0) {
+            chain->swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), added);
+            makeSwapchainTargets(*chain);
+        }
+    } catch (...) {
+        releaseChainViews(*chain);
+        throw;
     }
 
     const auto free = std::find(chains.begin() + 1, chains.end(), nullptr);
@@ -1432,14 +1482,17 @@ void Device::removeSurface(int number) {
     waitIdle();
     releaseSwapchainTargets(chain);
     chain.swapchain.reset();
+    releaseChainViews(chain);
+    chains[static_cast<std::size_t>(number)].reset();
+}
 
+void Device::releaseChainViews(const SurfaceChain& chain) {
     for (const D3D12_CPU_DESCRIPTOR_HANDLE view : chain.backBufferViews) {
         targetViews->free(view);
     }
 
     targetViews->free(chain.multisampleView);
     depthViews->free(chain.depthView);
-    chains[static_cast<std::size_t>(number)].reset();
 }
 
 gpu::Device::CaptureSupport Device::getCaptureSupport() const {

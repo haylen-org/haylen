@@ -23,7 +23,10 @@ class NullDevice final : public Device {
   public:
     static constexpr int kMaxImageSize = 16 * 1024;
     static constexpr int kMaxArrayLayers = 2048;
-    static constexpr int kMaxSampleCount = 8;
+    static constexpr int kMaxVolumeSize = 2048;
+
+    // Every format that the device draws into takes 1, 2, 4 and 8 samples.
+    static constexpr std::uint8_t kSampleCounts = 1 | 2 | 4 | 8;
     static constexpr int kMaxAnisotropy = 16;
 
     // How many objects of each kind exist at once, past which the device has no room.
@@ -65,7 +68,7 @@ class NullDevice final : public Device {
     // A device that runs a shader language asks every program for code in it, which tests use to see what a package lacks, the capabilities say what the engine may use, and the API is the one it reports, such as the API of a port that runs the engine on it before its own device draws. A device with a capture tool records when captures begin and end, and returns the path a capture would have with the extension `.capture`, without writing it.
     explicit NullDevice(Language runs = Language::None, const Capabilities& capabilities = getDefaultCapabilities(), Api reported = Api::None, CaptureTool capture = CaptureTool::None) noexcept : language(runs), api(reported), features(capabilities), captureTool(capture) {}
 
-    // The capabilities of a device that renders every color format, blends into all but the 32-bit floats, and resolves multisampled render targets, but blends every color of a pipeline alike, as OpenGL ES does.
+    // The capabilities of a device that renders every format with up to 8 samples, blends into all but the 32-bit floats, and resolves multisampled render targets, but blends every color of a pipeline alike, as OpenGL ES does.
     [[nodiscard]] static Capabilities getDefaultCapabilities() noexcept;
 
     [[nodiscard]] Language getLanguage() const noexcept override;
@@ -212,9 +215,10 @@ class NullDevice final : public Device {
         Targets targets{};
     };
 
+    // The pass that is open, with the images it draws into: its color attachments, the images they resolve into and its depth stencil image.
     struct OpenPass {
         Targets targets{};
-        std::array<std::uint64_t, kMaxColorTargets + 1> images{};
+        std::array<std::uint64_t, (kMaxColorTargets * 2) + 1> images{};
         std::size_t debugGroups = 0;
     };
 
@@ -230,11 +234,7 @@ class NullDevice final : public Device {
         bool delivered = false;
     };
 
-    [[nodiscard]] static bool isPowerOfTwo(int value) noexcept;
     static void requireRoom(std::size_t used, int size, std::string_view message);
-    void checkImageShape(const ImageDesc& desc) const;
-    static void checkImageKind(const ImageDesc& desc);
-    static void checkTextureLevels(const ImageDesc& desc);
     void checkColorTargets(const PipelineDesc& desc) const;
     static void checkDepthStencilState(const PipelineDesc& desc);
     void checkVertexLayout(const PipelineDesc& desc) const;
@@ -252,7 +252,7 @@ class NullDevice final : public Device {
     void recordPass(bool swapchain, int surface, Load load, math::Color clear, std::size_t colors);
     void requireFollowingPasses(int surface) const;
     void requireKeptSamples(int surface) const;
-    static void checkSurface(const Surface& surface, int maxSampleCount);
+    void checkSurface(const Surface& surface) const;
     static void checkSize(const Surface::Size& size);
 
     std::unordered_map<std::uint64_t, BufferState> buffers;
@@ -274,6 +274,9 @@ class NullDevice final : public Device {
     Bindings bound;
     std::uint32_t appliedBlocks = 0;
     std::vector<bool> debugGroups;
+
+    // Whether a debug group was pushed or popped between passes since the last pass began.
+    bool groupedSincePass = false;
 
     bool lost = false;
 

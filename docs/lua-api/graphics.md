@@ -1,6 +1,6 @@
 # 📖 `haylen.graphics`
 
-The module `haylen.graphics` makes the resources that every kind of drawing shares: textures, render targets, images on the CPU, fonts, font families and vector images. It also names the graphics API and the largest texture the device holds. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md). The [rendering guide](../graphics/rendering.md) explains how the engine draws, and the [text guide](../graphics/text.md) explains fonts.
+The module `haylen.graphics` makes the resources that every kind of drawing shares: textures, render targets, images on the CPU, fonts, font families and vector images. It also names the graphics API and what the device holds: the largest texture, volume and cube, and the sample counts of each format. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md). The [rendering guide](../graphics/rendering.md) explains how the engine draws, and the [text guide](../graphics/text.md) explains fonts.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -56,6 +56,39 @@ local graphics = require('haylen.graphics')
 local side = math.min(8192, graphics.maxImageSize())
 local canvas = graphics.newImage(side, 64)
 print(canvas.width)
+```
+
+### graphics.maxVolumeSize()
+
+Returns the largest side in pixels that a volume image can have on this device, along its width, its height and its slices, as the [RHI guide](../graphics/rhi.md#capabilities) reports it for each graphics API. The 3D renderer reads it for volumes such as the grids of fog and light.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local slices = math.min(64, graphics.maxVolumeSize())
+print('A volume of ' .. slices .. ' slices fits this device.')
+```
+
+### graphics.maxCubeSize()
+
+Returns the largest side in pixels of the square faces of a cube image on this device, such as the faces of an environment map.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local face = math.min(1024, graphics.maxCubeSize())
+print('A cube with faces of ' .. face .. ' pixels fits this device.')
+```
+
+### graphics.sampleCounts(format)
+
+Returns the sample counts that render targets and depth stencil images of the format take on this device, as a list from one sample up, such as `{1, 4}`, or an empty list for a format that the device draws not into. A color format that takes more samples than one also resolves into an image of one sample. The formats are `'r8'`, `'rg8'`, `'rgba8'`, `'rgba8Srgb'`, `'bgra8'`, `'rgb10A2'`, `'r16Float'`, `'rg16Float'`, `'rgba16Float'`, `'r32Float'`, `'rg32Float'`, `'rgba32Float'`, `'depth16'`, `'depth32Float'`, `'depth24Stencil8'` and `'depth32FloatStencil8'`, and another name raises `bad argument #1 to 'sampleCounts' (unknown value '<name>')`.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local counts = graphics.sampleCounts('rgba16Float')
+print('The most samples of a light buffer: ' .. counts[#counts])
 ```
 
 ## Texture

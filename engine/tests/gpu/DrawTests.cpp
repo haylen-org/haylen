@@ -279,6 +279,34 @@ TEST_P(GpuDrawTest, RefusesPipelinesBeyondTheLimitsOfTheContract) {
     EXPECT_EQ(test::ContractRule::of([&] { (void)device().makePipeline({.program = program("plane"), .buffers = buffers, .colors = color, .label = "haylen-test-buffers"}); }), gpu::ContractError::Rule::Pipeline);
 }
 
+// A program binds its blocks, textures and samplers only at the slots of the contract, one binding of a kind and a stage at each, which every device checks before it reads the code of the program.
+TEST_P(GpuDrawTest, RefusesProgramsWithSlotsOutsideTheContract) {
+    const std::array<Device::BlockBinding, 1> block{{{.slot = static_cast<int>(Device::kMaxBlocks), .size = 16}}};
+    const std::array<Device::TextureBinding, 1> texture{{{.slot = static_cast<int>(Device::kMaxTextures)}}};
+    const std::array<Device::SamplerBinding, 1> sampler{{{.slot = -1}}};
+    const std::array<Device::TextureBinding, 2> shared{{{.slot = 1, .binding = 0}, {.slot = 1, .binding = 1}}};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeProgram({.blocks = block, .label = "haylen-test-block-slot"}); }), gpu::ContractError::Rule::Program);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeProgram({.textures = texture, .label = "haylen-test-texture-slot"}); }), gpu::ContractError::Rule::Program);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeProgram({.samplers = sampler, .label = "haylen-test-sampler-slot"}); }), gpu::ContractError::Rule::Program);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeProgram({.textures = shared, .label = "haylen-test-shared-slot"}); }), gpu::ContractError::Rule::Program);
+}
+
+// Draws and the end of a pass come inside a pass, which every device checks instead of dropping the call.
+TEST_P(GpuDrawTest, RefusesDrawsOutsideAPass) {
+    EXPECT_EQ(test::ContractRule::of([&] { device().draw(0, 3, 1); }), gpu::ContractError::Rule::PassOrder);
+    EXPECT_EQ(test::ContractRule::of([&] { device().endPass(); }), gpu::ContractError::Rule::PassOrder);
+}
+
+// A frame writes a dynamic buffer at offsets that are multiples of 4, which every device refuses otherwise.
+TEST_P(GpuDrawTest, RefusesBufferWritesAtUnalignedOffsets) {
+    const Device::Buffer buffer = device().makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "haylen-test-unaligned"});
+    const std::array<std::byte, 4> bytes{};
+    EXPECT_EQ(test::ContractRule::of([&] { device().writeBuffer(buffer, 2, bytes); }), gpu::ContractError::Rule::BufferWrite);
+    device().writeBuffer(buffer, 4, bytes);
+    device().commit();
+    device().destroy(buffer);
+}
+
 // Uniforms fill the block of their slot exactly, so every device refuses a block that the program lacks and data of another size.
 TEST_P(GpuDrawTest, RefusesUniformsThatDoNotFillTheirBlock) {
     const Device::Pipeline pipeline = makeColorPipeline("tinted");

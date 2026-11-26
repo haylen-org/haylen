@@ -43,14 +43,21 @@ VkDescriptorSet DescriptorCache::findResourceSet(const ResourceKey& key, std::ui
 }
 
 VkDescriptorSet DescriptorCache::addResourceSet(const ResourceKey& key, std::span<VkWriteDescriptorSet> writes, std::uint64_t serial) {
+    ReleaseQueue::Hold room = releaseQueue.hold();
     const auto [pool, set] = allocate(key.layout);
     for (VkWriteDescriptorSet& write : writes) {
         write.dstSet = set;
     }
 
     context.getFunctions().vkUpdateDescriptorSets(context.getDevice(), static_cast<std::uint32_t>(writes.size()), writes.data(), 0, nullptr);
-    resourceSets.emplace(key, Entry{.pool = pool, .set = set, .used = serial});
-    return set;
+    try {
+        resourceSets.emplace(key, Entry{.pool = pool, .set = set, .used = serial});
+        room.keep();
+        return set;
+    } catch (...) {
+        context.getFunctions().vkFreeDescriptorSets(context.getDevice(), pool, 1, &set);
+        throw;
+    }
 }
 
 VkDescriptorSet DescriptorCache::getUniformSet(VkDescriptorSetLayout layout, VkBuffer buffer, std::span<const UniformBlock> blocks) {
@@ -121,6 +128,7 @@ void DescriptorCache::trim(std::uint64_t completed) {
         }
 
         context.getFunctions().vkFreeDescriptorSets(context.getDevice(), entry->second.pool, 1, &entry->second.set);
+        releaseQueue.forgo();
         entry = resourceSets.erase(entry);
     }
 }

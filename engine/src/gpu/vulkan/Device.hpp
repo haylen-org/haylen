@@ -132,6 +132,9 @@ class Device final : public gpu::Device {
     static constexpr VkDeviceSize kDynamicBufferAlignment = 256;
     static constexpr std::uint32_t kNoSet = 0xFFFFFFFFU;
 
+    // The sample counts of the contract, whose bits are the counts as the bits of Vulkan are.
+    static constexpr VkSampleCountFlags kContractSampleCounts = VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT | VK_SAMPLE_COUNT_8_BIT;
+
     struct Frame {
         VkCommandPool pool = VK_NULL_HANDLE;
         VkCommandBuffer uploads = VK_NULL_HANDLE;
@@ -238,6 +241,9 @@ class Device final : public gpu::Device {
         bool acquired = false;
         bool drawn = false;
         std::uint32_t imageIndex = 0;
+
+        // The serial of the frame whose acquire found no image of the swapchain, whose later passes into the surface draw nothing instead of asking again.
+        std::uint64_t refusedSerial = 0;
     };
 
     // The color format, depth format and sample count of the swapchain of the window that pipelines drawing into a swapchain take, whose generation changes with any of them. The swapchains of the other surfaces take them too.
@@ -313,6 +319,7 @@ class Device final : public gpu::Device {
     void createFrames();
     [[nodiscard]] void* getRenderDocDevice() const noexcept;
     void fillCapabilities();
+    [[nodiscard]] std::uint8_t getSampleCounts(VkFormat format, bool depth) const;
     void readDriverIssues();
     void shutdown() noexcept;
 
@@ -320,6 +327,7 @@ class Device final : public gpu::Device {
     void completeFrame(Frame& frame);
     void pollFrames();
     void markLost(VkResult result);
+    void abandonFrame() noexcept;
     void waitIdle();
     void finishTrim();
     void forgetDestroyedUniforms() noexcept;

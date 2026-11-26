@@ -4,12 +4,12 @@
 #include <cstdint>
 
 #include "gpu/opengl/Context.hpp"
-#include "gpu/opengl/LayerClear.hpp"
+#include "gpu/opengl/DrawnClear.hpp"
 #include "gpu/opengl/OpenGlTest.hpp"
 
 namespace haylen::gpu::opengl {
 
-class LayerClearTest : public OpenGlTest {
+class DrawnClearTest : public OpenGlTest {
   protected:
     static constexpr int kTargetSize = 4;
 
@@ -21,7 +21,7 @@ class LayerClearTest : public OpenGlTest {
         }
 
         if (GetParam() != Device::Api::OpenGlEs) {
-            GTEST_SKIP() << "The layer clear serves OpenGL ES drivers alone.";
+            GTEST_SKIP() << "The drawn clear serves OpenGL ES drivers alone.";
         }
 
         opened.gl.load(*context, GetParam());
@@ -76,13 +76,13 @@ class LayerClearTest : public OpenGlTest {
 };
 
 // The draw paints the whole attachment it names, leaves the other attachment as it was and gives the framebuffer back the draw buffer of every attachment, which the clears that follow reach.
-TEST_P(LayerClearTest, PaintsOnlyTheAttachmentItNames) {
+TEST_P(DrawnClearTest, PaintsOnlyTheAttachmentItNames) {
     constexpr std::uint32_t kBlue = 0xFFFF0000;
     constexpr std::uint32_t kRed = 0xFF0000FF;
     constexpr std::uint32_t kGreen = 0xFF00FF00;
     clearBoth({0.0F, 0.0F, 1.0F, 1.0F});
 
-    LayerClear clear(opened.gl, opened.state);
+    DrawnClear clear(opened.gl, opened.state);
     clear.clear(1, targets.size(), {1.0F, 0.0F, 0.0F, 1.0F}, kTargetSize, kTargetSize);
     EXPECT_EQ(readCorner(0), kBlue);
     EXPECT_EQ(readCorner(1), kRed);
@@ -92,6 +92,36 @@ TEST_P(LayerClearTest, PaintsOnlyTheAttachmentItNames) {
     EXPECT_EQ(readCorner(1), kGreen);
 }
 
-INSTANTIATE_TEST_SUITE_P(Flavours, LayerClearTest, ::testing::Values(Device::Api::OpenGl, Device::Api::OpenGlEs), OpenGlTest::getFlavourName);
+// The draw paints every sample of a multisampled attachment, so its resolve reads the whole clear color.
+TEST_P(DrawnClearTest, PaintsEverySampleOfAMultisampledAttachment) {
+    constexpr Gl::Sizei kSamples = 4;
+    constexpr std::uint32_t kRed = 0xFF0000FF;
+    Gl& gl = opened.gl;
+    Gl::Uint samples = 0;
+    gl.genRenderbuffers(1, &samples);
+    gl.bindRenderbuffer(Gl::kRenderbuffer, samples);
+    gl.renderbufferStorageMultisample(Gl::kRenderbuffer, kSamples, Gl::kRgba8, kTargetSize, kTargetSize);
+    Gl::Uint multisampled = 0;
+    gl.genFramebuffers(1, &multisampled);
+    opened.state.bindDrawFramebuffer(multisampled);
+    gl.framebufferRenderbuffer(Gl::kDrawFramebuffer, Gl::kColorAttachment0, Gl::kRenderbuffer, samples);
+
+    DrawnClear clear(opened.gl, opened.state);
+    clear.clear(0, 1, {1.0F, 0.0F, 0.0F, 1.0F}, kTargetSize, kTargetSize);
+
+    // The resolve writes the first attachment of the fixture, whose corner then holds the mean of the samples.
+    opened.state.bindReadFramebuffer(multisampled);
+    opened.state.bindDrawFramebuffer(framebuffer);
+    const std::array<Gl::Enum, 1> resolved{Gl::kColorAttachment0};
+    gl.drawBuffers(static_cast<Gl::Sizei>(resolved.size()), resolved.data());
+    gl.blitFramebuffer(0, 0, kTargetSize, kTargetSize, 0, 0, kTargetSize, kTargetSize, Gl::kColorBufferBit, Gl::kNearest);
+    EXPECT_EQ(readCorner(0), kRed);
+
+    gl.deleteFramebuffers(1, &multisampled);
+    opened.state.forgetFramebuffer(multisampled);
+    gl.deleteRenderbuffers(1, &samples);
+}
+
+INSTANTIATE_TEST_SUITE_P(Flavours, DrawnClearTest, ::testing::Values(Device::Api::OpenGl, Device::Api::OpenGlEs), OpenGlTest::getFlavourName);
 
 } // namespace haylen::gpu::opengl

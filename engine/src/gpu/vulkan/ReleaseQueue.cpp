@@ -10,7 +10,27 @@ ReleaseQueue::~ReleaseQueue() {
     clear();
 }
 
-void ReleaseQueue::push(Object object, std::uint64_t serial) {
+ReleaseQueue::Hold::Hold(ReleaseQueue& owner) : queue(&owner) {
+    const std::size_t needed = owner.pending.size() + owner.held + 1;
+    if (owner.pending.capacity() < needed) {
+        owner.pending.reserve(std::max(needed, owner.pending.capacity() * 2));
+    }
+
+    ++owner.held;
+}
+
+ReleaseQueue::Hold::~Hold() {
+    if (queue != nullptr) {
+        queue->forgo();
+    }
+}
+
+void ReleaseQueue::forgo() noexcept {
+    --held;
+}
+
+void ReleaseQueue::push(Object object, std::uint64_t serial) noexcept {
+    --held;
     pending.emplace_back(serial, object);
 }
 

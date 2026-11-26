@@ -6,6 +6,8 @@
 #include <utility>
 
 #include "gpu/ImageInfo.hpp"
+#include "gpu/ImageRules.hpp"
+#include "gpu/ProgramSlots.hpp"
 #include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu {
@@ -19,7 +21,7 @@ std::optional<std::vector<std::uint8_t>> NullDevice::NullReadback::poll() {
 }
 
 Device::Capabilities NullDevice::getDefaultCapabilities() noexcept {
-    Capabilities capabilities{.maxImageSize = kMaxImageSize, .maxArrayLayers = kMaxArrayLayers, .maxSampleCount = kMaxSampleCount, .originTopLeft = true, .independentBlend = false, .multisampledRenderTargets = true, .gpuTiming = false};
+    Capabilities capabilities{.maxImageSize = kMaxImageSize, .maxArrayLayers = kMaxArrayLayers, .maxVolumeSize = kMaxVolumeSize, .maxCubeSize = kMaxImageSize, .originTopLeft = true, .independentBlend = false, .gpuTiming = false};
     capabilities.textureFormats.fill(true);
     capabilities.renderFormats.fill(true);
 
@@ -28,13 +30,10 @@ Device::Capabilities NullDevice::getDefaultCapabilities() noexcept {
         const bool wide = pixelFormat == PixelFormat::R32Float || pixelFormat == PixelFormat::Rg32Float || pixelFormat == PixelFormat::Rgba32Float;
         capabilities.blendableFormats[format] = !wide && !ImageInfo::isDepth(pixelFormat);
         capabilities.filterableFormats[format] = !wide && !ImageInfo::isDepth(pixelFormat);
+        capabilities.sampleCounts[format] = kSampleCounts;
     }
 
     return capabilities;
-}
-
-bool NullDevice::isPowerOfTwo(int value) noexcept {
-    return value > 0 && (value & (value - 1)) == 0;
 }
 
 void NullDevice::requireRoom(std::size_t used, int size, std::string_view message) {
@@ -93,84 +92,8 @@ Device::Buffer NullDevice::makeBuffer(const BufferDesc& desc) {
     return {id};
 }
 
-void NullDevice::checkImageShape(const ImageDesc& desc) const {
-    if (desc.width <= 0 || desc.height <= 0 || desc.width > features.maxImageSize || desc.height > features.maxImageSize) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    const bool layered = desc.type == TextureType::Array || desc.type == TextureType::Volume;
-    const int maxLayers = desc.type == TextureType::Volume ? features.maxImageSize : features.maxArrayLayers;
-
-    if (desc.type == TextureType::Flat && desc.layers != 1) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.type == TextureType::Cube && (desc.layers != 6 || desc.width != desc.height)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (layered && (desc.layers < 1 || desc.layers > maxLayers)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.mipLevels < 1 || desc.mipLevels > ImageInfo::getMaxMipLevels(desc)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (!isPowerOfTwo(desc.sampleCount) || desc.sampleCount > features.maxSampleCount) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.sampleCount > 1 && (desc.type != TextureType::Flat || desc.mipLevels != 1)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-}
-
-void NullDevice::checkImageKind(const ImageDesc& desc) {
-    const bool depth = ImageInfo::isDepth(desc.format);
-    if (depth != (desc.kind == ImageKind::DepthStencil)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.kind != ImageKind::Texture && !desc.levels.empty()) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.sampleCount > 1 && (desc.kind == ImageKind::Texture || desc.kind == ImageKind::Dynamic)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.kind == ImageKind::Dynamic && (desc.mipLevels != 1 || desc.type != TextureType::Flat)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-}
-
-void NullDevice::checkTextureLevels(const ImageDesc& desc) {
-    if (desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    for (std::size_t level = 0; level < desc.levels.size(); ++level) {
-        if (desc.levels[level].size() != ImageInfo::getLevelBytes(desc, static_cast<int>(level))) {
-            throw ContractError(ContractError::Rule::Image);
-        }
-    }
-}
-
 Device::Image NullDevice::makeImage(const ImageDesc& desc) {
-    checkImageShape(desc);
-    checkImageKind(desc);
-
-    if (desc.kind == ImageKind::Texture) {
-        checkTextureLevels(desc);
-    }
-
-    const bool renders = desc.kind == ImageKind::RenderTarget || desc.kind == ImageKind::DepthStencil;
-    const std::array<bool, 16>& supported = renders ? features.renderFormats : features.textureFormats;
-    if (!supported[static_cast<std::size_t>(desc.format)]) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
+    ImageRules::check(desc, features);
     requireRoom(images.size(), kImagePoolSize, "The graphics device has no room for another texture. At most {} textures and render targets can exist at once.");
     const std::uint64_t id = nextId++;
     ImageDesc kept = desc;
@@ -198,24 +121,8 @@ Device::Sampler NullDevice::makeSampler(const SamplerDesc& desc) {
 }
 
 Device::Program NullDevice::makeProgram(const ProgramDesc& desc) {
+    ProgramSlots::check(desc);
     ProgramRecord program{.blocks = {desc.blocks.begin(), desc.blocks.end()}, .textures = {desc.textures.begin(), desc.textures.end()}, .samplers = {desc.samplers.begin(), desc.samplers.end()}, .vertexBytes = desc.vertex.bytecode.size(), .fragmentBytes = desc.fragment.bytecode.size()};
-    for (const BlockBinding& block : program.blocks) {
-        if (block.slot < 0 || block.slot >= static_cast<int>(kMaxBlocks) || block.size == 0) {
-            throw ContractError(ContractError::Rule::Program);
-        }
-    }
-
-    for (const TextureBinding& texture : program.textures) {
-        if (texture.slot < 0 || texture.slot >= static_cast<int>(kMaxTextures)) {
-            throw ContractError(ContractError::Rule::Program);
-        }
-    }
-
-    for (const SamplerBinding& sampler : program.samplers) {
-        if (sampler.slot < 0 || sampler.slot >= static_cast<int>(kMaxSamplers)) {
-            throw ContractError(ContractError::Rule::Program);
-        }
-    }
 
     // SPIR-V comes as the words of a module, the language of a port as the bytes its shader tool wrote, and every other language as text.
     if (language == Language::Spirv && (desc.vertex.bytecode.empty() || desc.fragment.bytecode.empty() || desc.vertex.bytecode.size() % 4 != 0 || desc.fragment.bytecode.size() % 4 != 0)) {
@@ -297,7 +204,18 @@ void NullDevice::checkVertexLayout(const PipelineDesc& desc) const {
         }
     }
 
-    if (!isPowerOfTwo(desc.sampleCount) || desc.sampleCount > features.maxSampleCount) {
+    if (desc.swapchain) {
+        return;
+    }
+
+    // An offscreen pipeline draws with the samples that every one of its attachments takes.
+    for (const ColorTarget& color : desc.colors) {
+        if (!ImageRules::takesSamples(features, color.format, desc.sampleCount)) {
+            throw ContractError(ContractError::Rule::Pipeline);
+        }
+    }
+
+    if (desc.depthStencil.format && !ImageRules::takesSamples(features, *desc.depthStencil.format, desc.sampleCount)) {
         throw ContractError(ContractError::Rule::Pipeline);
     }
 }
@@ -513,7 +431,7 @@ void NullDevice::checkColorAttachment(const ColorAttachment& color, ImageInfo::E
 
     const ImageDesc& resolve = getImage(color.resolve);
 
-    if (!features.multisampledRenderTargets || image.sampleCount == 1) {
+    if (image.sampleCount == 1) {
         throw ContractError(ContractError::Rule::PassAttachments);
     }
 
@@ -530,9 +448,11 @@ NullDevice::Targets NullDevice::describeOffscreenPass(const PassDesc& desc, Open
     Targets targets;
     ImageInfo::Extent extent;
     int sampleCount = 1;
+    std::size_t drawn = 0;
     for (const ColorAttachment& color : desc.colors) {
         checkColorAttachment(color, extent, sampleCount);
-        opened.images[targets.colorCount] = color.image.id;
+        opened.images[drawn++] = color.image.id;
+        opened.images[drawn++] = color.resolve.id;
         targets.colors[targets.colorCount++] = getImage(color.image).format;
     }
 
@@ -551,7 +471,7 @@ NullDevice::Targets NullDevice::describeOffscreenPass(const PassDesc& desc, Open
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 
-        opened.images[targets.colorCount] = desc.depthStencil->image.id;
+        opened.images[drawn] = desc.depthStencil->image.id;
         targets.depthStencil = depth.format;
     }
 
@@ -596,14 +516,14 @@ void NullDevice::requireFollowingPasses(int surface) const {
     }
 }
 
-// A multisampled window keeps no color across an offscreen pass between its swapchain passes, so a swapchain pass that keeps what an earlier one of the frame drew follows it directly.
+// A multisampled window keeps no color across an offscreen pass or a debug group between its swapchain passes, so a swapchain pass that keeps what an earlier one of the frame drew follows it directly.
 void NullDevice::requireKeptSamples(int surface) const {
     if (surfaceSamples == 1 || recordedPasses == 0) {
         return;
     }
 
     const PassRecord& last = currentFrame.passes[recordedPasses - 1];
-    if (last.swapchain && last.surface == surface) {
+    if (last.swapchain && last.surface == surface && !groupedSincePass) {
         return;
     }
 
@@ -645,6 +565,7 @@ void NullDevice::beginPass(const PassDesc& desc) {
     pass = opened;
     applied = {};
     bindingsApplied = false;
+    groupedSincePass = false;
 
     const bool firstColor = !desc.colors.empty();
     recordPass(swapchain, desc.surface, firstColor ? desc.colors.front().load : desc.load, firstColor ? desc.colors.front().clear : desc.clear, desc.colors.size());
@@ -830,6 +751,7 @@ void NullDevice::pushDebugGroup(std::string_view name) {
     }
 
     debugGroups.push_back(pass.has_value());
+    groupedSincePass = groupedSincePass || !pass;
 }
 
 void NullDevice::popDebugGroup() {
@@ -842,6 +764,7 @@ void NullDevice::popDebugGroup() {
     }
 
     debugGroups.pop_back();
+    groupedSincePass = groupedSincePass || !pass;
 }
 
 void NullDevice::commit() {
@@ -890,10 +813,11 @@ void NullDevice::detachSurface() {
     surfaceAttached = false;
 }
 
-void NullDevice::checkSurface(const Surface& surface, int maxSampleCount) {
+// A window draws into a color image of the swapchain and its depth and stencil, which both take its samples.
+void NullDevice::checkSurface(const Surface& surface) const {
     checkSize(surface.size);
 
-    if (!isPowerOfTwo(surface.sampleCount) || surface.sampleCount > maxSampleCount) {
+    if (!ImageRules::takesSamples(features, PixelFormat::Rgba8, surface.sampleCount) || !ImageRules::takesSamples(features, PixelFormat::Depth24Stencil8, surface.sampleCount)) {
         throw ContractError(ContractError::Rule::Surface);
     }
 }
@@ -912,7 +836,7 @@ void NullDevice::attachSurface(const Surface& surface) {
         throw ContractError(ContractError::Rule::Surface);
     }
 
-    checkSurface(surface, features.maxSampleCount);
+    checkSurface(surface);
     surfaceAttached = true;
     surfaceSize = surface.size;
     surfaceSamples = surface.sampleCount;
@@ -920,7 +844,7 @@ void NullDevice::attachSurface(const Surface& surface) {
 
 int NullDevice::addSurface(const Surface& surface) {
     requireNoPass();
-    checkSurface(surface, features.maxSampleCount);
+    checkSurface(surface);
     const int number = nextSurface++;
     addedSurfaces.emplace(number, surface);
     return number;

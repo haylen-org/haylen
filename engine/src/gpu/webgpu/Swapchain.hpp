@@ -11,18 +11,25 @@
 
 namespace haylen::gpu::webgpu {
 
-// The canvas of the page that the frames are drawn into, configured for the device in the format the browser prefers, with the depth and stencil attachment of the frames and the multisampled color attachment that resolves into the canvas when the window asks for more than one sample. The browser presents the texture of the canvas when the frame returns to its event loop, at the pace of the display, so frames never run without vertical sync. The drawing buffer of the canvas takes the size of the window, and a smaller drawable draws into a texture of its own that the frame scales over the canvas.
+// The canvas of the page that the frames are drawn into, configured for the device in the format the browser prefers for every canvas, with the depth and stencil attachment of the frames and the multisampled color attachment that resolves into the canvas when the window asks for more than one sample. The browser presents the texture of the canvas when the frame returns to its event loop, at the pace of the display, so frames never run without vertical sync. The drawing buffer of the canvas takes the size of the window, and a smaller drawable draws into a texture of its own that the frame scales over the canvas.
 class Swapchain final {
   public:
     static constexpr Device::PixelFormat kDepthFormat = Device::PixelFormat::Depth24Stencil8;
 
-    Swapchain(WGPUInstance instance, WGPUAdapter adapter, WGPUDevice owner, const Surface& target);
+    // The canvas of the surface draws in the format and with the samples of the swapchain pipelines of the device.
+    Swapchain(WGPUInstance instance, WGPUDevice owner, const Surface& target, Device::PixelFormat canvasFormat, int samples);
     Swapchain(const Swapchain&) = delete;
     Swapchain& operator=(const Swapchain&) = delete;
     ~Swapchain();
 
+    // The format that the browser prefers for every canvas of the page, `Rgba8` or `Bgra8`, which the page composites without a conversion.
+    [[nodiscard]] static Device::PixelFormat getPreferredFormat();
+
     // Takes the new size of the drawable and of the canvas in pixels, which the next frame configures.
     void resize(const Surface::Size& value) noexcept;
+
+    // Takes another sample count, whose attachments the next frame makes.
+    void setSampleCount(int value) noexcept;
 
     // Takes the texture of the canvas for the frame, once per frame, and returns whether the frame has one, which a canvas without pixels lacks.
     [[nodiscard]] bool acquire();
@@ -38,11 +45,12 @@ class Swapchain final {
     [[nodiscard]] WGPUTextureView getDepthView() const noexcept;
     [[nodiscard]] Device::PixelFormat getFormat() const noexcept;
     [[nodiscard]] int getSampleCount() const noexcept;
+
+    // The size of the drawable that the attachments of the frame have, which a new size of the surface changes only from the next frame.
     [[nodiscard]] int getWidth() const noexcept;
     [[nodiscard]] int getHeight() const noexcept;
 
   private:
-    [[nodiscard]] static Device::PixelFormat toPixelFormat(WGPUTextureFormat value) noexcept;
     [[nodiscard]] WGPUTexture makeAttachment(WGPUTextureFormat attachmentFormat, const char* label) const;
 
     void configure();
@@ -51,10 +59,11 @@ class Swapchain final {
     WGPUDevice device;
     WGPUSurface surface = nullptr;
     std::string canvas;
-    WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm;
+    Device::PixelFormat format;
     WGPUCompositeAlphaMode alphaMode = WGPUCompositeAlphaMode_Opaque;
     int sampleCount = 1;
     Surface::Size size;
+    Surface::Size configuredSize;
     bool configured = false;
     bool stale = true;
     WGPUTexture frameTexture = nullptr;

@@ -26,6 +26,10 @@ TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(1, 1, {pixels = string.char(255, 0, 0, 255)}) return t.width"), "1");
     EXPECT_NE(fixture.lua("return graphics.newTexture(2, 2, {pixels = 'short'})").find("error: "), std::string::npos);
     EXPECT_EQ(fixture.lua("return graphics.maxTextureSize()"), "16384");
+    EXPECT_EQ(fixture.lua("return graphics.maxVolumeSize()"), "2048");
+    EXPECT_EQ(fixture.lua("return graphics.maxCubeSize()"), "16384");
+    EXPECT_EQ(fixture.lua("return table.concat(graphics.sampleCounts('rgba16Float'), ',')"), "1,2,4,8");
+    EXPECT_NE(fixture.lua("return graphics.sampleCounts('rgba7')").find("unknown value 'rgba7'"), std::string::npos);
 
     // A size beyond the device fails before its pixels are allocated.
     EXPECT_NE(fixture.lua("return graphics.newTexture(2147483647, 2147483647)").find("Texture dimensions exceed the device limit."), std::string::npos);

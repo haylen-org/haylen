@@ -21,7 +21,9 @@
 #endif
 #include "gpu/direct3d/Adapter.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/gpu/ContractError.hpp"
 #include "support/AllocationTracker.hpp"
+#include "support/ContractRule.hpp"
 
 namespace haylen::gpu::direct3d {
 
@@ -83,7 +85,7 @@ float4 main() : SV_Target0 { return color; }
 
         device.reset();
 
-        if (window != nullptr) {
+        for (const HWND window : windows) {
             DestroyWindow(window);
         }
 
@@ -127,7 +129,7 @@ float4 main() : SV_Target0 { return color; }
         }
     }
 
-    // A window that never shows, of the size, without a redirection bitmap when it is transparent.
+    // A window that never shows, of the size, without a redirection bitmap when it is transparent, which the test closes once the device went.
     [[nodiscard]] Surface openWindow(int width, int height, bool transparent) {
         WNDCLASSW windowClass{};
         windowClass.lpfnWndProc = DefWindowProcW;
@@ -135,11 +137,12 @@ float4 main() : SV_Target0 { return color; }
         windowClass.lpszClassName = L"HaylenDirect3DTest";
         RegisterClassW(&windowClass);
         const DWORD style = transparent ? WS_POPUP : WS_OVERLAPPEDWINDOW;
-        window = CreateWindowExW(transparent ? WS_EX_NOREDIRECTIONBITMAP : 0U, windowClass.lpszClassName, L"Haylen", style, 0, 0, width, height, nullptr, nullptr, windowClass.hInstance, nullptr);
+        const HWND window = CreateWindowExW(transparent ? WS_EX_NOREDIRECTIONBITMAP : 0U, windowClass.lpszClassName, L"Haylen", style, 0, 0, width, height, nullptr, nullptr, windowClass.hInstance, nullptr);
         if (window == nullptr) {
             throw std::runtime_error("The test could not open a window.");
         }
 
+        windows.push_back(window);
         return {.kind = Surface::Kind::Win32, .window = window, .display = windowClass.hInstance, .size = {.width = width, .height = height, .windowWidth = width, .windowHeight = height}, .transparent = transparent};
     }
 
@@ -184,12 +187,17 @@ float4 main() : SV_Target0 { return color; }
         throw std::runtime_error("The copy of the render target never finished.");
     }
 
-    // Draws frames into the swapchain, with a pass that clears it and a triangle.
+    // Draws into the swapchain of the surface a pass that clears it and a triangle.
+    void drawPass(Pipeline pipeline, Buffer vertices, int surface) {
+        device->beginPass({.load = Device::Load::Clear, .clear = math::Color::black(), .label = "haylen-test-swapchain", .surface = surface});
+        drawTriangle(pipeline, vertices, {1.0F, 0.0F, 0.0F, 1.0F});
+        device->endPass();
+    }
+
+    // Draws frames into the swapchain of the window.
     void drawFrames(Pipeline pipeline, Buffer vertices, int count) {
         for (int frame = 0; frame < count; ++frame) {
-            device->beginPass({.load = Device::Load::Clear, .clear = math::Color::black(), .label = "haylen-test-swapchain"});
-            drawTriangle(pipeline, vertices, {1.0F, 0.0F, 0.0F, 1.0F});
-            device->endPass();
+            drawPass(pipeline, vertices, 0);
             device->commit();
         }
     }
@@ -202,7 +210,7 @@ float4 main() : SV_Target0 { return color; }
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
     std::uint64_t listener = 0;
-    HWND window = nullptr;
+    std::vector<HWND> windows;
 };
 
 TEST_P(Direct3DDeviceTest, DrawsAndReadsBackOnWarp) {
@@ -403,6 +411,92 @@ TEST_P(Direct3DDeviceTest, KeepsItsUploadMemoryWhenTheGpuFallsBehind) {
     }
 
     EXPECT_EQ(tracker.getTotal(), 0U);
+}
+
+// A surface beyond the window draws with the samples of the window through the pipelines of the swapchain, also after the window came back with another sample count, which the validation of Direct3D checks against every attachment.
+TEST_P(Direct3DDeviceTest, DrawsIntoSurfacesWithTheSamplesOfTheWindow) {
+    Surface surface = openWindow(160, 90, false);
+    surface.sampleCount = 4;
+    startOnWindow(surface);
+
+    if (IsSkipped()) {
+        return;
+    }
+
+    const int output = device->addSurface(openWindow(64, 48, false));
+    const Pipeline pipeline = makePipeline(true);
+    const Buffer vertices = makeTriangle({-0.5F, -0.5F, 0.0F, 0.5F, 0.5F, -0.5F});
+    for (const int samples : {4, 1, 4}) {
+        device->detachSurface();
+        surface.sampleCount = samples;
+        device->attachSurface(surface);
+
+        for (int frame = 0; frame < 3; ++frame) {
+            drawPass(pipeline, vertices, 0);
+            drawPass(pipeline, vertices, output);
+            device->commit();
+        }
+    }
+
+    device->removeSurface(output);
+    device->commit();
+    EXPECT_FALSE(device->isLost());
+}
+
+// A surface that Direct3D cannot draw into fails to be added and gives back every view it took, so the pools of the device stay as they were.
+TEST_P(Direct3DDeviceTest, GivesBackTheViewsOfASurfaceThatFailsToBeAdded) {
+    start();
+    std::vector<Device::Pool> before;
+    device->readPools(before);
+
+    const Surface unusable{.kind = Surface::Kind::Win32, .size = {.width = 16, .height = 16, .windowWidth = 16, .windowHeight = 16}};
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        EXPECT_THROW(static_cast<void>(device->addSurface(unusable)), std::runtime_error);
+    }
+
+    std::vector<Device::Pool> after;
+    device->readPools(after);
+    ASSERT_EQ(after.size(), before.size());
+
+    for (std::size_t index = 0; index < after.size(); ++index) {
+        EXPECT_EQ(after[index].used, before[index].used) << after[index].name;
+    }
+}
+
+// The HLSL of a program binds each texture of a stage at a register of its own, so two textures of one stage at one register break the contract, while a texture that both stages sample takes a register in each.
+TEST_P(Direct3DDeviceTest, RefusesTexturesOfOneStageAtOneRegister) {
+    start();
+    const Device::ProgramDesc base{.vertex = {.source = kVertexSource, .entry = "main", .profile = "vs_5_0"}, .fragment = {.source = kFragmentSource, .entry = "main", .profile = "ps_5_0"}, .label = "haylen-test-registers"};
+
+    const std::array<Device::TextureBinding, 2> colliding{{{.slot = 0, .binding = 0}, {.slot = 1, .binding = 0}}};
+    Device::ProgramDesc refused = base;
+    refused.textures = colliding;
+    EXPECT_EQ(test::ContractRule::of([&] { static_cast<void>(device->makeProgram(refused)); }), ContractError::Rule::Program);
+
+    const std::array<Device::TextureBinding, 2> bothStages{{{.slot = 0, .stage = Device::Stage::Vertex, .binding = 0}, {.slot = 0, .stage = Device::Stage::Fragment, .binding = 0}}};
+    Device::ProgramDesc taken = base;
+    taken.textures = bothStages;
+    programs.push_back(device->makeProgram(taken));
+}
+
+// The time of a frame on the GPU starts with the copies of its transfer list, which run before its passes, so a frame that uploads a large buffer and draws nothing measures the copy.
+TEST_P(Direct3DDeviceTest, MeasuresTheCopiesOfAFrame) {
+    if (GetParam() != Device::Api::Direct3D12) {
+        GTEST_SKIP() << "Direct3D 11 copies no data of a frame on the GPU, since the driver takes the data of its buffers.";
+    }
+
+    start();
+    const std::vector<std::byte> bytes(std::size_t{64} << 20U);
+    buffers.push_back(device->makeBuffer({.data = bytes, .label = "haylen-test-large"}));
+    device->commit();
+
+    // The device reads the time of a frame once the frame that takes its place in flight opens.
+    device->commit();
+    device->commit();
+
+    const std::optional<double> seconds = device->getGpuFrameSeconds();
+    ASSERT_TRUE(seconds.has_value());
+    EXPECT_GT(*seconds, 0.001);
 }
 
 INSTANTIATE_TEST_SUITE_P(Direct3D, Direct3DDeviceTest, ::testing::ValuesIn(Direct3DDeviceTest::getCompiledApis()), [](const ::testing::TestParamInfo<Device::Api>& info) { return info.param == Device::Api::Direct3D11 ? std::string("Direct3D11") : std::string("Direct3D12"); });

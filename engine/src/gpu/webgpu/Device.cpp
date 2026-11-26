@@ -7,6 +7,8 @@
 #include <stdexcept>
 
 #include "gpu/ImageInfo.hpp"
+#include "gpu/ImageRules.hpp"
+#include "gpu/ProgramSlots.hpp"
 #include "gpu/webgpu/Conversion.hpp"
 #include "gpu/webgpu/ImageReadback.hpp"
 #include "haylen/gpu/ContractError.hpp"
@@ -74,16 +76,16 @@ Device::~Device() {
     }
 }
 
-// WebGPU renders and samples every color format of the RHI, while 32-bit floats filter and blend only with their features, and the depth format with a 32-bit float and stencil exists only with its own.
+// WebGPU renders and samples every color format of the RHI, while 32-bit floats filter and blend only with their features, and the depth format with a 32-bit float and stencil exists only with its own. Its attachments take one or four samples, except the 32-bit floats, which WebGPU resolves into no image, so they take one. A cube takes faces as large as a flat image.
 gpu::Device::Capabilities Device::describeCapabilities(const Connection& connection) {
     const WGPULimits& limits = connection.getLimits();
     Capabilities result;
     result.maxImageSize = static_cast<int>(limits.maxTextureDimension2D);
     result.maxArrayLayers = static_cast<int>(limits.maxTextureArrayLayers);
-    result.maxSampleCount = 4;
+    result.maxVolumeSize = static_cast<int>(limits.maxTextureDimension3D);
+    result.maxCubeSize = static_cast<int>(limits.maxTextureDimension2D);
     result.originTopLeft = true;
     result.independentBlend = true;
-    result.multisampledRenderTargets = true;
     result.gpuTiming = connection.hasFeature(WGPUFeatureName_TimestampQuery);
 
     const bool floatBlending = connection.hasFeature(WGPUFeatureName_Float32Blendable);
@@ -97,6 +99,7 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
         result.renderFormats[index] = exists;
         result.blendableFormats[index] = !ImageInfo::isDepth(format) && (!wideFloat || floatBlending);
         result.filterableFormats[index] = !ImageInfo::isDepth(format) && (!wideFloat || floatFiltering);
+        result.sampleCounts[index] = !exists ? std::uint8_t{0} : (wideFloat ? std::uint8_t{1} : std::uint8_t{1 | 4});
     }
 
     return result;
@@ -145,7 +148,7 @@ bool Device::isLost() const noexcept {
 gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     const std::size_t size = std::max(desc.size, desc.data.size());
     if (size == 0) {
-        throw std::runtime_error("The graphics device cannot create a buffer without bytes.");
+        throw ContractError(ContractError::Rule::Buffer);
     }
 
     WGPUBufferDescriptor descriptor = WGPU_BUFFER_DESCRIPTOR_INIT;
@@ -153,6 +156,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     descriptor.usage = (desc.index ? WGPUBufferUsage_Index : WGPUBufferUsage_Vertex) | WGPUBufferUsage_CopyDst;
     descriptor.size = alignTo(size, 4);
     descriptor.mappedAtCreation = !desc.data.empty();
+    holdRetirements(1);
     WGPUBuffer buffer = wgpuDeviceCreateBuffer(device, &descriptor);
     if (buffer == nullptr) {
         throw std::runtime_error(std::format("The graphics device found no memory for a buffer of {} bytes.", size));
@@ -166,51 +170,9 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     return {buffers.add({.buffer = buffer, .size = static_cast<std::size_t>(descriptor.size)})};
 }
 
-void Device::validateImage(const ImageDesc& desc) const {
-    if (!capabilities.textureFormats[static_cast<std::size_t>(desc.format)]) {
-        throw std::runtime_error("This WebGPU adapter has no depth format with a 32-bit float and stencil.");
-    }
-
-    if (desc.width < 1 || desc.height < 1 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize) {
-        throw std::runtime_error(std::format("The graphics device cannot create a {}x{} image, since its sides are between 1 and {} pixels.", desc.width, desc.height, capabilities.maxImageSize));
-    }
-
-    if (desc.layers < 1 || (desc.type != TextureType::Volume && desc.layers > capabilities.maxArrayLayers)) {
-        throw std::runtime_error(std::format("The graphics device cannot create an image of {} layers, since it holds between 1 and {}.", desc.layers, capabilities.maxArrayLayers));
-    }
-
-    if (desc.type == TextureType::Cube && (desc.layers != 6 || desc.width != desc.height)) {
-        throw std::runtime_error("A cube image has six square faces.");
-    }
-
-    if (desc.mipLevels < 1 || desc.mipLevels > ImageInfo::getMaxMipLevels(desc)) {
-        throw std::runtime_error(std::format("The graphics device cannot create a {}x{} image with {} mip levels.", desc.width, desc.height, desc.mipLevels));
-    }
-
-    if (desc.sampleCount != 1 && desc.sampleCount != 4) {
-        throw std::runtime_error(std::format("WebGPU draws images of one or four samples, not {}.", desc.sampleCount));
-    }
-
-    if (desc.sampleCount > 1 && (desc.type != TextureType::Flat || desc.mipLevels > 1 || desc.kind == ImageKind::Texture || desc.kind == ImageKind::Dynamic)) {
-        throw std::runtime_error("A multisampled image is a flat render target or depth stencil image of one mip level.");
-    }
-
-    if (ImageInfo::isDepth(desc.format) != (desc.kind == ImageKind::DepthStencil)) {
-        throw std::runtime_error("Depth formats belong to depth stencil images, and only to them.");
-    }
-
-    if (desc.kind == ImageKind::Texture && desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
-        throw std::runtime_error(std::format("A texture of {} mip levels comes with the pixels of each, not of {}.", desc.mipLevels, desc.levels.size()));
-    }
-}
-
 void Device::writeLevel(WGPUTexture texture, int level, int width, int height, int depth, PixelFormat format, std::span<const std::byte> pixels) {
     const std::size_t rowBytes = static_cast<std::size_t>(width) * ImageInfo::getBytesPerPixel(format);
     const std::size_t bytes = rowBytes * static_cast<std::size_t>(height) * static_cast<std::size_t>(depth);
-    if (pixels.size() < bytes) {
-        throw std::runtime_error(std::format("The mip level {} of a {}x{} image holds {} bytes, not {}.", level, width, height, bytes, pixels.size()));
-    }
-
     WGPUTexelCopyTextureInfo destination = WGPU_TEXEL_COPY_TEXTURE_INFO_INIT;
     destination.texture = texture;
     destination.mipLevel = static_cast<std::uint32_t>(level);
@@ -222,7 +184,7 @@ void Device::writeLevel(WGPUTexture texture, int level, int width, int height, i
 }
 
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
-    validateImage(desc);
+    ImageRules::check(desc, capabilities);
 
     WGPUTextureDescriptor descriptor = WGPU_TEXTURE_DESCRIPTOR_INIT;
     descriptor.label = Conversion::toText(desc.label);
@@ -244,6 +206,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         break;
     }
 
+    holdRetirements(2);
     WGPUTexture texture = wgpuDeviceCreateTexture(device, &descriptor);
 
     // Draws sample the depth of a depth stencil image, and a multisampled image as one flat image.
@@ -276,6 +239,7 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     descriptor.lodMaxClamp = std::max(desc.minLod, desc.maxLod);
     descriptor.compare = desc.compare ? Conversion::toCompare(*desc.compare) : WGPUCompareFunction_Undefined;
     descriptor.maxAnisotropy = static_cast<std::uint16_t>(linear ? std::clamp(desc.maxAnisotropy, 1, 16) : 1);
+    holdRetirements(1);
     return {samplers.add({.sampler = wgpuDeviceCreateSampler(device, &descriptor)})};
 }
 
@@ -288,6 +252,7 @@ WGPUShaderModule Device::acquireModule(std::string_view source, std::string_view
         WGPUShaderModuleDescriptor descriptor = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
         descriptor.nextInChain = &code.chain;
         descriptor.label = Conversion::toText(label);
+        holdRetirements(1);
         found = modules.emplace(std::string(source), ShaderModule{.module = wgpuDeviceCreateShaderModule(device, &descriptor)}).first;
     }
 
@@ -400,10 +365,11 @@ WGPUPipelineLayout Device::getPipelineLayout(WGPUBindGroupLayout blocks, WGPUBin
 
 // WebGPU programs of Haylen keep their uniform blocks in bind group 0 and their textures and samplers in bind group 1, as the shader compiler writes them.
 gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
+    ProgramSlots::check(desc);
     const bool blocksInGroupZero = std::ranges::all_of(desc.blocks, [](const BlockBinding& block) { return block.set == 0; });
     const bool imagesInGroupOne = std::ranges::all_of(desc.textures, [](const TextureBinding& texture) { return texture.set == 1; }) && std::ranges::all_of(desc.samplers, [](const SamplerBinding& sampler) { return sampler.set == 1; });
     if (!blocksInGroupZero || !imagesInGroupOne) {
-        throw std::runtime_error(std::format("The program \"{}\" places its bindings in other bind groups than the WebGPU programs of Haylen, which keep uniform blocks in group 0 and textures and samplers in group 1.", desc.label));
+        throw ContractError(ContractError::Rule::Program);
     }
 
     ProgramRecord record{.vertexEntry = std::string(desc.vertex.entry), .fragmentEntry = std::string(desc.fragment.entry), .textures = {desc.textures.begin(), desc.textures.end()}, .samplers = {desc.samplers.begin(), desc.samplers.end()}};
@@ -411,6 +377,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     record.fragment = acquireModule(desc.fragment.source, desc.label, record.fragmentSource);
     ++modules.find(*record.vertexSource)->second.programs;
     ++modules.find(*record.fragmentSource)->second.programs;
+    holdRetirements(2);
     wgpuShaderModuleAddRef(record.vertex);
     wgpuShaderModuleAddRef(record.fragment);
 
@@ -515,6 +482,7 @@ WGPURenderPipeline Device::createPipeline(const PipelineDesc& desc) {
     descriptor.multisample.count = static_cast<std::uint32_t>(desc.swapchain ? swapchainSamples : desc.sampleCount);
     descriptor.multisample.alphaToCoverageEnabled = desc.alphaToCoverage ? 1U : 0U;
     descriptor.fragment = &fragment;
+    holdRetirements(1);
     return wgpuDeviceCreateRenderPipeline(device, &descriptor);
 }
 
@@ -540,7 +508,17 @@ void Device::rebuildSwapchainPipelines() {
     // clang-format on
 }
 
+// Every handle that a destroy retires later holds its place in the list from the moment the device makes it, so a destroy never allocates.
+void Device::holdRetirements(std::size_t count) {
+    retirable += count;
+    const std::size_t needed = retired.size() + retirable;
+    if (retired.capacity() < needed) {
+        retired.reserve(std::max(needed, retired.capacity() * 2));
+    }
+}
+
 void Device::retire(Retired::Kind kind, void* handle) noexcept {
+    --retirable;
     retired.push_back({.kind = kind, .handle = handle});
 }
 
@@ -696,6 +674,7 @@ WGPUTextureView Device::getAttachmentView(ImageRecord& image, int mipLevel, int 
     descriptor.mipLevelCount = 1;
     descriptor.baseArrayLayer = static_cast<std::uint32_t>(viewLayer);
     descriptor.arrayLayerCount = 1;
+    holdRetirements(1);
     WGPUTextureView view = wgpuTextureCreateView(image.texture, &descriptor);
     image.attachments.emplace_back(key, view);
     return view;
@@ -816,15 +795,32 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     pass = wgpuCommandEncoderBeginRenderPass(encoder, &descriptor);
 }
 
+// A swapchain pass of a frame without a canvas to draw into records nothing, while a call outside any pass breaks the contract.
+bool Device::isRecordingPass() const {
+    if (pass == nullptr && !skipping) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    return pass != nullptr;
+}
+
 void Device::applyViewport(const math::Rect& pixels) {
-    if (pass != nullptr) {
-        wgpuRenderPassEncoderSetViewport(pass, pixels.x, pixels.y, std::max(pixels.width, 0.0F), std::max(pixels.height, 0.0F), 0.0F, 1.0F);
+    if (pixels.width < 0.0F || pixels.height < 0.0F) {
+        throw ContractError(ContractError::Rule::Draw);
+    }
+
+    if (isRecordingPass()) {
+        wgpuRenderPassEncoderSetViewport(pass, pixels.x, pixels.y, pixels.width, pixels.height, 0.0F, 1.0F);
     }
 }
 
 // WebGPU keeps the scissor inside the attachments, which a rectangle that reaches past them is cut to.
 void Device::applyScissor(const math::Rect& pixels) {
-    if (pass == nullptr) {
+    if (pixels.width < 0.0F || pixels.height < 0.0F) {
+        throw ContractError(ContractError::Rule::Draw);
+    }
+
+    if (!isRecordingPass()) {
         return;
     }
 
@@ -836,7 +832,7 @@ void Device::applyScissor(const math::Rect& pixels) {
 }
 
 void Device::applyPipeline(Pipeline pipeline) {
-    if (pass == nullptr) {
+    if (!isRecordingPass()) {
         return;
     }
 
@@ -852,7 +848,7 @@ void Device::applyPipeline(Pipeline pipeline) {
 }
 
 void Device::applyBindings(const Bindings& value) {
-    if (pass == nullptr) {
+    if (!isRecordingPass()) {
         return;
     }
 
@@ -877,7 +873,7 @@ void Device::applyBindings(const Bindings& value) {
 
 // A frame whose uniforms outgrow the chunk of the ring moves on to the next one, and the blocks that draws still read move with them, so one bind group reaches all of them.
 void Device::applyUniforms(int slot, std::span<const std::byte> data) {
-    if (pass == nullptr) {
+    if (!isRecordingPass()) {
         return;
     }
 
@@ -922,13 +918,13 @@ void Device::carryUniforms() noexcept {
 }
 
 void Device::applyStencilReference(std::uint8_t value) {
-    if (pass != nullptr) {
+    if (isRecordingPass()) {
         wgpuRenderPassEncoderSetStencilReference(pass, value);
     }
 }
 
 void Device::applyBlendColor(math::Color value) {
-    if (pass != nullptr) {
+    if (isRecordingPass()) {
         const WGPUColor color = Conversion::toColor(value);
         wgpuRenderPassEncoderSetBlendConstant(pass, &color);
     }
@@ -1060,7 +1056,7 @@ void Device::bindIndexBuffer(WGPUIndexFormat format) {
 }
 
 void Device::draw(int first, int count, int instances) {
-    if (pass == nullptr) {
+    if (!isRecordingPass()) {
         return;
     }
 
@@ -1079,7 +1075,7 @@ void Device::draw(int first, int count, int instances) {
 }
 
 void Device::endPass() {
-    if (pass != nullptr) {
+    if (isRecordingPass()) {
         wgpuRenderPassEncoderEnd(pass);
         wgpuRenderPassEncoderRelease(pass);
         pass = nullptr;
@@ -1108,10 +1104,12 @@ void Device::popDebugGroup() {
         return;
     }
 
-    if (encoderGroups > 0) {
-        wgpuCommandEncoderPopDebugGroup(encoder);
-        --encoderGroups;
+    if (encoderGroups == 0) {
+        throw ContractError(ContractError::Rule::DebugGroup);
     }
+
+    wgpuCommandEncoderPopDebugGroup(encoder);
+    --encoderGroups;
 }
 
 // The uniforms of the frame reach the GPU through the queue before the commands that read them, and what the frame destroyed goes to WebGPU once the commands that may record it are submitted.
@@ -1192,23 +1190,26 @@ void Device::detachSurface() {
     swapchain.reset();
 }
 
+// A window that comes back with another sample count gives it to the swapchain pipelines and to the canvases beyond it, which draw through those pipelines.
 void Device::attachSurface(const Surface& surface) {
-    swapchain = std::make_unique<Swapchain>(connection->getInstance(), connection->getAdapter(), device, surface);
-    if (swapchain->getFormat() == swapchainFormat && swapchain->getSampleCount() == swapchainSamples) {
+    swapchain = std::make_unique<Swapchain>(connection->getInstance(), device, surface, swapchainFormat, surface.sampleCount);
+    if (swapchain->getSampleCount() == swapchainSamples) {
         return;
     }
 
-    swapchainFormat = swapchain->getFormat();
     swapchainSamples = swapchain->getSampleCount();
+    for (const std::unique_ptr<Swapchain>& added : surfaces) {
+        if (added != nullptr) {
+            added->setSampleCount(swapchainSamples);
+        }
+    }
+
     rebuildSwapchainPipelines();
 }
 
-// Another canvas draws through the swapchain pipelines only in the format and with the samples of the canvas of the window.
+// Another canvas draws through the swapchain pipelines, in the format that the browser prefers for every canvas and with the samples of the canvas of the window.
 int Device::addSurface(const Surface& surface) {
-    auto chain = std::make_unique<Swapchain>(connection->getInstance(), connection->getAdapter(), device, surface);
-    if (chain->getFormat() != swapchainFormat || chain->getSampleCount() != swapchainSamples) {
-        throw std::runtime_error("The canvas takes another format or another sample count than the canvas of the window, so the pipelines of the window cannot draw into it.");
-    }
+    auto chain = std::make_unique<Swapchain>(connection->getInstance(), device, surface, swapchainFormat, swapchainSamples);
 
     const auto free = std::ranges::find_if(surfaces, [](const std::unique_ptr<Swapchain>& slot) { return slot == nullptr; });
     if (free != surfaces.end()) {

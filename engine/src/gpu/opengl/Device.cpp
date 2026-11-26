@@ -1,16 +1,20 @@
 #include "gpu/opengl/Device.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <format>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 
 #include "gpu/DriverIssues.hpp"
 #include "gpu/ImageInfo.hpp"
+#include "gpu/ImageRules.hpp"
+#include "gpu/ProgramSlots.hpp"
 #include "gpu/opengl/PixelReadback.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/gpu/ContractError.hpp"
@@ -113,10 +117,11 @@ void Device::applyDriverIssues() {
     const std::optional<std::string_view> noGpuDisjoint = DriverIssues::find(driver, DriverIssues::Issue::NoGpuDisjoint);
     const std::optional<std::string_view> callingThread = DriverIssues::find(driver, DriverIssues::Issue::CompileOnCallingThread);
     const std::optional<std::string_view> layerClears = DriverIssues::find(driver, DriverIssues::Issue::ClearLayersByDrawing);
+    const std::optional<std::string_view> sampleClears = DriverIssues::find(driver, DriverIssues::Issue::ClearSamplesByDrawing);
     const std::optional<std::string_view> noAnisotropy = DriverIssues::find(driver, DriverIssues::Issue::NoAnisotropy);
     const std::optional<std::string_view> depthWithStencil = DriverIssues::find(driver, DriverIssues::Issue::MakeFloatDepthWithStencil);
 
-    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears, noAnisotropy, depthWithStencil}) {
+    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears, sampleClears, noAnisotropy, depthWithStencil}) {
         if (reason) {
             core::Log::info("The OpenGL device works around its driver. {}", *reason);
         }
@@ -126,6 +131,8 @@ void Device::applyDriverIssues() {
     anisotropic = !noAnisotropy.has_value();
     flushEachPass = passFlushes.has_value();
     floatDepthWithStencil = depthWithStencil.has_value();
+    layersClearedByDrawing = layerClears.has_value();
+    samplesClearedByDrawing = sampleClears.has_value();
 
     if (noGpuDisjoint) {
         timer.setReadsDisjoint(false);
@@ -135,8 +142,8 @@ void Device::applyDriverIssues() {
         gl.maxShaderCompilerThreads(0);
     }
 
-    if (layerClears) {
-        layerClear = std::make_unique<LayerClear>(gl, state);
+    if (layersClearedByDrawing || samplesClearedByDrawing) {
+        drawnClear = std::make_unique<DrawnClear>(gl, state);
     }
 }
 
@@ -148,14 +155,11 @@ void Device::readCapabilities() {
     gl.getIntegerv(Gl::kMaxArrayTextureLayers, &value);
     capabilities.maxArrayLayers = value;
     gl.getIntegerv(Gl::kMax3dTextureSize, &value);
-    maxVolumeSize = value;
+    capabilities.maxVolumeSize = value;
     gl.getIntegerv(Gl::kMaxCubeMapTextureSize, &value);
-    maxCubeSize = value;
-    gl.getIntegerv(Gl::kMaxSamples, &value);
-    capabilities.maxSampleCount = std::max(1, value);
+    capabilities.maxCubeSize = value;
     capabilities.originTopLeft = false;
     capabilities.independentBlend = features.drawBuffersIndexed;
-    capabilities.multisampledRenderTargets = true;
     capabilities.gpuTiming = timer.isAvailable();
 
     // Every flavour makes and samples images of every format, and OpenGL ES and WebGL2 draw into float formats and filter 32-bit floats only with their extensions.
@@ -165,12 +169,28 @@ void Device::readCapabilities() {
         capabilities.renderFormats[index] = isRenderable(pixel);
         capabilities.blendableFormats[index] = !pixel.depth && isRenderable(pixel) && (!pixel.floating || features.floatBlend);
         capabilities.filterableFormats[index] = !pixel.depth && (!pixel.floating || (features.textureFloatLinear && !noFloatFiltering));
+        capabilities.sampleCounts[index] = isRenderable(pixel) ? getSampleCounts(pixel) : std::uint8_t{0};
     }
 
     if (features.anisotropicFiltering && anisotropic) {
         gl.getIntegerv(Gl::kMaxTextureMaxAnisotropy, &value);
         maxAnisotropy = static_cast<float>(std::max(1, value));
     }
+}
+
+// The context lists the sample counts of the multisampled renderbuffers of each format, which the multisampled attachments of the device are, into a list that it fills from the start, and one sample stands for every format it draws into. WebGL2 answers only the list itself, so the device asks for no count of its entries.
+std::uint8_t Device::getSampleCounts(const Conversions::Pixel& pixel) const {
+    std::array<Gl::Int, 16> listed{};
+    gl.getInternalformativ(Gl::kRenderbuffer, pixel.internalFormat, Gl::kSamples, static_cast<Gl::Sizei>(listed.size()), listed.data());
+
+    std::uint8_t counts = 1;
+    for (const Gl::Int samples : listed) {
+        if (samples == 2 || samples == 4 || samples == 8) {
+            counts |= static_cast<std::uint8_t>(samples);
+        }
+    }
+
+    return counts;
 }
 
 // OpenGL draws into every format of the RHI, and OpenGL ES and WebGL2 draw into float formats only with the extensions that make them renderable.
@@ -249,44 +269,6 @@ Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     return {buffers.add(BufferRecord{.name = name, .size = size, .usage = desc.usage, .index = desc.index})};
 }
 
-void Device::checkLevels(const ImageDesc& desc, const Conversions::Pixel& pixel) const {
-    if (desc.kind != ImageKind::Texture) {
-        if (!desc.levels.empty()) {
-            throw ContractError(ContractError::Rule::Image);
-        }
-
-        return;
-    }
-
-    if (desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    for (int level = 0; level < desc.mipLevels; ++level) {
-        const int layers = desc.type == TextureType::Volume ? getLevelSize(desc.layers, level) : desc.layers;
-        const std::size_t expected = static_cast<std::size_t>(getLevelSize(desc.width, level)) * static_cast<std::size_t>(getLevelSize(desc.height, level)) * static_cast<std::size_t>(layers) * pixel.bytes;
-        if (desc.levels[static_cast<std::size_t>(level)].size() != expected) {
-            throw ContractError(ContractError::Rule::Image);
-        }
-    }
-}
-
-void Device::checkSampleCount(const ImageDesc& desc, const Conversions::Pixel& pixel) const {
-    if (desc.kind != ImageKind::RenderTarget && desc.kind != ImageKind::DepthStencil) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.type != TextureType::Flat || desc.mipLevels != 1) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    Gl::Int largest = 0;
-    gl.getInternalformativ(Gl::kRenderbuffer, pixel.internalFormat, Gl::kSamples, 1, &largest);
-    if (desc.sampleCount > largest) {
-        throw std::runtime_error(std::format("The image \"{}\" takes {} samples, and the OpenGL context draws its format with at most {}.", desc.label, desc.sampleCount, largest));
-    }
-}
-
 Gl::Uint Device::makeRenderbuffer(const ImageDesc& desc, const Conversions::Pixel& pixel) {
     Gl::Uint name = 0;
     gl.genRenderbuffers(1, &name);
@@ -352,51 +334,6 @@ void Device::uploadRegion(const ImageRecord& record, const Region& region, std::
     gl.texSubImage2D(Gl::kTexture2d, 0, region.x, region.y, region.width, region.height, pixel.format, pixel.type, reinterpret_cast<const void*>(source));
 }
 
-void Device::checkImage(const ImageDesc& desc, const Conversions::Pixel& pixel) const {
-    if (desc.width <= 0 || desc.height <= 0 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize || desc.layers < 1 || desc.mipLevels < 1 || desc.sampleCount < 1) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.type == TextureType::Flat && desc.layers != 1) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.type == TextureType::Cube && (desc.layers != 6 || desc.width != desc.height)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.type == TextureType::Cube && desc.width > maxCubeSize) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.type == TextureType::Array && desc.layers > capabilities.maxArrayLayers) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.type == TextureType::Volume && std::max({desc.width, desc.height, desc.layers}) > maxVolumeSize) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if (desc.mipLevels > ImageInfo::getMaxMipLevels(desc)) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    if ((desc.kind == ImageKind::DepthStencil) != pixel.depth) {
-        throw ContractError(ContractError::Rule::Image);
-    }
-
-    const bool attachment = desc.kind == ImageKind::RenderTarget || desc.kind == ImageKind::DepthStencil;
-    if (attachment && !isRenderable(pixel)) {
-        throw std::runtime_error(std::format("The OpenGL context cannot draw into the format of the image \"{}\".", desc.label));
-    }
-
-    checkLevels(desc, pixel);
-
-    if (desc.sampleCount > 1) {
-        checkSampleCount(desc, pixel);
-    }
-}
-
 void Device::uploadTexture(const ImageDesc& desc, const ImageRecord& record) {
     state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
 
@@ -414,7 +351,7 @@ void Device::uploadTexture(const ImageDesc& desc, const ImageRecord& record) {
 
 Device::Image Device::makeImage(const ImageDesc& desc) {
     const Conversions::Pixel pixel = Conversions::getPixel(desc.format, gl.isDesktop());
-    checkImage(desc, pixel);
+    ImageRules::check(desc, capabilities);
 
     ImageRecord record{.target = desc.sampleCount > 1 ? Gl::kRenderbuffer : Conversions::toTextureTarget(desc.type), .type = desc.type, .format = desc.format, .pixel = pixel, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .kind = desc.kind};
     if (record.target == Gl::kRenderbuffer) {
@@ -463,6 +400,7 @@ Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
 }
 
 Device::Program Device::makeProgram(const ProgramDesc& desc) {
+    ProgramSlots::check(desc);
     auto program = std::make_shared<ShaderProgram>(gl, state, desc);
     debug.label(Gl::kProgram, program->getName(), desc.label);
     return {programs.add(std::move(program))};
@@ -621,7 +559,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
-    if (offset + data.size() > record.size) {
+    if (offset % 4 != 0 || offset + data.size() > record.size) {
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
@@ -918,7 +856,7 @@ void Device::loadAttachments() {
         return;
     }
 
-    clearLayersByDrawing();
+    clearByDrawing();
     state.prepareClear();
 
     for (std::size_t index = 0; index < pass.colorCount; ++index) {
@@ -950,22 +888,23 @@ void Device::loadAttachments() {
     }
 }
 
-void Device::clearLayersByDrawing() {
+void Device::clearByDrawing() {
     for (std::size_t index = 0; index < pass.colorCount; ++index) {
         const ColorAttachment& color = pass.colors[index];
         if (color.load == Load::Clear && isClearedByDrawing(color)) {
-            layerClear->clear(index, pass.colorCount, color.clear, pass.width, pass.height);
+            drawnClear->clear(index, pass.colorCount, color.clear, pass.width, pass.height);
         }
     }
 }
 
 bool Device::isClearedByDrawing(const ColorAttachment& color) {
-    if (!layerClear || color.layer == 0) {
-        return false;
+    const ImageRecord& record = images.get(color.image.id);
+    if (samplesClearedByDrawing && record.sampleCount > 1) {
+        return true;
     }
 
-    const Gl::Enum target = images.get(color.image.id).target;
-    return target == Gl::kTexture2dArray || target == Gl::kTexture3d;
+    const bool layered = record.target == Gl::kTexture2dArray || record.target == Gl::kTexture3d;
+    return layersClearedByDrawing && layered && color.layer > 0;
 }
 
 StateCache::Rectangle Device::toWindow(const math::Rect& pixels) const noexcept {
@@ -1282,7 +1221,7 @@ void Device::detachSurface() {
     currentSurface = -1;
 }
 
-// The objects of the device live in its context, so the platform keeps the context while the window is away and hands the same one back with the new drawable.
+// The objects of the device live in its context, so the platform keeps the context while the window is away and hands the same one back with the new drawable, whose size replaces any size that the window had before it went.
 void Device::attachSurface(const Surface& surface) {
     if (surface.kind != Surface::Kind::Gl || surface.gl != surfaceContext) {
         throw ContractError(ContractError::Rule::Context);
@@ -1292,6 +1231,7 @@ void Device::attachSurface(const Surface& surface) {
     surfaceContext->setSwapInterval(surface.vsync ? 1 : 0);
     currentSurface = 0;
     surfaceSize = surface.size;
+    nextSurfaceSize.reset();
     scaleDrawable(surfaceScaled, surface.size);
     surfaceAttached = true;
     surfaceVsync = surface.vsync;
