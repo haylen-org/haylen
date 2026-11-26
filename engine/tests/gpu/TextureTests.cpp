@@ -878,6 +878,10 @@ TEST_P(GpuTextureTest, DrawsDepthIntoOneLayerOfAnArray) {
         GTEST_SKIP() << "The device samples no image of 32-bit float depth.";
     }
 
+    if (!capabilities().depthLayers) {
+        GTEST_SKIP() << "The driver of the device lands the depth drawn into a later layer in another layer, as the table of driver issues lists, so the device draws depth only into the first layer.";
+    }
+
     const Device::Image cascades = makeImage({.type = Device::TextureType::Array, .width = 8, .height = 8, .layers = 3, .format = format, .kind = Device::ImageKind::DepthStencil, .label = "haylen-test-cascades"});
     const Device::Pipeline writing = device().makePipeline({.program = program("depth"), .depthStencil = {.format = format, .depthCompare = Device::CompareFunction::Always, .depthWrite = true}, .label = "haylen-test-depth-only"});
     for (int layer = 0; layer < 3; ++layer) {

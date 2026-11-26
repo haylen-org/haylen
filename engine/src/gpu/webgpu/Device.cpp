@@ -85,6 +85,7 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
     result.maxVolumeSize = static_cast<int>(limits.maxTextureDimension3D);
     result.maxCubeSize = static_cast<int>(limits.maxTextureDimension2D);
     result.cubeArrays = true;
+    result.depthLayers = true;
     result.imageViews = true;
     result.originTopLeft = true;
     result.independentBlend = true;

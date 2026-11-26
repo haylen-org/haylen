@@ -46,7 +46,7 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 
 ```cmake
 haylen_port(
-  CONTRACT 18
+  CONTRACT 19
   PLATFORM console
   SYSTEM_API posix
   THREADS ON
@@ -117,7 +117,7 @@ A port with `SDK ON` installs the SDK of its platform like any other platform, w
 ```json
 {
   "platform": "console",
-  "contract": 18,
+  "contract": 19,
   "capabilities": ["dynamicLibraries"],
   "hostTools": ["port-shaders"],
   "appFunction": "console_add_app",

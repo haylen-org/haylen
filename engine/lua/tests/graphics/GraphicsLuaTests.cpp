@@ -179,7 +179,7 @@ TEST(GraphicsLuaTest, CreatesTexturesOfEveryKind) {
     EXPECT_NE(fixture.lua("return graphics.newTexture(2, 2, {kind = 'array', layers = 2, pixels = string.rep('\\0', 16)})").find("The level 1 of a texture of 2 by 2 pixels of the format \"rgba8\" holds 16 bytes, and it needs 32."), std::string::npos);
     EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {kind = 'volume', depth = 2, format = 'bc7', levels = {string.rep('\\0', 32)}})").find("A texture of the kind \"volume\" holds no blocks of the format \"bc7\", since compressed formats hold flat blocks."), std::string::npos);
     EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {kind = 'sphere'})").find("sphere"), std::string::npos);
-    EXPECT_EQ(fixture.lua("local c = graphics.capabilities() return tostring(c.cubeArrays) .. ' ' .. tostring(c.imageViews) .. ' ' .. tostring(graphics.formatSupport('rgba8').mipmaps) .. ' ' .. tostring(graphics.formatSupport('bc7').mipmaps)"), "true true true false");
+    EXPECT_EQ(fixture.lua("local c = graphics.capabilities() return tostring(c.cubeArrays) .. ' ' .. tostring(c.imageViews) .. ' ' .. tostring(c.depthLayers) .. ' ' .. tostring(graphics.formatSupport('rgba8').mipmaps) .. ' ' .. tostring(graphics.formatSupport('bc7').mipmaps)"), "true true true true false");
 }
 
 // A view shows a range of the mip levels and layers of a texture as a texture of its own kind, from the whole texture by default, and refuses a range or a kind that the texture does not have.

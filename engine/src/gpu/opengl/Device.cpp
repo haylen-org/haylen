@@ -122,8 +122,9 @@ void Device::applyDriverIssues() {
     const std::optional<std::string_view> sampleClears = DriverIssues::find(driver, DriverIssues::Issue::ClearSamplesByDrawing);
     const std::optional<std::string_view> noAnisotropy = DriverIssues::find(driver, DriverIssues::Issue::NoAnisotropy);
     const std::optional<std::string_view> depthWithStencil = DriverIssues::find(driver, DriverIssues::Issue::MakeFloatDepthWithStencil);
+    const std::optional<std::string_view> laterDepthLayers = DriverIssues::find(driver, DriverIssues::Issue::NoDepthLayers);
 
-    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears, sampleClears, noAnisotropy, depthWithStencil}) {
+    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears, sampleClears, noAnisotropy, depthWithStencil, laterDepthLayers}) {
         if (reason) {
             core::Log::info("The OpenGL device works around its driver. {}", *reason);
         }
@@ -135,6 +136,7 @@ void Device::applyDriverIssues() {
     floatDepthWithStencil = depthWithStencil.has_value();
     laterLayersByDrawing = layerClears.has_value();
     samplesClearedByDrawing = sampleClears.has_value();
+    depthLayers = !laterDepthLayers.has_value();
 
     if (noGpuDisjoint) {
         timer.setReadsDisjoint(false);
@@ -165,6 +167,7 @@ void Device::readCapabilities() {
     gl.getIntegerv(Gl::kMaxCubeMapTextureSize, &value);
     capabilities.maxCubeSize = value;
     capabilities.cubeArrays = features.cubeArrays;
+    capabilities.depthLayers = depthLayers;
     capabilities.imageViews = features.textureView;
     capabilities.originTopLeft = false;
     capabilities.depthRange = features.clipControl ? math::Mat4::DepthRange::ZeroToOne : math::Mat4::DepthRange::NegativeOneToOne;
@@ -994,7 +997,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.depthStencil) {
         const DepthStencilAttachment& depthStencil = *desc.depthStencil;
         const ImageRecord& record = images.get(depthStencil.image.id);
-        if (record.description.isView() || record.description.kind != ImageKind::DepthStencil) {
+        if (record.description.isView() || record.description.kind != ImageKind::DepthStencil || (depthStencil.layer > 0 && !capabilities.depthLayers)) {
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 

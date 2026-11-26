@@ -70,6 +70,7 @@ Returns a table of what the GPU device of this app can do, as the [RHI guide](..
 | `maxCubeSize` | integer | The largest side in pixels of the square faces of a cube texture, such as the faces of an environment map. |
 | `cubeArrays` | boolean | Whether textures of the kind `'cubeArray'` exist and shaders sample them. OpenGL ES before 3.2 and WebGL2 have none. |
 | `imageViews` | boolean | Whether [`texture:view`](#textureviewoptions) makes views of textures. OpenGL ES without a texture view extension and WebGL2 have none. |
+| `depthLayers` | boolean | Whether a pass draws depth into a layer after the first of a depth texture of layers, such as the later cascades of shadow maps. It is `true` on every device but one driver of the [driver issues](../graphics/rhi.md#driver-issues). |
 | `originTopLeft` | boolean | Whether the first row of a render target is its top row. It is `false` on OpenGL, OpenGL ES and WebGL2. |
 | `depthRange` | string | The range of depth of clip space, as [`graphics.depthRange()`](#graphicsdepthrange) returns it. |
 | `independentBlend` | boolean | Whether each color target of a draw takes a blend of its own. |

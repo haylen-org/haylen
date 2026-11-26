@@ -6,7 +6,7 @@
 
 namespace haylen::gpu {
 
-const std::array<DriverIssues::Entry, 11> DriverIssues::kEntries{{
+const std::array<DriverIssues::Entry, 12> DriverIssues::kEntries{{
     {
         .api = Device::Api::Vulkan,
         .issue = Issue::AvoidApi,
@@ -61,6 +61,13 @@ const std::array<DriverIssues::Entry, 11> DriverIssues::kEntries{{
         .renderer = "Android Emulator OpenGL ES Translator (Google SwiftShader)",
         .version = "SwiftShader 4.0.0",
         .reason = "The OpenGL ES translator of the Android emulator on SwiftShader 4.0.0.1 clears, reads and blits the first layer of an array or a volume texture whatever layer the framebuffer attaches, while its draws reach that layer, which the x86_64 images of Android 17 showed on a Linux host, so a pass clears an attachment at a later layer by drawing.",
+    },
+    {
+        .api = Device::Api::OpenGlEs,
+        .issue = Issue::NoDepthLayers,
+        .renderer = "Android Emulator OpenGL ES Translator (Google SwiftShader)",
+        .version = "SwiftShader 4.0.0",
+        .reason = "The OpenGL ES translator of the Android emulator on SwiftShader 4.0.0.1 lands the draws of a pass into a layer after the first of a depth texture of an array in another layer, for every depth format, so the depth drawn into the third layer of an array of three reads in the second one and the third one keeps none, which the x86_64 images of Android 17 showed on a Linux host, so a pass draws depth only into the first layer there.",
     },
     {
         .api = Device::Api::OpenGlEs,

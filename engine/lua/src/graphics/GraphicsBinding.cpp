@@ -396,13 +396,14 @@ void GraphicsBinding::setField(lua_State* L, const char* name, bool value) {
 
 int GraphicsBinding::capabilities(lua_State* L) {
     const haylen::gpu::Device::Capabilities& device = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities();
-    lua_createtable(L, 0, 17);
+    lua_createtable(L, 0, 18);
     setField(L, "maxTextureSize", device.maxImageSize);
     setField(L, "maxArrayLayers", device.maxArrayLayers);
     setField(L, "maxVolumeSize", device.maxVolumeSize);
     setField(L, "maxCubeSize", device.maxCubeSize);
     setField(L, "cubeArrays", device.cubeArrays);
     setField(L, "imageViews", device.imageViews);
+    setField(L, "depthLayers", device.depthLayers);
     setField(L, "originTopLeft", device.originTopLeft);
     lua::Stack::push(L, device.depthRange);
     lua_setfield(L, -2, "depthRange");

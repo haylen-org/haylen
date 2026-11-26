@@ -254,6 +254,8 @@ class Device final : public gpu::Device {
     bool flushEachPass = false;
     // Whether textures of 32-bit float depth take a stencil plane, which the driver issues ask of a driver whose lookups read 32-bit float depth in other places than its draws write it.
     bool floatDepthWithStencil = false;
+    // Whether a pass draws depth into a layer after the first, which the driver issues forbid on a driver whose draws into such a layer land in another one.
+    bool depthLayers = true;
     DebugOutput debug;
     GpuTimer timer;
     std::unique_ptr<UploadRing> ring;

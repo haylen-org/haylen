@@ -856,6 +856,24 @@ TEST_F(NullDeviceTest, AttachesDepthAndResolvesAtAMipLevelAndALayer) {
     device.commit();
 }
 
+// A device whose driver lands depth drawn into a later layer in another one draws depth only into the first layer of an array or a cube, and every color layer still.
+TEST_F(NullDeviceTest, DrawsDepthIntoLaterLayersOnlyWithTheCapability) {
+    Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
+    capabilities.depthLayers = false;
+    NullDevice device(Device::Language::None, capabilities);
+    const Device::Image cascades = device.makeImage({.type = Device::TextureType::Array, .width = 4, .height = 4, .layers = 3, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "cascades"});
+    const Device::Image faces = device.makeImage({.type = Device::TextureType::Cube, .width = 4, .height = 4, .layers = 6, .format = Device::PixelFormat::Depth16, .kind = Device::ImageKind::DepthStencil, .label = "faces"});
+    const Device::Image colors = device.makeImage({.type = Device::TextureType::Array, .width = 4, .height = 4, .layers = 3, .kind = Device::ImageKind::RenderTarget, .label = "colors"});
+    EXPECT_NO_THROW(device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = cascades}}));
+    device.endPass();
+    const std::array<Device::ColorAttachment, 1> later{{{.image = colors, .layer = 2}}};
+    EXPECT_NO_THROW(device.beginPass({.colors = later}));
+    device.endPass();
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = cascades, .layer = 2}}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = faces, .layer = 1}}); }), gpu::ContractError::Rule::PassAttachments);
+    device.commit();
+}
+
 // A draw samples the mip levels and layers of an image that its pass neither draws nor resolves into, through a view of them, while the image itself and a view of a mip level and a layer that the pass reaches stay out of its bindings.
 TEST_F(NullDeviceTest, SamplesTheMipLevelsAndLayersThatThePassDoesNotReach) {
     NullDevice device;

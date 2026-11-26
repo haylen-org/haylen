@@ -162,6 +162,7 @@ void Device::readCapabilities() {
 
     // Feature level 10_1 brings cube arrays, and a view of a range of the mip levels and layers of an image is a shader resource view.
     capabilities.cubeArrays = true;
+    capabilities.depthLayers = true;
     capabilities.imageViews = true;
 
     // Feature level 11_0 brings storage buffers and the arguments of indirect draws, and a constant buffer view reads at most 4096 constants of 16 bytes.

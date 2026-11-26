@@ -453,6 +453,9 @@ class Device {
         // Whether `makeView` makes views of ranges of the mip levels and layers of images, which OpenGL ES without a texture view extension and WebGL2 lack.
         bool imageViews = false;
 
+        // Whether a pass draws depth into a layer after the first of a depth stencil image of an array, a cube or a cube array, which a driver of the table of driver issues lacks.
+        bool depthLayers = false;
+
         // Whether the first row of a render target is its top row, as on Metal, Direct3D, Vulkan and WebGPU, rather than its bottom row, as on OpenGL.
         bool originTopLeft = true;
 
@@ -685,7 +688,7 @@ class Device {
         int resolveLayer = 0;
     };
 
-    // The depth and stencil attachment of an offscreen pass, at a mip level and a layer of its image, such as one cascade of an array of shadow maps or one face of a cube of shadows.
+    // The depth and stencil attachment of an offscreen pass, at a mip level and a layer of its image, such as one cascade of an array of shadow maps or one face of a cube of shadows. A layer after the first needs `Capabilities::depthLayers`.
     struct DepthStencilAttachment {
         Image image{};
         int mipLevel = 0;

@@ -283,6 +283,7 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     made.maxVolumeSize = 2048;
     made.maxCubeSize = made.maxImageSize;
     made.cubeArrays = [metal supportsFamily:MTLGPUFamilyApple4] || !apple;
+    made.depthLayers = true;
     made.imageViews = true;
 
     std::uint8_t counts = 1;

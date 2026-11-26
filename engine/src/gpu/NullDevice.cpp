@@ -25,6 +25,7 @@ Device::Capabilities NullDevice::getDefaultCapabilities() noexcept {
     Capabilities capabilities{.maxImageSize = kMaxImageSize, .maxArrayLayers = kMaxArrayLayers, .maxVolumeSize = kMaxVolumeSize, .maxCubeSize = kMaxImageSize, .originTopLeft = true, .independentBlend = false, .gpuTiming = false, .maxAnisotropy = kMaxAnisotropy, .maxLodBias = kMaxLodBias, .borderColors = true, .storageBuffers = true, .indirectBuffers = true, .maxUniformBlockSize = kMaxUniformBlockSize};
     capabilities.cubeArrays = true;
     capabilities.imageViews = true;
+    capabilities.depthLayers = true;
     for (std::size_t format = 0; format < capabilities.formats.size(); ++format) {
         const auto pixelFormat = static_cast<PixelFormat>(format);
         const bool wide = pixelFormat == PixelFormat::R32Float || pixelFormat == PixelFormat::Rg32Float || pixelFormat == PixelFormat::Rgba32Float;
@@ -454,7 +455,7 @@ void NullDevice::checkDepthStencilAttachment(const DepthStencilAttachment& depth
     }
 
     const ImageInfo::Extent level = depth.getLevelExtent(depthStencil.mipLevel);
-    if (depthStencil.layer < 0 || depthStencil.layer >= level.depth) {
+    if (depthStencil.layer < 0 || depthStencil.layer >= level.depth || (depthStencil.layer > 0 && !features.depthLayers)) {
         throw ContractError(ContractError::Rule::PassAttachments);
     }
 

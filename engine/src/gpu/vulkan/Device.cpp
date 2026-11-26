@@ -133,6 +133,7 @@ void Device::fillCapabilities() {
 
     // Every Vulkan device makes views of ranges of the mip levels and layers of images, and samples cube arrays on a GPU with the feature that the device turns on for them.
     capabilities.cubeArrays = context->getEnabledFeatures().imageCubeArray == VK_TRUE;
+    capabilities.depthLayers = true;
     capabilities.imageViews = true;
 
     // Every Vulkan device binds storage buffers and reads the arguments of indirect draws, and a uniform block reads at most the range of one uniform buffer descriptor.

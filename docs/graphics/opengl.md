@@ -96,6 +96,7 @@ Every call that changes OpenGL state goes through a state cache. The cache knows
 | Validation | With validation on, `KHR_debug` sends the messages of the driver to the log, errors as errors, and names objects and debug groups for GPU debuggers. Contexts without it, such as WebGL2, report errors through `glGetError` at the end of each pass and frame. |
 | Cube arrays | OpenGL 4.3 and OpenGL ES 3.2, whose GLSL ES 3.20 the shader compiler writes for a program that samples a cube array, as the [RHI guide](rhi.md#cube-arrays-on-opengl-es) explains. WebGL2 has none. |
 | Views of images | `glTextureView` of OpenGL 4.3 over the immutable storage that every image of one sample has, and on OpenGL ES with `GL_EXT_texture_view` or `GL_OES_texture_view`. WebGL2 has none. |
+| Depth into later layers | `glFramebufferTextureLayer` of the depth attachment, everywhere but the OpenGL ES translator of the Android emulator on SwiftShader 4.0.0.1, whose draws into a later layer of a depth texture land in another layer, as the [driver issues](rhi.md#driver-issues) list. |
 | Mip generation | `glGenerateMipmap`, for the formats that the context renders into and filters. |
 
 ## Limits
