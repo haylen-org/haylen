@@ -8432,7 +8432,12 @@ Um patch pequeno do SDL passa a tirar os botões e a roda dos eventos de ponteir
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
-- **Progress:** Começou num trabalho próprio. O teste passou na execução 45699086982 e na execução do branch `device-trim`, e falhou na 45711109150. Entre elas mudaram só o identificador do player, a escolha de aparelhos do iOS, a verificação que compila o player e a entrada do UIKit, então o primeiro passo é saber se a falha vem de uma dessas mudanças ou de uma corrida que já existia.
+- **Progress:** A causa está achada, e a engine não tinha defeito: o teclado nunca fecha quando o aparelho gira. Durante a animação do giro, o teclado refaz a sua view, e por um instante todas as leituras de acessibilidade mentem:
+  - a raiz do teclado vem vazia;
+  - a busca do teste falha;
+  - a janela do teclado some da lista de janelas por até meio segundo.
+
+Em 24 rodadas no emulador, 133 amostras feitas durante os giros mostraram o registro do próprio serviço de teclado sempre com `mInputShown=true`. O teste passa a ler esse registro em `dumpsys input_method`, sem repetir e sem esperar mais. O campo existe em toda versão do Android desde a API 27, conferido no código do AOSP de cada versão. Uma versão sem o campo faz o teste falhar com uma frase que diz a versão. Falta rodar a verificação final no emulador e as verificações.
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
