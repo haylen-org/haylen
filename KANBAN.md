@@ -258,6 +258,7 @@
 | **[KB-343 · Os testes parametrizados têm nomes estáveis no CTest](#kb-343)**<br>🟡 medium · `bug` · 2/10 | — | — | — | — | — |
 | **[KB-344 · Os testes não deixam pastas temporárias para trás e não engolem o erro de apagá-las](#kb-344)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-345 · Os builds de Linux linkam com o lld, que usa muito menos memória que o ld do GNU](#kb-345)**<br>🟡 medium · `improvement` · 4/10 | — | — | — | — | — |
+| **[KB-346 · Um dia de Mac na nuvem por mês roda de uma vez todo o lote pesado da Apple](#kb-346)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -8932,6 +8933,30 @@ As medições do pool de links mostraram que o ld do GNU gasta 12,2 GiB para lin
 
 - None
 
+### KB-346
+
+- **Title:** Um dia de Mac na nuvem por mês roda de uma vez todo o lote pesado da Apple
+- **Status:** todo
+- **Type:** improvement
+- **Priority:** medium
+- **Complexity:** 5
+- **Progress:** O pedido de cota de um host dedicado Mac M4 na AWS está aberto, porque a conta tinha cota zero de Macs.
+- **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
+
+#### Description
+
+O dono decidiu que o Mac da nuvem é alugado no máximo um dia por mês, porque a AWS cobra no mínimo 24 horas por host de Mac. O Mac local continua fazendo o trabalho de todo dia, um build por vez. O dia de Mac na nuvem roda de uma vez o lote pesado da Apple que se acumulou: os testes de UI em vários simuladores ao mesmo tempo, as fatias de todas as plataformas da Apple, os benchmarks do Metal, as investigações que pedem muitas repetições, como a do KB-341, e o que mais precisar de um Mac rápido. Para não perder horas do dia alugado, o lote fica pronto antes: a lista do que roda, os pacotes do código, os scripts que montam o Xcode e as ferramentas, e o roteiro de limpeza e de liberação do host no fim.
+
+#### Acceptance criteria
+
+- [ ] A cota de um host de Mac está aprovada na AWS.
+- [ ] O roteiro do dia está pronto antes do aluguel: a lista do lote, os pacotes e os scripts de montagem, execução, coleta e liberação.
+- [ ] O dia roda o lote inteiro e libera o host ao fim das 24 horas, com o custo anotado.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8954,7 +8979,7 @@ As medições do pool de links mostraram que o ld do GNU gasta 12,2 GiB para lin
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-346. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-347. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
