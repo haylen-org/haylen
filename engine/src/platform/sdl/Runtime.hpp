@@ -20,6 +20,7 @@
 #include "platform/GraphicsApiFallback.hpp"
 #include "platform/sdl/Events.hpp"
 #include "platform/sdl/OutputWindows.hpp"
+#include "platform/sdl/PostedEvents.hpp"
 #include "platform/sdl/Window.hpp"
 
 #if defined(__APPLE__)
@@ -224,10 +225,7 @@ class Runtime final {
     std::uint32_t waylandType = 0;
 #endif
 
-    // The events that the platform read on its own, which wait for the event of SDL that keeps their place in the queue.
-    std::uint32_t postedType = 0;
-    std::vector<platform::Event> posted;
-    std::size_t postedRead = 0;
+    PostedEvents posted;
 };
 
 } // namespace haylen::platform::sdl

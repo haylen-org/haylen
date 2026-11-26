@@ -83,15 +83,8 @@ bool Runtime::prepareDevice() {
     return openedDevice != nullptr || gpu::DeviceFactory::prepare(window.getApi(), getDeviceOptions());
 }
 
-// Every posted event has a marker in the queue of SDL, so a marker that SDL refuses takes its event back, which would otherwise reach the app at the marker of the next one.
 void Runtime::post(const platform::Event& event) {
-    posted.push_back(event);
-    SDL_Event marker{};
-    marker.type = postedType;
-    if (!SDL_PushEvent(&marker)) {
-        posted.pop_back();
-        core::Log::error("An event of the platform could not reach the app, since the queue of the events of the window is full.");
-    }
+    posted.post(event);
 }
 
 void Runtime::scroll(math::Vec2 value, bool precise, int modifiers) {
@@ -216,7 +209,7 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
         return failStart("The window system of this machine could not start, so the app cannot open its window.");
     }
 
-    postedType = SDL_RegisterEvents(1);
+    posted.start();
 #if defined(__linux__)
     waylandType = SDL_RegisterEvents(1);
 #endif
@@ -425,14 +418,8 @@ SDL_AppResult Runtime::handle(const SDL_Event& event) {
         return SDL_APP_CONTINUE;
     }
 
-    if (event.type == postedType) {
-        Player::handleEvent(posted[postedRead++]);
-
-        if (postedRead == posted.size()) {
-            posted.clear();
-            postedRead = 0;
-        }
-
+    if (posted.isMarker(event)) {
+        Player::handleEvent(posted.take());
         return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
     }
 

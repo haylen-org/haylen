@@ -10,6 +10,8 @@
 #include <vector>
 
 #include "gpu/support/LoggedErrors.hpp"
+#include "gpu/support/OffscreenSurface.hpp"
+#include "gpu/support/SecondSurface.hpp"
 #include "gpu/vulkan/Device.hpp"
 #include "gpu/vulkan/Swapchain.hpp"
 #include "support/ContractRule.hpp"
@@ -52,6 +54,11 @@ class VulkanDeviceTest : public ::testing::Test {
         }
 
         throw std::runtime_error("The copy of the render target did not finish.");
+    }
+
+    // The device reports the loss of its GPU, as it does once the driver answers that the GPU was lost.
+    static void lose(Device& target) {
+        target.markLost(VK_ERROR_DEVICE_LOST);
     }
 
     void clear(gpu::Device::Image image, math::Color color, gpu::Device::Image resolve = {}) {
@@ -103,6 +110,35 @@ TEST_F(VulkanDeviceTest, ReleasesTheFramebuffersOfDestroyedImages) {
     for (std::size_t index = 0; index < after.size(); ++index) {
         EXPECT_EQ(after[index].used, before[index].used) << after[index].name;
     }
+}
+
+// A frame that the loss of the GPU abandons lets go of the images it took from the swapchains, so the window and the surfaces beyond it go without waiting for a present that never comes.
+TEST_F(VulkanDeviceTest, LetsGoOfTheSurfacesOfAFrameThatALossAbandoned) {
+    test::OffscreenSurface offscreen(gpu::Device::Api::Vulkan);
+    std::unique_ptr<test::SecondSurface> window;
+    std::unique_ptr<test::SecondSurface> output;
+    try {
+        window = std::make_unique<test::SecondSurface>(*device, offscreen, kSize * 4, kSize * 3);
+        output = std::make_unique<test::SecondSurface>(*device, offscreen, kSize * 2, kSize);
+    } catch (const std::runtime_error& error) {
+        GTEST_SKIP() << error.what();
+    }
+
+    auto windowed = std::make_unique<Device>(window->getSurface(), Device::Settings{.validation = true});
+    const int number = windowed->addSurface(output->getSurface());
+    for (const int surface : {0, number}) {
+        windowed->beginPass({.load = gpu::Device::Load::Clear, .label = "haylen-test-lost-frame", .surface = surface});
+        windowed->endPass();
+    }
+
+    lose(*windowed);
+    windowed->commit();
+    EXPECT_TRUE(windowed->isLost());
+    EXPECT_TRUE(errors->take("The Vulkan device stopped working"));
+
+    EXPECT_NO_THROW(windowed->removeSurface(number));
+    EXPECT_NO_THROW(windowed->detachSurface());
+    windowed.reset();
 }
 
 // Vulkan would make such an image against its rules, which only validation reports.

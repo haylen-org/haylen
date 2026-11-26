@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <string_view>
 
 #include "haylen/core/Log.hpp"
@@ -30,6 +31,17 @@ void LoggedErrors::reportAsFailures() {
     }
 
     errors.clear();
+}
+
+bool LoggedErrors::take(std::string_view text) {
+    const std::lock_guard lock(mutex);
+    const auto found = std::ranges::find_if(errors, [text](const std::string& error) { return error.find(text) != std::string::npos; });
+    if (found == errors.end()) {
+        return false;
+    }
+
+    errors.erase(found);
+    return true;
 }
 
 } // namespace haylen::test

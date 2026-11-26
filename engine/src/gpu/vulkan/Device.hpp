@@ -127,6 +127,9 @@ class Device final : public gpu::Device {
     [[nodiscard]] std::optional<VkPresentModeKHR> getPresentMode(int surface) const;
 
   private:
+    // The tests make the device report the loss of its GPU, which no GPU of a test machine loses on demand.
+    friend class VulkanDeviceTest;
+
     static constexpr VkDeviceSize kStagingChunkSize = VkDeviceSize{8} * 1024 * 1024;
     static constexpr VkDeviceSize kUniformChunkSize = VkDeviceSize{1} * 1024 * 1024;
     static constexpr VkDeviceSize kDynamicBufferAlignment = 256;

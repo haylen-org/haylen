@@ -36,8 +36,8 @@ env:
   VARN_PACKAGE_CACHE: ${{ github.workspace }}/.cache/packages
   # The development packages that the engine builds against on Linux: Ninja, the X11, Wayland and input libraries that SDL compiles against and loads when the app starts, and the headers of EGL and OpenGL.
   LINUX_PACKAGES: ninja-build libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdecor-0-dev libdbus-1-dev libibus-1.0-dev libudev-dev
-  # Mesa lavapipe for Vulkan with its validation layers, and Mesa llvmpipe for OpenGL through EGL, which draw the GPU tests of Linux without a GPU.
-  MESA_PACKAGES: mesa-vulkan-drivers libvulkan1 vulkan-validationlayers libegl-mesa0 libgl1-mesa-dri
+  # Mesa lavapipe for Vulkan with its validation layers, and Mesa llvmpipe for OpenGL through EGL, which draw the GPU tests of Linux without a GPU, and Xvfb, the X server without a screen whose windows the tests of the surfaces beyond the window draw into.
+  MESA_PACKAGES: mesa-vulkan-drivers libvulkan1 vulkan-validationlayers libegl-mesa0 libgl1-mesa-dri xvfb
 
 # The jobs that others wait for come first, so they take the runners first when a run has more jobs than runners.
 jobs:
@@ -235,10 +235,10 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test
       - name: GPU tests on Vulkan
         if: github.event_name == 'workflow_dispatch' && runner.os == 'Linux'
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api vulkan
+        run: xvfb-run --auto-servernum uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api vulkan
       - name: GPU tests on OpenGL
         if: github.event_name == 'workflow_dispatch' && runner.os == 'Linux'
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api openGl
+        run: xvfb-run --auto-servernum uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api openGl
       - name: GPU tests on Direct3D 12
         if: github.event_name == 'workflow_dispatch' && runner.os == 'Windows'
         env:

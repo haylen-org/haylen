@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace haylen::test {
@@ -17,6 +18,9 @@ class LoggedErrors final {
 
     // Fails the running test once for each error the log received.
     void reportAsFailures();
+
+    // Takes the first error that holds the text out of the errors and returns whether there was one, so a test that makes the device log an error checks it while every other error still fails the test.
+    [[nodiscard]] bool take(std::string_view text);
 
   private:
     std::uint64_t listener = 0;
