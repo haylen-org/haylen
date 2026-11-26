@@ -101,6 +101,7 @@ set(HAYLEN_TEST_SOURCES
   core/ContainerTests.cpp
   core/CoreTests.cpp
   core/FloatBufferTests.cpp
+  core/FrameOrderTests.cpp
   core/JobSystemTests.cpp
   core/JsonValidatorTests.cpp
   core/LogTests.cpp

@@ -515,7 +515,7 @@ bool Engine::isRedrawNeeded(bool halted) const {
     return false;
 }
 
-// The fixed steps the clock owes run first, then the frame update of the timers, the tweens, the plugins and the scenes.
+// The fixed steps the clock owes run first, then the frame update of the timers, the tweens, the plugins and the scenes, and last the late update of the plugins.
 void Engine::updateApp(std::size_t plugins, float delta) {
     EngineState& current = *state;
     debug::Profiler& profiler = current.profiler;
@@ -540,6 +540,10 @@ void Engine::updateApp(std::size_t plugins, float delta) {
     }
 
     current.scenes->update(current.clock);
+
+    for (std::size_t index = 0; index < plugins; ++index) {
+        current.startedPlugins[index]->lateUpdate(*this, delta);
+    }
 }
 
 // Gamepads that are connected when the app starts are announced on its first frame.

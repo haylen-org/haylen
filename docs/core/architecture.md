@@ -144,7 +144,8 @@ Every subsystem of the engine is a plugin. A plugin derives from `haylen::plugin
 | `event(core::Engine&, const Event&)` | For every platform event, the lifecycle events `Suspended`, `Resumed`, `Resized`, `FocusGained`, `FocusLost`, `QuitRequested` and `LowMemory` included. |
 | `beginFrame(core::Engine&, float)` | At the start of every frame that is not in the background, after asynchronous results arrive and before any update. |
 | `fixedUpdate(core::Engine&, float)` | Zero or more times per frame, once per fixed step. |
-| `update(core::Engine&, float)` | Once per frame, with the scaled frame time. |
+| `update(core::Engine&, float)` | Once per frame, with the scaled frame time, before the scenes update. |
+| `lateUpdate(core::Engine&, float)` | Once per frame after the scenes updated, with the same time, so a plugin works on what the app changed in its updates before anything draws. |
 | `render(core::Engine&)` | After the scenes of the current view draw the world. |
 | `renderUi(core::Engine&, const core::SceneView&)` | After the scenes of each view of the frame draw their UI, once per view. So a plugin draws what belongs to the scenes of the view, and most plugins draw only in the current view. |
 | `renderOverlay(core::Engine&)` | Once per frame, above everything else, scene transitions and the error screen included. It suits debug displays and the update screen of content. |
@@ -397,7 +398,7 @@ The worker layer in `engine/src/platform/worker/` runs the web runtime in the Wo
 7. **The redraw.** An app that redraws on change decides whether the frame updates and draws, as [redraw on change](#redraw-on-change) describes. A frame that it skips runs neither the fixed steps, the updates, the drawing nor the submit, lets only the time of the timers pass and keeps its time out of the fixed steps, and an app that redraws always runs every step.
 8. **`beginFrame`.** Unless the app is in the background, every plugin runs `beginFrame`. There the platform plugin uploads the newest frame of every video stream that the app draws into its texture.
 9. **Fixed steps.** For each step the clock owes, the scenes run `fixedUpdate`, fixed-step tweens advance, and then every plugin runs `fixedUpdate`.
-10. **Updates.** App timers, tweens, plugin `update` and the scene update run, in that order. Inside the scene update, loads that finished or failed settle, the pending scene change moves through its phases, the loading view updates and the top scene runs `update`.
+10. **Updates.** App timers, tweens, plugin `update`, the scene update and plugin `lateUpdate` run, in that order. Inside the scene update, loads that finished or failed settle, the pending scene change moves through its phases, the loading view updates and the top scene runs `update`. The late update lets a plugin work on what the scenes changed before anything draws.
 11. **Audio.** The audio mixer updates with the real frame time, also while the app is halted.
 12. **Drawing.** The renderer begins the frame. `SceneManager::prepareViews` works out the views of the frame, the `core::SceneView` values that plugins read through `getViews`. For each view, the scenes and the loading view draw the world, the plugins run `render` in the current view, the scenes and the loading view draw their UI, and the plugins run `renderUi` with the view.
     - During a scene transition, the scenes before and after the change do this inside a capture of their own image. The plugins draw with the current scenes, the UI draws the GUIs of each scene into its image, and the view of the effect draws the effect on the screen.

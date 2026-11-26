@@ -14,6 +14,8 @@ void Plugin::fixedUpdate(core::Engine&, float) {}
 
 void Plugin::update(core::Engine&, float) {}
 
+void Plugin::lateUpdate(core::Engine&, float) {}
+
 void Plugin::render(core::Engine&) {}
 
 void Plugin::renderUi(core::Engine&, const core::SceneView&) {}

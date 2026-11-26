@@ -252,7 +252,7 @@ haylen --dev ~/apps/my-game --native ~/sdk/lib --native ~/apps/my-game/build/nat
 
 ## C++ plugins
 
-A C++ app, whose `kind` in `haylen.json` is `cpp` and whose sources compile against the prebuilt SDK of the engine, extends the engine with plugins of its own. They have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. A plugin added before the engine starts, or while it runs, gets `start` like a built-in one. A plugin knows nothing of Lua, so a `lua::Module` installs its Lua module with the binding toolkit of `haylen/lua/`, and the application adds the module to the `lua::ScriptPlugin` with `ScriptPlugin::addModule`. The [embedding guide](../tools/embedding.md) shows a complete plugin.
+A C++ app, whose `kind` in `haylen.json` is `cpp` and whose sources compile against the prebuilt SDK of the engine, extends the engine with plugins of its own. They have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `lateUpdate`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. A plugin added before the engine starts, or while it runs, gets `start` like a built-in one. A plugin knows nothing of Lua, so a `lua::Module` installs its Lua module with the binding toolkit of `haylen/lua/`, and the application adds the module to the `lua::ScriptPlugin` with `ScriptPlugin::addModule`. The [embedding guide](../tools/embedding.md) shows a complete plugin.
 
 ```cpp
 class GamePlatformPlugin final : public haylen::plugins::Plugin {

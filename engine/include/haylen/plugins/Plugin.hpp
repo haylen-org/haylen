@@ -28,6 +28,9 @@ class Plugin {
     virtual void beginFrame(core::Engine& engine, float deltaSeconds);
     virtual void fixedUpdate(core::Engine& engine, float stepSeconds);
     virtual void update(core::Engine& engine, float deltaSeconds);
+
+    // Runs after the scenes updated in the frame, so a plugin works on what the app changed in its updates before anything draws, such as the world transforms of a tree of nodes that the app moved.
+    virtual void lateUpdate(core::Engine& engine, float deltaSeconds);
     virtual void render(core::Engine& engine);
 
     // Draws the interface of one view of the frame above its scenes. Every view gets the call in the order the views render, and most plugins draw only in the current view, while the UI draws the GUIs of the scenes of each view into its image.
