@@ -734,8 +734,9 @@ void RendererState::addTintedMesh(const graphics::Texture& texture, std::span<co
     addMesh(texture, packed, meshIndices, order);
 }
 
+// The program, the blend and the target each take a byte of the key, so no value of one reaches the bits of another.
 std::uint32_t RendererState::pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target) noexcept {
-    return static_cast<std::uint32_t>(program) | (static_cast<std::uint32_t>(blend) << 4U) | (static_cast<std::uint32_t>(target) << 8U);
+    return static_cast<std::uint32_t>(program) | (static_cast<std::uint32_t>(blend) << 8U) | (static_cast<std::uint32_t>(target) << 16U);
 }
 
 bool RendererState::expectsPremultiplied(graphics::BlendMode::Type mode) noexcept {

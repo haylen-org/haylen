@@ -16,6 +16,7 @@
 #include "2d/graphics/Canvas.hpp"
 #include "2d/graphics/FadeEdge.hpp"
 #include "2d/graphics/FrameSubmitter.hpp"
+#include "2d/graphics/Program.hpp"
 #include "2d/graphics/RendererState.hpp"
 #include "gpu/NullDevice.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
@@ -887,6 +888,20 @@ TEST(RendererTest, ClipsToThePixelsWhoseCentersLieInside) {
     const math::Rect scaled{20.0F, 0.0F, 150.0F, 150.0F};
     EXPECT_EQ(FrameSubmitter::getScissor(canvas, {-10.0F, 50.0F, 70.0F, 70.0F}, scaled), (math::Rect{20.0F, 75.0F, 90.0F, 75.0F}));
     EXPECT_EQ(FrameSubmitter::getScissor(canvas, {200.0F, 0.0F, 10.0F, 10.0F}, scaled).width, 0.0F);
+}
+
+// Every program of the renderer keeps a pipeline of its own for each blend, so the programs past the sixteenth never take the pipeline of an earlier program with another blend.
+TEST(RendererTest, KeepsAPipelineForEveryProgramAndBlend) {
+    test::EngineFixture fixture;
+    RendererState state(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    state.loadPrograms();
+    const auto alpha = static_cast<std::uint8_t>(graphics::BlendMode::Type::Alpha);
+    const auto additive = static_cast<std::uint8_t>(graphics::BlendMode::Type::Additive);
+    for (std::size_t later = 16; later < RendererState::kProgramCount; ++later) {
+        const auto program = static_cast<Program>(later);
+        const auto earlier = static_cast<Program>(later - 16);
+        EXPECT_NE(state.getPipeline(program, alpha, graphics::PassTarget::Offscreen), state.getPipeline(earlier, additive, graphics::PassTarget::Offscreen)) << later;
+    }
 }
 
 // A fade starts each edge at its strength below full coverage and reaches full coverage at its length inside the rectangle, and a draw takes only the edges that reach into its clip, so a draw away from every edge fades nothing.
