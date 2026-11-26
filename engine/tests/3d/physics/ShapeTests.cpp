@@ -13,6 +13,7 @@
 #include "haylen/3d/physics/Shape.hpp"
 #include "haylen/3d/spatial/MeshBvh.hpp"
 #include "haylen/math/Math.hpp"
+#include "support/PhysicsShapeInputs.hpp"
 
 namespace haylen::physics3d {
 
@@ -47,6 +48,16 @@ class PhysicsShape3DTest : public ::testing::Test {
         }
 
         return {};
+    }
+
+    // The eight corners of a box of the size around the origin.
+    [[nodiscard]] static std::vector<math::Vec3> box(math::Vec3 size) {
+        std::vector<math::Vec3> corners = cubeCorners();
+        for (math::Vec3& corner : corners) {
+            corner *= size;
+        }
+
+        return corners;
     }
 
     // The eight corners of a cube of one meter around the origin.
@@ -162,8 +173,24 @@ TEST_F(PhysicsShape3DTest, RefusesShapesThatHoldNoSolidWithASentence) {
     EXPECT_EQ(refusal(Shape::Box{.size = {1.0F, 1.0F, 1.0F}, .convexRadius = 0.6F}), "The convex radius of a box must be from 0 to 0.5, half of its smallest size.");
     EXPECT_EQ(refusal(Shape::Capsule{.height = 1.0F, .radius = 0.5F}), "The height of a capsule, from the bottom of one cap to the top of the other, must be more than twice its radius. Make a sphere for a shorter one.");
     EXPECT_EQ(refusal(Shape::TaperedCapsule{.height = 1.0F, .topRadius = 0.05F, .bottomRadius = 0.5F}), "The caps of a tapered capsule must not hold each other. Make it taller than the sum of its radii plus their difference, or make a sphere.");
-    EXPECT_EQ(refusal(Shape::ConvexHull{.points = {{0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 1.0F}, {1.0F, 0.0F, 1.0F}, {0.5F, 0.0F, 0.5F}}}), "The points of a convex hull lie on one plane or one line, so they hold no volume. Give it points that spread along every axis.");
+    EXPECT_EQ(refusal(Shape::ConvexHull{.points = {{0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 1.0F}, {1.0F, 0.0F, 1.0F}, {0.5F, 0.0F, 0.5F}}}), "The points of a convex hull lie too close to one plane or one line to hold a volume that the physics builds. Spread them along every axis by at least a millimeter and a thousandth of the length of the hull.");
     EXPECT_EQ(refusal(Shape::ConvexHull{.points = {{0.0F, 0.0F, 0.0F}}}), "A convex hull needs from 4 to 65536 points.");
+}
+
+TEST_F(PhysicsShape3DTest, RefusesHullsTooThinForThePhysicsToBuild) {
+    const std::string sentence = "The points of a convex hull lie too close to one plane or one line to hold a volume that the physics builds. Spread them along every axis by at least a millimeter and a thousandth of the length of the hull.";
+
+    // Inputs of the shape fuzzer that trapped the hull builder of the physics, which lost a point between the faces or made a face without area: points a kilometer apart that spread a few centimeters across, and points five meters apart that spread less than a millimeter across.
+    const std::vector<std::uint8_t> sliver{0x00, 0x64, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00, 0x00, 0x00, 0x25, 0xD9, 0x00, 0x08, 0x03, 0xB5, 0xB5, 0xB5, 0xBD, 0xBD, 0xBD, 0xB4, 0xBD, 0xBD, 0xBD, 0xBD, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x45, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x3A, 0x08, 0x00, 0x03, 0x00, 0xFF, 0xB5, 0x00, 0x03, 0xB5, 0xB5, 0xFF, 0xFF, 0xB5, 0x22, 0xB9};
+    const std::vector<std::uint8_t> thinnerThanAMillimeter{0x45, 0xDD, 0x46, 0xFF, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x32, 0x30, 0x7E, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x39, 0x34, 0x39, 0x39, 0x39, 0x35, 0x30, 0x30, 0x30, 0x30, 0x30, 0x49};
+    EXPECT_EQ(test::PhysicsShapeInputs::build(sliver), sentence);
+    EXPECT_EQ(test::PhysicsShapeInputs::build(thinnerThanAMillimeter), sentence);
+
+    // A plate of one meter builds two millimeters thick and not half a millimeter thick, and a plank of ten meters builds two centimeters thick and not four millimeters thick.
+    EXPECT_EQ(refusal(Shape::ConvexHull{.points = box({1.0F, 1.0F, 2.0e-3F})}), "");
+    EXPECT_EQ(refusal(Shape::ConvexHull{.points = box({1.0F, 1.0F, 0.5e-3F})}), sentence);
+    EXPECT_EQ(refusal(Shape::ConvexHull{.points = box({10.0F, 0.1F, 0.02F})}), "");
+    EXPECT_EQ(refusal(Shape::ConvexHull{.points = box({10.0F, 0.1F, 0.004F})}), sentence);
 }
 
 TEST_F(PhysicsShape3DTest, RefusesMalformedMeshesWithASentence) {

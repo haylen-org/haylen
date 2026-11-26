@@ -142,7 +142,7 @@ class Shape {
             return static_cast<Kind>(geometry.index());
         }
 
-        // Throws `std::invalid_argument` with a sentence that says what the shape takes, for a size that is not positive, a value that is not finite, a mesh whose indices pass its vertices, a hull of fewer than four points or of points on one plane, a heightfield whose heights do not fill its grid and a compound without children or with a child of another backend than `backend`.
+        // Throws `std::invalid_argument` with a sentence that says what the shape takes, for a size that is not positive, a value that is not finite, a mesh whose indices pass its vertices, a hull of fewer than four points or of points that do not spread along every axis by `kMinHullSpread` and `kMinHullSpreadShare` of its length, a heightfield whose heights do not fill its grid and a compound without children or with a child of another backend than `backend`.
         void validate(std::string_view backend) const;
     };
 
@@ -150,6 +150,10 @@ class Shape {
     static constexpr std::size_t kMaxHullPoints = 1 << 16;
     static constexpr std::size_t kMaxMeshVertices = 1 << 24;
     static constexpr int kMaxHeightFieldSamples = 4096;
+
+    // The least spread of the points of a hull along every axis, in meters and as a share of the length of the hull. The physics places every point on a face of a hull within a millimeter and computes the directions of the faces in floats, so a hull thinner than either loses points between its faces.
+    static constexpr float kMinHullSpread = 1.0e-3F;
+    static constexpr float kMinHullSpreadShare = 1.0e-3F;
 
     explicit Shape(Kind shapeKind) noexcept : kind(shapeKind) {}
     virtual ~Shape() = default;
@@ -184,7 +188,7 @@ class Shape {
     static constexpr std::size_t kMaxChildren = 1 << 16;
     static constexpr float kRotationTolerance = 1.0e-3F;
 
-    // Points closer to a line or a plane than this share of their spread lie on it.
+    // A normal of a plane shorter than this has no direction.
     static constexpr float kFlatness = 1.0e-6F;
 
     static void requirePositive(std::string_view what, float value);
@@ -193,7 +197,7 @@ class Shape {
     static void requireRotation(std::string_view what, const math::Quat& value);
     static void requireChild(std::string_view what, const std::shared_ptr<const Shape>& child, std::string_view backend);
     static void checkHull(const ConvexHull& hull);
-    [[nodiscard]] static bool hasVolume(const std::vector<math::Vec3>& points, const math::Box& bounds);
+    [[nodiscard]] static bool spreadsAlongEveryAxis(const std::vector<math::Vec3>& points);
     static void checkMesh(const Mesh& mesh);
     static void checkHeightField(const HeightField& field);
     static void checkChildren(std::string_view kind, const std::vector<Child>& children, std::string_view backend, bool mayBeEmpty);

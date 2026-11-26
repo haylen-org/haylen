@@ -265,6 +265,7 @@ set(HAYLEN_TEST_SUPPORT_SOURCES
   support/FakeVideoDecoder.cpp
   support/GltfFiles.cpp
   support/MaterialShaders.cpp
+  support/PhysicsShapeInputs.cpp
   support/ReleaseFixture.cpp
   support/TemporaryDirectory.cpp
   support/TestFiles.cpp
@@ -423,9 +424,9 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_options(haylen-bitmap-font-fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen-bitmap-font-fuzzer)
 
-  add_executable(haylen-physics-shape-fuzzer fuzz/PhysicsShapeFuzzer.cpp)
+  add_executable(haylen-physics-shape-fuzzer fuzz/PhysicsShapeFuzzer.cpp support/PhysicsShapeInputs.cpp)
   set_target_properties(haylen-physics-shape-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-  target_include_directories(haylen-physics-shape-fuzzer PRIVATE "${HAYLEN_ENGINE_DIR}/src")
+  target_include_directories(haylen-physics-shape-fuzzer PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
   target_link_libraries(haylen-physics-shape-fuzzer PRIVATE haylen::engine)
   target_link_options(haylen-physics-shape-fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen-physics-shape-fuzzer)

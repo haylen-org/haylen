@@ -97,10 +97,8 @@ void Shape::checkHull(const ConvexHull& hull) {
         requireFinite("point of a convex hull", point);
     }
 
-    const math::Box bounds = math::Box::bounds(hull.points);
-
-    if (!hasVolume(hull.points, bounds)) {
-        throw std::invalid_argument("The points of a convex hull lie on one plane or one line, so they hold no volume. Give it points that spread along every axis.");
+    if (!spreadsAlongEveryAxis(hull.points)) {
+        throw std::invalid_argument("The points of a convex hull lie too close to one plane or one line to hold a volume that the physics builds. Spread them along every axis by at least a millimeter and a thousandth of the length of the hull.");
     }
 
     if (!std::isfinite(hull.convexRadius) || hull.convexRadius < 0.0F) {
@@ -108,29 +106,30 @@ void Shape::checkHull(const ConvexHull& hull) {
     }
 }
 
-// Points hold a volume when the farthest point from the plane through three spread points lies off that plane by more than a millionth of their size.
-bool Shape::hasVolume(const std::vector<math::Vec3>& points, const math::Box& bounds) {
-    const float size = bounds.getSize().getLength();
+// The points span a length from the first point to the point farthest from it, a width from that line to the point farthest from it and a thickness across the plane of the three, and each must reach the least spread. Every point lies within the length of the first point, so a finite length keeps every distance finite.
+bool Shape::spreadsAlongEveryAxis(const std::vector<math::Vec3>& points) {
     const math::Vec3 first = points.front();
     const auto byDistance = [first](math::Vec3 lhs, math::Vec3 rhs) { return math::Vec3::distanceSquared(first, lhs) < math::Vec3::distanceSquared(first, rhs); };
-    const math::Vec3 second = *std::ranges::max_element(points, byDistance);
-    const math::Vec3 line = second - first;
-    if (line.getLength() <= size * kFlatness) {
+    const math::Vec3 line = *std::ranges::max_element(points, byDistance) - first;
+    const float length = line.getLength();
+    const float leastSpread = std::max(kMinHullSpread, length * kMinHullSpreadShare);
+    if (!std::isfinite(length) || length < leastSpread) {
         return false;
     }
 
-    const auto offLine = [first, line](math::Vec3 point) { return math::Vec3::cross(line, point - first).getLengthSquared(); };
+    const math::Vec3 direction = line / length;
+    const auto offLine = [first, direction](math::Vec3 point) { return math::Vec3::cross(direction, point - first).getLength(); };
     const auto byLine = [&offLine](math::Vec3 lhs, math::Vec3 rhs) { return offLine(lhs) < offLine(rhs); };
     const math::Vec3 third = *std::ranges::max_element(points, byLine);
-    const math::Vec3 normal = math::Vec3::cross(line, third - first);
-    if (normal.getLength() <= size * size * kFlatness) {
+    if (offLine(third) < leastSpread) {
         return false;
     }
 
-    const math::Vec3 unit = normal.getNormalized();
-    const auto offPlane = [first, unit](math::Vec3 point) { return std::abs(math::Vec3::dot(unit, point - first)); };
-    const auto byPlane = [&offPlane](math::Vec3 lhs, math::Vec3 rhs) { return offPlane(lhs) < offPlane(rhs); };
-    return offPlane(*std::ranges::max_element(points, byPlane)) > size * kFlatness;
+    const math::Vec3 normal = math::Vec3::cross(direction, third - first).getNormalized();
+    const auto acrossPlane = [first, normal](math::Vec3 point) { return math::Vec3::dot(normal, point - first); };
+    const auto byPlane = [&acrossPlane](math::Vec3 lhs, math::Vec3 rhs) { return acrossPlane(lhs) < acrossPlane(rhs); };
+    const auto [lowest, highest] = std::ranges::minmax_element(points, byPlane);
+    return acrossPlane(*highest) - acrossPlane(*lowest) >= leastSpread;
 }
 
 void Shape::checkMesh(const Mesh& mesh) {

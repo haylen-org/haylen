@@ -132,7 +132,7 @@ TEST(Physics3DLuaTest, BuildsHeavyShapesOnTheTaskPool) {
 
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return done") != "nil" || fixture.engine().getError() != nullptr; }));
     ASSERT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
-    EXPECT_EQ(fixture.lua("return done"), "mesh convexHull heightField The points of a convex hull lie on one plane or one line, so they hold no volume. Give it points that spread along every axis.");
+    EXPECT_EQ(fixture.lua("return done"), "mesh convexHull heightField The points of a convex hull lie too close to one plane or one line to hold a volume that the physics builds. Spread them along every axis by at least a millimeter and a thousandth of the length of the hull.");
 }
 
 TEST(Physics3DLuaTest, RefusesShapesWithSentencesThatSayWhatTheyTake) {
