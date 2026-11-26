@@ -8271,7 +8271,7 @@ O [KB-009](#kb-009) passa a nomear as telas do Wayland pelo nome da saída, como
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Commit `799aef080`. S2, S5, S6, S7, S8, S10, S11, S12 e S13 estão corrigidos, e o S9 foi descartado com o motivo. Faltam os testes de regressão do S12 e do S13, que vêm num commit seguinte. No branch `rhi-defects` em `05e3abab3`, sobre o `main` `08467953a`, com a execução completa 45769060354 rodando. As verificações locais passaram: os testes da engine no Mac e no Linux com o GCC, os de GPU do Metal, do Vulkan, do OpenGL e do WebGPU, os 183 do emulador do Android, o formato e o pytest. Falta o Windows.
+- **Progress:** Commit `91f42770b`, junto com o KB-327. Os testes de regressão do S12 e do S13 estão no commit `ab109686c`. No `main` desde `a6c026e89`. A execução completa 45769060354 do branch passou em todos os jobs, com 72 testes do Direct3D 11 no WARP, que tem a fence do Direct3D 11.4. As verificações da árvore enviada também passaram: os testes da engine, do Vulkan e do OpenGL no Linux com o GCC, os de GPU da web no WebGL2 e no WebGPU, os 3061 testes da engine no Mac, os 86 do Metal e o pytest. Falta a execução completa do bloco no `main`.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -8294,7 +8294,7 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no SDL, que ainda não 
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Commit `05e3abab3`. D2, D4, D5, D6, D7, D8, D9, D11, D12, D13 e D14 estão corrigidos, e o D10 foi descartado. Na CI, o Direct3D 11 precisa da fence do Direct3D 11.4 também no WARP. No branch `rhi-defects` em `05e3abab3`, sobre o `main` `08467953a`, com a execução completa 45769060354 rodando. As verificações locais passaram: os testes da engine no Mac e no Linux com o GCC, os de GPU do Metal, do Vulkan, do OpenGL e do WebGPU, os 183 do emulador do Android, o formato e o pytest. Falta o Windows.
+- **Progress:** Commit `0c053245c`. No `main` desde `a6c026e89`. A execução completa 45769060354 do branch passou em todos os jobs, com 72 testes do Direct3D 11 no WARP, que tem a fence do Direct3D 11.4. As verificações da árvore enviada também passaram: os testes da engine, do Vulkan e do OpenGL no Linux com o GCC, os de GPU da web no WebGL2 e no WebGPU, os 3061 testes da engine no Mac, os 86 do Metal e o pytest. Falta a execução completa do bloco no `main`.
   - D5: as superfícies acrescentadas seguem as amostras da janela.
   - D6: o `addSurface` devolve as suas vistas quando falha.
   - D7: falhas de apresentação que não são perda de dispositivo lançam erro.
@@ -8327,7 +8327,7 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no Direct3D, que ainda 
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Commit `05e3abab3`. G3, G4, G5 e G6 estão corrigidos, e G8, G9 e G10 foram descartados, com o teste de leitura do G10 passando. O G7 entra depois que o branch entrar, com o compilador de shaders novo. No branch `rhi-defects` em `05e3abab3`, sobre o `main` `08467953a`, com a execução completa 45769060354 rodando. As verificações locais passaram: os testes da engine no Mac e no Linux com o GCC, os de GPU do Metal, do Vulkan, do OpenGL e do WebGPU, os 183 do emulador do Android, o formato e o pytest. Falta o Windows.
+- **Progress:** Commits `0c053245c` e `a6c026e89`. O G7 faz o OpenGL desenhar a profundidade de 0 a 1 com o `glClipControl`, informa a faixa de profundidade ao Lua e repina o compilador de shaders em `79cf887`, com os 61 pacotes de teste compilados de novo. No `main` desde `a6c026e89`. A execução completa 45769060354 do branch passou em todos os jobs, com 72 testes do Direct3D 11 no WARP, que tem a fence do Direct3D 11.4. As verificações da árvore enviada também passaram: os testes da engine, do Vulkan e do OpenGL no Linux com o GCC, os de GPU da web no WebGL2 e no WebGPU, os 3061 testes da engine no Mac, os 86 do Metal e o pytest. Falta a execução completa do bloco no `main`.
   1. O compilador para de converter. O commit dele é refeito, com uma release nova e um pin novo.
   2. O `gpu::Device` ganha a faixa de profundidade: 0 a 1 no Metal, Direct3D, Vulkan e WebGPU, e no OpenGL onde existe `glClipControl`, que o dispositivo liga. Onde não existe, a faixa é -1 a 1.
   3. O Lua lê `graphics.depthRange()`, e as projeções de `haylen.math` usam essa faixa.
@@ -8355,7 +8355,7 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no OpenGL e WebGPU, que
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Commit `05e3abab3`. V2, V4, V5, V6, V7, V8, V9 e V10 estão corrigidos, e o V3 foi descartado. O V1 está corrigido, mas falta o ponto de injeção de falha que o cartão pede, com o seu teste, que vem num commit seguinte. No branch `rhi-defects` em `05e3abab3`, sobre o `main` `08467953a`, com a execução completa 45769060354 rodando. As verificações locais passaram: os testes da engine no Mac e no Linux com o GCC, os de GPU do Metal, do Vulkan, do OpenGL e do WebGPU, os 183 do emulador do Android, o formato e o pytest. Falta o Windows.
+- **Progress:** Commit `0c053245c`. O ponto de injeção de falha do V1 e o seu teste estão no commit `ab109686c`. Os testes de superfície do Linux rodam sob `xvfb-run`. No `main` desde `a6c026e89`. A execução completa 45769060354 do branch passou em todos os jobs, com 72 testes do Direct3D 11 no WARP, que tem a fence do Direct3D 11.4. As verificações da árvore enviada também passaram: os testes da engine, do Vulkan e do OpenGL no Linux com o GCC, os de GPU da web no WebGL2 e no WebGPU, os 3061 testes da engine no Mac, os 86 do Metal e o pytest. Falta a execução completa do bloco no `main`.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -8424,7 +8424,7 @@ Num app com `window.redraw` igual a `onChange`, os sockets só andam nos quadros
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 3
-- **Progress:** Commit `799aef080`: nenhuma mensagem da engine leva o texto de `SDL_GetError()`, e o `EngineMessagesTest` falha se uma voltar. No branch `rhi-defects` em `05e3abab3`, sobre o `main` `08467953a`, com a execução completa 45769060354 rodando. As verificações locais passaram: os testes da engine no Mac e no Linux com o GCC, os de GPU do Metal, do Vulkan, do OpenGL e do WebGPU, os 183 do emulador do Android, o formato e o pytest. Falta o Windows.
+- **Progress:** Commit `91f42770b`. Uma mensagem nova do Wayland, que veio do KB-320, também passou a usar palavras da Haylen. No `main` desde `a6c026e89`. A execução completa 45769060354 do branch passou em todos os jobs, com 72 testes do Direct3D 11 no WARP, que tem a fence do Direct3D 11.4. As verificações da árvore enviada também passaram: os testes da engine, do Vulkan e do OpenGL no Linux com o GCC, os de GPU da web no WebGL2 e no WebGPU, os 3061 testes da engine no Mac, os 86 do Metal e o pytest. Falta a execução completa do bloco no `main`.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
