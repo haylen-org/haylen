@@ -189,9 +189,11 @@ haylen_enable_warnings(haylen-lua-tests)
 haylen_enable_coverage(haylen-lua-tests)
 add_dependencies(haylen-lua-tests haylen-native-test)
 
-# The tests run in the build tree, as those of the core do. Each directory that discovers tests includes the module itself, since CMake 3.28 keeps the script of the discovery in the scope of the directory that included it.
+# The tests run in the build tree and their names hold no printed values, as those of the core do. Each directory that discovers tests includes the module itself, since CMake 3.28 keeps the script of the discovery in the scope of the directory that included it.
 include(GoogleTest)
 gtest_discover_tests(haylen-lua-tests
   DISCOVERY_TIMEOUT 60
+  NO_PRETTY_TYPES
+  NO_PRETTY_VALUES
   PROPERTIES TIMEOUT 120
 )

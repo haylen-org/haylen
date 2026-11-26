@@ -66,7 +66,13 @@ TEST(PathTest, MatchesPatternsOfFoldersAndNames) {
     EXPECT_FALSE(Path::matches("*", "a/b"));
 }
 
+// Runs each test on every source of a package, which names its run of the test.
 class PackageTest : public ::testing::TestWithParam<std::string> {
+  public:
+    [[nodiscard]] static std::string nameSource(const ::testing::TestParamInfo<std::string>& info) {
+        return info.param;
+    }
+
   protected:
     std::unique_ptr<Package> makePackage() {
         const std::map<std::string, std::string> files = {
@@ -81,13 +87,13 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
             return Package::open(directory.getPath());
         }
 
-        if (GetParam() == "zip-file") {
+        if (GetParam() == "zipFile") {
             const std::vector<std::uint8_t> archive = makeZip(files);
             directory.write("app.zip", std::string(archive.begin(), archive.end()));
             return Package::open(directory.getPath() / "app.zip");
         }
 
-        if (GetParam() == "zip-memory") {
+        if (GetParam() == "zipMemory") {
             return Package::openZip(makeZip(files), "memory.zip", "https://example.com/apps/memory.zip");
         }
 
@@ -201,7 +207,7 @@ TEST_P(PackageTest, NamesItsFolderOnlyWhenItReadsAFolder) {
     EXPECT_FALSE(package->getDirectory().has_value());
 }
 
-INSTANTIATE_TEST_SUITE_P(Sources, PackageTest, ::testing::Values("directory", "zip-file", "zip-memory", "memory"));
+INSTANTIATE_TEST_SUITE_P(Sources, PackageTest, ::testing::Values("directory", "zipFile", "zipMemory", "memory"), PackageTest::nameSource);
 
 TEST(PackageOpenTest, RejectsMissingAndInvalidPackages) {
     test::TemporaryDirectory directory;

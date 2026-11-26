@@ -356,10 +356,12 @@ if(CMAKE_GENERATOR STREQUAL "Ninja")
   add_test(NAME LinkJobsTest.LinksRunInThePoolOfLinks COMMAND "${CMAKE_COMMAND}" "-DTREE=${CMAKE_BINARY_DIR}" "-DDEPTH=${haylen_link_jobs}" -P "${CMAKE_CURRENT_LIST_DIR}/cmake/link-pool-check.cmake")
 endif()
 
-# Every test runs with a time limit far above the slowest one, so a test that hangs fails alone and the rest of the suite still runs. The tests find their data through absolute paths, so discovery and every test run in the build tree and write nothing into the sources.
+# Every test runs with a time limit far above the slowest one, so a test that hangs fails alone and the rest of the suite still runs. The tests find their data through absolute paths, so discovery and every test run in the build tree and write nothing into the sources. The name of a test never holds the printed value of its parameter, which some compilers print as the raw bytes of an object, so it stays the same on every compiler and in every build.
 include(GoogleTest)
 gtest_discover_tests(haylen-tests
   DISCOVERY_TIMEOUT 60
+  NO_PRETTY_TYPES
+  NO_PRETTY_VALUES
   PROPERTIES TIMEOUT 120
 )
 
