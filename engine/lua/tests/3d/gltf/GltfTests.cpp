@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <filesystem>
 #include <functional>
 #include <map>
 #include <string>
@@ -9,23 +8,13 @@
 #include "haylen/assets/Manager.hpp"
 #include "support/GltfFiles.hpp"
 #include "support/LuaFixture.hpp"
-#include "support/TestFiles.hpp"
 
 namespace haylen::lua::gltf {
 
 class GltfLuaTest : public ::testing::Test {
   protected:
-    // The test files of the reader as the files of a package.
     [[nodiscard]] static std::map<std::string, std::string> files() {
-        std::map<std::string, std::string> package;
-        const std::filesystem::path folder = test::GltfFiles::getFolder();
-        for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(folder / "content")) {
-            if (entry.is_regular_file()) {
-                package[std::filesystem::relative(entry.path(), folder).generic_string()] = test::TestFiles::toText(test::TestFiles::read(entry.path()));
-            }
-        }
-
-        return package;
+        return test::GltfFiles::getPackageFiles();
     }
 };
 

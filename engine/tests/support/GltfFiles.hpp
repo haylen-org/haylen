@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <map>
 #include <span>
+#include <string>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
@@ -20,6 +22,9 @@ class GltfFiles final {
 
     // The folder of the package of the test files of `engine/tests/data/gltf`, whose content folder holds them.
     [[nodiscard]] static std::filesystem::path getFolder();
+
+    // The test files as the files of an app package in memory, by their paths in the package.
+    [[nodiscard]] static std::map<std::string, std::string> getPackageFiles();
 
     // A triangle of three vertices at (0, 0, 0), (1, 0, 0) and (0, 1, 0) facing positive `z`, in buffer views 0 for positions, 1 for normals and 2 for unsigned short indices, read by accessors 0, 1 and 2 of the one primitive of mesh 0, which node 0 of scene 0 places.
     [[nodiscard]] static File triangle();

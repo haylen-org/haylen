@@ -1,11 +1,12 @@
 # 🧊 3D
 
-The 3D block holds what builds 3D games and apps, starting with the conventions that every 3D module follows, the math of 3D space, the reader of glTF models, the trees of nodes that place objects made of parts, the spatial structures that find things in it and the navigation meshes that agents walk. Its Lua modules end with `3d`, next to the 2D modules, while the math of both dimensions lives in `haylen.math`.
+The 3D block holds what builds 3D games and apps, starting with the conventions that every 3D module follows, the math of 3D space, the reader of glTF models, the animation of their nodes, the trees of nodes that place objects made of parts, the spatial structures that find things in it and the navigation meshes that agents walk. Its Lua modules end with `3d`, next to the 2D modules, while the math of both dimensions lives in `haylen.math`.
 
 ## Guides
 
 | Name | Description | Link |
 | --- | --- | --- |
+| Animation | Tracks of the properties of nodes, bones and components with step, linear, cubic spline and Bezier keys, clips with their events, the clips of glTF files, players with their loop modes, speeds and events, and the edits that trim, join, resample, optimize, compress and make clips additive. | [`animation.md`](animation.md) |
 | Coordinates | The conventions of 3D: right-handed axes with `y` up, meters, radians, matrices by columns, unit quaternions, counter-clockwise front faces, reversed depth and the range of each graphics API, and light in linear space. | [`coordinates.md`](coordinates.md) |
 | glTF | The glTF 2.0 files that Haylen reads, as GLB or as `.gltf` with files beside it or `data:` URIs inside the package, the three steps of a read, the document with its objects, the rules of the specification that the reader checks, its limits, its extensions, reading from C++ and what a read costs. | [`gltf.md`](gltf.md) |
 | Math | Vectors in 3D and how they carry points and directions, matrices that place, view and project, rotations and the forms that build them, transforms in a hierarchy with what they cannot hold, dual quaternions for skinning, the shapes with their ray casts and culling by the view, curves with their frames, paths of curves and NURBS surfaces and volumes, noise and random points in 3D, planes, the errors of what has no direction or no inverse, and comparing with tolerance. | [`math.md`](math.md) |
@@ -18,6 +19,7 @@ The 3D block holds what builds 3D games and apps, starting with the conventions 
 
 | Name | Description | Link |
 | --- | --- | --- |
+| `haylen.animation3d` | Tracks of every type and interpolation, clips sampled into one float buffer, the clips of glTF documents, clip players with loop modes, negative speeds and events with owners, and edits of clips. | [`lua-api/animation3d.md`](../lua-api/animation3d.md) |
 | `haylen.gltf` | Reading glTF 2.0 files into a read-only document whose objects form one graph of tables, accessors read as float buffers and lists of integers, and images decoded on the frame thread or the task pool. | [`lua-api/gltf.md`](../lua-api/gltf.md) |
 | `haylen.navigation3d` | The geometry that navigation meshes bake from, the bake in tiles, `.navmesh` files, paths, nearest points, rays, walls and random points, filters of areas, obstacles, links, rebuilds of tiles and crowds of agents read and steered in float buffers. | [`lua-api/navigation3d.md`](../lua-api/navigation3d.md) |
 | `haylen.nodes3d` | Retained trees of 3D nodes in meters with local and world transforms, parts of the parent that each node inherits, visibility, enabled states, layers and tags, moves that keep the world place, clones, listeners of node events with owners, bulk moves in float buffers, updates of the changed subtrees only on the job system, native properties for tweens and components of registered types that run in bulk in the phases of the frame. | [`lua-api/nodes3d.md`](../lua-api/nodes3d.md) |

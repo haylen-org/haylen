@@ -4,10 +4,24 @@
 #include <cstring>
 #include <string>
 
+#include "support/TestFiles.hpp"
+
 namespace haylen::test {
 
 std::filesystem::path GltfFiles::getFolder() {
     return HAYLEN_TEST_GLTF;
+}
+
+std::map<std::string, std::string> GltfFiles::getPackageFiles() {
+    std::map<std::string, std::string> package;
+    const std::filesystem::path folder = getFolder();
+    for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(folder / "content")) {
+        if (entry.is_regular_file()) {
+            package[std::filesystem::relative(entry.path(), folder).generic_string()] = TestFiles::toText(TestFiles::read(entry.path()));
+        }
+    }
+
+    return package;
 }
 
 void GltfFiles::appendWord(std::vector<std::uint8_t>& bytes, std::uint32_t value) {

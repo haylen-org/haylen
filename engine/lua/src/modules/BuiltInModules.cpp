@@ -5,6 +5,7 @@
 #include "haylen/lua/Modules.hpp"
 #include "haylen/lua/modules/AssetsModule.hpp"
 #include "modules/Animation2DModule.hpp"
+#include "modules/Animation3DModule.hpp"
 #include "modules/AudioModule.hpp"
 #include "modules/ContentModule.hpp"
 #include "modules/ConversationModule.hpp"
@@ -49,6 +50,7 @@ void BuiltInModules::registerAll(Modules& modules) {
     modules.add(std::make_unique<VideoModule>());
     modules.add(std::make_unique<TiledModule>());
     modules.add(std::make_unique<GltfModule>());
+    modules.add(std::make_unique<Animation3DModule>());
     modules.add(std::make_unique<Nodes2DModule>());
     modules.add(std::make_unique<Nodes3DModule>());
     modules.add(std::make_unique<Spatial2DModule>());

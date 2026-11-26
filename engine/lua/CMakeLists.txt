@@ -55,6 +55,10 @@ set(HAYLEN_LUA_SOURCES
   src/2d/tiled/MapBuilderBinding.cpp
   src/2d/tiled/MapQueryBinding.cpp
   src/2d/tiled/TiledBinding.cpp
+  src/3d/animation/Animation3DBinding.cpp
+  src/3d/animation/Clip3DBinding.cpp
+  src/3d/animation/ClipPlayer3DBinding.cpp
+  src/3d/animation/Track3DBinding.cpp
   src/3d/gltf/GltfBinding.cpp
   src/3d/navigation/CrowdBinding.cpp
   src/3d/navigation/GeometryBinding.cpp
@@ -145,6 +149,7 @@ set(HAYLEN_LUA_SOURCES
   src/math/Transform3DBinding.cpp
   src/math/VectorBinding.cpp
   src/modules/Animation2DModule.cpp
+  src/modules/Animation3DModule.cpp
   src/modules/AssetsModule.cpp
   src/modules/AudioModule.cpp
   src/modules/BuiltInModules.cpp

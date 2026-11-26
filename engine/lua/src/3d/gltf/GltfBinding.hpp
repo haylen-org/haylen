@@ -40,6 +40,9 @@ class GltfBinding final {
   public:
     static void install(lua_State* L);
 
+    // Reads the index of the object of the document at index 1 that a table of its graph stands for, such as an accessor, and throws for any other value, which other modules that take objects of a document use too.
+    [[nodiscard]] static std::size_t checkObject(lua_State* L, int index, const char* list, std::size_t count);
+
   private:
     // The lists of a document, in the order the graph builds them.
     static constexpr std::array<const char*, 13> kLists{"accessors", "animations", "buffers", "bufferViews", "cameras", "images", "materials", "meshes", "nodes", "samplers", "scenes", "skins", "textures"};
@@ -101,9 +104,6 @@ class GltfBinding final {
     static void fillSkin(lua_State* L, int graph, const haylen::gltf::Skin& skin);
     static void fillTexture(lua_State* L, int graph, const haylen::gltf::Texture& texture);
     static void fillDocument(lua_State* L, int graph, const haylen::gltf::Document& document);
-
-    // Reads the index of the object of the document at index 1 that a table of its graph stands for, such as an accessor, and throws for any other value.
-    [[nodiscard]] static std::size_t checkObject(lua_State* L, int index, const char* list, std::size_t count);
 };
 
 } // namespace haylen::lua::gltf

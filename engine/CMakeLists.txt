@@ -208,6 +208,11 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/tiled/Tileset.cpp
   src/2d/tiled/WangSet.cpp
   src/2d/tiled/World.cpp
+  src/3d/animation/Clip3D.cpp
+  src/3d/animation/ClipPlayer3D.cpp
+  src/3d/animation/GltfClip3DReader.cpp
+  src/3d/animation/GltfNodeNames3D.cpp
+  src/3d/animation/Track3D.cpp
   src/3d/gltf/AccessorReader.cpp
   src/3d/gltf/AccessorView.cpp
   src/3d/gltf/DataValidator.cpp

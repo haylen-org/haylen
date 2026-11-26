@@ -180,11 +180,11 @@ void DataValidator::validateAccessor(std::size_t accessor) const {
             previousTime = values[0];
         }
 
-        // A cubic spline holds an in tangent, a value and an out tangent for each keyframe, and only the values are rotations.
+        // A cubic spline holds an in tangent, a value and an out tangent for each keyframe, and only the values are rotations. The length is that of the floats that the accessor reader gives, which the tracks of clips check again.
         if (!check.rotations.empty() && (!check.cubicSpline || element % 3 == 1)) {
             double squared = 0.0;
             for (std::size_t component = 0; component < 4; ++component) {
-                const double value = AccessorView::normalize(found.componentType, values[component]);
+                const double value = static_cast<float>(AccessorView::normalize(found.componentType, values[component]));
                 squared += value * value;
             }
 

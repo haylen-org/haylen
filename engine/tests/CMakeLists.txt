@@ -51,6 +51,9 @@ set(HAYLEN_TEST_SOURCES
   2d/tiled/MapQueryTests.cpp
   2d/tiled/TileCollisionTests.cpp
   2d/tiled/TiledTests.cpp
+  3d/animation/Clip3DTests.cpp
+  3d/animation/ClipPlayer3DTests.cpp
+  3d/animation/Track3DTests.cpp
   3d/gltf/AccessorReaderTests.cpp
   3d/gltf/ReaderRulesTests.cpp
   3d/gltf/ReaderTests.cpp

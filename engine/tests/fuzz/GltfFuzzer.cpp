@@ -6,13 +6,14 @@
 #include <string_view>
 #include <vector>
 
+#include "haylen/3d/animation/Clip3D.hpp"
 #include "haylen/3d/gltf/AccessorReader.hpp"
 #include "haylen/3d/gltf/Reader.hpp"
 #include "haylen/graphics/Image.hpp"
 
 namespace haylen::gltf {
 
-// Feeds the glTF reader the inputs libFuzzer generates. An input that starts like a GLB file or a JSON object is a whole file, which covers the container, the JSON and the rules of the document. Any other input gives its first byte to pick a document whose shape is fixed and its other bytes to the data of that document: the binary chunk of a GLB file with accessors of every use, so the rules of the data and the reading of accessors run on hostile bytes, or the text of the `data:` URIs of a buffer and an image. A document that reads has every accessor read and every image decoded within 64 pixels. Only the failures of reading a file and of decoding an image may leave the reader, so any other exception is a bug that the fuzzer reports.
+// Feeds the glTF reader the inputs libFuzzer generates. An input that starts like a GLB file or a JSON object is a whole file, which covers the container, the JSON and the rules of the document. Any other input gives its first byte to pick a document whose shape is fixed and its other bytes to the data of that document: the binary chunk of a GLB file with accessors of every use, so the rules of the data and the reading of accessors run on hostile bytes, or the text of the `data:` URIs of a buffer and an image. A document that reads has every accessor read, every image decoded within 64 pixels and every animation made into a clip that samples at times across it and past both ends. Only the failures of reading a file, of decoding an image and of sampling a rotation that a spline passes through zero may leave, so any other exception, such as a clip that a valid document does not make, is a bug that the fuzzer reports.
 class GltfFuzzer final {
   public:
     static void run(std::span<const std::uint8_t> input) {
@@ -49,7 +50,21 @@ class GltfFuzzer final {
             for (std::size_t image = 0; image < document.images.size(); ++image) {
                 decode(document, image);
             }
+
+            for (std::size_t animation = 0; animation < document.animations.size(); ++animation) {
+                sample(haylen::animation3d::Clip3D::fromGltf(document, animation));
+            }
         } catch (const haylen::gltf::ReadError&) {}
+    }
+
+    static void sample(const haylen::animation3d::Clip3D& clip) {
+        std::vector<float> values(clip.getValueCount());
+        std::vector<std::size_t> cursors(clip.getTracks().size());
+        for (int step = -1; step <= 9; ++step) {
+            try {
+                clip.sample(clip.getDuration() * static_cast<float>(step) / 8.0F, values, cursors);
+            } catch (const std::domain_error&) {}
+        }
     }
 
     static void decode(const haylen::gltf::Document& document, std::size_t image) {
