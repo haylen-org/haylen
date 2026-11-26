@@ -222,6 +222,46 @@ ship:addChild(physics3d.newBox({4, 0.2, 1}), {2.5, 0, 0})
 
 A body in Lua and in C++ is a handle, which stays cheap to copy. A handle knows when its body is gone, and when its world is gone, even after a new world takes the place of the old one in the engine, so code that keeps a body it should not keep fails with a clear sentence instead of moving another body.
 
+## Joints
+
+A joint holds two bodies together, or one body to the world, such as the hinge of a door, the axle of a wheel or the shoulder of a ragdoll. The method `world:createJoint` makes one from its type, its bodies and its points and axes in world space as the bodies stand.
+
+```lua
+local door = world:createBody({shape = physics3d.newBox({1, 2, 0.1}), position = {0.5, 1, 0}})
+world:createJoint('hinge', door, nil, {point = {0, 1, 0}, lower = 0, upper = math.pi / 2})
+```
+
+| Joint | Suits |
+| --- | --- |
+| Fixed | Parts glued together that may break apart. |
+| Point | Chains, ropes of links, a ball and socket without limits. |
+| Distance | Ropes, springs, a tether that only pulls when it is taut. |
+| Hinge | Doors, wheels, levers, the knee and the elbow of a ragdoll. |
+| Slider | Drawers, pistons, elevators on rails. |
+| Cone and swing twist | Shoulders, hips and necks of ragdolls, a lamp on a cable. |
+| Six degrees of freedom | Anything else, each of its six axes free, limited or fixed. |
+| Path | A cart on a track, a platform that follows a spline. |
+| Gear, rack and pinion | Machines whose hinges and sliders move together. |
+| Pulley | Two weights over two fixed points, a counterweight of a lift. |
+
+A limit keeps a hinge, a slider or a twist between two values. Its spring softens the limit, so a door slows as it reaches the wall instead of stopping dead. A motor drives a joint at a speed or toward a place with at most its force or torque, such as the engine of a wheel or the servo of a robot arm. A motor of position pulls through its spring, so a soft spring moves gently and a stiff one snaps into place.
+
+The two bodies of a joint do not collide with each other unless `collideConnected` says so, so the parts of a ragdoll overlap at their joints without pushing apart.
+
+A joint breaks when its force or torque in a step passes its `breakForce` or `breakTorque`. The world destroys it after that step and calls `world.onJointBreak` once for it, so a bridge that collapses or a chain that snaps runs the effects of the app at the moment it breaks.
+
+```lua
+local glue = world:createJoint('fixed', plank, beam, {point = {2, 3, 0}, breakForce = 20000})
+world.onJointBreak = function(joint, info)
+    if joint == glue then
+        sounds.crack:play()
+    end
+end
+```
+
+### Joints that stretch or shake
+
+A joint between a heavy body and a light one, such as a wrecking ball on a thin chain, holds poorly, since the solver moves the light body much more than the heavy one. Keep the masses of joined bodies within about ten times of each other, raise `velocitySteps` and `positionSteps` of the joint, or give it a higher `priority`. A long chain holds better as fewer, longer links, and a rope that must never stretch past its length takes a distance joint from its start to its end next to its links.
 
 ## Who collides with whom
 

@@ -308,4 +308,62 @@ TEST(Physics3DLuaTest, FiltersCollisionsByTheCategoriesOfHaylenJson) {
     EXPECT_EQ(fixture.lua("local ok, message = pcall(function() hero.mask = -1 end) return message:match('The option.*')"), "The option \"mask\" of a 3D body takes the names of categories or whole numbers of 32 bits.");
 }
 
+TEST(Physics3DLuaTest, HoldsBodiesWithJointsAndReportsEachBreakOnce) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        physics3d = require('haylen.physics3d')
+        m = require('haylen.math')
+        world = physics3d.newWorld({sleepEnabled = false})
+        crate = physics3d.newBox({1, 1, 1})
+        lamp = world:createBody({shape = crate, position = {0, -1, 0}})
+        cord = world:createJoint('fixed', lamp, nil, {point = {0, -0.5, 0}, breakForce = 2 * lamp.mass * m.standardGravity})
+        breaks = {}
+        world.onJointBreak = function(joint, info)
+            breaks[#breaks + 1] = string.format('%s %s %s %s', tostring(joint == cord), tostring(info.first == lamp), tostring(info.second), tostring(info.force > 0))
+        end
+        for i = 1, 20 do world:step(1 / 60) end
+        before = #breaks
+        lamp:applyForce({0, -4 * lamp.mass * m.standardGravity, 0})
+        for i = 1, 20 do world:step(1 / 60) end
+        door = world:createBody({shape = physics3d.newBox({2, 0.2, 0.2}), position = {1, 3, 0}})
+        hinge = world:createJoint('hinge', door, nil, {point = {0, 3, 0}, lower = -0.5, upper = 0.5, motor = {state = 'velocity', targetVelocity = 1, maxTorque = 50}, limitSpring = {frequency = 20, damping = 1}})
+        for i = 1, 60 do world:step(1 / 60) end
+    )");
+    // clang-format on
+
+    ASSERT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
+    EXPECT_EQ(fixture.lua("return before .. ' ' .. #breaks .. ' ' .. breaks[1] .. ' ' .. tostring(cord.valid)"), "0 1 true true nil true false");
+    EXPECT_EQ(fixture.lua("return string.format('%s %s %.1f %.1f %s %.0f', hinge.type, tostring(hinge.first == door), hinge.lower, hinge.upper, hinge.motor.state, hinge.limitSpring.frequency)"), "hinge true -0.5 0.5 velocity 20");
+    EXPECT_EQ(fixture.lua("return tostring(math.abs(hinge.angle) <= 0.55) .. ' ' .. tostring(hinge.second)"), "true nil");
+    EXPECT_EQ(fixture.lua("hinge:setLimits(-1, 1) hinge.motor = {state = 'off'} hinge.breakTorque = 1000 return hinge.upper .. ' ' .. hinge.motor.state .. ' ' .. hinge.breakTorque"), "1.0 off 1000.0");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() return hinge.ratio end) return message:match('Only.*')"), "Only the joints \"gear\", \"rackAndPinion\", \"pulley\" have a ratio, and this joint is \"hinge\".");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() world:createJoint('hinge', door, nil, {spin = 1}) end) return message:match('Unknown.*')"), "Unknown option \"spin\".");
+}
+
+TEST(Physics3DLuaTest, MakesSixDofPathAndGearJointsFromTables) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        physics3d = require('haylen.physics3d')
+        m = require('haylen.math')
+        world = physics3d.newWorld({gravity = {0, 0, 0}})
+        crate = physics3d.newBox({1, 1, 1})
+        base = world:createBody({type = 'static', shape = crate, position = {0, -5, 0}})
+        slider = world:createBody({shape = crate})
+        six = world:createJoint('sixDof', slider, nil, {axis = {1, 0, 0}, normal = {0, 1, 0}, axes = {x = {mode = 'limited', lower = -1, upper = 1}, y = {mode = 'fixed'}, z = {mode = 'fixed'}, rotationX = {mode = 'fixed'}, rotationY = {mode = 'fixed'}, rotationZ = {mode = 'fixed'}}})
+        cart = world:createBody({shape = crate, position = {0, 10, 0}})
+        rail = world:createJoint('path', base, cart, {path = m.spline3d({m.vec3(0, 10, 0), m.vec3(5, 10, 0)}), pathRotation = 'free', motor = {state = 'position', targetPosition = 0.5}})
+        for i = 1, 120 do world:step(1 / 60) end
+        six:setAxis('x', {mode = 'free', motor = {state = 'velocity', targetVelocity = 2}})
+        for i = 1, 30 do world:step(1 / 60) end
+    )");
+    // clang-format on
+
+    ASSERT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
+    EXPECT_EQ(fixture.lua("return string.format('%s %s %.1f %s', six.type, six:axis('x').mode, slider.linearVelocity.x, six:axis('y').mode)"), "sixDof free 2.0 fixed");
+    EXPECT_EQ(fixture.lua("return string.format('%s %.1f %.1f', rail.type, rail.fraction, cart.x)"), "path 0.5 2.5");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() world:createJoint('sixDof', slider, nil, {axes = {w = {}}}) end) return message:match('The axes.*')"), "The axes of a 3D joint are \"x\", \"y\", \"z\", \"rotationX\", \"rotationY\" and \"rotationZ\".");
+}
+
 } // namespace haylen::lua::physics3d

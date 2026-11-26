@@ -56,6 +56,7 @@ set(HAYLEN_TEST_SOURCES
   3d/physics/BackendRegistryTests.cpp
   3d/physics/BodyTests.cpp
   3d/physics/CollisionFilterTests.cpp
+  3d/physics/JointTests.cpp
   3d/physics/ShapeTests.cpp
   3d/physics/WorldTests.cpp
   3d/physics/jolt/SimulationTests.cpp

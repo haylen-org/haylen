@@ -9,6 +9,8 @@
 #include <optional>
 #include <vector>
 
+#include "3d/physics/jolt/ContactFilter.hpp"
+#include "3d/physics/jolt/Joints.hpp"
 #include "3d/physics/jolt/Layers.hpp"
 #include "3d/physics/jolt/StepAllocator.hpp"
 #include "3d/physics/jolt/StepJobs.hpp"
@@ -72,6 +74,30 @@ class Simulation final : public physics3d::Simulation {
     void setChildTransform(BodyId id, std::size_t index, const Body::Transform& value) override;
     void collectActiveBodies(std::vector<BodyId>& ids) const override;
 
+    [[nodiscard]] JointId createJoint(Joint::Type type, BodyId first, std::optional<BodyId> second, const Joint::Options& options) override;
+    void destroyJoint(JointId id) override;
+    [[nodiscard]] bool isJointValid(JointId id) const noexcept override;
+    [[nodiscard]] Joint::Type getJointType(JointId id) const override;
+    [[nodiscard]] std::pair<BodyId, std::optional<BodyId>> getJointBodies(JointId id) const override;
+    [[nodiscard]] bool isJointEnabled(JointId id) const override;
+    void setJointEnabled(JointId id, bool value) override;
+    [[nodiscard]] int getJointPriority(JointId id) const override;
+    void setJointPriority(JointId id, int value) override;
+    [[nodiscard]] Joint::Load getJointLoad(JointId id) const override;
+    [[nodiscard]] float getJointValue(JointId id, Joint::Value which) const override;
+    void setJointValue(JointId id, Joint::Value which, float value) override;
+    void setJointLimits(JointId id, float lower, float upper) override;
+    [[nodiscard]] Joint::Spring getLimitSpring(JointId id) const override;
+    void setLimitSpring(JointId id, const Joint::Spring& value) override;
+    [[nodiscard]] Joint::Motor getJointMotor(JointId id, Joint::MotorSlot slot) const override;
+    void setJointMotor(JointId id, Joint::MotorSlot slot, const Joint::Motor& value) override;
+    [[nodiscard]] math::Quat getTargetRotation(JointId id) const override;
+    void setTargetRotation(JointId id, const math::Quat& value) override;
+    [[nodiscard]] math::Vec3 getTargetAngularVelocity(JointId id) const override;
+    void setTargetAngularVelocity(JointId id, math::Vec3 value) override;
+    [[nodiscard]] Joint::AxisSettings getJointAxis(JointId id, Joint::Axis axis) const override;
+    void setJointAxis(JointId id, Joint::Axis axis, const Joint::AxisSettings& value) override;
+
     // The physics system, which the bodies, shapes and constraints of the world live in.
     [[nodiscard]] JPH::PhysicsSystem& getSystem() noexcept {
         return system;
@@ -132,7 +158,10 @@ class Simulation final : public physics3d::Simulation {
     StepAllocator allocator;
     std::shared_ptr<StepJobs> jobs;
     std::vector<Record> records;
+    ContactFilter contacts;
+    Joints joints{system, contacts};
     int collisionSteps = 1;
+    float subStep = 0.0F;
     int stepThreads = 0;
     float stepMilliseconds = 0.0F;
 };

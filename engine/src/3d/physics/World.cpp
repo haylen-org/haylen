@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <stdexcept>
 
+#include "3d/physics/JointValidator.hpp"
 #include "3d/physics/WorldSlots.hpp"
 #include "haylen/core/Log.hpp"
 
@@ -39,6 +41,8 @@ void World::destroy() noexcept {
     WorldSlots::release(key);
     key = 0;
     hooks.clear();
+    breakables.clear();
+    jointBreaks.clear();
     simulation.reset();
     bodyCounter.remove(bodyCount);
     bodyCount = 0;
@@ -107,11 +111,100 @@ void World::step(float deltaSeconds) {
     const Simulation::StepReport report = simulation->step(deltaSeconds);
     lastStep = deltaSeconds;
     reportLimits(report);
+    breakJoints();
     if (settings.interpolate) {
         recordMotion();
     }
 
     runHooks(StepPhase::After, deltaSeconds);
+}
+
+void World::checkJointBodies(Joint::Type type, const Body& first, const std::optional<Body>& second, const Joint::Options& options) const {
+    const auto ours = [this](const Body& body) { return body.getWorldKey() == key && simulation->isBodyValid(body.getId()); };
+    if (!ours(first) || (second && !ours(*second))) {
+        throw std::invalid_argument("A 3D joint holds live bodies of its own world.");
+    }
+
+    if (second && *second == first) {
+        throw std::invalid_argument("A 3D joint holds two different bodies, or one body and the world.");
+    }
+
+    const bool needsSecond = type == Joint::Type::Path || type == Joint::Type::Gear || type == Joint::Type::RackAndPinion || type == Joint::Type::Pulley;
+    if (needsSecond && !second) {
+        throw std::invalid_argument(std::format("A joint of the type \"{}\" needs a second body.", Joint::typeName(type)));
+    }
+
+    if (type != Joint::Type::Gear && type != Joint::Type::RackAndPinion) {
+        return;
+    }
+
+    const Joint::Type secondType = type == Joint::Type::Gear ? Joint::Type::Hinge : Joint::Type::Slider;
+    for (std::size_t index = 0; index < options.joints.size(); ++index) {
+        const Joint& joint = options.joints[index];
+        const Joint::Type expected = index == 0 ? Joint::Type::Hinge : secondType;
+        if (joint.getWorldKey() != key || !simulation->isJointValid(joint.getId()) || simulation->getJointType(joint.getId()) != expected) {
+            throw std::invalid_argument(std::format("A joint of the type \"{}\" takes as its joints {} of its own world.", Joint::typeName(type), type == Joint::Type::Gear ? "two live hinges" : "a live hinge and a live slider"));
+        }
+    }
+}
+
+Joint World::createJoint(Joint::Type type, const Body& first, const std::optional<Body>& second, const Joint::Options& options) {
+    Simulation& simulated = getSimulation();
+    checkJointBodies(type, first, second, options);
+    JointValidator::checkOptions(type, options);
+
+    const std::optional<Simulation::BodyId> secondId = second ? std::optional<Simulation::BodyId>(second->getId()) : std::nullopt;
+    const Simulation::JointId id = simulated.createJoint(type, first.getId(), secondId, options);
+    if (options.breakForce || options.breakTorque) {
+        breakables.push_back({.id = id, .limits = {.force = options.breakForce, .torque = options.breakTorque}});
+    }
+
+    return {this, key, id};
+}
+
+void World::destroyJoint(Simulation::JointId id) {
+    getSimulation().destroyJoint(id);
+    std::erase_if(breakables, [id](const Breakable& each) { return each.id == id; });
+}
+
+World::BreakLimits World::getBreakLimits(Simulation::JointId id) const {
+    const auto found = std::ranges::find_if(breakables, [id](const Breakable& each) { return each.id == id; });
+    return found != breakables.end() ? found->limits : BreakLimits{};
+}
+
+void World::setBreakLimits(Simulation::JointId id, const BreakLimits& limits) {
+    std::erase_if(breakables, [id](const Breakable& each) { return each.id == id; });
+    if (limits.force || limits.torque) {
+        breakables.push_back({.id = id, .limits = limits});
+    }
+}
+
+// A joint that its body took with it leaves the list here, and a joint loaded past a limit is destroyed and recorded once.
+void World::breakJoints() {
+    jointBreaks.clear();
+    for (std::size_t index = 0; index < breakables.size();) {
+        const Breakable& breakable = breakables[index];
+        if (!simulation->isJointValid(breakable.id)) {
+            breakables[index] = breakables.back();
+            breakables.pop_back();
+            continue;
+        }
+
+        const Joint::Load load = simulation->getJointLoad(breakable.id);
+        const bool forced = breakable.limits.force && load.force > *breakable.limits.force;
+        const bool twisted = breakable.limits.torque && load.torque > *breakable.limits.torque;
+        if (!forced && !twisted) {
+            ++index;
+            continue;
+        }
+
+        const auto [firstId, secondId] = simulation->getJointBodies(breakable.id);
+        const std::optional<Body> second = secondId ? std::optional<Body>(Body{this, key, *secondId}) : std::nullopt;
+        jointBreaks.push_back({.joint = {this, key, breakable.id}, .first = {this, key, firstId}, .second = second, .load = load});
+        simulation->destroyJoint(breakable.id);
+        breakables[index] = breakables.back();
+        breakables.pop_back();
+    }
 }
 
 std::uint64_t World::addStepHook(StepPhase phase, StepHook hook) {

@@ -23,6 +23,9 @@ class WorldBinding final {
     static void resetState(lua_State* L, int index);
 
   private:
+    // The field of the state table of a world that holds its callback of joint breaks.
+    static constexpr const char* kJointBreakField = "onJointBreak";
+
     // Returns the live world of the first argument, and raises an error once it was destroyed.
     [[nodiscard]] static haylen::physics3d::World& check(lua_State* L);
 
@@ -53,6 +56,12 @@ class WorldBinding final {
 
     static int step(lua_State* L);
     static int createBody(lua_State* L);
+    static int createJoint(lua_State* L);
+    static int getJointBreakCallback(lua_State* L);
+    static int setJointBreakCallback(lua_State* L);
+
+    // Calls `onJointBreak` for each joint that the last step broke, with a copy of the breaks, since a callback may step the world again.
+    static void dispatchJointBreaks(lua_State* L, int worldIndex);
     static int readTransforms(lua_State* L);
     static int writeTransforms(lua_State* L);
     static int isInterpolating(lua_State* L);

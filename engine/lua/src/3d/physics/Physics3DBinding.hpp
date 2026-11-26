@@ -9,6 +9,7 @@
 
 #include "3d/physics/ScriptedBody.hpp"
 #include "haylen/3d/physics/Body.hpp"
+#include "haylen/3d/physics/Joint.hpp"
 #include "haylen/3d/physics/Shape.hpp"
 #include "haylen/3d/physics/World.hpp"
 #include "haylen/core/EnumNames.hpp"
@@ -71,11 +72,65 @@ template <> struct EnumNames<haylen::physics3d::Body::CombineRule> {
     }
 };
 
+template <> struct EnumNames<haylen::physics3d::Joint::Type> {
+    static std::optional<haylen::physics3d::Joint::Type> fromName(std::string_view name) {
+        return haylen::physics3d::Joint::typeFromName(name);
+    }
+    static std::string_view name(haylen::physics3d::Joint::Type value) {
+        return haylen::physics3d::Joint::typeName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::physics3d::Joint::AxisMode> {
+    static std::optional<haylen::physics3d::Joint::AxisMode> fromName(std::string_view name) {
+        return haylen::physics3d::Joint::axisModeFromName(name);
+    }
+    static std::string_view name(haylen::physics3d::Joint::AxisMode value) {
+        return haylen::physics3d::Joint::axisModeName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::physics3d::Joint::Axis> {
+    static std::optional<haylen::physics3d::Joint::Axis> fromName(std::string_view name) {
+        return haylen::physics3d::Joint::axisFromName(name);
+    }
+    static std::string_view name(haylen::physics3d::Joint::Axis value) {
+        return haylen::physics3d::Joint::axisName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::physics3d::Joint::SpringMode> {
+    static std::optional<haylen::physics3d::Joint::SpringMode> fromName(std::string_view name) {
+        return haylen::physics3d::Joint::springModeFromName(name);
+    }
+    static std::string_view name(haylen::physics3d::Joint::SpringMode value) {
+        return haylen::physics3d::Joint::springModeName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::physics3d::Joint::MotorState> {
+    static std::optional<haylen::physics3d::Joint::MotorState> fromName(std::string_view name) {
+        return haylen::physics3d::Joint::motorStateFromName(name);
+    }
+    static std::string_view name(haylen::physics3d::Joint::MotorState value) {
+        return haylen::physics3d::Joint::motorStateName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::physics3d::Joint::PathRotation> {
+    static std::optional<haylen::physics3d::Joint::PathRotation> fromName(std::string_view name) {
+        return haylen::physics3d::Joint::pathRotationFromName(name);
+    }
+    static std::string_view name(haylen::physics3d::Joint::PathRotation value) {
+        return haylen::physics3d::Joint::pathRotationName(value);
+    }
+};
+
 } // namespace haylen::core
 
 namespace haylen::lua::physics3d {
 
-// Installs `haylen.physics3d` with the `PhysicsWorld3D` class, the worlds in meters that the selected backend simulates, the `Body3D` class of their bodies and the `Shape3D` class of their collision shapes.
+// Installs `haylen.physics3d` with the `PhysicsWorld3D` class, the worlds in meters that the selected backend simulates, the `Body3D` class of their bodies, the `Joint3D` class of their joints and the `Shape3D` class of their collision shapes.
 class Physics3DBinding final {
   public:
     static void install(lua_State* L);

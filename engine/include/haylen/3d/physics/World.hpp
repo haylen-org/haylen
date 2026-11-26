@@ -12,6 +12,7 @@
 
 #include "haylen/3d/physics/Backend.hpp"
 #include "haylen/3d/physics/Body.hpp"
+#include "haylen/3d/physics/Joint.hpp"
 #include "haylen/3d/physics/Simulation.hpp"
 #include "haylen/3d/physics/WorldSettings.hpp"
 #include "haylen/3d/physics/WorldStats.hpp"
@@ -35,6 +36,14 @@ class World final {
 
     using StepHook = std::function<void(float deltaSeconds)>;
 
+    // A joint that the last step destroyed because its force or torque passed its break limit, with the bodies it held and its load in that step. Each break is recorded once, by the step that breaks the joint.
+    struct JointBreak {
+        Joint joint;
+        Body first;
+        std::optional<Body> second;
+        Joint::Load load;
+    };
+
     // The floats that `readTransforms` and `writeTransforms` hold for each body: the position and the rotation.
     static constexpr std::size_t kTransformFloats = 7;
 
@@ -54,7 +63,15 @@ class World final {
     // Makes a body with a shape of the backend of the world. A dynamic body needs a solid shape, a plane suits static and kinematic bodies alone, and a dynamic body keeps at least one axis free. Throws `std::invalid_argument` with a sentence that names the option for a value that is not finite or out of its range, and `std::length_error` when the world holds `maxBodies` already.
     Body createBody(const Body::Options& options);
 
-    // Runs the hooks before the step, advances the world, records the transforms of the bodies that moved when the world interpolates and runs the hooks after the step. Throws `std::invalid_argument` for a negative time or one that is not a number.
+    // Makes a joint between the first body and the second one, or the world without a second, with the options that `Joint::Options` describes. Throws `std::invalid_argument` with a sentence that names the option for a value that is not finite or out of its range, for bodies of another world, for one body twice, for a path, a gear, a rack and pinion or a pulley without a second body, and for the joints of a gear or a rack and pinion that are not live hinges or sliders of this world.
+    Joint createJoint(Joint::Type type, const Body& first, const std::optional<Body>& second, const Joint::Options& options = {});
+
+    // The joints that the last step broke.
+    [[nodiscard]] const std::vector<JointBreak>& getJointBreaks() const noexcept {
+        return jointBreaks;
+    }
+
+    // Runs the hooks before the step, advances the world, breaks the joints loaded past their limits, records the transforms of the bodies that moved when the world interpolates and runs the hooks after the step. Throws `std::invalid_argument` for a negative time or one that is not a number.
     void step(float deltaSeconds);
 
     // Adds a function that runs at the given phase of every step until it is removed or the world is destroyed, which is how helpers act on the world in C++, and returns its id. A hook may add and remove hooks, and may destroy the world, which ends the step: each phase runs the hooks it had when it began, except those removed since.
@@ -148,6 +165,18 @@ class World final {
 
   private:
     friend class Body;
+    friend class Joint;
+
+    // The limits that break a joint, which the world checks after every step.
+    struct BreakLimits {
+        std::optional<float> force;
+        std::optional<float> torque;
+    };
+
+    struct Breakable {
+        Simulation::JointId id = 0;
+        BreakLimits limits;
+    };
 
     struct Hook {
         std::uint64_t id = 0;
@@ -203,6 +232,12 @@ class World final {
     // A teleport puts a body where the world did not see it move, so it draws there at once.
     void forgetMotion(Simulation::BodyId id);
 
+    void destroyJoint(Simulation::JointId id);
+    [[nodiscard]] BreakLimits getBreakLimits(Simulation::JointId id) const;
+    void setBreakLimits(Simulation::JointId id, const BreakLimits& limits);
+    void breakJoints();
+    void checkJointBodies(Joint::Type type, const Body& first, const std::optional<Body>& second, const Joint::Options& options) const;
+
     WorldSettings settings;
     std::string backendName;
     std::unique_ptr<Simulation> simulation;
@@ -219,6 +254,8 @@ class World final {
     std::vector<Simulation::BodyId> activeBodies;
     std::uint64_t motionStep = 0;
     std::vector<std::uint32_t> destroyedBodies;
+    std::vector<Breakable> breakables;
+    std::vector<JointBreak> jointBreaks;
     mutable std::vector<Simulation::BodyId> transformIds;
 };
 

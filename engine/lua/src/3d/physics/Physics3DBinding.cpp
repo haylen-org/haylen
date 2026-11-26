@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "3d/physics/BodyBinding.hpp"
+#include "3d/physics/JointBinding.hpp"
 #include "3d/physics/ShapeBinding.hpp"
 #include "3d/physics/WorldBinding.hpp"
 #include "haylen/core/Engine.hpp"
@@ -106,6 +107,7 @@ int Physics3DBinding::open(lua_State* L) {
 void Physics3DBinding::install(lua_State* L) {
     WorldBinding::install(L);
     BodyBinding::install(L);
+    JointBinding::install(L);
     ShapeBinding::install(L);
     lua::Binding::preload(L, "haylen.physics3d", &open);
 }

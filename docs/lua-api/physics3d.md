@@ -1,6 +1,6 @@
 # 📖 `haylen.physics3d`
 
-The module `haylen.physics3d` makes 3D physics worlds in meters, which Jolt Physics simulates unless a plugin selects another backend. This page lists the functions of the module and every member of its worlds, bodies and shapes. The [3D physics guide](../3d/physics.md) explains worlds, steps, threads, limits, shapes and backends.
+The module `haylen.physics3d` makes 3D physics worlds in meters, which Jolt Physics simulates unless a plugin selects another backend. This page lists the functions of the module and every member of its worlds, bodies, joints and shapes. The [3D physics guide](../3d/physics.md) explains worlds, steps, threads, limits, shapes and backends.
 
 ```lua
 local physics3d = require('haylen.physics3d')
@@ -166,6 +166,7 @@ local hash = world:stateHash()
 | `temporaryMemory` | integer | read | The option `temporaryMemory`, which stays for the life of the world. |
 | `interpolate` | boolean | read | The option `interpolate`, which stays for the life of the world. |
 | `enhancedInternalEdgeRemoval` | boolean | read and write | The option `enhancedInternalEdgeRemoval`, which the bodies made from then on take. |
+| `onJointBreak` | function or nil | read and write | The function that hears each joint that a step breaks, as [Breaking joints](#breaking-joints) describes. |
 | `backend` | string | read | The name of the backend that simulates the world. |
 | `bodyCount` | integer | read | The bodies of the world. |
 | `activeBodyCount` | integer | read | The bodies that are awake. |
@@ -366,6 +367,138 @@ tween.to(door, 0.8, {rotation = m.fromAxisAngle(m.up(), math.pi / 2)}, {ease = '
 | `The 3D physics world of the body was destroyed.` | A member of a body whose world was destroyed. |
 | `The shape of a 3D body was made by the 3D physics backend "<name>", and the world takes only shapes of its own backend "<name>".` | A shape of another backend. |
 
+## Joint3D
+
+A `Joint3D`, named `haylen.Joint3D` in messages, holds two bodies of a world together, or one body to the world. The method [`world:createJoint`](#worldcreatejointtype-first-second-options) makes one. Every member but `valid` and `destroy` raises `The 3D physics joint was destroyed.` once the joint or one of its bodies is gone. A member that the type of the joint lacks raises a sentence that names the types that have it, such as `Only the joints "hinge" have an angle, and this joint is "fixed".`. Two values of the same joint compare equal with `==`. The [guide](../3d/physics.md#joints) explains which joint suits which object.
+
+### world:createJoint(type, first, second, options)
+
+Makes a joint of the type between the bodies `first` and `second`, or between `first` and the world when `second` is `nil`, and returns it. Every point and axis is in world space as the bodies stand when the joint is made. The angles, positions, limits and motors measure the second body against the first, and the body against the world in a joint to the world.
+
+| Type | Holds |
+| --- | --- |
+| `'fixed'` | The bodies glued as they stand. |
+| `'point'` | The bodies pinned at `point`, free to turn around it, such as a chain link. |
+| `'distance'` | The anchors `point` and `secondPoint` between `lower` and `upper` meters apart, such as a rope or a spring. |
+| `'hinge'` | The bodies turning around `axis` through `point`, such as a door or a wheel. |
+| `'slider'` | The bodies moving along `axis`, such as a drawer or a piston. |
+| `'cone'` | The `axis` of the second body inside a cone of `halfConeAngle` around the `axis` of the first. |
+| `'swingTwist'` | A shoulder or a hip of a ragdoll: a swing inside the cone of `halfConeAngle` and `planeHalfConeAngle` and a twist around `axis` between `lower` and `upper`. |
+| `'sixDof'` | Six degrees of freedom: each axis of `axes` free, limited or fixed, with a motor of its own. |
+| `'path'` | The second body moving along the spline `path`, which moves with the first body, such as a roller coaster. |
+| `'gear'` | Two hinges that turn together by `ratio`. |
+| `'rackAndPinion'` | A hinge, the pinion, and a slider, the rack, that move together by `ratio` radians for each meter. |
+| `'pulley'` | Two ropes from `point` and `secondPoint` over `fixedPoint` and `secondFixedPoint`, whose lengths add up to a constant. |
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `point` | Vec3 or `{x, y, z}` | `{0, 0, 0}` | Where the joint holds the first body, and the second unless `secondPoint` says otherwise. |
+| `secondPoint` | Vec3 or `{x, y, z}` | `point` | Where the joint holds the second body. |
+| `axis` | Vec3 or `{x, y, z}` | `{0, 1, 0}` | The axis of a hinge, a slider, a cone, a swing twist joint and the gear on the first body, and the `x` of a six degrees of freedom joint. |
+| `normal` | Vec3 or `{x, y, z}` | `{1, 0, 0}` | The direction at a right angle to `axis` where the angle of a hinge is 0, the plane of a swing twist joint and the `y` of a six degrees of freedom joint. |
+| `secondAxis` | Vec3 or `{x, y, z}` | `{0, 1, 0}` | The axis of the gear on the second body, or the axis of the rack. |
+| `lower`, `upper` | number | none | The limits of a hinge or a twist in radians, from -pi to pi, of a slider in meters, and of the lengths of a distance joint or a pulley in meters. Both or neither. Without them a hinge, a slider and a twist are free and a distance joint and a pulley keep their length when made. |
+| `limitSpring` | table | rigid | A spring that softens the limits of a hinge, a slider or a distance joint, as [Springs](#springs) describes. |
+| `friction` | number | `0` | The torque or force that holds a hinge, a slider, a swing twist joint or a path still. |
+| `halfConeAngle`, `planeHalfConeAngle` | number | `0` | The half angles of the cone of a cone or a swing twist joint, from 0 to pi. |
+| `motor` | table | off | The motor of a hinge, a slider, a path or the twist of a swing twist joint, as [Motors](#motors) describes. |
+| `swingMotor` | table | off | The motor of the swing of a swing twist joint. |
+| `targetRotation` | Quat or `{x, y, z, w}` | no turn | The rotation that the motors of position of a swing twist joint and of the turns of a six degrees of freedom joint drive toward. |
+| `targetAngularVelocity` | Vec3 or `{x, y, z}` | `{0, 0, 0}` | The spin that the motors of velocity of a swing twist joint drive at. |
+| `axes` | table | every axis free | The axes of a six degrees of freedom joint by name, `x`, `y`, `z`, `rotationX`, `rotationY` and `rotationZ`, each a table `{mode, lower, upper, limitSpring, friction, motor}` whose `mode` is `'free'`, `'limited'` or `'fixed'`. |
+| `path` | Spline3D | none | The spline of a path joint. |
+| `pathRotation` | string | `'free'` | How the body on a path turns: `'free'`, `'aroundTangent'`, `'aroundNormal'`, `'aroundBinormal'`, `'withPath'` or `'fixed'`. |
+| `pathFraction` | number | `0` | Where on the path the body starts, from 0 to 1. |
+| `ratio` | number | `1` | The ratio of a gear, a rack and pinion or a pulley, which stays as the joint is made. |
+| `joints` | list | none | The two hinges of a gear, or the hinge and the slider of a rack and pinion, so it never drifts from them. |
+| `fixedPoint`, `secondFixedPoint` | Vec3 or `{x, y, z}` | `{0, 0, 0}` | The fixed points that the ropes of a pulley run over. |
+| `priority` | integer | `0` | Joints of a higher priority are solved later in each pass, so they hold better. |
+| `velocitySteps`, `positionSteps` | integer | `0` | More solver passes for the island of the joint, 0 for the passes of the world. |
+| `collideConnected` | boolean | `false` | Whether the two bodies of the joint collide with each other. |
+| `enabled` | boolean | `true` | Whether the joint holds its bodies. |
+| `breakForce`, `breakTorque` | number | none | The force in newtons or the torque in newton meters that breaks the joint, as [Breaking joints](#breaking-joints) describes. |
+
+```lua
+local door = world:createBody({shape = physics3d.newBox({1, 2, 0.1}), position = {0.5, 1, 0}})
+local hinge = world:createJoint('hinge', door, nil, {point = {0, 1, 0}, axis = {0, 1, 0}, normal = {1, 0, 0}, lower = 0, upper = math.pi / 2})
+```
+
+### Springs
+
+A spring is a table `{mode, frequency, stiffness, damping}`. In the mode `'frequency'`, the default, `frequency` is in hertz and `damping` is the ratio of its damping, where 1 stops it without a bounce. In the mode `'stiffness'`, `stiffness` is in newtons per meter and `damping` in newton seconds per meter. A frequency or a stiffness of 0 makes the spring rigid.
+
+### Motors
+
+A motor is a table `{state, targetVelocity, targetPosition, maxForce, maxTorque, spring}`. Its `state` is `'off'`, `'velocity'`, which drives at `targetVelocity` in meters or radians per second, or `'position'`, which drives toward `targetPosition` in meters, radians or the share of a path through its `spring`, 2 hertz with a damping of 1 unless it says otherwise. The motor drives with at most `maxForce` newtons and `maxTorque` newton meters.
+
+```lua
+wheel.motor = {state = 'velocity', targetVelocity = 12, maxTorque = 400}
+```
+
+### Breaking joints
+
+A joint with `breakForce` or `breakTorque` is destroyed by the first step that loads it past one of them, and the world calls `world.onJointBreak` once for it, after the step, with the joint and a table `{first, second, force, torque}`, where `second` is `nil` for a joint to the world. The joint is no longer valid in the callback, and it still compares equal with the values of it that the app keeps.
+
+```lua
+world.onJointBreak = function(joint, info)
+    print('A joint broke with a force of', info.force)
+end
+```
+
+### joint:setLimits(lower, upper)
+
+Changes both limits at once, so the lower one never passes the upper one between two writes.
+
+### joint:axis(name)
+
+Returns the settings of an axis of a six degrees of freedom joint, as a table of the option `axes`.
+
+### joint:setAxis(name, settings)
+
+Changes an axis of a six degrees of freedom joint.
+
+```lua
+six:setAxis('x', {mode = 'limited', lower = -0.5, upper = 0.5, motor = {state = 'position', targetPosition = 0.2}})
+```
+
+### joint:destroy()
+
+Destroys the joint. Destroying a destroyed joint does nothing.
+
+### Joint3D properties
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `valid` | boolean | read | Whether the joint, its bodies and its world live. |
+| `type` | string | read | The type of the joint. |
+| `first`, `second` | Body3D | read | The bodies of the joint, `second` `nil` for a joint to the world. |
+| `enabled`, `priority` | boolean, integer | read and write | The options of the same names. |
+| `force`, `torque` | number | read | The force and torque that held the joint in the last step. |
+| `breakForce`, `breakTorque` | number or nil | read and write | The options of the same names. |
+| `lower`, `upper` | number | read | The limits, which `joint:setLimits` changes. |
+| `limitSpring`, `motor`, `swingMotor` | table | read and write | The options of the same names. |
+| `friction`, `halfConeAngle`, `planeHalfConeAngle` | number | read and write | The options of the same names. |
+| `targetRotation` | Quat | read and write | The option `targetRotation`. |
+| `targetAngularVelocity` | Vec3 | read and write | The option `targetAngularVelocity`. |
+| `ratio` | number | read | The option `ratio`. |
+| `angle` | number | read | The angle of a hinge in radians. |
+| `position` | number | read | The position of a slider along its axis in meters. |
+| `length` | number | read | The length between the anchors of a distance joint in meters. |
+| `fraction` | number | read | How far the body on a path is, from 0 to 1. |
+
+### Joint errors
+
+| Message | Cause |
+| --- | --- |
+| `The 3D physics joint was destroyed.` | A member of a destroyed joint. |
+| `Only the joints "hinge" have an angle, and this joint is "fixed".` and the other sentences that start with `Only the joints` | A member that the type of the joint lacks. |
+| `A 3D joint holds two different bodies, or one body and the world.` | One body twice. |
+| `A joint of the type "pulley" needs a second body.` | A path, a gear, a rack and pinion or a pulley without a second body. |
+| `The limits of a 3D joint must be finite numbers, the lower one not above the upper one.` | Limits out of order. |
+| `The normal of a 3D joint must stand at a right angle to its axis.` | A normal that leans along the axis. |
+| `A path joint needs the option "path", a spline of two points or more.` | A path joint without a spline. |
+| `A joint of the type "gear" takes as its joints two live hinges of its own world.` | A gear or a rack and pinion with other joints. |
+| `The axes of a 3D joint are "x", "y", "z", "rotationX", "rotationY" and "rotationZ".` | An unknown name in `axes`. |
 
 ## Shape3D
 

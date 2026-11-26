@@ -6,6 +6,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,20 +17,27 @@
 #include "haylen/2d/physics/Ragdoll.hpp"
 #include "haylen/2d/physics/Raycaster.hpp"
 #include "haylen/2d/physics/World.hpp"
+#include "haylen/3d/physics/Body.hpp"
+#include "haylen/3d/physics/Joint.hpp"
+#include "haylen/3d/physics/Shape.hpp"
+#include "haylen/3d/physics/World.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/math/Math.hpp"
+#include "haylen/math/Quat.hpp"
 #include "haylen/math/Random.hpp"
+#include "haylen/plugins/Physics3DPlugin.hpp"
 #include "haylen/lua/ScriptPlugin.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/BenchmarkGpu.hpp"
 
 namespace haylen::bench {
 
-// Times the physics of the engine on the CPU: the step of piles, stacks, joints and ragdolls on one thread and on the job system, sleeping and sub-steps, fluids, queries, the bulk sync of transforms, the debug drawing and the events that reach Lua. The frames that draw go through the null device of the headless host or offscreen through the device that `--graphics-api` names, which adds the whole frame and the time of the GPU to their rows.
+// Times the physics of the engine on the CPU: the step of piles, stacks, joints and ragdolls in 2D and of piles and chains in 3D on one thread and on the job system, sleeping and sub-steps, fluids, queries, the bulk sync of transforms, the debug drawing and the events that reach Lua. The frames that draw go through the null device of the headless host or offscreen through the device that `--graphics-api` names, which adds the whole frame and the time of the GPU to their rows.
 class PhysicsBenchmark final {
   public:
     static int run(BenchmarkGpu& gpu) {
@@ -68,6 +76,13 @@ class PhysicsBenchmark final {
             measureFluid(jobs, particles);
         }
 
+        plugins::Physics3DPlugin& physics3d = engine.getPlugin<plugins::Physics3DPlugin>();
+        for (const int threads : {1, 4}) {
+            measurePile3D(physics3d, threads);
+        }
+
+        measureChain3D(physics3d);
+        measureSync3D(physics3d);
         measureQueries();
         measureSync();
         measureDebugDraw(engine, host, gpu);
@@ -134,6 +149,82 @@ class PhysicsBenchmark final {
         addPit(world, 2400.0F, 3000.0F);
         (void)addBoxes(world, 4000, 2300.0F, 20.0F);
         measureSteps("Pile of 4000 boxes falling, " + threadCount(threads), world, 0, 240);
+    }
+
+    // Runs `warmup` steps of a 3D world, then times `steps` steps and reports the average.
+    static void measureSteps3D(const std::string& name, physics3d::World& world, int warmup, int steps) {
+        for (int step = 0; step < warmup; ++step) {
+            world.step(kStep);
+        }
+
+        double total = 0.0;
+        for (int step = 0; step < steps; ++step) {
+            const auto start = std::chrono::steady_clock::now();
+            world.step(kStep);
+            total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+        }
+
+        report(name, total / steps, steps);
+    }
+
+    // Drops boxes of half a meter into a pit of 30 meters, in a grid of columns.
+    static std::vector<physics3d::Body> addPile3D(plugins::Physics3DPlugin& physics3d, physics3d::World& world, int count) {
+        const std::shared_ptr<const physics3d::Shape> floor = physics3d.createShape({.geometry = physics3d::Shape::Box{.size = {30.0F, 1.0F, 30.0F}}});
+        const std::shared_ptr<const physics3d::Shape> wall = physics3d.createShape({.geometry = physics3d::Shape::Box{.size = {1.0F, 20.0F, 30.0F}}});
+        const std::shared_ptr<const physics3d::Shape> crate = physics3d.createShape({.geometry = physics3d::Shape::Box{.size = {0.5F, 0.5F, 0.5F}}});
+        world.createBody({.type = physics3d::Body::Type::Static, .shape = floor, .position = {0.0F, -0.5F, 0.0F}});
+        world.createBody({.type = physics3d::Body::Type::Static, .shape = wall, .position = {-15.0F, 10.0F, 0.0F}});
+        world.createBody({.type = physics3d::Body::Type::Static, .shape = wall, .position = {15.0F, 10.0F, 0.0F}});
+        std::vector<physics3d::Body> bodies;
+        bodies.reserve(static_cast<std::size_t>(count));
+        for (int index = 0; index < count; ++index) {
+            const math::Vec3 position{static_cast<float>(index % 20) * 0.9F - 9.0F, 1.0F + static_cast<float>(index / 400) * 0.9F, static_cast<float>((index / 20) % 20) * 0.9F - 9.0F};
+            bodies.push_back(world.createBody({.shape = crate, .position = position}));
+        }
+
+        return bodies;
+    }
+
+    static void measurePile3D(plugins::Physics3DPlugin& physics3d, int threads) {
+        physics3d::WorldSettings settings = physics3d.getDefaultSettings();
+        settings.threads = threads;
+        const std::shared_ptr<physics3d::World> world = physics3d.createWorld(settings);
+        static_cast<void>(addPile3D(physics3d, *world, 4000));
+        measureSteps3D("3D pile of 4000 boxes falling, " + threadCount(threads), *world, 0, 240);
+    }
+
+    // A chain of 100 links on point joints that hangs from the world and swings.
+    static void measureChain3D(plugins::Physics3DPlugin& physics3d) {
+        const std::shared_ptr<physics3d::World> world = physics3d.createWorld(physics3d.getDefaultSettings());
+        const std::shared_ptr<const physics3d::Shape> link = physics3d.createShape({.geometry = physics3d::Shape::Capsule{.height = 0.6F, .radius = 0.1F}});
+        std::optional<physics3d::Body> previous;
+        for (int index = 0; index < 100; ++index) {
+            const float x = static_cast<float>(index) * 0.5F;
+            const physics3d::Body body = world->createBody({.shape = link, .position = {x, 20.0F, 0.0F}, .rotation = math::Quat::fromAxisAngle({0.0F, 0.0F, 1.0F}, math::Math::kPi * 0.5F)});
+            world->createJoint(physics3d::Joint::Type::Point, body, previous, {.point = {x - 0.25F, 20.0F, 0.0F}});
+            previous = body;
+        }
+
+        measureSteps3D("3D chain of 100 links on point joints", *world, 0, 240);
+    }
+
+    static void measureSync3D(plugins::Physics3DPlugin& physics3d) {
+        for (const bool blended : {false, true}) {
+            physics3d::WorldSettings settings = physics3d.getDefaultSettings();
+            settings.interpolate = blended;
+            const std::shared_ptr<physics3d::World> world = physics3d.createWorld(settings);
+            const std::vector<physics3d::Body> bodies = addPile3D(physics3d, *world, 5000);
+            world->step(kStep);
+            std::vector<float> values(bodies.size() * physics3d::World::kTransformFloats);
+            constexpr int kRuns = 200;
+            const auto start = std::chrono::steady_clock::now();
+
+            for (int run = 0; run < kRuns; ++run) {
+                world->readTransforms(bodies, values, blended ? std::optional(0.5F) : std::nullopt);
+            }
+
+            report(std::string("Read the transforms of 5000 3D bodies") + (blended ? ", interpolated" : ""), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() / kRuns, kRuns);
+        }
     }
 
     // A settled pile costs almost nothing while it sleeps, and the whole solve without sleeping.

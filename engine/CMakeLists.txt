@@ -224,11 +224,15 @@ set(HAYLEN_ENGINE_SOURCES
   src/3d/physics/BackendRegistry.cpp
   src/3d/physics/Body.cpp
   src/3d/physics/CollisionCategories.cpp
+  src/3d/physics/Joint.cpp
+  src/3d/physics/JointValidator.cpp
   src/3d/physics/Shape.cpp
   src/3d/physics/World.cpp
   src/3d/physics/WorldSettings.cpp
   src/3d/physics/WorldSlots.cpp
   src/3d/physics/jolt/Backend.cpp
+  src/3d/physics/jolt/ContactFilter.cpp
+  src/3d/physics/jolt/Joints.cpp
   src/3d/physics/jolt/Layers.cpp
   src/3d/physics/jolt/Library.cpp
   src/3d/physics/jolt/Materials.cpp

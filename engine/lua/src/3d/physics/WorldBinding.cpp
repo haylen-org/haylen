@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "3d/physics/BodyBinding.hpp"
+#include "3d/physics/JointBinding.hpp"
 #include "core/FloatBufferBinding.hpp"
 #include "haylen/3d/physics/WorldStats.hpp"
 #include "haylen/core/Engine.hpp"
@@ -57,6 +58,80 @@ int WorldBinding::step(lua_State* L) {
     World& world = check(L);
     releaseDestroyedData(L, 1);
     world.step(lua::Stack::read<float>(L, 2));
+    dispatchJointBreaks(L, 1);
+    return 0;
+}
+
+void WorldBinding::dispatchJointBreaks(lua_State* L, int worldIndex) {
+    const World& world = lua::Userdata::check<World>(L, worldIndex);
+    if (world.isDestroyed() || world.getJointBreaks().empty()) {
+        return;
+    }
+
+    lua_getiuservalue(L, worldIndex, 1);
+    const bool listening = lua_getfield(L, -1, kJointBreakField) == LUA_TFUNCTION;
+    lua_pop(L, 2);
+    if (!listening) {
+        return;
+    }
+
+    const std::vector<World::JointBreak> breaks = world.getJointBreaks();
+    for (const World::JointBreak& broken : breaks) {
+        lua_getiuservalue(L, worldIndex, 1);
+        if (lua_getfield(L, -1, kJointBreakField) != LUA_TFUNCTION) {
+            lua_pop(L, 2);
+            return;
+        }
+
+        lua_remove(L, -2);
+        JointBinding::push(L, worldIndex, broken.joint);
+        lua_createtable(L, 0, 4);
+        Physics3DBinding::pushBody(L, worldIndex, broken.first);
+        lua_setfield(L, -2, "first");
+        if (broken.second) {
+            Physics3DBinding::pushBody(L, worldIndex, *broken.second);
+            lua_setfield(L, -2, "second");
+        }
+
+        lua::Stack::push(L, broken.load.force);
+        lua_setfield(L, -2, "force");
+        lua::Stack::push(L, broken.load.torque);
+        lua_setfield(L, -2, "torque");
+        lua_call(L, 2, 0);
+    }
+}
+
+// Makes a joint with `createJoint(type, first, second, options)`, where `second` is `nil` for a joint that holds its body to the world.
+int WorldBinding::createJoint(lua_State* L) {
+    World& world = check(L);
+    const auto type = lua::Stack::read<haylen::physics3d::Joint::Type>(L, 2);
+    const haylen::physics3d::Body first = lua::Userdata::check<ScriptedBody>(L, 3).body;
+    std::optional<haylen::physics3d::Body> second;
+    if (!lua_isnil(L, 4)) {
+        second = lua::Userdata::check<ScriptedBody>(L, 4).body;
+    }
+
+    const haylen::physics3d::Joint joint = world.createJoint(type, first, second, JointBinding::readOptions(L, 5));
+    JointBinding::push(L, 1, joint);
+    return 1;
+}
+
+int WorldBinding::getJointBreakCallback(lua_State* L) {
+    static_cast<void>(check(L));
+    lua_getiuservalue(L, 1, 1);
+    lua_getfield(L, -1, kJointBreakField);
+    return 1;
+}
+
+int WorldBinding::setJointBreakCallback(lua_State* L) {
+    static_cast<void>(check(L));
+    if (!lua_isnil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TFUNCTION);
+    }
+
+    lua_getiuservalue(L, 1, 1);
+    lua_pushvalue(L, 3);
+    lua_setfield(L, -2, kJointBreakField);
     return 0;
 }
 
@@ -175,7 +250,7 @@ int WorldBinding::getActiveBodyCount(lua_State* L) {
 }
 
 void WorldBinding::install(lua_State* L) {
-    lua::ClassBuilder<World>(L).function("step", &lua::Binding::native<&step>).function("createBody", &lua::Binding::native<&createBody>).function("readTransforms", &lua::Binding::native<&readTransforms>).function("writeTransforms", &lua::Binding::native<&writeTransforms>).property("interpolate", &lua::Binding::native<&isInterpolating>).property("enhancedInternalEdgeRemoval", &lua::Binding::native<&hasEnhancedInternalEdgeRemoval>, &lua::Binding::native<&setEnhancedInternalEdgeRemoval>).function("destroy", &lua::Binding::native<&destroy>).property("destroyed", &isDestroyed).function("stats", &lua::Binding::native<&stats>).function("stateHash", &lua::Binding::native<&stateHash>).property("backend", &getBackend).property("bodyCount", &getBodyCount).property("activeBodyCount", &getActiveBodyCount).property("gravity", &get<&World::getGravity>, &lua::Binding::native<&set<&World::setGravity, haylen::math::Vec3>>).property("collisionSteps", &get<&World::getCollisionSteps>, &lua::Binding::native<&set<&World::setCollisionSteps, int>>).property("velocitySteps", &get<&World::getVelocitySteps>, &lua::Binding::native<&set<&World::setVelocitySteps, int>>).property("positionSteps", &get<&World::getPositionSteps>, &lua::Binding::native<&set<&World::setPositionSteps, int>>).property("sleepEnabled", &get<&World::isSleepEnabled>, &lua::Binding::native<&set<&World::setSleepEnabled, bool>>).property("timeBeforeSleep", &get<&World::getTimeBeforeSleep>, &lua::Binding::native<&set<&World::setTimeBeforeSleep, float>>).property("sleepVelocity", &get<&World::getSleepVelocity>, &lua::Binding::native<&set<&World::setSleepVelocity, float>>).property("speculativeContactDistance", &get<&World::getSpeculativeContactDistance>, &lua::Binding::native<&set<&World::setSpeculativeContactDistance, float>>).property("penetrationSlop", &get<&World::getPenetrationSlop>, &lua::Binding::native<&set<&World::setPenetrationSlop, float>>).property("restitutionThreshold", &get<&World::getRestitutionThreshold>, &lua::Binding::native<&set<&World::setRestitutionThreshold, float>>).property("maxBodies", &getLimit<&WorldSettings::maxBodies>).property("maxBodyPairs", &getLimit<&WorldSettings::maxBodyPairs>).property("maxContactConstraints", &getLimit<&WorldSettings::maxContactConstraints>).property("threads", &getLimit<&WorldSettings::threads>).property("temporaryMemory", &getLimit<&WorldSettings::temporaryMemory>).install();
+    lua::ClassBuilder<World>(L).function("step", &lua::Binding::native<&step>).function("createBody", &lua::Binding::native<&createBody>).function("createJoint", &lua::Binding::native<&createJoint>).property("onJointBreak", &lua::Binding::native<&getJointBreakCallback>, &lua::Binding::native<&setJointBreakCallback>).function("readTransforms", &lua::Binding::native<&readTransforms>).function("writeTransforms", &lua::Binding::native<&writeTransforms>).property("interpolate", &lua::Binding::native<&isInterpolating>).property("enhancedInternalEdgeRemoval", &lua::Binding::native<&hasEnhancedInternalEdgeRemoval>, &lua::Binding::native<&setEnhancedInternalEdgeRemoval>).function("destroy", &lua::Binding::native<&destroy>).property("destroyed", &isDestroyed).function("stats", &lua::Binding::native<&stats>).function("stateHash", &lua::Binding::native<&stateHash>).property("backend", &getBackend).property("bodyCount", &getBodyCount).property("activeBodyCount", &getActiveBodyCount).property("gravity", &get<&World::getGravity>, &lua::Binding::native<&set<&World::setGravity, haylen::math::Vec3>>).property("collisionSteps", &get<&World::getCollisionSteps>, &lua::Binding::native<&set<&World::setCollisionSteps, int>>).property("velocitySteps", &get<&World::getVelocitySteps>, &lua::Binding::native<&set<&World::setVelocitySteps, int>>).property("positionSteps", &get<&World::getPositionSteps>, &lua::Binding::native<&set<&World::setPositionSteps, int>>).property("sleepEnabled", &get<&World::isSleepEnabled>, &lua::Binding::native<&set<&World::setSleepEnabled, bool>>).property("timeBeforeSleep", &get<&World::getTimeBeforeSleep>, &lua::Binding::native<&set<&World::setTimeBeforeSleep, float>>).property("sleepVelocity", &get<&World::getSleepVelocity>, &lua::Binding::native<&set<&World::setSleepVelocity, float>>).property("speculativeContactDistance", &get<&World::getSpeculativeContactDistance>, &lua::Binding::native<&set<&World::setSpeculativeContactDistance, float>>).property("penetrationSlop", &get<&World::getPenetrationSlop>, &lua::Binding::native<&set<&World::setPenetrationSlop, float>>).property("restitutionThreshold", &get<&World::getRestitutionThreshold>, &lua::Binding::native<&set<&World::setRestitutionThreshold, float>>).property("maxBodies", &getLimit<&WorldSettings::maxBodies>).property("maxBodyPairs", &getLimit<&WorldSettings::maxBodyPairs>).property("maxContactConstraints", &getLimit<&WorldSettings::maxContactConstraints>).property("threads", &getLimit<&WorldSettings::threads>).property("temporaryMemory", &getLimit<&WorldSettings::temporaryMemory>).install();
 }
 
 } // namespace haylen::lua::physics3d

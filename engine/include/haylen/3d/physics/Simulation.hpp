@@ -5,10 +5,12 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "haylen/3d/physics/Body.hpp"
 #include "haylen/3d/physics/CollisionFilter.hpp"
+#include "haylen/3d/physics/Joint.hpp"
 #include "haylen/3d/physics/Shape.hpp"
 #include "haylen/3d/physics/WorldSettings.hpp"
 #include "haylen/3d/physics/WorldStats.hpp"
@@ -23,6 +25,9 @@ class Simulation {
   public:
     // The id of a body names its slot below `maxBodies` and the generation of the slot, so the id of a destroyed body never names the body that takes its slot.
     using BodyId = std::uint32_t;
+
+    // The id of a joint names its slot and the generation of the slot, as the id of a body does.
+    using JointId = std::uint32_t;
 
     // The limits that a step ran into, whose contacts or temporary data the step left out, which the world reports once each.
     struct StepReport {
@@ -99,6 +104,35 @@ class Simulation {
     virtual std::size_t addChild(BodyId id, const Shape::Child& child) = 0;
     virtual void removeChild(BodyId id, std::size_t index) = 0;
     virtual void setChildTransform(BodyId id, std::size_t index, const Body::Transform& value) = 0;
+
+    // Makes a joint of options that the world checked, between the first body and the second one or the world, whose `joints` the world checked to be live joints of the right types. A body that is destroyed takes its joints with it.
+    [[nodiscard]] virtual JointId createJoint(Joint::Type type, BodyId first, std::optional<BodyId> second, const Joint::Options& options) = 0;
+    virtual void destroyJoint(JointId id) = 0;
+    [[nodiscard]] virtual bool isJointValid(JointId id) const noexcept = 0;
+    [[nodiscard]] virtual Joint::Type getJointType(JointId id) const = 0;
+    [[nodiscard]] virtual std::pair<BodyId, std::optional<BodyId>> getJointBodies(JointId id) const = 0;
+    [[nodiscard]] virtual bool isJointEnabled(JointId id) const = 0;
+    virtual void setJointEnabled(JointId id, bool value) = 0;
+    [[nodiscard]] virtual int getJointPriority(JointId id) const = 0;
+    virtual void setJointPriority(JointId id, int value) = 0;
+
+    // The force and torque that held the joint in the last step.
+    [[nodiscard]] virtual Joint::Load getJointLoad(JointId id) const = 0;
+
+    // The world checked that the joint has the value, the limits, the spring, the motor, the target or the axis, and the value itself.
+    [[nodiscard]] virtual float getJointValue(JointId id, Joint::Value which) const = 0;
+    virtual void setJointValue(JointId id, Joint::Value which, float value) = 0;
+    virtual void setJointLimits(JointId id, float lower, float upper) = 0;
+    [[nodiscard]] virtual Joint::Spring getLimitSpring(JointId id) const = 0;
+    virtual void setLimitSpring(JointId id, const Joint::Spring& value) = 0;
+    [[nodiscard]] virtual Joint::Motor getJointMotor(JointId id, Joint::MotorSlot slot) const = 0;
+    virtual void setJointMotor(JointId id, Joint::MotorSlot slot, const Joint::Motor& value) = 0;
+    [[nodiscard]] virtual math::Quat getTargetRotation(JointId id) const = 0;
+    virtual void setTargetRotation(JointId id, const math::Quat& value) = 0;
+    [[nodiscard]] virtual math::Vec3 getTargetAngularVelocity(JointId id) const = 0;
+    virtual void setTargetAngularVelocity(JointId id, math::Vec3 value) = 0;
+    [[nodiscard]] virtual Joint::AxisSettings getJointAxis(JointId id, Joint::Axis axis) const = 0;
+    virtual void setJointAxis(JointId id, Joint::Axis axis, const Joint::AxisSettings& value) = 0;
 
     // Fills `ids` with the bodies that are awake, in the storage it holds, so a world that keeps the vector allocates nothing once it grew.
     virtual void collectActiveBodies(std::vector<BodyId>& ids) const = 0;

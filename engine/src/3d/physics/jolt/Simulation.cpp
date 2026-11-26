@@ -24,6 +24,7 @@ Simulation::Simulation(const WorldSettings& settings, core::JobSystem* jobSystem
     const auto maxContactConstraints = static_cast<JPH::uint>(settings.maxContactConstraints);
     system.Init(maxBodies, 0, maxBodyPairs, maxContactConstraints, layers.getBroadPhaseLayers(), layers.getBroadPhaseFilter(), layers.getPairFilter());
     Materials::install(system);
+    system.SetContactListener(&contacts);
     configure(settings);
 }
 
@@ -49,6 +50,7 @@ Simulation::StepReport Simulation::step(float deltaSeconds) {
     jobs->setParallel(parallel);
     stepThreads = jobs->GetMaxConcurrency();
 
+    subStep = deltaSeconds / static_cast<float>(collisionSteps);
     const auto start = std::chrono::steady_clock::now();
     const JPH::EPhysicsUpdateError errors = system.Update(deltaSeconds, collisionSteps, &allocator, jobs.get());
     stepMilliseconds = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - start).count();
@@ -270,6 +272,7 @@ std::optional<Simulation::BodyId> Simulation::createBody(const Body::Options& op
 }
 
 void Simulation::destroyBody(BodyId id) {
+    joints.destroyJointsOf(id);
     JPH::BodyInterface& interface = system.GetBodyInterfaceNoLock();
     const JPH::BodyID body(id);
     if (interface.IsAdded(body)) {
@@ -665,6 +668,98 @@ void Simulation::collectActiveBodies(std::vector<BodyId>& ids) const {
     for (JPH::uint index = 0; index < count; ++index) {
         ids.push_back(active[index].GetIndexAndSequenceNumber());
     }
+}
+
+Simulation::JointId Simulation::createJoint(Joint::Type type, BodyId first, std::optional<BodyId> second, const Joint::Options& options) {
+    return joints.create(type, first, second, options);
+}
+
+void Simulation::destroyJoint(JointId id) {
+    joints.destroy(id);
+}
+
+bool Simulation::isJointValid(JointId id) const noexcept {
+    return joints.isValid(id);
+}
+
+Joint::Type Simulation::getJointType(JointId id) const {
+    return joints.getType(id);
+}
+
+std::pair<Simulation::BodyId, std::optional<Simulation::BodyId>> Simulation::getJointBodies(JointId id) const {
+    return joints.getBodies(id);
+}
+
+bool Simulation::isJointEnabled(JointId id) const {
+    return joints.isEnabled(id);
+}
+
+void Simulation::setJointEnabled(JointId id, bool value) {
+    joints.setEnabled(id, value);
+}
+
+int Simulation::getJointPriority(JointId id) const {
+    return joints.getPriority(id);
+}
+
+void Simulation::setJointPriority(JointId id, int value) {
+    joints.setPriority(id, value);
+}
+
+Joint::Load Simulation::getJointLoad(JointId id) const {
+    return joints.getLoad(id, subStep);
+}
+
+float Simulation::getJointValue(JointId id, Joint::Value which) const {
+    return joints.getValue(id, which);
+}
+
+void Simulation::setJointValue(JointId id, Joint::Value which, float value) {
+    joints.setValue(id, which, value);
+}
+
+void Simulation::setJointLimits(JointId id, float lower, float upper) {
+    joints.setLimits(id, lower, upper);
+}
+
+Joint::Spring Simulation::getLimitSpring(JointId id) const {
+    return joints.getLimitSpring(id);
+}
+
+void Simulation::setLimitSpring(JointId id, const Joint::Spring& value) {
+    joints.setLimitSpring(id, value);
+}
+
+Joint::Motor Simulation::getJointMotor(JointId id, Joint::MotorSlot slot) const {
+    return joints.getMotor(id, slot);
+}
+
+void Simulation::setJointMotor(JointId id, Joint::MotorSlot slot, const Joint::Motor& value) {
+    joints.setMotor(id, slot, value);
+}
+
+math::Quat Simulation::getTargetRotation(JointId id) const {
+    return joints.getTargetRotation(id);
+}
+
+void Simulation::setTargetRotation(JointId id, const math::Quat& value) {
+    joints.setTargetRotation(id, value);
+}
+
+math::Vec3 Simulation::getTargetAngularVelocity(JointId id) const {
+    return joints.getTargetAngularVelocity(id);
+}
+
+void Simulation::setTargetAngularVelocity(JointId id, math::Vec3 value) {
+    joints.setTargetAngularVelocity(id, value);
+}
+
+Joint::AxisSettings Simulation::getJointAxis(JointId id, Joint::Axis axis) const {
+    return joints.getAxis(id, axis);
+}
+
+void Simulation::setJointAxis(JointId id, Joint::Axis axis, const Joint::AxisSettings& value) {
+    joints.setAxis(id, axis, value);
 }
 
 } // namespace haylen::physics3d::jolt

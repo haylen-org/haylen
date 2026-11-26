@@ -176,6 +176,75 @@ class BackendRegistryTest : public ::testing::Test {
             void setBodyFilter(BodyId, const CollisionFilter&) override {
                 throw std::logic_error(kNoBodies);
             }
+            [[nodiscard]] JointId createJoint(Joint::Type, BodyId, std::optional<BodyId>, const Joint::Options&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            void destroyJoint(JointId) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] Joint::Type getJointType(JointId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] std::pair<BodyId, std::optional<BodyId>> getJointBodies(JointId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] bool isJointEnabled(JointId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setJointEnabled(JointId, bool) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] int getJointPriority(JointId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setJointPriority(JointId, int) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] Joint::Load getJointLoad(JointId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] float getJointValue(JointId, Joint::Value) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setJointValue(JointId, Joint::Value, float) override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setJointLimits(JointId, float, float) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] Joint::Spring getLimitSpring(JointId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setLimitSpring(JointId, const Joint::Spring&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] Joint::Motor getJointMotor(JointId, Joint::MotorSlot) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setJointMotor(JointId, Joint::MotorSlot, const Joint::Motor&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] math::Quat getTargetRotation(JointId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setTargetRotation(JointId, const math::Quat&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] math::Vec3 getTargetAngularVelocity(JointId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setTargetAngularVelocity(JointId, math::Vec3) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] Joint::AxisSettings getJointAxis(JointId, Joint::Axis) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setJointAxis(JointId, Joint::Axis, const Joint::AxisSettings&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] bool isJointValid(JointId) const noexcept override {
+                return false;
+            }
 
           private:
             static constexpr const char* kNoBodies = "The recording backend holds no bodies.";
