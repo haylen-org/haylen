@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "haylen/gpu/Device.hpp"
+#include "haylen/graphics/Buffer.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -33,6 +34,9 @@ class Device final {
   public:
     // Receives the pixels of a render target, or the reason they could not be read.
     using ReadCallback = std::function<void(std::optional<Image> image, const std::string& error)>;
+
+    // Receives the bytes of a range of a buffer, or the reason they could not be read.
+    using BufferReadCallback = std::function<void(std::optional<std::vector<std::uint8_t>> bytes, const std::string& error)>;
 
     // Receives the path of the file that the capture tool of the GPU device wrote, or the reason the capture failed.
     using CaptureCallback = std::function<void(std::optional<std::filesystem::path> path, const std::string& error)>;
@@ -62,6 +66,19 @@ class Device final {
     // Creates a texture from its levels in their format, which keeps mipmaps when it brings more than one level and `mipmaps` is not `false`. Throws `std::invalid_argument` for a format that is no format of textures, sides that hold no whole blocks, levels of another count or size, or a format that the device does not sample or filter, with a sentence that names the format and the graphics API.
     [[nodiscard]] Texture createTexture(const TextureData& data, Texture::Options options = {});
     [[nodiscard]] RenderTarget createRenderTarget(int width, int height, Texture::Options options = {});
+
+    // Creates a buffer of the size, which starts with zeros, or one that starts with the data and takes its size, for what the options name. Throws `std::invalid_argument` for a buffer without a size or a usage, for usages that the device lacks or that no buffer combines, such as a uniform buffer that is also a vertex buffer, for an immutable buffer without data or that copies reach, and for a stream buffer that copies reach, with a sentence that names the buffer.
+    [[nodiscard]] Buffer createBuffer(std::size_t size, const Buffer::Options& options);
+    [[nodiscard]] Buffer createBuffer(std::span<const std::byte> data, const Buffer::Options& options);
+
+    // Writes bytes into a buffer at an offset that is a multiple of 4, before the passes of the frame that read them. A dynamic buffer keeps them and takes writes of whole words, and a stream buffer holds in a frame only what that frame wrote, each part once. Throws `std::invalid_argument` for an immutable buffer, a range outside the buffer or a range that is not whole words.
+    void writeBuffer(const Buffer& buffer, std::size_t offset, std::span<const std::byte> data);
+
+    // Copies bytes from a buffer that is a copy source into another one that is a copy destination, at offsets and of a size that are multiples of 4, before the passes of the frame that read them. Throws `std::invalid_argument` for buffers without those usages, a buffer and itself, or ranges outside the buffers or not of whole words.
+    void copyBuffer(const Buffer& source, std::size_t sourceOffset, const Buffer& destination, std::size_t destinationOffset, std::size_t size);
+
+    // Reads a range of a buffer that is a copy source as the frame that asks for it leaves the buffer, at an offset and of a size that are multiples of 4. The copy starts once that frame is submitted, and the callback receives the bytes on the frame thread in a later frame. Throws `std::invalid_argument` for a buffer that is no copy source or a range outside it or not of whole words.
+    void readBuffer(const Buffer& buffer, std::size_t offset, std::size_t size, BufferReadCallback done);
 
     // Creates a texture of one color, checking the size against the device before any pixel exists.
     [[nodiscard]] Texture createTexture(int width, int height, math::Color fill, Texture::Options options = {});
@@ -149,6 +166,9 @@ class Device final {
 
   private:
     static void validateSize(int width, int height, int limit);
+    void validateBuffer(std::size_t size, bool data, const Buffer::Options& options) const;
+    static void validateRange(const Buffer& buffer, std::size_t offset, std::size_t size, std::string_view action, bool wholeWords);
+    void processBufferReads();
     static void validateDistances(int width, int height, std::span<const std::uint16_t> distances, int limit);
     void validateData(const TextureData& data, Texture::Options options) const;
     [[nodiscard]] static std::string_view getFormatName(gpu::Device::PixelFormat format) noexcept;

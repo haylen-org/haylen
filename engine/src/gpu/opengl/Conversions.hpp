@@ -36,6 +36,7 @@ class Conversions final {
 
     [[nodiscard]] static Pixel getPixel(Device::PixelFormat format, bool desktop) noexcept;
     [[nodiscard]] static Vertex getVertex(Device::VertexFormat format) noexcept;
+    [[nodiscard]] static Gl::Enum toBufferUsage(Device::BufferUpdate update) noexcept;
     [[nodiscard]] static Gl::Enum toPrimitive(Device::Primitive primitive) noexcept;
     [[nodiscard]] static Gl::Enum toIndexType(Device::IndexType type) noexcept;
     [[nodiscard]] static std::size_t getIndexSize(Device::IndexType type) noexcept;

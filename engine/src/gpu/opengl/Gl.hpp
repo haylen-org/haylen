@@ -122,6 +122,10 @@ class Gl final {
     static constexpr Enum kPixelUnpackBuffer = 0x88EC;
     static constexpr Enum kCopyReadBuffer = 0x8F36;
     static constexpr Enum kCopyWriteBuffer = 0x8F37;
+    static constexpr Enum kUniformBuffer = 0x8A11;
+    static constexpr Enum kUniformBufferOffsetAlignment = 0x8A34;
+    static constexpr Enum kMaxUniformBlockSize = 0x8A30;
+    static constexpr Uint kInvalidIndex = 0xFFFFFFFF;
     static constexpr Enum kStreamDraw = 0x88E0;
     static constexpr Enum kStreamRead = 0x88E1;
     static constexpr Enum kStaticDraw = 0x88E4;
@@ -347,6 +351,8 @@ class Gl final {
     void (*bufferData)(Enum target, SizeiPtr size, const void* data, Enum usage) = nullptr;
     void (*bufferSubData)(Enum target, IntPtr offset, SizeiPtr size, const void* data) = nullptr;
     void (*copyBufferSubData)(Enum readTarget, Enum writeTarget, IntPtr readOffset, IntPtr writeOffset, SizeiPtr size) = nullptr;
+    void (*bindBufferBase)(Enum target, Uint index, Uint buffer) = nullptr;
+    void (*bindBufferRange)(Enum target, Uint index, Uint buffer, IntPtr offset, SizeiPtr size) = nullptr;
     void* (*mapBufferRange)(Enum target, IntPtr offset, SizeiPtr length, Bitfield access) = nullptr;
     Boolean (*unmapBuffer)(Enum target) = nullptr;
     void (*getBufferSubData)(Enum target, IntPtr offset, SizeiPtr size, void* data) = nullptr;
@@ -405,8 +411,8 @@ class Gl final {
     void (*useProgram)(Uint program) = nullptr;
     Int (*getUniformLocation)(Uint program, const char* name) = nullptr;
     void (*uniform1i)(Int location, Int value) = nullptr;
-    void (*uniform4fv)(Int location, Sizei count, const Float* values) = nullptr;
-    void (*uniform4iv)(Int location, Sizei count, const Int* values) = nullptr;
+    Uint (*getUniformBlockIndex)(Uint program, const char* name) = nullptr;
+    void (*uniformBlockBinding)(Uint program, Uint block, Uint binding) = nullptr;
 
     void (*genVertexArrays)(Sizei count, Uint* arrays) = nullptr;
     void (*deleteVertexArrays)(Sizei count, const Uint* arrays) = nullptr;

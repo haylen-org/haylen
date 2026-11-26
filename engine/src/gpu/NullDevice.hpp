@@ -13,7 +13,9 @@
 #include <utility>
 #include <vector>
 
+#include "gpu/BufferRules.hpp"
 #include "gpu/ImageInfo.hpp"
+#include "haylen/gpu/ContractError.hpp"
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::gpu {
@@ -29,6 +31,9 @@ class NullDevice final : public Device {
     static constexpr std::uint8_t kSampleCounts = 1 | 2 | 4 | 8;
     static constexpr int kMaxAnisotropy = 16;
     static constexpr float kMaxLodBias = 16.0F;
+
+    // The most bytes of a uniform block, the limit of Direct3D 11 that is the strictest of the graphics APIs.
+    static constexpr std::size_t kMaxUniformBlockSize = 64 * 1024;
 
     // How many objects of each kind exist at once, past which the device has no room.
     static constexpr int kImagePoolSize = 4096;
@@ -62,6 +67,7 @@ class NullDevice final : public Device {
         int imageWrites = 0;
         std::size_t imageWriteBytes = 0;
         int bufferWrites = 0;
+        int bufferCopies = 0;
     };
 
     static constexpr std::string_view kMissingCaptureTool = "The headless host draws nothing, so no capture tool records its frames. Capture on a platform whose graphics API has one, such as Metal on macOS or Vulkan and Direct3D under RenderDoc.";
@@ -69,7 +75,7 @@ class NullDevice final : public Device {
     // A device that runs a shader language asks every program for code in it, which tests use to see what a package lacks, the capabilities say what the engine may use, and the API is the one it reports, such as the API of a port that runs the engine on it before its own device draws. A device with a capture tool records when captures begin and end, and returns the path a capture would have with the extension `.capture`, without writing it.
     explicit NullDevice(Language runs = Language::None, const Capabilities& capabilities = getDefaultCapabilities(), Api reported = Api::None, CaptureTool capture = CaptureTool::None) noexcept : language(runs), api(reported), features(capabilities), captureTool(capture) {}
 
-    // The capabilities of a device that renders every format with up to 8 samples, blends into all but the 32-bit floats, and resolves multisampled render targets, but blends every color of a pipeline alike, as OpenGL ES does.
+    // The capabilities of a device that renders every format with up to 8 samples, blends into all but the 32-bit floats, resolves multisampled render targets and has storage and indirect buffers, but blends every color of a pipeline alike, as OpenGL ES does.
     [[nodiscard]] static Capabilities getDefaultCapabilities() noexcept;
 
     [[nodiscard]] Language getLanguage() const noexcept override;
@@ -97,6 +103,7 @@ class NullDevice final : public Device {
     void destroy(Pipeline pipeline) noexcept override;
 
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
+    void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
 
     void beginPass(const PassDesc& desc) override;
@@ -144,6 +151,7 @@ class NullDevice final : public Device {
     }
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+    [[nodiscard]] std::unique_ptr<Readback> readBuffer(Buffer buffer, std::size_t offset, std::size_t size) override;
 
     [[nodiscard]] CaptureSupport getCaptureSupport() const override;
     void beginCapture(const std::filesystem::path& path) override;
@@ -182,16 +190,14 @@ class NullDevice final : public Device {
     }
 
   private:
-    // A part of a dynamic buffer that the frame of the stamp wrote.
+    // A part of a stream buffer that the frame of the stamp wrote.
     struct WrittenRange {
         std::size_t offset = 0;
         std::size_t size = 0;
     };
 
     struct BufferState {
-        std::size_t size = 0;
-        Usage usage = Usage::Immutable;
-        bool index = false;
+        BufferRules::Description description{};
         std::uint64_t boundFrame = 0;
         std::uint64_t writtenFrame = 0;
         std::vector<WrittenRange> written{};
@@ -244,12 +250,14 @@ class NullDevice final : public Device {
     void checkTexture(const TextureBinding& binding, Image image) const;
     void checkSampler(const SamplerBinding& binding, Sampler sampler) const;
     void checkIndexRange(int first, int count) const;
+    [[nodiscard]] std::uint32_t bindUniformBuffers(const ProgramRecord& program, const Bindings& bindings);
+    void writeStream(BufferState& state, std::size_t offset, std::size_t size);
     [[nodiscard]] BufferState& getBuffer(Buffer buffer);
     [[nodiscard]] const BufferState& getBuffer(Buffer buffer) const;
     [[nodiscard]] const ImageDesc& getImage(Image image) const;
     [[nodiscard]] const PipelineState& getAppliedPipeline() const;
     void requirePass() const;
-    void requireNoPass() const;
+    void requireNoPass(ContractError::Rule broken = ContractError::Rule::PassOrder) const;
     void recordPass(bool swapchain, int surface, Load load, math::Color clear, std::size_t colors);
     void requireFollowingPasses(int surface) const;
     void requireKeptSamples(int surface) const;
@@ -267,17 +275,18 @@ class NullDevice final : public Device {
     int preparedPrograms = 0;
     std::uint64_t nextId = 1;
 
-    // The frame that records, counted from 1, and the pass, pipeline, bindings and uniform blocks it applied last.
+    // The frame that records, counted from 1, and the pass, pipeline, bindings and uniform blocks it applied last, with the blocks that `applyUniforms` fed and those that uniform buffers of the bindings feed.
     std::uint64_t frame = 1;
     std::optional<OpenPass> pass;
     Pipeline applied;
     bool bindingsApplied = false;
     Bindings bound;
     std::uint32_t appliedBlocks = 0;
+    std::uint32_t bufferBlocks = 0;
     std::vector<bool> debugGroups;
 
-    // Whether a debug group was pushed or popped between passes since the last pass began.
-    bool groupedSincePass = false;
+    // Whether a debug group was pushed or popped, or a copy into a buffer recorded, between passes since the last pass began.
+    bool interruptedSincePass = false;
 
     bool lost = false;
 

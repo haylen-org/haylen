@@ -16,6 +16,7 @@ class Conversion final {
 
     [[nodiscard]] static WGPUStringView toText(std::string_view text) noexcept;
     [[nodiscard]] static std::string_view fromText(WGPUStringView text) noexcept;
+    [[nodiscard]] static WGPUBufferUsage toBufferUsage(const Device::BufferUsage& usage) noexcept;
     [[nodiscard]] static WGPUTextureFormat toTextureFormat(Device::PixelFormat format) noexcept;
     [[nodiscard]] static WGPUVertexFormat toVertexFormat(Device::VertexFormat format) noexcept;
     [[nodiscard]] static WGPUPrimitiveTopology toTopology(Device::Primitive primitive) noexcept;

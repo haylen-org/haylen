@@ -205,7 +205,6 @@ A material fills the uniform blocks and textures that the fragment shader declar
 
 - Uniform blocks take the bindings 1 to 5. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, binding 6 holds the edges of the [fade](rendering.md#fades) of the draw, which `haylen_output` applies, and binding 7 holds the lighting of lit canvases. The renderer fills them with the layout of the shader library it was built with. So a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen app shaders".` when a draw first uses it.
 - Members are `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`, and arrays of any of them. The std140 rules give every element of an array a whole vector of 16 bytes, so an array of `float` takes 16 bytes an element. The engine places the numbers that a material sets for an array at those strides.
-- A block holds floats or integers, not both, because the GLSL targets read each block as one array of `vec4` or `ivec4`. So integer uniforms go in a block of their own.
 - Textures take the bindings from 1 to 24, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or with `sprite_sampler`. The bindings 25 to 31 hold the textures of a batch after its first, in the `batch` programs.
 - The sampler of a texture binding is the one the texture was created with, so a texture loaded with `filter = 'linear'` samples smoothly.
 - A texture that a material leaves unset draws as white.
@@ -336,11 +335,11 @@ local glow = graphics2d.newMaterial(assets.shader('shaders/inner-glow.shader'), 
 
 ## The .shader file
 
-A `.shader` file is a Haylen shader package: compact JSON that `haylen-shaderc` writes and nothing else edits, in version 3 of the [package format](https://github.com/haylen-org/haylen-shader-compiler/blob/main/docs/format.md).
+A `.shader` file is a Haylen shader package: compact JSON that `haylen-shaderc` writes and nothing else edits, in version 4 of the [package format](https://github.com/haylen-org/haylen-shader-compiler/blob/main/docs/format.md).
 
 | Key | Meaning |
 | --- | --- |
-| `format`, `version` | `"haylen-shader"` and `3`. |
+| `format`, `version` | `"haylen-shader"` and `4`. |
 | `name` | The name of the source file without its folder and its extension. |
 | `sources` | The source of every stage of every program for every target, each text once. |
 | `programs` | Each of the ten programs under its name, with its `attributes`, its uniform `blocks` with their `members`, its `textures`, its `samplers`, the texture sampler `pairs` that its stages sample with, the number of color `outputs`, which is 0 for a program that draws depth alone, and its `targets`. The members have names, types, element counts and byte offsets that follow the std140 rules. For each of `msl-macos`, `msl-ios`, `msl-ios-simulator`, `hlsl5`, `glsl430`, `glsl300es`, `wgsl` and `spirv`, the targets give the source and entry point of each stage and the binding of each uniform block, texture and sampler in that language. The `spirv` target holds each module as the Base64 text of its words and gives each binding with its descriptor set: the uniform blocks in set 0 at the binding of their slot, the textures in set 1 at the binding of their slot and the samplers in set 1 at 64 plus their slot. |
@@ -351,13 +350,13 @@ The shaders of the engine are packages of the same format. The engine compiles t
 
 Reading the file also checks it, so a damaged or hand-edited file fails at once instead of when a draw uses it. The file must follow these rules:
 
-- It is a version 3 package.
+- It is a version 4 package.
 - Every attribute, uniform block, texture and sampler fits the binding slots of every GPU device, and no two uniform blocks, textures or samplers of a program share a slot. Every binding number is in range.
 - Every uniform block takes a multiple of 16 bytes, and every uniform of a block fits inside it.
 - Every stage names a source of the file, and every pair names a texture and a sampler that its program declares.
 - A program writes one to four colors.
 - The names of stages, texture types, sample types, sampler types and targets are ones the compiler writes.
-- The GLSL targets read each block as an array of `vec4` or `ivec4` that fills it exactly.
+- The GLSL targets name every uniform block of the program, which they read as a uniform block of the `std140` layout.
 - Every program reads each block of the material with the slot and size that the file gives it.
 
 A file that breaks a rule of the format, such as a slot out of range or a uniform that does not fit in its block, or that is no JSON, raises `The shader file "<path>" is damaged or was made by another version of the Haylen shader compiler. Compile it again with "haylen app shaders".`, from `assets.shader` or from the hot reload, which keeps the last good shader.

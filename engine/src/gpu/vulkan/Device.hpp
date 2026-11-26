@@ -15,6 +15,7 @@
 
 #include <vk_mem_alloc.h>
 
+#include "gpu/BufferRules.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/renderdoc/Capturer.hpp"
@@ -33,7 +34,7 @@ class Context;
 class Instance;
 class PreparedModules;
 
-// The device of Vulkan 1.1 on Windows, Linux and Android. It records each frame into a command buffer of uploads and one of passes, with dynamic rendering where the GPU has it and render passes otherwise, and keeps a fixed number of frames in flight behind fences, releasing what `destroy` lets go of once those frames finished. Uniforms take dynamic offsets into a ring that stays mapped, dynamic buffers rotate through a copy for each frame in flight, and the descriptor sets of textures and samplers are made once for each choice of them. Its viewport flips the vertical axis, so clip space and the rows of render targets match Metal and Direct3D.
+// The device of Vulkan 1.1 on Windows, Linux and Android. It records each frame into a command buffer of uploads and one of passes, with dynamic rendering where the GPU has it and render passes otherwise, and keeps a fixed number of frames in flight behind fences, releasing what `destroy` lets go of once those frames finished. Uniform blocks take dynamic offsets into a ring that stays mapped or into the uniform buffers of the bindings, stream buffers rotate through a copy for each frame in flight, the writes into dynamic buffers and the copies between buffers are copies among the passes of the frame, and the descriptor sets of textures and samplers are made once for each choice of them. Its viewport flips the vertical axis, so clip space and the rows of render targets match Metal and Direct3D.
 class Device final : public gpu::Device {
   public:
     static constexpr int kFramesInFlight = 2;
@@ -79,6 +80,7 @@ class Device final : public gpu::Device {
     void destroy(Pipeline pipeline) noexcept override;
 
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
+    void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
 
     void beginPass(const PassDesc& desc) override;
@@ -113,6 +115,7 @@ class Device final : public gpu::Device {
     void removeSurface(int number) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+    [[nodiscard]] std::unique_ptr<Readback> readBuffer(Buffer buffer, std::size_t offset, std::size_t size) override;
 
     [[nodiscard]] CaptureSupport getCaptureSupport() const override;
     void beginCapture(const std::filesystem::path& path) override;
@@ -132,7 +135,12 @@ class Device final : public gpu::Device {
 
     static constexpr VkDeviceSize kStagingChunkSize = VkDeviceSize{8} * 1024 * 1024;
     static constexpr VkDeviceSize kUniformChunkSize = VkDeviceSize{1} * 1024 * 1024;
-    static constexpr VkDeviceSize kDynamicBufferAlignment = 256;
+    static constexpr VkDeviceSize kStreamBufferAlignment = 256;
+
+    // The stages and accesses of the commands that read and write buffers, which the copies into buffers wait for and make their writes visible to.
+    static constexpr VkPipelineStageFlags kBufferStages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+    static constexpr VkAccessFlags kBufferAccesses = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+
     static constexpr std::uint32_t kNoSet = 0xFFFFFFFFU;
 
     // The sample counts of the contract, whose bits are the counts as the bits of Vulkan are.
@@ -150,17 +158,16 @@ class Device final : public gpu::Device {
         bool trim = false;
     };
 
-    // A buffer, which a dynamic one holds once for each frame in flight at the stride, and whose current copy changes with the first write of a frame.
+    // A buffer, which a stream one holds once for each frame in flight at the stride, and whose current copy changes with the first write of a frame.
     struct BufferRecord {
         VkBuffer buffer = VK_NULL_HANDLE;
         VmaAllocation allocation = VK_NULL_HANDLE;
         std::byte* mapped = nullptr;
-        VkDeviceSize size = 0;
         VkDeviceSize stride = 0;
         std::uint32_t copies = 1;
         std::uint32_t current = 0;
         std::uint64_t writtenSerial = 0;
-        Usage usage = Usage::Immutable;
+        BufferRules::Description description{};
     };
 
     struct AttachmentView {
@@ -301,7 +308,7 @@ class Device final : public gpu::Device {
         std::size_t transitionCount = 0;
     };
 
-    // What the draws of a pass bound so far, so a draw sends only what changed.
+    // What the draws of a pass bound so far, so a draw sends only what changed. Each uniform block of the program, by its index, reads its buffer from its dynamic offset, a buffer of the uniform ring or a uniform buffer of the bindings. The slots that `applyUniforms` fed since the pipeline and the slots that the bindings feed from uniform buffers never meet.
     struct DrawState {
         PipelineRecord* pipeline = nullptr;
         ProgramRecord* program = nullptr;
@@ -311,12 +318,13 @@ class Device final : public gpu::Device {
         bool indexDirty = true;
         bool resourcesDirty = true;
         bool uniformsDirty = true;
-        VkBuffer uniformBuffer = VK_NULL_HANDLE;
         const ProgramRecord* uniformSetProgram = nullptr;
         VkDescriptorSet uniformSet = VK_NULL_HANDLE;
         std::uint32_t uniformMask = 0;
+        std::array<VkBuffer, kMaxBlocks> uniformBuffers{};
         std::array<std::uint32_t, kMaxBlocks> uniformOffsets{};
-        std::array<const std::byte*, kMaxBlocks> uniformData{};
+        std::uint32_t appliedSlots = 0;
+        std::uint32_t bufferSlots = 0;
     };
 
     void createFrames();
@@ -351,6 +359,8 @@ class Device final : public gpu::Device {
     void uploadLevels(const ImageRecord& record, std::span<const std::span<const std::byte>> levels);
     void clearImage(const ImageRecord& record);
     void uploadBuffer(const BufferRecord& record, std::span<const std::byte> data);
+    void writeStream(BufferRecord& record, std::size_t offset, std::span<const std::byte> data);
+    void recordBufferCopy(VkBuffer source, VkDeviceSize sourceOffset, VkBuffer destination, VkDeviceSize destinationOffset, VkDeviceSize size);
     void releaseImage(ImageRecord& record, std::uint64_t serial);
     void releaseProgram(ProgramRecord& record, std::uint64_t serial);
     void forgetProgramUse(std::uint64_t program, std::uint64_t serial) noexcept;
@@ -370,8 +380,11 @@ class Device final : public gpu::Device {
     void bindVertexBuffers();
     void bindIndexBuffer();
     void bindResources();
+    void checkBindings(const Bindings& bindings);
+    void feedUniformBlocks(const Bindings& bindings);
     void bindUniforms();
     [[nodiscard]] UploadRing::Allocation allocateUniform(std::size_t index, VkDeviceSize size);
+    void setUniformBlock(std::size_t index, VkBuffer buffer, VkDeviceSize offset) noexcept;
 
     std::unique_ptr<Instance> instance;
     // The in-application API of RenderDoc when RenderDoc launched the app, which captures its frames.
@@ -409,7 +422,7 @@ class Device final : public gpu::Device {
     std::array<Frame, kFramesInFlight> frames{};
     std::size_t frameIndex = 0;
     bool frameOpen = false;
-    bool bufferCopies = false;
+    bool bufferUploads = false;
     std::uint64_t nextSerial = 1;
     std::uint64_t completedSerial = 0;
     std::optional<double> gpuFrameSeconds;

@@ -36,6 +36,7 @@
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/BlendMode.hpp"
+#include "haylen/graphics/Buffer.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Shader.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -266,6 +267,11 @@ template <> struct Type<haylen::math::Noise2D> {
 template <> struct Type<haylen::math::EasingCurve> {
     static constexpr const char* name = "haylen.EasingCurve";
     using Storage = haylen::math::EasingCurve;
+};
+
+template <> struct Type<haylen::graphics::Buffer> {
+    static constexpr const char* name = "haylen.Buffer";
+    using Storage = haylen::graphics::Buffer;
 };
 
 template <> struct Type<haylen::graphics::Texture> {
@@ -623,6 +629,16 @@ template <> struct EnumNames<haylen::text::LineHeight> {
     }
     static std::string_view name(haylen::text::LineHeight value) {
         return haylen::text::Style::lineHeightName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::gpu::Device::BufferUpdate> {
+    static std::optional<haylen::gpu::Device::BufferUpdate> fromName(std::string_view name) {
+        const auto found = std::ranges::find(haylen::gpu::Device::kBufferUpdateNames, name, &std::pair<std::string_view, haylen::gpu::Device::BufferUpdate>::first);
+        return found != haylen::gpu::Device::kBufferUpdateNames.end() ? std::optional(found->second) : std::nullopt;
+    }
+    static std::string_view name(haylen::gpu::Device::BufferUpdate value) {
+        return std::ranges::find(haylen::gpu::Device::kBufferUpdateNames, value, &std::pair<std::string_view, haylen::gpu::Device::BufferUpdate>::second)->first;
     }
 };
 

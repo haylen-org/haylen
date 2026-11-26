@@ -4,31 +4,28 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <vector>
 
 #include "gpu/opengl/Context.hpp"
+#include "gpu/opengl/ReadbackBuffer.hpp"
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::gpu::opengl {
 
-// A copy of a render target into a pixel buffer object behind a fence, which `glReadPixels` queues without waiting. Polling reads the status of the fence without blocking, which WebGL2 allows on the main thread, and copies the pixels out once the GPU passed it. Float targets come back as floats and leave as bytes.
+// A copy of a render target into a pixel buffer object behind a fence, which `glReadPixels` queues without waiting. Float targets come back as floats and leave as bytes.
 class PixelReadback final : public Device::Readback {
   public:
     PixelReadback(const std::shared_ptr<Context>& owner, Gl::Uint framebuffer, int width, int height, bool floats);
-    PixelReadback(const PixelReadback&) = delete;
-    PixelReadback& operator=(const PixelReadback&) = delete;
-    ~PixelReadback() override;
 
     [[nodiscard]] std::optional<std::vector<std::uint8_t>> poll() override;
 
   private:
-    // Returns the pixels of the copy, or nothing when the context could not hand its buffer over.
-    [[nodiscard]] std::optional<std::vector<std::uint8_t>> copyOut(Context& owner) const;
-    void release(Context& owner) noexcept;
+    static constexpr std::string_view kSubject = "the pixels of a render target";
 
-    std::weak_ptr<Context> context;
-    Gl::Uint buffer = 0;
-    Gl::Sync fence = nullptr;
+    [[nodiscard]] static std::size_t getBytes(int width, int height, bool floats) noexcept;
+
+    ReadbackBuffer copy;
     std::size_t pixels = 0;
     bool floating = false;
 };

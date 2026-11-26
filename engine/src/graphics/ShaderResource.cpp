@@ -252,20 +252,18 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const core::Json& value)
         Target read{.vertex = readStageCode(target.at("vertex")), .fragment = readStageCode(target.at("fragment"))};
         const bool glsl = *language == gpu::Device::Language::Glsl430 || *language == gpu::Device::Language::Glsl300es;
         if (glsl) {
+            const core::Json& names = target.at("blocks");
+            if (names.size() != info.blocks.size()) {
+                throw ShaderPackageError(ShaderPackageError::Problem::OpenGlBlock);
+            }
+
             for (const Block& block : info.blocks) {
-                const core::Json& flattened = target.at("blocks").at(std::to_string(block.slot));
-                const std::string& type = flattened.at("type").get_ref<const std::string&>();
-                if (type != "vec4" && type != "ivec4") {
+                const std::string& blockName = names.at(std::to_string(block.slot)).get_ref<const std::string&>();
+                if (blockName.empty()) {
                     throw ShaderPackageError(ShaderPackageError::Problem::OpenGlBlock);
                 }
 
-                // The count compares in 64 bits with the vectors the block holds, so no count of a hostile file wraps around to a size that matches.
-                const auto count = flattened.at("count").get<std::int64_t>();
-                if (count != static_cast<std::int64_t>(block.size / 16)) {
-                    throw ShaderPackageError(ShaderPackageError::Problem::OpenGlBlock);
-                }
-
-                read.glslBlocks.push_back({.slot = block.slot, .name = flattened.at("name").get<std::string>(), .integers = type == "ivec4", .count = static_cast<int>(count)});
+                read.glslBlocks.push_back({.slot = block.slot, .name = blockName});
             }
         } else {
             read.blockBindings = readBindings(target, "blocks", blockSlots, *language);
@@ -333,7 +331,7 @@ void ShaderResource::readMaterialBindings(const ProgramInfo& program) {
 void ShaderResource::read(const core::Json& document) {
     core::JsonValidator::requireKnownKeys(document, {"format", "version", "name", "sources", "programs"}, "a shader file");
 
-    if (document.at("format") != "haylen-shader" || document.at("version") != 3) {
+    if (document.at("format") != "haylen-shader" || document.at("version") != 4) {
         throw ShaderPackageError(ShaderPackageError::Problem::Version);
     }
 
@@ -425,8 +423,6 @@ void ShaderResource::describe(const ProgramInfo& program, gpu::Device::Language 
             binding.set = found.set;
             if (const auto glsl = std::ranges::find(target->glslBlocks, block.slot, &GlslBlock::slot); glsl != target->glslBlocks.end()) {
                 binding.glslName = glsl->name;
-                binding.glslIntegers = glsl->integers;
-                binding.glslCount = glsl->count;
             }
         }
 

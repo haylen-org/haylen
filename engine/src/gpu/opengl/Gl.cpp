@@ -174,6 +174,8 @@ void Gl::loadCore(GlContext& context) {
     require(context, bufferData, "glBufferData");
     require(context, bufferSubData, "glBufferSubData");
     require(context, copyBufferSubData, "glCopyBufferSubData");
+    require(context, bindBufferBase, "glBindBufferBase");
+    require(context, bindBufferRange, "glBindBufferRange");
 
     require(context, genTextures, "glGenTextures");
     require(context, deleteTextures, "glDeleteTextures");
@@ -228,8 +230,8 @@ void Gl::loadCore(GlContext& context) {
     require(context, useProgram, "glUseProgram");
     require(context, getUniformLocation, "glGetUniformLocation");
     require(context, uniform1i, "glUniform1i");
-    require(context, uniform4fv, "glUniform4fv");
-    require(context, uniform4iv, "glUniform4iv");
+    require(context, getUniformBlockIndex, "glGetUniformBlockIndex");
+    require(context, uniformBlockBinding, "glUniformBlockBinding");
 
     require(context, genVertexArrays, "glGenVertexArrays");
     require(context, deleteVertexArrays, "glDeleteVertexArrays");

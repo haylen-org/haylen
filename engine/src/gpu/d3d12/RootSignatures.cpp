@@ -23,10 +23,11 @@ RootSignatures::Layout RootSignatures::make(const Device::ProgramDesc& desc) {
     layout.blockParameters.fill(-1);
     std::vector<D3D12_ROOT_PARAMETER1> parameters;
 
+    // A uniform buffer that a view points at takes new bytes between passes while the view stays set, so the data of the views is volatile.
     for (const Device::BlockBinding& block : desc.blocks) {
         D3D12_ROOT_PARAMETER1 parameter{};
         parameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        parameter.Descriptor = {.ShaderRegister = static_cast<UINT>(block.binding), .RegisterSpace = 0, .Flags = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC_WHILE_SET_AT_EXECUTE};
+        parameter.Descriptor = {.ShaderRegister = static_cast<UINT>(block.binding), .RegisterSpace = 0, .Flags = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE};
         parameter.ShaderVisibility = toVisibility(block.stage == Device::Stage::Vertex ? 0 : 1);
         layout.blockParameters[static_cast<std::size_t>(block.slot)] = static_cast<int>(parameters.size());
         layout.blockSizes[static_cast<std::size_t>(block.slot)] = block.size;

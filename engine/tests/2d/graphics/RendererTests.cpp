@@ -350,7 +350,7 @@ TEST(RendererTest, EndsTheFrameWhenAMaterialFailsInsideAPass) {
     test::EngineFixture fixture;
     const core::Json program = core::Json::parse(R"({"attributes": [], "textures": [], "samplers": [], "pairs": [], "outputs": 1, "targets": {},
         "blocks": [{"name": "haylen_vs_params", "stage": "vertex", "slot": 0, "size": 64, "members": [{"name": "view_projection", "type": "mat4", "count": 1, "offset": 0}]}]})");
-    core::Json document{{"format", "haylen-shader"}, {"version", 3}, {"name", "stale"}, {"sources", core::Json::array()}, {"programs", core::Json::object()}};
+    core::Json document{{"format", "haylen-shader"}, {"version", 4}, {"name", "stale"}, {"sources", core::Json::array()}, {"programs", core::Json::object()}};
     for (const std::string_view name : Material::kPrograms) {
         document["programs"][std::string(name)] = program;
     }

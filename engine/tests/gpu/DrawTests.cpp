@@ -51,12 +51,12 @@ class GpuDrawTest : public test::GpuFixture {
         return device().makePipeline({.program = program(name), .buffers = buffers, .attributes = attributes, .primitive = primitive, .indexType = indexType, .colors = colors, .label = "haylen-test-color"});
     }
 
-    [[nodiscard]] Device::Buffer makeVertices(std::span<const Vertex> vertices, Device::Usage usage = Device::Usage::Immutable) {
-        if (usage == Device::Usage::Dynamic) {
-            return device().makeBuffer({.size = vertices.size_bytes(), .usage = usage, .label = "haylen-test-vertices"});
+    [[nodiscard]] Device::Buffer makeVertices(std::span<const Vertex> vertices, Device::BufferUpdate update = Device::BufferUpdate::Immutable) {
+        if (update == Device::BufferUpdate::Immutable) {
+            return device().makeBuffer({.data = std::as_bytes(vertices), .usage = {.vertex = true}, .label = "haylen-test-vertices"});
         }
 
-        return device().makeBuffer({.data = std::as_bytes(vertices), .label = "haylen-test-vertices"});
+        return device().makeBuffer({.size = vertices.size_bytes(), .usage = {.vertex = true}, .update = update, .label = "haylen-test-vertices"});
     }
 
     void beginPass() {
@@ -152,8 +152,8 @@ TEST_P(GpuDrawTest, DrawsIndexedTrianglesOfBothIndexSizes) {
     const Device::Buffer corners = makeVertices(kCorners);
     const std::array<std::uint16_t, 8> shortIndices{9, 9, 0, 1, 2, 2, 1, 3};
     const std::array<std::uint32_t, 8> longIndices{9, 9, 0, 1, 2, 2, 1, 3};
-    const Device::Buffer shortBuffer = device().makeBuffer({.data = std::as_bytes(std::span(shortIndices)), .index = true, .label = "haylen-test-short-indices"});
-    const Device::Buffer longBuffer = device().makeBuffer({.data = std::as_bytes(std::span(longIndices)), .index = true, .label = "haylen-test-long-indices"});
+    const Device::Buffer shortBuffer = device().makeBuffer({.data = std::as_bytes(std::span(shortIndices)), .usage = {.index = true}, .label = "haylen-test-short-indices"});
+    const Device::Buffer longBuffer = device().makeBuffer({.data = std::as_bytes(std::span(longIndices)), .usage = {.index = true}, .label = "haylen-test-long-indices"});
 
     for (const Device::IndexType type : {Device::IndexType::UInt16, Device::IndexType::UInt32}) {
         const Device::Pipeline pipeline = makeColorPipeline("color", Device::Primitive::Triangles, type);
@@ -188,7 +188,7 @@ TEST_P(GpuDrawTest, DrawsInstancesWithTheirOwnAttributes) {
     }};
     const std::array<float, 4> offsets{0.0F, 0.0F, 1.5F, -1.5F};
     const Device::Buffer vertices = makeVertices(corner);
-    const Device::Buffer instances = device().makeBuffer({.data = std::as_bytes(std::span(offsets)), .label = "haylen-test-instances"});
+    const Device::Buffer instances = device().makeBuffer({.data = std::as_bytes(std::span(offsets)), .usage = {.vertex = true}, .label = "haylen-test-instances"});
 
     beginPass();
     device().applyPipeline(pipeline);
@@ -299,7 +299,7 @@ TEST_P(GpuDrawTest, RefusesDrawsOutsideAPass) {
 
 // A frame writes a dynamic buffer at offsets that are multiples of 4, which every device refuses otherwise.
 TEST_P(GpuDrawTest, RefusesBufferWritesAtUnalignedOffsets) {
-    const Device::Buffer buffer = device().makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "haylen-test-unaligned"});
+    const Device::Buffer buffer = device().makeBuffer({.size = 64, .usage = {.vertex = true}, .update = Device::BufferUpdate::Stream, .label = "haylen-test-unaligned"});
     const std::array<std::byte, 4> bytes{};
     EXPECT_EQ(test::ContractRule::of([&] { device().writeBuffer(buffer, 2, bytes); }), gpu::ContractError::Rule::BufferWrite);
     device().writeBuffer(buffer, 4, bytes);
@@ -352,7 +352,7 @@ TEST_P(GpuDrawTest, DrawsLines) {
 // A dynamic buffer takes new contents every frame, which the draws of that frame read.
 TEST_P(GpuDrawTest, ReadsTheContentsOfDynamicBuffersOfEachFrame) {
     const Device::Pipeline pipeline = makeColorPipeline("color");
-    const Device::Buffer vertices = makeVertices(kSquare, Device::Usage::Dynamic);
+    const Device::Buffer vertices = makeVertices(kSquare, Device::BufferUpdate::Stream);
     for (const math::Color color : {math::Color{1.0F, 0.0F, 0.0F, 1.0F}, math::Color{0.0F, 0.0F, 1.0F, 1.0F}, math::Color{0.0F, 1.0F, 1.0F, 1.0F}}) {
         std::array<Vertex, 6> square = kSquare;
         for (Vertex& vertex : square) {

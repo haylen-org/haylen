@@ -13,7 +13,9 @@
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/SamplerRules.hpp"
+#include "gpu/d3d11/BufferReadback.hpp"
 #include "gpu/d3d11/ImageReadback.hpp"
+#include "gpu/d3d11/StagingCopy.hpp"
 #include "gpu/d3d11/StateObjects.hpp"
 #include "gpu/direct3d/Adapter.hpp"
 #include "gpu/direct3d/Formats.hpp"
@@ -53,6 +55,9 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
     direct3d::WindowSamples::check(target, direct3d::WindowSamples::getSwapchainCounts(capabilities), "Direct3D 11");
     compiler = std::make_shared<direct3d::ShaderCompiler>(validation);
     uniforms = std::make_unique<DynamicRing>(*device.Get(), kUniformRingSize, D3D11_BIND_CONSTANT_BUFFER, kUniformAlignment, "haylen-uniform-ring");
+
+    // The ring of uploads only feeds copies, and it binds as a vertex buffer because Direct3D 11 maps dynamic buffers without waiting only when they bind as vertex, index or constant buffers.
+    uploads = std::make_unique<DynamicRing>(*device.Get(), kUploadRingSize, D3D11_BIND_VERTEX_BUFFER, 16, "haylen-upload-ring");
     timer = std::make_unique<FrameTimer>(*device.Get());
 
     // A window that has a drawable takes its swapchain now, so a window that Direct3D 11 cannot draw into fails the device while the platform can still try another API.
@@ -135,6 +140,11 @@ void Device::readCapabilities() {
     capabilities.maxLodBias = 15.99F;
     capabilities.borderColors = true;
 
+    // Feature level 11_0 brings storage buffers and the arguments of indirect draws, and a constant buffer binds at most 4096 constants of 16 bytes to one block.
+    capabilities.storageBuffers = true;
+    capabilities.indirectBuffers = true;
+    capabilities.maxUniformBlockSize = kMaxBlockSize;
+
     // Images sample through the view of their format, depth images draw through the view of their depth, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
     for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
@@ -214,25 +224,46 @@ void Device::setName(ID3D11DeviceChild& object, std::string_view label) noexcept
     }
 }
 
+// A uniform buffer holds whole windows of 16 constants, so the window that a block binds at any offset that the buffer takes stays inside it.
+UINT Device::getByteWidth(const BufferRules::Description& description) noexcept {
+    if (!description.usage.uniform) {
+        return static_cast<UINT>(description.size);
+    }
+
+    return static_cast<UINT>((description.size + kUniformBufferAlignment - 1) / kUniformBufferAlignment * kUniformBufferAlignment);
+}
+
+// The CPU maps a stream buffer, which hands the GPU a fresh copy every frame, and an immutable buffer keeps its data, while the other buffers, the destinations of copies and storage, which Direct3D 11 neither maps nor makes immutable, keep their bytes in GPU memory and take new ones through copies.
 gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
-    const std::size_t size = desc.data.empty() ? desc.size : desc.data.size();
-    if (size == 0) {
-        throw ContractError(ContractError::Rule::Buffer);
-    }
+    const BufferRules::Description description = BufferRules::check(desc, capabilities);
+    const BufferUsage& usage = description.usage;
+    const bool mapped = description.update == BufferUpdate::Stream && !usage.storage;
+    const bool immutable = description.update == BufferUpdate::Immutable && !usage.copyDestination && !usage.storage;
 
-    if (desc.usage == Usage::Immutable && desc.data.empty()) {
-        throw ContractError(ContractError::Rule::Buffer);
-    }
-
+    // Storage reads and writes its buffer through raw views, which take any buffer without a stride.
     D3D11_BUFFER_DESC made{};
-    made.ByteWidth = static_cast<UINT>(size);
-    made.Usage = desc.usage == Usage::Immutable ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC;
-    made.BindFlags = desc.index ? D3D11_BIND_INDEX_BUFFER : D3D11_BIND_VERTEX_BUFFER;
-    made.CPUAccessFlags = desc.usage == Usage::Dynamic ? static_cast<UINT>(D3D11_CPU_ACCESS_WRITE) : 0U;
-    const D3D11_SUBRESOURCE_DATA initial{.pSysMem = desc.data.data(), .SysMemPitch = 0, .SysMemSlicePitch = 0};
+    made.ByteWidth = getByteWidth(description);
+    made.Usage = immutable ? D3D11_USAGE_IMMUTABLE : (mapped ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT);
+    made.BindFlags |= usage.vertex ? static_cast<UINT>(D3D11_BIND_VERTEX_BUFFER) : 0U;
+    made.BindFlags |= usage.index ? static_cast<UINT>(D3D11_BIND_INDEX_BUFFER) : 0U;
+    made.BindFlags |= usage.uniform ? static_cast<UINT>(D3D11_BIND_CONSTANT_BUFFER) : 0U;
+    made.BindFlags |= usage.storage ? static_cast<UINT>(D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE) : 0U;
+    made.CPUAccessFlags = mapped ? static_cast<UINT>(D3D11_CPU_ACCESS_WRITE) : 0U;
+    made.MiscFlags |= usage.storage ? static_cast<UINT>(D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS) : 0U;
+    made.MiscFlags |= usage.indirect ? static_cast<UINT>(D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) : 0U;
 
-    BufferRecord record{.size = size, .usage = desc.usage};
-    HResult::check(device->CreateBuffer(&made, desc.data.empty() ? nullptr : &initial, record.buffer.GetAddressOf()), std::format("create a buffer of {} bytes", size));
+    // The data fills the whole width of the buffer, which a uniform buffer rounds up past the data.
+    std::span<const std::byte> initial = desc.data;
+    std::vector<std::byte> padded;
+    if (!initial.empty() && initial.size() < made.ByteWidth) {
+        padded.resize(made.ByteWidth);
+        std::ranges::copy(initial, padded.begin());
+        initial = padded;
+    }
+
+    const D3D11_SUBRESOURCE_DATA data{.pSysMem = initial.data(), .SysMemPitch = 0, .SysMemSlicePitch = 0};
+    BufferRecord record{.description = description, .mapped = mapped};
+    HResult::check(device->CreateBuffer(&made, initial.empty() ? nullptr : &data, record.buffer.GetAddressOf()), std::format("create a buffer of {} bytes", description.size));
     setName(*record.buffer.Get(), desc.label);
     return {buffers.add(std::move(record))};
 }
@@ -382,7 +413,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
 
     ProgramRecord record;
     for (const BlockBinding& block : desc.blocks) {
-        if (block.size > kMaxBlockSize || block.binding >= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
+        if (block.size > capabilities.maxUniformBlockSize || block.binding >= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
             throw ContractError(ContractError::Rule::Program);
         }
 
@@ -465,23 +496,29 @@ void Device::destroy(Pipeline pipeline) noexcept {
     }
 }
 
-// A dynamic buffer holds in a frame only what that frame wrote, so the first write of a frame discards the buffer, which makes the driver hand over a fresh copy while the GPU still reads the old one, and the later writes of the frame fill other parts of the same copy.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::BufferWrite);
+    }
+
     BufferRecord& record = buffers.get(buffer.id);
-    if (record.usage != Usage::Dynamic) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
-    if (offset % 4 != 0 || offset + data.size() > record.size) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
+    BufferRules::checkWrite(record.description, offset, data.size());
     if (data.empty()) {
         return;
     }
 
     openFrame();
 
+    if (record.mapped) {
+        writeMapped(record, offset, data);
+        return;
+    }
+
+    writeCopied(record, offset, data);
+}
+
+// A stream buffer holds in a frame only what that frame wrote, so the first write of a frame discards the buffer, which makes the driver hand over a fresh copy while the GPU still reads the old one, and the later writes of the frame fill other parts of the same copy.
+void Device::writeMapped(BufferRecord& record, std::size_t offset, std::span<const std::byte> data) {
     const D3D11_MAP mode = record.writtenFrame == frameNumber ? D3D11_MAP_WRITE_NO_OVERWRITE : D3D11_MAP_WRITE_DISCARD;
     D3D11_MAPPED_SUBRESOURCE mapped{};
     const HRESULT result = context->Map(record.buffer.Get(), 0, mode, 0, &mapped);
@@ -490,10 +527,40 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
         return;
     }
 
-    HResult::check(result, "map a dynamic buffer");
+    HResult::check(result, "map a stream buffer");
     std::memcpy(static_cast<std::byte*>(mapped.pData) + offset, data.data(), data.size());
     context->Unmap(record.buffer.Get(), 0);
     record.writtenFrame = frameNumber;
+}
+
+// The bytes go through the ring of uploads in pieces that fit it, and the context copies each piece into the buffer at this point of its commands, so the passes before the write read the old bytes and the passes after it the new ones. A ring that starts over hands the GPU a fresh copy of itself, so the copies recorded before keep reading their pieces.
+void Device::writeCopied(const BufferRecord& record, std::size_t offset, std::span<const std::byte> data) {
+    for (std::size_t written = 0; written < data.size(); written += kUploadRingSize) {
+        const std::span<const std::byte> part = data.subspan(written, std::min<std::size_t>(kUploadRingSize, data.size() - written));
+        const std::optional<DynamicRing::Piece> piece = uploads->write(*context.Get(), part);
+        if (!piece) {
+            loseDevice(DXGI_ERROR_DEVICE_REMOVED);
+            return;
+        }
+
+        const D3D11_BOX box{.left = piece->offset, .top = 0, .front = 0, .right = piece->offset + static_cast<UINT>(part.size()), .bottom = 1, .back = 1};
+        context->CopySubresourceRegion(record.buffer.Get(), 0, static_cast<UINT>(offset + written), 0, 0, uploads->get(), 0, &box);
+    }
+}
+
+// The context orders the copy with the passes, writes and copies around it.
+void Device::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::BufferWrite);
+    }
+
+    const BufferRecord& from = buffers.get(source.id);
+    const BufferRecord& to = buffers.get(destination.id);
+    BufferRules::checkCopy(source, from.description, sourceOffset, destination, to.description, destinationOffset, size);
+    openFrame();
+
+    const D3D11_BOX box{.left = static_cast<UINT>(sourceOffset), .top = 0, .front = 0, .right = static_cast<UINT>(sourceOffset + size), .bottom = 1, .back = 1};
+    context->CopySubresourceRegion(to.buffer.Get(), 0, static_cast<UINT>(destinationOffset), 0, 0, from.buffer.Get(), 0, &box);
 }
 
 // Direct3D 11 copies no buffer into a texture, so the driver stages the pixels of the box, and a write of the whole image lets it hand the GPU a fresh copy instead of waiting for the frames that read the old one.
@@ -847,6 +914,7 @@ void Device::applyScissor(const math::Rect& pixels) {
 
 void Device::applyPipeline(Pipeline pipeline) {
     blocksApplied = {};
+    blocksFromBuffers = {};
 
     if (skipping || bound.pipeline == pipeline.id) {
         return;
@@ -903,7 +971,9 @@ void Device::applyBindings(const Bindings& bindings) {
     std::array<UINT, kMaxVertexBuffers> offsets{};
     bool changed = false;
     for (std::size_t index = 0; index < pipeline.bufferCount; ++index) {
-        vertexBuffers[index] = buffers.get(bindings.vertexBuffers[index].id).buffer.Get();
+        const BufferRecord& buffer = buffers.get(bindings.vertexBuffers[index].id);
+        BufferRules::checkVertex(buffer.description);
+        vertexBuffers[index] = buffer.buffer.Get();
         offsets[index] = static_cast<UINT>(bindings.vertexOffsets[index]);
         changed = changed || vertexBuffers[index] != bound.vertexBuffers[index] || offsets[index] != bound.vertexOffsets[index] || pipeline.strides[index] != bound.vertexStrides[index];
     }
@@ -916,7 +986,9 @@ void Device::applyBindings(const Bindings& bindings) {
     }
 
     if (pipeline.indexFormat != DXGI_FORMAT_UNKNOWN) {
-        ID3D11Buffer* index = buffers.get(bindings.indexBuffer.id).buffer.Get();
+        const BufferRecord& buffer = buffers.get(bindings.indexBuffer.id);
+        BufferRules::checkIndex(buffer.description);
+        ID3D11Buffer* index = buffer.buffer.Get();
         const auto offset = static_cast<UINT>(bindings.indexOffset);
         if (index != bound.indexBuffer || offset != bound.indexOffset || pipeline.indexFormat != bound.indexFormat) {
             context->IASetIndexBuffer(index, pipeline.indexFormat, offset);
@@ -926,8 +998,30 @@ void Device::applyBindings(const Bindings& bindings) {
         }
     }
 
+    bindUniformBuffers(pipeline, bindings);
     applyTextures(pipeline, bindings);
     applySamplers(pipeline, bindings);
+}
+
+// A block reads the range of the uniform buffer that the bindings name at its slot, which `applyUniforms` never fed since the pipeline, and the ring of uniforms feeds the other blocks.
+void Device::bindUniformBuffers(const PipelineRecord& pipeline, const Bindings& bindings) {
+    for (std::size_t slot = 0; slot < kMaxBlocks; ++slot) {
+        const std::optional<Register>& block = pipeline.blocks[slot];
+        const BufferRange& range = bindings.uniformBuffers[slot];
+        if (!block || !range.buffer.isValid()) {
+            blocksFromBuffers[slot] = false;
+            continue;
+        }
+
+        if (blocksApplied[slot]) {
+            throw ContractError(ContractError::Rule::Uniforms);
+        }
+
+        const BufferRecord& buffer = buffers.get(range.buffer.id);
+        BufferRules::checkUniform(buffer.description, range.offset, block->size);
+        bindBlock(*block, buffer.buffer.Get(), static_cast<UINT>(range.offset));
+        blocksFromBuffers[slot] = true;
+    }
 }
 
 void Device::applyTextures(const PipelineRecord& pipeline, const Bindings& bindings) {
@@ -980,6 +1074,10 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     }
 
     const auto index = static_cast<std::size_t>(slot);
+    if (blocksFromBuffers[index]) {
+        throw ContractError(ContractError::Rule::Uniforms);
+    }
+
     blockBytes[index].assign(data.begin(), data.end());
     blocksApplied[index] = true;
 
@@ -989,16 +1087,15 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         return;
     }
 
-    bindBlock(*pipeline.blocks[index], piece->offset);
+    bindBlock(*pipeline.blocks[index], uniforms->get(), piece->offset);
 
     if (piece->restarted) {
         rewriteBlocks(pipeline, index);
     }
 }
 
-// Direct3D 11.1 binds a window of the ring by its offset in constants of 16 bytes, a multiple of 16 constants.
-void Device::bindBlock(const Register& block, UINT offset) {
-    ID3D11Buffer* buffer = uniforms->get();
+// Direct3D 11.1 binds a window of a constant buffer by its offset in constants of 16 bytes, a multiple of 16 constants.
+void Device::bindBlock(const Register& block, ID3D11Buffer* buffer, UINT offset) {
     const UINT first = offset / 16;
     const UINT count = (block.size + kUniformAlignment - 1) / kUniformAlignment * (kUniformAlignment / 16);
     if (block.stage == 0) {
@@ -1021,7 +1118,7 @@ void Device::rewriteBlocks(const PipelineRecord& pipeline, std::size_t written) 
             return;
         }
 
-        bindBlock(*pipeline.blocks[index], piece->offset);
+        bindBlock(*pipeline.blocks[index], uniforms->get(), piece->offset);
     }
 }
 
@@ -1248,14 +1345,31 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     ComPtr<ID3D11Texture2D> staging;
     HResult::check(device->CreateTexture2D(&desc, nullptr, staging.GetAddressOf()), "find memory to read the pixels of a render target into");
 
-    const D3D11_QUERY_DESC event{.Query = D3D11_QUERY_EVENT, .MiscFlags = 0};
-    ComPtr<ID3D11Query> finished;
-    HResult::check(device->CreateQuery(&event, finished.GetAddressOf()), "create the query of a readback");
-
     const D3D11_BOX box{.left = 0, .top = 0, .front = 0, .right = static_cast<UINT>(width), .bottom = static_cast<UINT>(height), .back = 1};
     context->CopySubresourceRegion(staging.Get(), 0, 0, 0, 0, record.resource.Get(), 0, &box);
-    context->End(finished.Get());
-    return std::make_unique<ImageReadback>(context, std::move(staging), std::move(finished), record.format, width, height);
+    return std::make_unique<ImageReadback>(StagingCopy(*device.Get(), context, std::move(staging)), record.format, width, height);
+}
+
+// The copy follows the commands that the context holds, which hold the frames committed before it.
+std::unique_ptr<gpu::Device::Readback> Device::readBuffer(Buffer buffer, std::size_t offset, std::size_t size) {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::Readback);
+    }
+
+    const BufferRecord& record = buffers.get(buffer.id);
+    BufferRules::checkRead(record.description, offset, size);
+    openFrame();
+
+    D3D11_BUFFER_DESC desc{};
+    desc.ByteWidth = static_cast<UINT>(size);
+    desc.Usage = D3D11_USAGE_STAGING;
+    desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    ComPtr<ID3D11Buffer> staging;
+    HResult::check(device->CreateBuffer(&desc, nullptr, staging.GetAddressOf()), "find memory to read the bytes of a buffer into");
+
+    const D3D11_BOX box{.left = static_cast<UINT>(offset), .top = 0, .front = 0, .right = static_cast<UINT>(offset + size), .bottom = 1, .back = 1};
+    context->CopySubresourceRegion(staging.Get(), 0, 0, 0, 0, record.buffer.Get(), 0, &box);
+    return std::make_unique<BufferReadback>(StagingCopy(*device.Get(), context, std::move(staging)), size);
 }
 
 // A surface beyond the window draws through the pipelines of the swapchain, so its attachments take the samples of the window, and it makes its swapchain now, so a surface that Direct3D 11 cannot draw into fails at once.

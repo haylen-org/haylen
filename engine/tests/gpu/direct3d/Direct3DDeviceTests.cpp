@@ -156,7 +156,7 @@ float4 main() : SV_Target0 { return color; }
     }
 
     [[nodiscard]] Buffer makeTriangle(std::array<float, 6> corners) {
-        buffers.push_back(device->makeBuffer({.data = std::as_bytes(std::span(corners)), .label = "haylen-test-triangle"}));
+        buffers.push_back(device->makeBuffer({.data = std::as_bytes(std::span(corners)), .usage = {.vertex = true}, .label = "haylen-test-triangle"}));
         return buffers.back();
     }
 
@@ -328,7 +328,7 @@ TEST_P(Direct3DDeviceTest, RepeatsAFrameWithoutAllocatingAndMeasuresTheGpu) {
     const Image target = images.back();
     images.push_back(device->makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-dynamic"}));
     const Image dynamic = images.back();
-    buffers.push_back(device->makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "haylen-test-dynamic"}));
+    buffers.push_back(device->makeBuffer({.size = 64, .usage = {.vertex = true}, .update = Device::BufferUpdate::Stream, .label = "haylen-test-dynamic"}));
     const Buffer vertices = buffers.back();
     const Pipeline pipeline = makePipeline(false);
     const std::array<float, 6> corners{-1.0F, -1.0F, -1.0F, 3.0F, 3.0F, -1.0F};
@@ -375,7 +375,7 @@ TEST_P(Direct3DDeviceTest, KeepsItsUploadMemoryWhenTheGpuFallsBehind) {
     const Image quick = images.back();
     images.push_back(device->makeImage({.width = 2048, .height = 2048, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-large"}));
     const Image slow = images.back();
-    buffers.push_back(device->makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "haylen-test-dynamic"}));
+    buffers.push_back(device->makeBuffer({.size = 64, .usage = {.vertex = true}, .update = Device::BufferUpdate::Stream, .label = "haylen-test-dynamic"}));
     const Buffer vertices = buffers.back();
     const Pipeline pipeline = makePipeline(false);
     const std::array<float, 6> corners{-1.0F, -1.0F, -1.0F, 3.0F, 3.0F, -1.0F};
@@ -485,7 +485,7 @@ TEST_P(Direct3DDeviceTest, MeasuresTheCopiesOfAFrame) {
 
     start();
     const std::vector<std::byte> bytes(std::size_t{64} << 20U);
-    buffers.push_back(device->makeBuffer({.data = bytes, .label = "haylen-test-large"}));
+    buffers.push_back(device->makeBuffer({.data = bytes, .usage = {.vertex = true}, .label = "haylen-test-large"}));
     device->commit();
 
     // The device reads the time of a frame once the frame that takes its place in flight opens.

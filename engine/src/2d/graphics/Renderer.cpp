@@ -123,14 +123,14 @@ float Renderer::lowestPoint(std::span<const math::Vec2> points) noexcept {
 
 Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std::make_unique<RendererState>(device, jobs)) {
     constexpr std::array<float, 8> kCorners = {0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 1.0F, 1.0F};
-    state->quad = device.getGpu().makeBuffer({.data = std::as_bytes(std::span(kCorners)), .label = "haylen-quad"});
+    state->quad = device.getGpu().makeBuffer({.data = std::as_bytes(std::span(kCorners)), .usage = {.vertex = true}, .label = "haylen-quad"});
 
     constexpr std::uint16_t kFull = 65535;
     const std::array<GpuInstance, 2> screen{
         GpuInstance{.position = {0.0F, 0.0F}, .size = {1.0F, 1.0F}, .uv = {0, 0, kFull, kFull}, .color = 0xFFFFFFFFU, .flash = 0, .rotation = 0.0F, .parameters = {0, 0, 0, 0}, .pivot = {0.0F, 0.0F}},
         GpuInstance{.position = {0.0F, 0.0F}, .size = {1.0F, 1.0F}, .uv = {0, kFull, kFull, 0}, .color = 0xFFFFFFFFU, .flash = 0, .rotation = 0.0F, .parameters = {0, 0, 0, 0}, .pivot = {0.0F, 0.0F}},
     };
-    state->screen = device.getGpu().makeBuffer({.data = std::as_bytes(std::span(screen)), .label = "haylen-screen"});
+    state->screen = device.getGpu().makeBuffer({.data = std::as_bytes(std::span(screen)), .usage = {.vertex = true}, .label = "haylen-screen"});
     state->loadPrograms();
 
     // Light maps hold light in floating point where the device renders and blends it, so lights can brighten the scene beyond its unlit colors.
@@ -1265,7 +1265,7 @@ StaticSpriteBatch Renderer::createStaticBatch(const graphics::Texture& texture, 
     }
 
     auto resource = std::make_shared<StaticBatchResource>();
-    resource->buffer = state->getGpu().makeBuffer({.data = std::as_bytes(std::span(packed)), .label = "haylen-static-batch"});
+    resource->buffer = state->getGpu().makeBuffer({.data = std::as_bytes(std::span(packed)), .usage = {.vertex = true}, .label = "haylen-static-batch"});
     resource->count = sprites.size();
     resource->tracked.setBytes(packed.size() * sizeof(GpuInstance));
     resource->texture = texture;

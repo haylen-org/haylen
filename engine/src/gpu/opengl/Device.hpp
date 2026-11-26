@@ -11,6 +11,7 @@
 #include <string_view>
 #include <vector>
 
+#include "gpu/BufferRules.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageInfo.hpp"
@@ -22,6 +23,7 @@
 #include "gpu/opengl/GpuTimer.hpp"
 #include "gpu/opengl/ScaledDrawable.hpp"
 #include "gpu/opengl/ShaderProgram.hpp"
+#include "gpu/opengl/UniformRing.hpp"
 #include "gpu/opengl/UploadRing.hpp"
 #include "gpu/opengl/VertexArray.hpp"
 #if !defined(__EMSCRIPTEN__)
@@ -31,7 +33,7 @@
 
 namespace haylen::gpu::opengl {
 
-// The device of OpenGL 4.3 core on Windows and Linux, OpenGL ES 3.0 on Android and WebGL2 on the web, one class that knows its flavour. It draws through the context the platform created with the window, which stays current on the frame thread, and keeps every object as long as that context lives. The surfaces beyond the window are other drawables of that same context, which the device makes current for the swapchain passes that draw into them and presents as a pass leaves them, so every object serves every surface. The first row of its render targets is their bottom row. OpenGL keeps an object that a queued command still uses until the GPU finished the command, so `destroy` deletes objects at once.
+// The device of OpenGL 4.3 core on Windows and Linux, OpenGL ES 3.0 on Android and WebGL2 on the web, one class that knows its flavour. It draws through the context the platform created with the window, which stays current on the frame thread, and keeps every object as long as that context lives. The surfaces beyond the window are other drawables of that same context, which the device makes current for the swapchain passes that draw into them and presents as a pass leaves them, so every object serves every surface. The first row of its render targets is their bottom row. Each uniform block reads the range of a buffer bound to the binding point of its slot: a uniform buffer of the bindings, or the uniform ring of the frame, which holds the bytes that `applyUniforms` gives. OpenGL orders the writes into a buffer and the copies between buffers with the draws around them, so a dynamic or a stream buffer is one buffer whose writes and copies take their place among the draws of the frame, and a readback of a buffer copies its range into a buffer that the CPU reads behind a fence. OpenGL keeps an object that a queued command still uses until the GPU finished the command, so `destroy` deletes objects at once.
 class Device final : public gpu::Device {
   public:
     static constexpr std::size_t kFramesInFlight = 3;
@@ -65,6 +67,7 @@ class Device final : public gpu::Device {
     void destroy(Pipeline pipeline) noexcept override;
 
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
+    void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
 
     void beginPass(const PassDesc& desc) override;
@@ -88,7 +91,7 @@ class Device final : public gpu::Device {
 
     void commit() override;
 
-    // Makes the upload ring as small as its last frames needed, which is all that the device keeps for later: OpenGL frees the memory of each object that the device deletes, and WebGL2 hands every upload to the browser without a ring.
+    // Makes the upload ring and the uniform ring as small as their last frames needed, which is all that the device keeps for later: OpenGL frees the memory of each object that the device deletes, and WebGL2 hands the writes into buffers and images to the browser without an upload ring.
     void trim() override;
 
     void resizeSurface(const Surface::Size& size) override;
@@ -99,6 +102,7 @@ class Device final : public gpu::Device {
     void removeSurface(int number) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+    [[nodiscard]] std::unique_ptr<Readback> readBuffer(Buffer buffer, std::size_t offset, std::size_t size) override;
 
     [[nodiscard]] CaptureSupport getCaptureSupport() const override;
     void beginCapture(const std::filesystem::path& path) override;
@@ -111,9 +115,7 @@ class Device final : public gpu::Device {
 
     struct BufferRecord {
         Gl::Uint name = 0;
-        std::size_t size = 0;
-        Usage usage = Usage::Immutable;
-        bool index = false;
+        BufferRules::Description description{};
     };
 
     // A multisampled image is a renderbuffer, whose target is `Gl::kRenderbuffer`, and the others are textures.
@@ -171,12 +173,14 @@ class Device final : public gpu::Device {
     [[nodiscard]] static std::shared_ptr<Context> makeContext(Api flavour, const Surface& surface);
     [[nodiscard]] static Language toLanguage(Api flavour) noexcept;
     [[nodiscard]] static std::uintptr_t toAddress(const void* pointer) noexcept;
+    [[nodiscard]] static std::size_t readUniformAlignment(const Gl& functions);
     static void copyPixels(std::byte* destination, std::span<const std::byte> source, bool swapsRedBlue) noexcept;
     [[nodiscard]] static int getLevelSize(int size, int level) noexcept;
     [[nodiscard]] StateCache::Rectangle toWindow(const math::Rect& pixels) const noexcept;
 
     void applyDriverIssues();
     void readCapabilities();
+    [[nodiscard]] bool hasComputeVersion() const noexcept;
     [[nodiscard]] bool isRenderable(const Conversions::Pixel& pixel) const noexcept;
     [[nodiscard]] bool isSampled(PixelFormat format) const noexcept;
     [[nodiscard]] bool isStorage(PixelFormat format) const noexcept;
@@ -200,6 +204,7 @@ class Device final : public gpu::Device {
     void waitForFrame(std::size_t slot);
     void requirePass() const;
     void bindApplied();
+    void bindUniformBuffers(const Bindings& bindings);
     [[nodiscard]] Drawable& requireDrawable(int number);
     void makeDrawableCurrent(int number, GlContext& drawable);
     void scaleDrawable(std::unique_ptr<ScaledDrawable>& scaled, const Surface::Size& size);
@@ -243,6 +248,7 @@ class Device final : public gpu::Device {
     DebugOutput debug;
     GpuTimer timer;
     std::unique_ptr<UploadRing> ring;
+    UniformRing uniformRing;
     FramebufferCache framebuffers;
     // Whether a pass clears its attachments at a later layer of an array or a volume by drawing, which the driver issues ask of a driver whose clears reach only the first layer.
     bool layersClearedByDrawing = false;
@@ -263,7 +269,6 @@ class Device final : public gpu::Device {
     bool frameStarted = false;
     bool drewSwapchain = false;
     bool presentedSwapchain = false;
-    bool lost = false;
     PassState pass;
 #if !defined(__EMSCRIPTEN__)
     // The in-application API of RenderDoc when RenderDoc launched the app, which captures its frames.
@@ -271,6 +276,10 @@ class Device final : public gpu::Device {
 #endif
     PipelineRecord* applied = nullptr;
     int indexOffset = 0;
+
+    // The uniform blocks of the applied pipeline that `applyUniforms` fed since the pipeline, and those that uniform buffers of the bindings feed, as bits of their slots.
+    std::uint32_t appliedBlocks = 0;
+    std::uint32_t bufferBlocks = 0;
 
     // The texture and the sampler of each unit that the bindings of the applied pipeline name.
     struct DrawUnit {
@@ -282,7 +291,7 @@ class Device final : public gpu::Device {
     std::array<DrawUnit, StateCache::kMaxUnits> drawUnits{};
     std::size_t appliedUnits = 0;
 
-    // The largest anisotropy of a sampler, which stays 1 where samplers filter without it.
+    // The pixels of the textures and of the dynamic images whose red and blue the device swaps before it uploads them.
     std::vector<std::byte> staging;
 };
 

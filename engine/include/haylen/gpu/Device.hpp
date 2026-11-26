@@ -320,10 +320,30 @@ class Device {
         Comparison,
     };
 
-    // A dynamic buffer takes new contents every frame through `writeBuffer` and holds in a frame only what that frame wrote into it, and an immutable one keeps the data it was made with.
-    enum class Usage : std::uint8_t {
+    // How the contents of a buffer change. An immutable buffer keeps the data it was made with. A dynamic buffer keeps its contents and takes new bytes for ranges of it through `writeBuffer` and `copyBuffer` between passes, which the passes after them read and the passes before them never see. A stream buffer takes new contents every frame through `writeBuffer` and holds in a frame only what that frame wrote into it, such as the vertices of the draws of the frame.
+    enum class BufferUpdate : std::uint8_t {
         Immutable,
         Dynamic,
+        Stream,
+    };
+
+    static constexpr std::array<std::pair<std::string_view, BufferUpdate>, 3> kBufferUpdateNames{{
+        {"immutable", BufferUpdate::Immutable},
+        {"dynamic", BufferUpdate::Dynamic},
+        {"stream", BufferUpdate::Stream},
+    }};
+
+    // What a buffer serves as: the vertices and the indices of draws, the bytes of uniform blocks, storage that shaders read and write, the arguments of indirect draws, and the source and the destination of copies, where reading it back is a copy too. A uniform buffer is no vertex, index, storage or indirect buffer too, since Direct3D 11 binds a constant buffer as nothing else, and an index buffer is no vertex buffer, since WebGL2 binds a buffer of indices only to copies. Storage needs `Capabilities::storageBuffers` and indirect arguments `Capabilities::indirectBuffers`.
+    struct BufferUsage {
+        bool vertex = false;
+        bool index = false;
+        bool uniform = false;
+        bool storage = false;
+        bool indirect = false;
+        bool copySource = false;
+        bool copyDestination = false;
+
+        friend bool operator==(const BufferUsage&, const BufferUsage&) = default;
     };
 
     // A texture keeps the pixels it was made with, a dynamic image is flat with one mip level and takes new pixels for regions of it through `writeImages`, a render target is a color attachment of offscreen passes that draws sample later, and a depth stencil image is the depth and stencil attachment of offscreen passes.
@@ -394,6 +414,9 @@ class Device {
     static constexpr std::size_t kMaxSamplers = 12;
     static constexpr std::size_t kMaxAttributes = 16;
 
+    // The offsets of the uniform buffers that blocks read are multiples of this many bytes, the strictest alignment of the graphics APIs.
+    static constexpr std::size_t kUniformBufferAlignment = 256;
+
     // What a device does with one pixel format. A texture of the format is made and sampled with `sample`, filtered linearly through texture slots of the type `SampleType::Float` with `filter`, while the others are sampled only through slots of `SampleType::UnfilterableFloat` with samplers of `SamplerType::NonFiltering`, drawn into as a render target or a depth stencil image with `render`, blended into with `blend`, and written by shaders as a storage image with `storage`. The sample counts that its attachments take are bits whose values are the counts, so 5 holds one sample and four, and a multisampled color format also resolves into an image of one sample, while a format that the device does not draw into takes none.
     struct FormatSupport {
         bool sample = false;
@@ -433,6 +456,13 @@ class Device {
         // Whether samplers read a border color outside the image, through `Wrap::ClampToBorder`.
         bool borderColors = false;
 
+        // Whether buffers serve as storage that shaders read and write, and as the arguments of indirect draws, which OpenGL ES 3.0 and WebGL2 lack.
+        bool storageBuffers = false;
+        bool indirectBuffers = false;
+
+        // The most bytes of one uniform block of a program, which a uniform buffer feeds or `applyUniforms` takes.
+        std::size_t maxUniformBlockSize = 0;
+
         // What the device does with each pixel format, by `PixelFormat`.
         std::array<FormatSupport, kPixelFormatCount> formats{};
 
@@ -444,11 +474,12 @@ class Device {
         }
     };
 
+    // A buffer of the size, or of the size of its data, with at least one usage. An immutable buffer comes with its data and is no copy destination, and the others may start with it. A stream buffer is never the source or the destination of a copy, since each frame holds its own contents.
     struct BufferDesc {
         std::size_t size = 0;
         std::span<const std::byte> data{};
-        Usage usage = Usage::Immutable;
-        bool index = false;
+        BufferUsage usage{};
+        BufferUpdate update = BufferUpdate::Immutable;
         std::string_view label{};
     };
 
@@ -491,7 +522,7 @@ class Device {
         std::string_view profile{};
     };
 
-    // A uniform block of a program at its bind slot, with the binding number that the language of the device gives it and its descriptor set or bind group where the language has them. The OpenGL languages read a block as one array of vectors, which `glslName`, `glslType` and `glslCount` describe.
+    // A uniform block of a program at its bind slot, with the binding number that the language of the device gives it and its descriptor set or bind group where the language has them. The OpenGL languages find a block by its name, `glslName`, and bind it to the binding point of its slot.
     struct BlockBinding {
         int slot = 0;
         Stage stage = Stage::Vertex;
@@ -499,8 +530,6 @@ class Device {
         int binding = 0;
         int set = 0;
         std::string_view glslName{};
-        bool glslIntegers = false;
-        int glslCount = 0;
     };
 
     struct TextureBinding {
@@ -635,7 +664,7 @@ class Device {
         std::uint8_t clearStencil = 0;
     };
 
-    // A pass draws into the swapchain of a surface when it names no attachment, the window for the surface 0 or a surface that `addSurface` made, clearing its color, depth and stencil as its loads say. The swapchain passes of a frame into one surface follow one another, since a device may present a surface once a pass into another surface leaves it. A swapchain pass that keeps the contents keeps the depth, the stencil and the multisampled color only when it directly follows the swapchain pass of the same surface whose contents it keeps, with no debug group pushed or popped between them. After an offscreen pass or a debug group between them, a window of one sample keeps its color alone, and a multisampled window keeps no color, so a renderer of a multisampled window draws the offscreen passes of a frame before its swapchain passes.
+    // A pass draws into the swapchain of a surface when it names no attachment, the window for the surface 0 or a surface that `addSurface` made, clearing its color, depth and stencil as its loads say. The swapchain passes of a frame into one surface follow one another, since a device may present a surface once a pass into another surface leaves it. A swapchain pass that keeps the contents keeps the depth, the stencil and the multisampled color only when it directly follows the swapchain pass of the same surface whose contents it keeps, with no debug group pushed or popped and no write into a dynamic buffer or copy of buffers between them. After an offscreen pass, a debug group, such a write or a copy between them, a window of one sample keeps its color alone, and a multisampled window keeps no color, so a renderer of a multisampled window draws the offscreen passes of a frame before its swapchain passes.
     struct PassDesc {
         std::span<const ColorAttachment> colors{};
         std::optional<DepthStencilAttachment> depthStencil{};
@@ -647,11 +676,21 @@ class Device {
         int surface = 0;
     };
 
+    // A uniform buffer that feeds the uniform block of a slot from an offset that is a multiple of `kUniformBufferAlignment`, with the bytes of the block from there.
+    struct BufferRange {
+        Buffer buffer{};
+        std::size_t offset = 0;
+
+        friend bool operator==(const BufferRange&, const BufferRange&) = default;
+    };
+
+    // The buffers, images and samplers that the draws after `applyBindings` read. Each uniform block of the program reads the uniform buffer at its slot when the bindings name one there, and otherwise the bytes that `applyUniforms` gives its slot.
     struct Bindings {
         std::array<Buffer, kMaxVertexBuffers> vertexBuffers{};
         std::array<int, kMaxVertexBuffers> vertexOffsets{};
         Buffer indexBuffer{};
         int indexOffset = 0;
+        std::array<BufferRange, kMaxBlocks> uniformBuffers{};
         std::array<Image, kMaxTextures> textures{};
         std::array<Sampler, kMaxSamplers> samplers{};
 
@@ -697,7 +736,7 @@ class Device {
         std::string missing{};
     };
 
-    // A copy of the pixels of a render target to memory the CPU reads, which `poll` hands over once the GPU finished it, and never again, as RGBA8 whatever the format of the image, four bytes a pixel from the first row the device stores. A multisampled image is read through its resolve image.
+    // A copy to memory the CPU reads, which `poll` hands over once the GPU finished it, and never again. The pixels of a render target come as RGBA8 whatever the format of the image, four bytes a pixel from the first row the device stores, and a multisampled image is read through its resolve image. The bytes of a buffer come as they are.
     class Readback {
       public:
         virtual ~Readback() = default;
@@ -744,8 +783,11 @@ class Device {
     virtual void destroy(Program program) noexcept = 0;
     virtual void destroy(Pipeline pipeline) noexcept = 0;
 
-    // Writes data into a dynamic buffer at an offset that is a multiple of 4, before the passes of the frame that read it. A frame may write several parts of one buffer, each at most once.
+    // Writes data into a buffer that is not immutable at an offset that is a multiple of 4, outside a pass. A stream buffer takes the write before the passes of the frame that read it, and a frame may write several parts of one stream buffer, each at most once. A dynamic buffer takes writes of whole words at any point between passes, which the passes and copies after them read.
     virtual void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) = 0;
+
+    // Copies bytes from a buffer that is a copy source into another one that is a copy destination outside a pass, at offsets and of a size that are multiples of 4, which the passes and copies after it read.
+    virtual void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) = 0;
 
     // Replaces the pixels of regions of dynamic images, every image of a frame in one call before its first pass, so a device stages them all before it copies any of them. Each image takes at most one write in the call, whose region lies inside the image, so a device copies only the pixels that changed and no copy of the call waits for another.
     virtual void writeImages(std::span<const ImageWrite> writes) = 0;
@@ -792,6 +834,9 @@ class Device {
 
     // Starts copying the pixels of the first mip level and layer of a render target, which must come after the frame that renders it was committed.
     [[nodiscard]] virtual std::unique_ptr<Readback> readImage(Image image, int width, int height) = 0;
+
+    // Starts copying a range of a buffer that is a copy source, at an offset and of a size that are multiples of 4, outside a pass. The copy reads what the committed frames left in the buffer, so it comes after the frame that wrote it was committed.
+    [[nodiscard]] virtual std::unique_ptr<Readback> readBuffer(Buffer buffer, std::size_t offset, std::size_t size) = 0;
 
     [[nodiscard]] virtual CaptureSupport getCaptureSupport() const = 0;
 

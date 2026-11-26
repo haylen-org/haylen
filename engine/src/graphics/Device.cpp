@@ -5,9 +5,13 @@
 #include <format>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 #include "gpu/ImageInfo.hpp"
+#include "graphics/BufferResource.hpp"
 #include "graphics/DeviceState.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/JobSystem.hpp"
@@ -31,6 +35,143 @@ void Device::validateDistances(int width, int height, std::span<const std::uint1
 
     if (distances.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
         throw std::invalid_argument("The distances of a distance texture do not match its dimensions.");
+    }
+}
+
+// The checks that the GPU device makes of a buffer as breaks of its contract, said here as what the app asked for.
+void Device::validateBuffer(std::size_t size, bool data, const Buffer::Options& options) const {
+    const Buffer::Usage& usage = options.usage;
+    if (size == 0) {
+        throw std::invalid_argument("A buffer needs a size of at least 1 byte.");
+    }
+
+    if (usage == Buffer::Usage{}) {
+        throw std::invalid_argument("A buffer needs at least one usage: \"vertex\", \"index\", \"uniform\", \"storage\", \"indirect\", \"copySource\" or \"copyDestination\".");
+    }
+
+    const gpu::Device::Capabilities& capabilities = state->gpu->getCapabilities();
+    if ((usage.storage && !capabilities.storageBuffers) || (usage.indirect && !capabilities.indirectBuffers)) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" has no {} buffers.", getApiName(), usage.storage && !capabilities.storageBuffers ? "storage" : "indirect"));
+    }
+
+    if (usage.uniform && (usage.vertex || usage.index || usage.storage || usage.indirect)) {
+        throw std::invalid_argument("A uniform buffer serves no other draw. Make a buffer of its own for the vertices, indices, storage or indirect arguments.");
+    }
+
+    if (usage.index && usage.vertex) {
+        throw std::invalid_argument("An index buffer holds no vertices. Make a buffer of its own for the vertices.");
+    }
+
+    if (options.update == Buffer::Update::Immutable && (!data || usage.copyDestination)) {
+        throw std::invalid_argument("An immutable buffer keeps the data it is made with, so it needs data and takes no \"copyDestination\" usage.");
+    }
+
+    if (options.update == Buffer::Update::Stream && (usage.copySource || usage.copyDestination)) {
+        throw std::invalid_argument("A stream buffer holds new contents every frame, so it takes no \"copySource\" or \"copyDestination\" usage.");
+    }
+}
+
+void Device::validateRange(const Buffer& buffer, std::size_t offset, std::size_t size, std::string_view action, bool wholeWords) {
+    if (!buffer.isValid()) {
+        throw std::invalid_argument(std::format("To {} a buffer, it must be a valid buffer.", action));
+    }
+
+    if (size == 0 || offset > buffer.getSize() || size > buffer.getSize() - offset) {
+        throw std::invalid_argument(std::format("To {} {} bytes at the offset {} of a buffer of {} bytes, the range must lie inside the buffer.", action, size, offset, buffer.getSize()));
+    }
+
+    if (offset % 4 != 0 || (wholeWords && size % 4 != 0)) {
+        throw std::invalid_argument(std::format("To {} a buffer, the offset must be a multiple of 4 bytes, and the size too unless the buffer is a stream buffer, not {} and {}.", action, offset, size));
+    }
+}
+
+Buffer Device::createBuffer(std::size_t size, const Buffer::Options& options) {
+    validateBuffer(size, false, options);
+    const std::vector<std::byte> zeros(size);
+    return createBuffer(zeros, options);
+}
+
+Buffer Device::createBuffer(std::span<const std::byte> data, const Buffer::Options& options) {
+    validateBuffer(data.size(), true, options);
+    auto resource = std::make_shared<BufferResource>();
+    resource->buffer = state->gpu->makeBuffer({.data = data, .usage = options.usage, .update = options.update, .label = options.label});
+    resource->size = data.size();
+    resource->usage = options.usage;
+    resource->update = options.update;
+    resource->label = std::string(options.label);
+    resource->graveyard = state->graveyard;
+    resource->tracked.setBytes(data.size());
+    return Buffer(std::move(resource));
+}
+
+void Device::writeBuffer(const Buffer& buffer, std::size_t offset, std::span<const std::byte> data) {
+    if (buffer.isValid() && buffer.getUpdate() == Buffer::Update::Immutable) {
+        throw std::invalid_argument("An immutable buffer keeps the data it was made with. Make it dynamic or stream to write into it.");
+    }
+
+    // A stream buffer takes the bytes of a frame whatever their count, and a dynamic one whole words.
+    const bool stream = buffer.isValid() && buffer.getUpdate() == Buffer::Update::Stream;
+    validateRange(buffer, offset, data.size(), "write", !stream);
+    state->gpu->writeBuffer(buffer.getGpuBuffer(), offset, data);
+}
+
+void Device::copyBuffer(const Buffer& source, std::size_t sourceOffset, const Buffer& destination, std::size_t destinationOffset, std::size_t size) {
+    validateRange(source, sourceOffset, size, "copy from", true);
+    validateRange(destination, destinationOffset, size, "copy into", true);
+    if (!source.getUsage().copySource || !destination.getUsage().copyDestination) {
+        throw std::invalid_argument("A copy reads a buffer with the \"copySource\" usage and writes one with the \"copyDestination\" usage.");
+    }
+
+    if (source == destination) {
+        throw std::invalid_argument("A copy moves bytes between two buffers. Copy through a buffer of its own to move bytes inside one buffer.");
+    }
+
+    state->gpu->copyBuffer(source.getGpuBuffer(), sourceOffset, destination.getGpuBuffer(), destinationOffset, size);
+}
+
+void Device::readBuffer(const Buffer& buffer, std::size_t offset, std::size_t size, BufferReadCallback done) {
+    validateRange(buffer, offset, size, "read", true);
+    if (!buffer.getUsage().copySource) {
+        throw std::invalid_argument("A read copies the bytes of a buffer, so the buffer needs the \"copySource\" usage.");
+    }
+
+    state->bufferReads.push_back({.buffer = buffer, .offset = offset, .size = size, .done = std::move(done)});
+}
+
+// A read starts its copy at the first call after the frame that asked for it, and hands over its bytes once the copy finished. Callbacks run after the walk, since a callback may ask for another read.
+void Device::processBufferReads() {
+    std::vector<std::pair<BufferReadCallback, std::optional<std::vector<std::uint8_t>>>> finished;
+    std::vector<std::pair<BufferReadCallback, std::string>> failed;
+    for (std::size_t index = 0; index < state->bufferReads.size();) {
+        DeviceState::PendingBufferRead& read = state->bufferReads[index];
+        std::optional<std::vector<std::uint8_t>> bytes;
+        try {
+            if (!read.copy) {
+                read.copy = state->gpu->readBuffer(read.buffer.getGpuBuffer(), read.offset, read.size);
+            } else {
+                bytes = read.copy->poll();
+            }
+        } catch (const std::exception& error) {
+            failed.emplace_back(std::move(read.done), error.what());
+            state->bufferReads.erase(state->bufferReads.begin() + static_cast<std::ptrdiff_t>(index));
+            continue;
+        }
+
+        if (!bytes) {
+            ++index;
+            continue;
+        }
+
+        finished.emplace_back(std::move(read.done), std::move(bytes));
+        state->bufferReads.erase(state->bufferReads.begin() + static_cast<std::ptrdiff_t>(index));
+    }
+
+    for (auto& [done, bytes] : finished) {
+        done(std::move(bytes), {});
+    }
+
+    for (auto& [done, error] : failed) {
+        done(std::nullopt, error);
     }
 }
 
@@ -239,14 +380,17 @@ void Device::processReads(core::JobSystem& jobs) {
     for (auto& [done, error] : failed) {
         done(std::nullopt, error);
     }
+
+    processBufferReads();
 }
 
 void Device::cancelReads() noexcept {
     state->reads.clear();
+    state->bufferReads.clear();
 }
 
 std::size_t Device::getPendingReadCount() const noexcept {
-    return state->reads.size();
+    return state->reads.size() + state->bufferReads.size();
 }
 
 gpu::Device::CaptureSupport Device::getCaptureSupport() const {

@@ -34,12 +34,10 @@ struct ShaderResource {
         std::string profile;
     };
 
-    // A uniform block that the OpenGL languages read as one array of vectors.
+    // A uniform block that the OpenGL languages find by its name.
     struct GlslBlock {
         int slot = 0;
         std::string name;
-        bool integers = false;
-        int count = 0;
     };
 
     // The binding number that a language gives a slot, and the descriptor set or bind group that holds it where the language has them.

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <exception>
+#include <format>
 #include <memory>
 #include <optional>
 #include <span>
@@ -33,6 +34,145 @@
 #include "varn/dataview/DataViewModule.h"
 
 namespace haylen::lua::graphics {
+
+// Creates a buffer with `newBuffer(size or bytes, {usage = {...}, update, label})`, which starts with zeros or with the bytes, a string or a data view, and takes their size.
+int GraphicsBinding::newBuffer(lua_State* L) {
+    luaL_checktype(L, 2, LUA_TTABLE);
+    lua::Table::checkFields(L, 2, {kBufferFields});
+    haylen::graphics::Buffer::Options options;
+    lua_getfield(L, 2, "usage");
+    options.usage = readUsage(L, -1);
+    lua_pop(L, 1);
+    lua::Table::readField(L, 2, "update", options.update);
+    std::string label;
+    lua::Table::readField(L, 2, "label", label);
+    options.label = label;
+
+    haylen::graphics::Device& device = lua::Runtime::getEngine(L).getGraphics();
+    if (lua_type(L, 1) == LUA_TNUMBER) {
+        const lua_Integer size = luaL_checkinteger(L, 1);
+        if (size <= 0) {
+            throw std::invalid_argument("The size of \"graphics.newBuffer\" must be a positive number of bytes.");
+        }
+
+        lua::Stack::push(L, device.createBuffer(static_cast<std::size_t>(size), options));
+        return 1;
+    }
+
+    const std::string_view bytes = lua::TypeConverter::readBytes(L, 1);
+    lua::Stack::push(L, device.createBuffer(std::as_bytes(std::span(bytes.data(), bytes.size())), options));
+    return 1;
+}
+
+haylen::graphics::Buffer::Usage GraphicsBinding::readUsage(lua_State* L, int index) {
+    const int list = lua_absindex(L, index);
+    if (!lua_istable(L, list)) {
+        throw std::invalid_argument("The \"usage\" of \"graphics.newBuffer\" must be a list of usage names, such as {\"vertex\"}.");
+    }
+
+    haylen::graphics::Buffer::Usage usage;
+    const auto count = static_cast<lua_Integer>(lua_rawlen(L, list));
+    for (lua_Integer item = 1; item <= count; ++item) {
+        lua_rawgeti(L, list, item);
+        const std::string_view name = lua::Stack::read<std::string_view>(L, -1);
+        lua_pop(L, 1);
+        if (!haylen::graphics::Buffer::addUsage(usage, name)) {
+            throw std::invalid_argument(std::format("The buffer usage \"{}\" does not exist. Use \"vertex\", \"index\", \"uniform\", \"storage\", \"indirect\", \"copySource\" or \"copyDestination\".", name));
+        }
+    }
+
+    return usage;
+}
+
+int GraphicsBinding::bufferSize(lua_State* L) {
+    lua::Stack::push(L, static_cast<lua_Integer>(lua::Userdata::check<haylen::graphics::Buffer>(L, 1).getSize()));
+    return 1;
+}
+
+int GraphicsBinding::bufferUsage(lua_State* L) {
+    const haylen::graphics::Buffer& buffer = lua::Userdata::check<haylen::graphics::Buffer>(L, 1);
+    lua_newtable(L);
+    lua_Integer item = 0;
+    // clang-format off
+    haylen::graphics::Buffer::visitUsages(buffer.getUsage(), [L, &item](std::string_view name) {
+        lua_pushlstring(L, name.data(), name.size());
+        lua_rawseti(L, -2, ++item);
+    });
+    // clang-format on
+    return 1;
+}
+
+int GraphicsBinding::bufferUpdate(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Buffer>(L, 1).getUpdate());
+    return 1;
+}
+
+int GraphicsBinding::bufferLabel(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Buffer>(L, 1).getLabel());
+    return 1;
+}
+
+// Writes bytes into the buffer with `buffer:write(offset, bytes)`, from a string or a data view.
+int GraphicsBinding::writeBuffer(lua_State* L) {
+    const haylen::graphics::Buffer& buffer = lua::Userdata::check<haylen::graphics::Buffer>(L, 1);
+    const lua_Integer offset = luaL_checkinteger(L, 2);
+    if (offset < 0) {
+        throw std::invalid_argument("The offset of \"buffer:write\" must not be negative.");
+    }
+
+    const std::string_view bytes = lua::TypeConverter::readBytes(L, 3);
+    lua::Runtime::getEngine(L).getGraphics().writeBuffer(buffer, static_cast<std::size_t>(offset), std::as_bytes(std::span(bytes.data(), bytes.size())));
+    return 0;
+}
+
+// Copies bytes of another buffer into this one with `buffer:copy(source, {sourceOffset, offset, size})`, the whole source at offset 0 by default.
+int GraphicsBinding::copyBuffer(lua_State* L) {
+    const haylen::graphics::Buffer& destination = lua::Userdata::check<haylen::graphics::Buffer>(L, 1);
+    const haylen::graphics::Buffer& source = lua::Userdata::check<haylen::graphics::Buffer>(L, 2);
+    lua_Integer sourceOffset = 0;
+    lua_Integer offset = 0;
+    auto size = static_cast<lua_Integer>(source.getSize());
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kCopyFields});
+        lua::Table::readField(L, 3, "sourceOffset", sourceOffset);
+        lua::Table::readField(L, 3, "offset", offset);
+        lua::Table::readField(L, 3, "size", size);
+    }
+
+    if (sourceOffset < 0 || offset < 0 || size <= 0) {
+        throw std::invalid_argument("The offsets of \"buffer:copy\" must not be negative, and its size must be positive.");
+    }
+
+    lua::Runtime::getEngine(L).getGraphics().copyBuffer(source, static_cast<std::size_t>(sourceOffset), destination, static_cast<std::size_t>(offset), static_cast<std::size_t>(size));
+    return 0;
+}
+
+// Reads bytes of the buffer with `buffer:readAsync([offset, size])`, the whole buffer by default, and returns a promise of a string of the bytes as the frame that asks for them leaves the buffer.
+int GraphicsBinding::readBufferAsync(lua_State* L) {
+    const haylen::graphics::Buffer& buffer = lua::Userdata::check<haylen::graphics::Buffer>(L, 1);
+    const lua_Integer offset = luaL_optinteger(L, 2, 0);
+    const lua_Integer size = luaL_optinteger(L, 3, static_cast<lua_Integer>(buffer.getSize()) - offset);
+    if (offset < 0 || size <= 0) {
+        throw std::invalid_argument("The offset of \"buffer:readAsync\" must not be negative, and its size must be positive.");
+    }
+
+    haylen::core::Engine& engine = lua::Runtime::getEngine(L);
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
+    // clang-format off
+    engine.getGraphics().readBuffer(buffer, static_cast<std::size_t>(offset), static_cast<std::size_t>(size), [promise](std::optional<std::vector<std::uint8_t>> bytes, const std::string& error) {
+        if (!bytes) {
+            promise->reject(error);
+            return;
+        }
+
+        auto shared = std::make_shared<std::vector<std::uint8_t>>(std::move(*bytes));
+        promise->resolveCustom([shared](lua_State* state) { lua_pushlstring(state, reinterpret_cast<const char*>(shared->data()), shared->size()); });
+    });
+    // clang-format on
+    varn::async::Promise::push(L, promise);
+    return 1;
+}
 
 int GraphicsBinding::newRenderTarget(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().createRenderTarget(lua::Stack::read<int>(L, 1), lua::Stack::read<int>(L, 2), lua::TypeConverter::readTextureOptions(L, 3)));
@@ -184,7 +324,7 @@ void GraphicsBinding::setField(lua_State* L, const char* name, bool value) {
 
 int GraphicsBinding::capabilities(lua_State* L) {
     const haylen::gpu::Device::Capabilities& device = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities();
-    lua_createtable(L, 0, 11);
+    lua_createtable(L, 0, 15);
     setField(L, "maxTextureSize", device.maxImageSize);
     setField(L, "maxArrayLayers", device.maxArrayLayers);
     setField(L, "maxVolumeSize", device.maxVolumeSize);
@@ -198,6 +338,12 @@ int GraphicsBinding::capabilities(lua_State* L) {
     lua::Stack::push(L, device.maxLodBias);
     lua_setfield(L, -2, "maxLodBias");
     setField(L, "borderColors", device.borderColors);
+    setField(L, "storageBuffers", device.storageBuffers);
+    setField(L, "indirectBuffers", device.indirectBuffers);
+    lua::Stack::push(L, static_cast<lua_Integer>(device.maxUniformBlockSize));
+    lua_setfield(L, -2, "maxUniformBlockSize");
+    lua::Stack::push(L, static_cast<lua_Integer>(haylen::gpu::Device::kUniformBufferAlignment));
+    lua_setfield(L, -2, "uniformBufferAlignment");
     return 1;
 }
 
@@ -415,6 +561,7 @@ int GraphicsBinding::rasterizeVector(lua_State* L) {
 int GraphicsBinding::open(lua_State* L) {
     // clang-format off
     const luaL_Reg functions[] = {
+        {"newBuffer", &lua::Binding::native<&newBuffer>},
         {"newTexture", &lua::Binding::native<&newTexture>},
         {"newRenderTarget", &lua::Binding::native<&newRenderTarget>},
         {"newVectorImage", &lua::Binding::native<&newVectorImage>},
@@ -446,6 +593,16 @@ int GraphicsBinding::open(lua_State* L) {
 void GraphicsBinding::install(lua_State* L) {
     ImageBinding::install(L);
     // clang-format off
+    lua::ClassBuilder<haylen::graphics::Buffer>(L)
+        .function("write", &lua::Binding::native<&writeBuffer>)
+        .function("copy", &lua::Binding::native<&copyBuffer>)
+        .function("readAsync", &lua::Binding::native<&readBufferAsync>)
+        .property("size", &bufferSize)
+        .property("usage", &bufferUsage)
+        .property("update", &bufferUpdate)
+        .property("label", &bufferLabel)
+        .meta("__eq", &lua::Userdata::equal<haylen::graphics::Buffer>)
+        .install();
     lua::ClassBuilder<haylen::graphics::Texture>(L)
         .function("update", &lua::Binding::native<&updateTexture>)
         .property("width", &textureWidth)

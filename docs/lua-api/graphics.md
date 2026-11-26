@@ -1,6 +1,6 @@
 # 📖 `haylen.graphics`
 
-The module `haylen.graphics` makes the resources that every kind of drawing shares: textures, render targets, images on the CPU, fonts, font families and vector images. It also names the graphics API and what the device can do: its capabilities, what it does with each pixel format and the range of depth. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md). The [rendering guide](../graphics/rendering.md) explains how the engine draws, and the [text guide](../graphics/text.md) explains fonts.
+The module `haylen.graphics` makes the resources that every kind of drawing shares: buffers, textures, render targets, images on the CPU, fonts, font families and vector images. It also names the graphics API and what the device can do: its capabilities, what it does with each pixel format and the range of depth. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md). The [rendering guide](../graphics/rendering.md) explains how the engine draws, and the [text guide](../graphics/text.md) explains fonts.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -75,6 +75,10 @@ Returns a table of what the GPU device of this app can do, as the [RHI guide](..
 | `maxAnisotropy` | integer | The most samples of anisotropic filtering that the option `anisotropy` of a texture takes, 1 on a device without anisotropic filtering. |
 | `maxLodBias` | number | The largest bias of the level of detail that the option `lodBias` takes in either direction, 0 on a device whose samplers take no bias, such as Metal, OpenGL ES, WebGL2 and WebGPU. |
 | `borderColors` | boolean | Whether textures read a border color through the wrap `'border'`. WebGL2 and WebGPU have none. |
+| `storageBuffers` | boolean | Whether buffers take the usage `'storage'`. OpenGL ES 3.0 and WebGL2 have none. |
+| `indirectBuffers` | boolean | Whether buffers take the usage `'indirect'`. OpenGL ES 3.0 and WebGL2 have none. |
+| `maxUniformBlockSize` | integer | The most bytes of one uniform block of a shader. |
+| `uniformBufferAlignment` | integer | The multiple of bytes, 256, at which the uniform blocks of shaders read a uniform buffer. |
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -300,6 +304,78 @@ local function paintRow(y, from, to)
 end
 
 paintRow(64, 32, 96)
+```
+
+## Buffer
+
+A `Buffer` holds bytes on the GPU with the usages they serve, such as the vertices, the indices or the uniform blocks that a renderer of a plugin draws with, and an update that says how they change. The [RHI guide](../graphics/rhi.md#buffers) explains the usages and the updates. Two buffer values compare equal with `==` when they refer to the same buffer, and the GPU buffer goes once no value refers to it.
+
+### graphics.newBuffer(size, options)
+
+Makes a `Buffer` of `size` bytes, which starts with zeros, or, when the first argument is a string or a data view, one that starts with those bytes and takes their size.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `usage` | table | required | A list of what the buffer serves as: `'vertex'`, `'index'`, `'uniform'`, `'storage'`, `'indirect'`, `'copySource'` and `'copyDestination'`. `'storage'` needs `storageBuffers` and `'indirect'` needs `indirectBuffers` of [`graphics.capabilities()`](#graphicscapabilities). |
+| `update` | string | `'immutable'` | How its contents change: `'immutable'` keeps the bytes it is made with, `'dynamic'` keeps what the last write or copy left, and `'stream'` holds in a frame only what that frame wrote. |
+| `label` | string | `''` | The name of the buffer in GPU debuggers and captures. |
+
+A size of 0 or less raises `The size of "graphics.newBuffer" must be a positive number of bytes.`, a buffer without a usage raises `A buffer needs at least one usage: ...`, and an unknown usage raises `The buffer usage "<name>" does not exist. ...`. A uniform buffer serves no other draw and raises `A uniform buffer serves no other draw. ...` with another one, an index buffer that holds vertices raises `An index buffer holds no vertices. ...`, an immutable buffer made with a size alone or with `'copyDestination'` raises `An immutable buffer keeps the data it is made with, so it needs data and takes no "copyDestination" usage.`, and a stream buffer with a copy usage raises `A stream buffer holds new contents every frame, so it takes no "copySource" or "copyDestination" usage.`.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local points = graphics.newBuffer(1024, {usage = {'vertex', 'copySource'}, update = 'dynamic', label = 'points'})
+local corners = graphics.newBuffer(string.pack('<ffffffff', 0, 0, 1, 0, 0, 1, 1, 1), {usage = {'vertex'}})
+print(points.size, corners.size, corners.update)
+```
+
+### Properties
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `size` | integer | read | The size in bytes. |
+| `usage` | table | read | The list of its usages, in the order of the table of `usage` above. |
+| `update` | string | read | `'immutable'`, `'dynamic'` or `'stream'`. |
+| `label` | string | read | The name that it was made with. |
+
+### buffer:write(offset, bytes)
+
+Writes the bytes, a string or a data view, into the buffer at the byte `offset`, a multiple of 4, before the draws of the frame that read them. A dynamic buffer keeps them and takes whole words, a size that is a multiple of 4 too, and a stream buffer holds in a frame only what that frame wrote, each part once. An immutable buffer raises `An immutable buffer keeps the data it was made with. Make it dynamic or stream to write into it.`, and a range outside the buffer or not of whole words raises a sentence that names the range.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local points = graphics.newBuffer(64, {usage = {'vertex'}, update = 'dynamic'})
+points:write(16, string.pack('<ff', 0.5, 0.25))
+```
+
+### buffer:copy(source, options)
+
+Copies bytes of the buffer `source`, which has the usage `'copySource'`, into this buffer, which has the usage `'copyDestination'`, before the draws of the frame that read them. The table `options` takes `sourceOffset` and `offset`, 0 by default, and `size`, the size of `source` by default, all multiples of 4. A buffer copies nothing into itself, and a range outside either buffer raises a sentence that names the range.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local staged = graphics.newBuffer(string.rep('\0', 256), {usage = {'copySource'}})
+local points = graphics.newBuffer(1024, {usage = {'vertex', 'copyDestination'}, update = 'dynamic'})
+points:copy(staged, {offset = 512})
+```
+
+### buffer:readAsync(offset, size)
+
+Returns a promise of a string of the bytes of the buffer from `offset`, 0 by default, for `size` bytes, the rest of the buffer by default, both multiples of 4, as the frame that asks for them leaves the buffer. The GPU copies them after the frame is submitted, so the promise settles a frame or more later. The buffer needs the usage `'copySource'`. The headless host of tests draws nothing and hands over zeros.
+
+```lua
+local async = require('async')
+local graphics = require('haylen.graphics')
+
+local results = graphics.newBuffer(16, {usage = {'copySource'}, update = 'dynamic'})
+results:write(0, string.pack('<i4', 42))
+async.spawn(function()
+    local bytes = results:readAsync(0, 4):await()
+    print(string.unpack('<i4', bytes))
+end)
 ```
 
 ## RenderTarget

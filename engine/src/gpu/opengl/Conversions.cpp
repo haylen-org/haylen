@@ -194,6 +194,20 @@ Conversions::Vertex Conversions::getVertex(Device::VertexFormat format) noexcept
     return {};
 }
 
+// The usage of a buffer tells the driver how often its contents change, so it places the memory of the buffer for them.
+Gl::Enum Conversions::toBufferUsage(Device::BufferUpdate update) noexcept {
+    switch (update) {
+    case Device::BufferUpdate::Immutable:
+        return Gl::kStaticDraw;
+    case Device::BufferUpdate::Dynamic:
+        return Gl::kDynamicDraw;
+    case Device::BufferUpdate::Stream:
+        return Gl::kStreamDraw;
+    }
+
+    return Gl::kStaticDraw;
+}
+
 Gl::Enum Conversions::toPrimitive(Device::Primitive primitive) noexcept {
     switch (primitive) {
     case Device::Primitive::Triangles:

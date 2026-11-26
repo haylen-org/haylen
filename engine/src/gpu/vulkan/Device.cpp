@@ -18,8 +18,8 @@
 #include "gpu/SamplerRules.hpp"
 #include "gpu/vulkan/Context.hpp"
 #include "gpu/vulkan/Conversions.hpp"
+#include "gpu/vulkan/CopyReadback.hpp"
 #include "gpu/vulkan/ImageLayouts.hpp"
-#include "gpu/vulkan/ImageReadback.hpp"
 #include "gpu/vulkan/Instance.hpp"
 #include "gpu/vulkan/PreparedModules.hpp"
 #include "haylen/core/JobSystem.hpp"
@@ -128,6 +128,11 @@ void Device::fillCapabilities() {
     capabilities.maxAnisotropy = context->getEnabledFeatures().samplerAnisotropy == VK_TRUE ? static_cast<int>(limits.maxSamplerAnisotropy) : 1;
     capabilities.maxLodBias = limits.maxSamplerLodBias;
     capabilities.borderColors = true;
+
+    // Every Vulkan device binds storage buffers and reads the arguments of indirect draws, and a uniform block reads at most the range of one uniform buffer descriptor.
+    capabilities.storageBuffers = true;
+    capabilities.indirectBuffers = true;
+    capabilities.maxUniformBlockSize = limits.maxUniformBufferRange;
     for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const VkFormat vulkanFormat = resolveFormat(format);
@@ -308,7 +313,7 @@ bool Device::ensureFrame() {
 
     frame.serial = nextSerial;
     frameOpen = true;
-    bufferCopies = false;
+    bufferUploads = false;
 
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
         if (chain != nullptr) {
@@ -316,7 +321,7 @@ bool Device::ensureFrame() {
         }
     }
 
-    bound.uniformBuffer = VK_NULL_HANDLE;
+    bound.uniformBuffers = {};
     bound.uniformMask = 0;
     return true;
 }
@@ -399,9 +404,9 @@ void Device::commit() {
 
     endSwapchainRendering();
     Frame& frame = frames[frameIndex];
-    if (bufferCopies) {
-        const VkMemoryBarrier barrier{.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT};
-        vk.vkCmdPipelineBarrier(frame.uploads, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+    if (bufferUploads) {
+        const VkMemoryBarrier barrier{.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = kBufferAccesses};
+        vk.vkCmdPipelineBarrier(frame.uploads, VK_PIPELINE_STAGE_TRANSFER_BIT, kBufferStages, 0, 1, &barrier, 0, nullptr, 0, nullptr);
     }
 
     // Every image that the frame acquired goes to its presentation, which waits for the semaphore that the submission signals for it. A scaled swapchain first copies its drawable into the image, so its copy waits for the image instead of its passes.
@@ -502,7 +507,7 @@ void Device::abandonFrame() noexcept {
     }
 }
 
-// What the GPU finished goes at once, and the rest goes as the frames in flight finish, so a trim never waits for the GPU. Between frames, once every frame finished, the objects released since then carry the serial of a frame that no GPU work reads yet, so they go at once too.
+// What the GPU finished goes at once, and the rest goes as the frames in flight finish, so a trim never waits for the GPU. Between frames, once every frame and every readback finished, the objects released since then carry the serial of a frame that no GPU work reads yet, so they go at once too.
 void Device::trim() {
     if (pass.open) {
         throw ContractError(ContractError::Rule::PassOrder);
@@ -513,7 +518,7 @@ void Device::trim() {
     }
 
     pollFrames();
-    const bool idle = !frameOpen && std::ranges::none_of(frames, [](const Frame& frame) { return frame.submitted; });
+    const bool idle = !frameOpen && std::ranges::none_of(frames, [](const Frame& frame) { return frame.submitted; }) && !readbacks.isCopying();
     releases.collect(idle ? nextSerial : completedSerial);
 
     for (std::size_t index = 0; index < frames.size(); ++index) {
@@ -532,10 +537,10 @@ void Device::trim() {
     finishTrim();
 }
 
-// The uniform sets name their buffers by their handles, which Vulkan may give to the buffers made after a chunk of the uniform ring went.
+// The uniform sets name their buffers by their handles, which Vulkan may give to the buffers made after a chunk of the uniform ring went, whose frames finished.
 void Device::forgetDestroyedUniforms() noexcept {
     for (const VkBuffer buffer : uniforms.getDestroyed()) {
-        descriptors.forgetUniformBuffer(buffer);
+        descriptors.forgetUniformBuffer(buffer, completedSerial);
     }
 }
 
@@ -766,29 +771,25 @@ VkFormat Device::resolveFormat(PixelFormat format) const noexcept {
     return format == PixelFormat::Depth24Stencil8 ? context->getDepthStencilFormat() : Conversions::toFormat(format);
 }
 
-// A dynamic buffer stays mapped with one copy for each frame in flight. An immutable one lives where the GPU reads fastest, and takes its data directly when the CPU sees that memory and through the staging ring otherwise.
+// A stream buffer stays mapped with one copy for each frame in flight. An immutable or dynamic one lives where the GPU reads fastest, and takes its first data directly when the CPU sees that memory and through the staging ring otherwise, while the writes into a dynamic buffer copy from the staging ring among the passes of the frame.
 gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     if (lost) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no buffer.");
     }
 
-    const VkDeviceSize size = desc.size > 0 ? desc.size : desc.data.size();
-    if (size == 0 || desc.data.size() > size) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
-    BufferRecord record{.size = size, .usage = desc.usage};
-    const bool dynamic = desc.usage == Usage::Dynamic;
-    record.copies = dynamic ? static_cast<std::uint32_t>(kFramesInFlight) : 1U;
-    record.stride = dynamic ? (size + kDynamicBufferAlignment - 1) / kDynamicBufferAlignment * kDynamicBufferAlignment : size;
-    VkBufferUsageFlags usage = desc.index ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    if (!dynamic) {
+    const BufferRules::Description description = BufferRules::check(desc, capabilities);
+    const bool stream = description.update == BufferUpdate::Stream;
+    const VkDeviceSize size = description.size;
+    BufferRecord record{.copies = stream ? static_cast<std::uint32_t>(kFramesInFlight) : 1U, .description = description};
+    record.stride = stream ? (size + kStreamBufferAlignment - 1) / kStreamBufferAlignment * kStreamBufferAlignment : size;
+    VkBufferUsageFlags usage = Conversions::toBufferUsage(description.usage);
+    if (!stream) {
         usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
 
     const VkBufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .pNext = nullptr, .flags = 0, .size = record.stride * record.copies, .usage = usage, .sharingMode = VK_SHARING_MODE_EXCLUSIVE, .queueFamilyIndexCount = 0, .pQueueFamilyIndices = nullptr};
     VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
-    if (!dynamic) {
+    if (!stream) {
         memory.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
     }
 
@@ -829,7 +830,7 @@ void Device::uploadBuffer(const BufferRecord& record, std::span<const std::byte>
     std::memcpy(source.data, data.data(), data.size());
     const VkBufferCopy region{.srcOffset = source.offset, .dstOffset = 0, .size = data.size()};
     vk.vkCmdCopyBuffer(frames[frameIndex].uploads, source.buffer, record.buffer, 1, &region);
-    bufferCopies = true;
+    bufferUploads = true;
 }
 
 // The GPU holds images of a format and a usage only up to the extent, the mip levels and the layers that it reports for them, which may stay below the capabilities of the device for some formats, so an image within the capabilities that the format cannot hold finds no room on the GPU.
@@ -1064,7 +1065,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
 
     std::vector<LayoutCache::Binding> uniformBindings;
     for (const BlockBinding& block : desc.blocks) {
-        if (block.size > context->getProperties().limits.maxUniformBufferRange) {
+        if (block.size > capabilities.maxUniformBlockSize) {
             throw ContractError(ContractError::Rule::Program);
         }
 
@@ -1335,9 +1336,15 @@ void Device::rebuildPipeline(PipelineRecord& record) {
 
 void Device::destroy(Buffer buffer) noexcept {
     std::optional<BufferRecord> record = buffers.remove(buffer.id);
-    if (record) {
-        releases.push(ReleaseQueue::Buffer{.buffer = record->buffer, .allocation = record->allocation}, nextSerial);
+    if (!record) {
+        return;
     }
+
+    if (record->description.usage.uniform) {
+        descriptors.forgetUniformBuffer(record->buffer, nextSerial);
+    }
+
+    releases.push(ReleaseQueue::Buffer{.buffer = record->buffer, .allocation = record->allocation}, nextSerial);
 }
 
 void Device::destroy(Image image) noexcept {
@@ -1423,21 +1430,30 @@ void Device::destroy(Pipeline pipeline) noexcept {
     forgetProgramUse(record->program, nextSerial);
 }
 
-// The first write of a frame moves a dynamic buffer to its next copy, which the GPU finished reading once the frame waited for the fence of the frame before the last, since a frame in flight reads every other copy at most.
+// A dynamic buffer takes the bytes through the staging ring, in a copy among the passes of the frame.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::BufferWrite);
+    }
+
     BufferRecord& record = buffers.get(buffer.id);
-    if (record.usage != Usage::Dynamic) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
-    if (offset % 4 != 0 || offset + data.size() > record.size) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
-    if (!ensureFrame()) {
+    BufferRules::checkWrite(record.description, offset, data.size());
+    if (data.empty() || !ensureFrame()) {
         return;
     }
 
+    if (record.description.update == BufferUpdate::Stream) {
+        writeStream(record, offset, data);
+        return;
+    }
+
+    const UploadRing::Allocation source = staging.allocate(data.size(), 16);
+    std::memcpy(source.data, data.data(), data.size());
+    recordBufferCopy(source.buffer, source.offset, record.buffer, offset, data.size());
+}
+
+// The first write of a frame moves a stream buffer to its next copy, which the GPU finished reading once the frame waited for the fence of the frame before the last, since a frame in flight reads every other copy at most.
+void Device::writeStream(BufferRecord& record, std::size_t offset, std::span<const std::byte> data) {
     if (record.writtenSerial != nextSerial) {
         record.writtenSerial = nextSerial;
         record.current = (record.current + 1) % record.copies;
@@ -1446,6 +1462,36 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     const VkDeviceSize start = record.stride * record.current + offset;
     std::memcpy(record.mapped + start, data.data(), data.size());
     vmaFlushAllocation(context->getAllocator(), record.allocation, start, data.size());
+}
+
+void Device::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::BufferWrite);
+    }
+
+    const BufferRecord& from = buffers.get(source.id);
+    const BufferRecord& to = buffers.get(destination.id);
+    BufferRules::checkCopy(source, from.description, sourceOffset, destination, to.description, destinationOffset, size);
+    if (!ensureFrame()) {
+        return;
+    }
+
+    recordBufferCopy(from.buffer, sourceOffset, to.buffer, destinationOffset, size);
+}
+
+// A copy into a buffer runs outside rendering, so it ends the rendering that a swapchain pass left open. It waits for the commands before it that read or write the range it writes, and the commands after it read what it wrote.
+void Device::recordBufferCopy(VkBuffer source, VkDeviceSize sourceOffset, VkBuffer destination, VkDeviceSize destinationOffset, VkDeviceSize size) {
+    endSwapchainRendering();
+    const VkCommandBuffer commands = frames[frameIndex].graphics;
+    VkBufferMemoryBarrier barrier{.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .buffer = destination, .offset = destinationOffset, .size = size};
+    vk.vkCmdPipelineBarrier(commands, kBufferStages, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+
+    const VkBufferCopy region{.srcOffset = sourceOffset, .dstOffset = destinationOffset, .size = size};
+    vk.vkCmdCopyBuffer(commands, source, destination, 1, &region);
+
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = kBufferAccesses;
+    vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, kBufferStages, 0, 0, nullptr, 1, &barrier, 0, nullptr);
 }
 
 // The pixels of every image go into the staging ring first, and the copies wait for the frames in flight that sample the images.
@@ -1857,6 +1903,8 @@ void Device::applyPipeline(Pipeline pipeline) {
         rebuildPipeline(*record);
     }
 
+    bound.appliedSlots = 0;
+    bound.bufferSlots = 0;
     if (bound.pipeline == record && bound.boundPipeline == record->pipeline) {
         return;
     }
@@ -1886,6 +1934,13 @@ void Device::applyBindings(const Bindings& bindings) {
         return;
     }
 
+    if (bound.pipeline == nullptr) {
+        throw ContractError(ContractError::Rule::PipelineState);
+    }
+
+    checkBindings(bindings);
+    feedUniformBlocks(bindings);
+
     Bindings& current = bound.bindings;
     if (current.vertexBuffers != bindings.vertexBuffers || current.vertexOffsets != bindings.vertexOffsets) {
         bound.vertexDirty = true;
@@ -1900,6 +1955,41 @@ void Device::applyBindings(const Bindings& bindings) {
     }
 
     current = bindings;
+}
+
+void Device::checkBindings(const Bindings& bindings) {
+    const PipelineRecord& pipeline = *bound.pipeline;
+    for (std::uint32_t index = 0; index < pipeline.bufferCount; ++index) {
+        BufferRules::checkVertex(buffers.get(bindings.vertexBuffers[index].id).description);
+    }
+
+    if (pipeline.indexType != IndexType::None) {
+        BufferRules::checkIndex(buffers.get(bindings.indexBuffer.id).description);
+    }
+}
+
+// A block whose slot the bindings name a uniform buffer for reads the buffer from the offset, within the copy of the frame of a stream buffer, and the other blocks read what `applyUniforms` gives them.
+void Device::feedUniformBlocks(const Bindings& bindings) {
+    const ProgramRecord& program = *bound.program;
+    bound.bufferSlots = 0;
+    for (std::size_t slot = 0; slot < kMaxBlocks; ++slot) {
+        const int index = program.blockIndices[slot];
+        const BufferRange& range = bindings.uniformBuffers[slot];
+        if (index < 0 || !range.buffer.isValid()) {
+            continue;
+        }
+
+        const std::uint32_t bit = 1U << slot;
+        if ((bound.appliedSlots & bit) != 0) {
+            throw ContractError(ContractError::Rule::Uniforms);
+        }
+
+        const BufferRecord& record = buffers.get(range.buffer.id);
+        const auto block = static_cast<std::size_t>(index);
+        BufferRules::checkUniform(record.description, range.offset, static_cast<std::size_t>(program.uniformBlocks[block].size));
+        setUniformBlock(block, record.buffer, record.stride * record.current + range.offset);
+        bound.bufferSlots |= bit;
+    }
 }
 
 void Device::applyUniforms(int slot, std::span<const std::byte> data) {
@@ -1921,38 +2011,40 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         throw ContractError(ContractError::Rule::Uniforms);
     }
 
+    const std::uint32_t bit = 1U << static_cast<unsigned>(slot);
+    if ((bound.bufferSlots & bit) != 0) {
+        throw ContractError(ContractError::Rule::Uniforms);
+    }
+
     const UploadRing::Allocation allocation = allocateUniform(static_cast<std::size_t>(index), size);
     std::memcpy(allocation.data, data.data(), data.size());
+    bound.appliedSlots |= bit;
 }
 
-// Every block of a draw lies in one buffer of the ring, which its descriptor set names, so the blocks applied before the ring moved to another buffer move along.
+// Each block names the buffer of the ring that holds its bytes, so the blocks applied before the ring moved to another buffer stay where they are.
 UploadRing::Allocation Device::allocateUniform(std::size_t index, VkDeviceSize size) {
     const VkDeviceSize alignment = context->getProperties().limits.minUniformBufferOffsetAlignment;
     const UploadRing::Allocation allocation = uniforms.allocate(size, alignment);
-    if (allocation.buffer != bound.uniformBuffer && bound.uniformBuffer != VK_NULL_HANDLE && bound.program != nullptr) {
-        for (std::size_t other = 0; other < bound.program->uniformBlocks.size(); ++other) {
-            if (other == index || (bound.uniformMask & (1U << other)) == 0) {
-                continue;
-            }
+    setUniformBlock(index, allocation.buffer, allocation.offset);
+    return allocation;
+}
 
-            const VkDeviceSize otherSize = bound.program->uniformBlocks[other].size;
-            const UploadRing::Allocation moved = uniforms.allocate(otherSize, alignment);
-            std::memcpy(moved.data, bound.uniformData[other], static_cast<std::size_t>(otherSize));
-            bound.uniformOffsets[other] = static_cast<std::uint32_t>(moved.offset);
-            bound.uniformData[other] = moved.data;
-        }
+// A block that keeps its buffer and its offset leaves the uniform set of the draws bound as it is.
+void Device::setUniformBlock(std::size_t index, VkBuffer buffer, VkDeviceSize offset) noexcept {
+    const std::uint32_t bit = 1U << index;
+    const auto dynamicOffset = static_cast<std::uint32_t>(offset);
+    if ((bound.uniformMask & bit) != 0 && bound.uniformBuffers[index] == buffer && bound.uniformOffsets[index] == dynamicOffset) {
+        return;
     }
 
-    if (allocation.buffer != bound.uniformBuffer) {
-        bound.uniformBuffer = allocation.buffer;
+    if (bound.uniformBuffers[index] != buffer) {
+        bound.uniformBuffers[index] = buffer;
         bound.uniformSet = VK_NULL_HANDLE;
     }
 
-    bound.uniformOffsets[index] = static_cast<std::uint32_t>(allocation.offset);
-    bound.uniformData[index] = allocation.data;
-    bound.uniformMask |= 1U << index;
+    bound.uniformOffsets[index] = dynamicOffset;
+    bound.uniformMask |= bit;
     bound.uniformsDirty = true;
-    return allocation;
 }
 
 void Device::applyStencilReference(std::uint8_t value) {
@@ -2120,7 +2212,7 @@ void Device::bindUniforms() {
     }
 
     if (bound.uniformSet == VK_NULL_HANDLE || bound.uniformSetProgram == nullptr || !sharesUniforms(*bound.uniformSetProgram, program)) {
-        bound.uniformSet = descriptors.getUniformSet(program.uniformLayout, bound.uniformBuffer, program.uniformBlocks);
+        bound.uniformSet = descriptors.getUniformSet(program.uniformLayout, program.uniformBlocks, std::span(bound.uniformBuffers).first(program.uniformBlocks.size()));
         bound.uniformSetProgram = &program;
     }
 
@@ -2168,7 +2260,22 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    return std::make_unique<ImageReadback>(readbacks.start({.image = record.image, .layout = record.restLayout, .width = width, .height = height, .format = record.pixelFormat}));
+    return std::make_unique<CopyReadback>(readbacks.start(ReadbackQueue::ImageSource{.image = record.image, .layout = record.restLayout, .width = width, .height = height, .format = record.pixelFormat}));
+}
+
+// The copy goes to the queue after the frames that the device committed, so it reads what they left in the buffer.
+std::unique_ptr<gpu::Device::Readback> Device::readBuffer(Buffer buffer, std::size_t offset, std::size_t size) {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::Readback);
+    }
+
+    if (lost) {
+        throw std::runtime_error("The Vulkan device stopped working, so it reads back no buffer.");
+    }
+
+    const BufferRecord& record = buffers.get(buffer.id);
+    BufferRules::checkRead(record.description, offset, size);
+    return std::make_unique<CopyReadback>(readbacks.start(ReadbackQueue::BufferSource{.buffer = record.buffer, .offset = offset, .size = size}));
 }
 
 // RenderDoc names a Vulkan device by the dispatch table of its instance.

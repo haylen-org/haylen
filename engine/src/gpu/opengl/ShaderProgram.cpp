@@ -92,16 +92,21 @@ void ShaderProgram::link(const Device::ProgramDesc& desc, Gl::Uint vertex, Gl::U
     throw std::runtime_error(std::format("The program \"{}\" did not link: {}", desc.label, log));
 }
 
+// Each block takes the binding point of its slot, where the device binds the range of the buffer that holds its bytes.
 void ShaderProgram::readBlocks(const Device::ProgramDesc& desc) {
-    blockIndices.fill(-1);
     blocks.reserve(desc.blocks.size());
     for (const Device::BlockBinding& binding : desc.blocks) {
-        if (binding.glslName.empty() || static_cast<std::uint32_t>(binding.glslCount) * 16U != binding.size) {
+        if (binding.glslName.empty()) {
             throw ContractError(ContractError::Rule::Program);
         }
 
-        blockIndices[static_cast<std::size_t>(binding.slot)] = static_cast<std::int8_t>(blocks.size());
-        blocks.push_back({.location = gl.getUniformLocation(name, std::string(binding.glslName).c_str()), .count = binding.glslCount, .integers = binding.glslIntegers, .values = std::vector<std::byte>(binding.size)});
+        const Gl::Uint index = gl.getUniformBlockIndex(name, std::string(binding.glslName).c_str());
+        const bool active = index != Gl::kInvalidIndex;
+        if (active) {
+            gl.uniformBlockBinding(name, index, static_cast<Gl::Uint>(binding.slot));
+        }
+
+        blocks.push_back({.slot = binding.slot, .size = binding.size, .active = active});
     }
 }
 
@@ -127,28 +132,9 @@ void ShaderProgram::readUnits(const Device::ProgramDesc& desc) {
     }
 }
 
-void ShaderProgram::applyUniforms(int slot, std::span<const std::byte> data) {
-    const std::int8_t index = slot >= 0 && slot < static_cast<int>(Device::kMaxBlocks) ? blockIndices[static_cast<std::size_t>(slot)] : std::int8_t{-1};
-    if (index < 0) {
-        throw ContractError(ContractError::Rule::Uniforms);
-    }
-
-    Block& block = blocks[static_cast<std::size_t>(index)];
-    if (data.size() != block.values.size()) {
-        throw ContractError(ContractError::Rule::Uniforms);
-    }
-
-    if (block.location < 0 || (block.written && std::memcmp(block.values.data(), data.data(), data.size()) == 0)) {
-        return;
-    }
-
-    std::memcpy(block.values.data(), data.data(), data.size());
-    block.written = true;
-    if (block.integers) {
-        gl.uniform4iv(block.location, block.count, reinterpret_cast<const Gl::Int*>(block.values.data()));
-    } else {
-        gl.uniform4fv(block.location, block.count, reinterpret_cast<const Gl::Float*>(block.values.data()));
-    }
+const ShaderProgram::Block* ShaderProgram::findBlock(int slot) const noexcept {
+    const auto found = std::ranges::find(blocks, slot, &Block::slot);
+    return found == blocks.end() ? nullptr : &*found;
 }
 
 } // namespace haylen::gpu::opengl

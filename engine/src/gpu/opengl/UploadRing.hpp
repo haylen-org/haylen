@@ -8,7 +8,7 @@
 
 namespace haylen::gpu::opengl {
 
-// The buffer that carries the new contents of dynamic buffers and the new pixels of dynamic images to them on OpenGL and OpenGL ES, with a region for each frame in flight. The CPU writes the region of a frame once the fence of the frame that used it last passed, so it maps it without waiting for the GPU, persistently where the context has buffer storage, and the GPU copies from it.
+// The buffer that carries the new contents of dynamic and stream buffers and the new pixels of dynamic images to them on OpenGL and OpenGL ES, with a region for each frame in flight. The CPU writes the region of a frame once the fence of the frame that used it last passed, so it maps it without waiting for the GPU, persistently where the context has buffer storage, and the GPU copies from it.
 class UploadRing final {
   public:
     static constexpr std::size_t kInitialRegionSize = std::size_t{1} << 20U;

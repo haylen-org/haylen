@@ -104,6 +104,10 @@ void OffscreenSwapchain::writeBuffer(Buffer buffer, std::size_t offset, std::spa
     device->writeBuffer(buffer, offset, data);
 }
 
+void OffscreenSwapchain::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) {
+    device->copyBuffer(source, sourceOffset, destination, destinationOffset, size);
+}
+
 void OffscreenSwapchain::writeImages(std::span<const ImageWrite> writes) {
     device->writeImages(writes);
 }
@@ -202,6 +206,10 @@ void OffscreenSwapchain::removeSurface(int surface) {
 
 std::unique_ptr<gpu::Device::Readback> OffscreenSwapchain::readImage(Image image, int width, int height) {
     return device->readImage(image, width, height);
+}
+
+std::unique_ptr<gpu::Device::Readback> OffscreenSwapchain::readBuffer(Buffer buffer, std::size_t offset, std::size_t size) {
+    return device->readBuffer(buffer, offset, size);
 }
 
 gpu::Device::CaptureSupport OffscreenSwapchain::getCaptureSupport() const {

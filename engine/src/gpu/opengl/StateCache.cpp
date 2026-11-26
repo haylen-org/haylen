@@ -75,8 +75,13 @@ void StateCache::reset() {
     gl.useProgram(0);
     gl.bindVertexArray(0);
 
-    for (const Gl::Enum target : {Gl::kArrayBuffer, Gl::kCopyReadBuffer, Gl::kCopyWriteBuffer, Gl::kPixelPackBuffer, Gl::kPixelUnpackBuffer}) {
+    for (const Gl::Enum target : {Gl::kArrayBuffer, Gl::kCopyReadBuffer, Gl::kCopyWriteBuffer, Gl::kPixelPackBuffer, Gl::kPixelUnpackBuffer, Gl::kUniformBuffer}) {
         gl.bindBuffer(target, 0);
+    }
+
+    uniformRanges.fill({});
+    for (std::size_t point = 0; point < kUniformPoints; ++point) {
+        gl.bindBufferBase(Gl::kUniformBuffer, static_cast<Gl::Uint>(point), 0);
     }
 
     gl.bindFramebuffer(Gl::kFramebuffer, 0);
@@ -343,6 +348,8 @@ Gl::Uint& StateCache::getBufferBinding(Gl::Enum target) noexcept {
         return buffers.pixelPack;
     case Gl::kPixelUnpackBuffer:
         return buffers.pixelUnpack;
+    case Gl::kUniformBuffer:
+        return buffers.uniform;
     default:
         return buffers.array;
     }
@@ -357,6 +364,17 @@ void StateCache::bindBuffer(Gl::Enum target, Gl::Uint buffer) {
 
     current = buffer;
     gl.bindBuffer(target, buffer);
+}
+
+void StateCache::bindUniformRange(std::size_t point, const UniformRange& range) {
+    UniformRange& current = uniformRanges[point];
+    if (current == range) {
+        return;
+    }
+
+    current = range;
+    buffers.uniform = range.buffer;
+    gl.bindBufferRange(Gl::kUniformBuffer, static_cast<Gl::Uint>(point), range.buffer, range.offset, range.size);
 }
 
 void StateCache::bindDrawFramebuffer(Gl::Uint framebuffer) {
@@ -403,10 +421,17 @@ void StateCache::bindSampler(std::size_t unit, Gl::Uint sampler) {
     gl.bindSampler(static_cast<Gl::Uint>(unit), sampler);
 }
 
+// OpenGL unbinds a deleted buffer from every binding point of the context, the binding points of uniform blocks among them.
 void StateCache::forgetBuffer(Gl::Uint buffer) noexcept {
-    for (Gl::Uint* binding : {&buffers.array, &buffers.copyRead, &buffers.copyWrite, &buffers.pixelPack, &buffers.pixelUnpack}) {
+    for (Gl::Uint* binding : {&buffers.array, &buffers.copyRead, &buffers.copyWrite, &buffers.pixelPack, &buffers.pixelUnpack, &buffers.uniform}) {
         if (*binding == buffer) {
             *binding = 0;
+        }
+    }
+
+    for (UniformRange& range : uniformRanges) {
+        if (range.buffer == buffer) {
+            range = {};
         }
     }
 }

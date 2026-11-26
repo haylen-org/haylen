@@ -18,7 +18,7 @@ namespace haylen::gpu::vulkan {
 class Context;
 class ReleaseQueue;
 
-// The descriptor sets of a device, which outlive the frames that use them. A set of textures and samplers is made once for each layout and each choice of images and samplers, so a frame that binds what the frame before it bound writes no descriptor, and it goes when one of its images or samplers is destroyed or, past a bound, when no frame used it for a while. A set of uniform blocks points at one buffer of the uniform ring with the sizes of the blocks of its programs, since programs of one layout may hold blocks of other sizes, and each draw passes the offsets of its blocks as dynamic offsets.
+// The descriptor sets of a device, which outlive the frames that use them. A set of textures and samplers is made once for each layout and each choice of images and samplers, so a frame that binds what the frame before it bound writes no descriptor, and it goes when one of its images or samplers is destroyed or, past a bound, when no frame used it for a while. A set of uniform blocks points each block at its buffer, a buffer of the uniform ring or a uniform buffer of the bindings, with the size of the block, since programs of one layout may hold blocks of other sizes, and each draw passes the offsets of its blocks as dynamic offsets. It goes once one of its buffers goes.
 class DescriptorCache final {
   public:
     // How many sets of textures and samplers stay once frames no longer use them.
@@ -51,14 +51,15 @@ class DescriptorCache final {
     // Makes the set of the key with the writes, whose destination set it fills in.
     [[nodiscard]] VkDescriptorSet addResourceSet(const ResourceKey& key, std::span<VkWriteDescriptorSet> writes, std::uint64_t serial);
 
-    [[nodiscard]] VkDescriptorSet getUniformSet(VkDescriptorSetLayout layout, VkBuffer buffer, std::span<const UniformBlock> blocks);
+    // The set that points each block at the buffer of the same index.
+    [[nodiscard]] VkDescriptorSet getUniformSet(VkDescriptorSetLayout layout, std::span<const UniformBlock> blocks, std::span<const VkBuffer> buffers);
 
     // Lets go of the sets that hold a destroyed image or sampler once the frames that may use them finished.
     void forgetImage(std::uint64_t id, std::uint64_t serial);
     void forgetSampler(std::uint64_t id, std::uint64_t serial);
 
-    // Frees the sets of uniform blocks that point at a buffer of the uniform ring that the ring destroyed, whose frame finished, so a buffer that takes its handle later never finds them.
-    void forgetUniformBuffer(VkBuffer buffer) noexcept;
+    // Lets go of the sets of uniform blocks that point at a buffer that goes, once the frames up to the serial finished, and at once for the lookups, so a buffer that takes its handle later never finds them.
+    void forgetUniformBuffer(VkBuffer buffer, std::uint64_t serial) noexcept;
 
     // Frees the sets that no unfinished frame uses while the cache holds more than its bound.
     void trim(std::uint64_t completed);
@@ -87,7 +88,7 @@ class DescriptorCache final {
 
     struct UniformKey {
         std::uint64_t layout = 0;
-        std::uint64_t buffer = 0;
+        std::array<std::uint64_t, Device::kMaxBlocks> buffers{};
         std::array<VkDeviceSize, Device::kMaxBlocks> ranges{};
 
         friend auto operator<=>(const UniformKey&, const UniformKey&) = default;

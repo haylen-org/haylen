@@ -90,7 +90,7 @@ TEST_P(GpuLifetimeTest, RunsManyFramesWithoutGrowing) {
     const Device::Image target = makeTarget(kSize, kSize);
     const std::array<Device::ColorTarget, 1> formats{};
     const Device::Pipeline pipeline = makePlanePipeline(formats);
-    const Device::Buffer buffer = device().makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "haylen-test-steady"});
+    const Device::Buffer buffer = device().makeBuffer({.size = 64, .usage = {.vertex = true}, .update = Device::BufferUpdate::Stream, .label = "haylen-test-steady"});
     for (int frame = 0; frame < 60; ++frame) {
         drawFrame(target, pipeline, buffer, math::Color::white());
     }
@@ -133,7 +133,7 @@ TEST_P(GpuLifetimeTest, DestroysObjectsWithoutAllocating) {
         madeImages.push_back(device().makeImage({.width = kSize, .height = kSize, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-destroyed-target"}));
         pipelines.push_back(device().makePipeline({.program = program("textured"), .colors = formats, .label = "haylen-test-destroyed-pipeline"}));
         samplers.push_back(device().makeSampler({.label = "haylen-test-destroyed-sampler"}));
-        buffers.push_back(device().makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "haylen-test-destroyed-buffer"}));
+        buffers.push_back(device().makeBuffer({.size = 64, .usage = {.vertex = true}, .update = Device::BufferUpdate::Stream, .label = "haylen-test-destroyed-buffer"}));
     }
 
     for (std::size_t object = 0; object < pipelines.size(); ++object) {
@@ -175,7 +175,7 @@ TEST_P(GpuLifetimeTest, MeasuresTheFramesOfTheGpuWhereItCan) {
     const Device::Image target = makeTarget(kSize, kSize);
     const std::array<Device::ColorTarget, 1> formats{};
     const Device::Pipeline pipeline = makePlanePipeline(formats);
-    const Device::Buffer buffer = device().makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "haylen-test-timed"});
+    const Device::Buffer buffer = device().makeBuffer({.size = 64, .usage = {.vertex = true}, .update = Device::BufferUpdate::Stream, .label = "haylen-test-timed"});
     const auto deadline = std::chrono::steady_clock::now() + kReadTimeout;
     while (!device().getGpuFrameSeconds() && std::chrono::steady_clock::now() < deadline) {
         drawFrame(target, pipeline, buffer, math::Color::white());

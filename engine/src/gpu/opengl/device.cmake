@@ -2,6 +2,7 @@
 include_guard(GLOBAL)
 
 target_sources(haylen-gpu PRIVATE
+  "${CMAKE_CURRENT_LIST_DIR}/BufferReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Conversions.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/DebugOutput.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Device.cpp"
@@ -10,9 +11,11 @@ target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/GpuTimer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/DrawnClear.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/PixelReadback.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/ReadbackBuffer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ScaledDrawable.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ShaderProgram.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/StateCache.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/UniformRing.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/UploadRing.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/VertexArray.cpp"
 )
@@ -41,6 +44,7 @@ else()
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/ScaledDrawableTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/ShaderProgramTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/StateCacheTests.cpp"
+    "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/UniformRingTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/UploadRingTests.cpp"
   )
   if(WIN32)

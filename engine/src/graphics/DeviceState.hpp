@@ -47,6 +47,17 @@ struct DeviceState {
 
     std::vector<PendingRead> reads;
 
+    // A range of a buffer whose bytes a caller asked for, and the copy of them once the frame that asked was submitted.
+    struct PendingBufferRead {
+        Buffer buffer;
+        std::size_t offset = 0;
+        std::size_t size = 0;
+        Device::BufferReadCallback done;
+        std::unique_ptr<gpu::Device::Readback> copy{};
+    };
+
+    std::vector<PendingBufferRead> bufferReads;
+
     // The capture that records, with the frames it still records and the callback that receives its file.
     struct PendingCapture {
         int framesLeft = 0;

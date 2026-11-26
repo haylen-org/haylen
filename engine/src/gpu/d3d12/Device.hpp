@@ -16,6 +16,7 @@
 #include <string_view>
 #include <vector>
 
+#include "gpu/BufferRules.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/d3d12/BufferArena.hpp"
@@ -36,7 +37,7 @@ class ShaderCompiler;
 
 namespace haylen::gpu::d3d12 {
 
-// The device of Direct3D 12, on GPUs of feature level 11_0 and later. Each frame records a transfer list, which takes the copies into buffers and images and the copies out of render targets, and the list of its passes, which run in that order. The GPU runs at most `kFramesInFlight` frames behind the CPU, and a fence tells when the memory, descriptors and objects of a frame can be used again or released. Uniforms are root constant buffer views into upload memory that stays mapped, textures and samplers are descriptor tables copied into rings of shader visible heaps, and passes are render passes. Images rest in the state that shaders read, and passes move only their attachments out of it and back. Validation turns on the debug layer and the breadcrumbs that say what the GPU ran when it was removed.
+// The device of Direct3D 12, on GPUs of feature level 11_0 and later. Each frame records a transfer list, which takes the data of new buffers and images, the writes of stream buffers and images and the copies out of render targets and buffers, and the list of its passes, which also takes the writes into dynamic buffers and the copies between buffers at their places between the passes, and the two lists run in that order. The GPU runs at most `kFramesInFlight` frames behind the CPU, and a fence tells when the memory, descriptors and objects of a frame can be used again or released. Uniforms are root constant buffer views into upload memory that stays mapped or into the uniform buffers of the bindings, textures and samplers are descriptor tables copied into rings of shader visible heaps, and passes are render passes. Images rest in the state that shaders read, and passes move only their attachments out of it and back. Validation turns on the debug layer and the breadcrumbs that say what the GPU ran when it was removed.
 class Device final : public gpu::Device {
   public:
     static constexpr std::size_t kFramesInFlight = 2;
@@ -70,6 +71,7 @@ class Device final : public gpu::Device {
     void destroy(Pipeline pipeline) noexcept override;
 
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
+    void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
 
     void beginPass(const PassDesc& desc) override;
@@ -103,6 +105,7 @@ class Device final : public gpu::Device {
     void removeSurface(int number) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+    [[nodiscard]] std::unique_ptr<Readback> readBuffer(Buffer buffer, std::size_t offset, std::size_t size) override;
 
     [[nodiscard]] CaptureSupport getCaptureSupport() const override;
     void beginCapture(const std::filesystem::path& path) override;
@@ -116,14 +119,21 @@ class Device final : public gpu::Device {
     static constexpr D3D12_RESOURCE_STATES kShaderResource = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     static constexpr std::size_t kTables = 4;
 
-    // Buffers rest in the common state, from which each list promotes them to what it does with them, and to which they return when the list ends.
-    // A buffer holds a range of a block of the arena, or a resource of its own when it is large, at the offset of the range.
+    // Buffers rest in the common state, from which each list promotes them to what it does with them, and to which they return when the list ends. A buffer holds a range of a block of the arena at the offset of the range, or a resource of its own when it is large, takes part in copies, is storage or is dynamic. A buffer that the list of the passes writes, a dynamic buffer or the destination of copies, goes from the state that list gave it to the copy and on to the read states of its usages around each write, so the list keeps the state of the buffer for the frame that `stateFrame` numbers.
     struct BufferRecord {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource{};
         BufferArena::Range range{};
         D3D12_GPU_VIRTUAL_ADDRESS address = 0;
-        std::size_t size = 0;
-        Usage usage = Usage::Immutable;
+        BufferRules::Description description{};
+        D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_COMMON;
+        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+        std::uint64_t stateFrame = 0;
+    };
+
+    // A buffer that the bindings name, which the draws after them promote to the state.
+    struct Promotion {
+        std::uint64_t buffer = 0;
+        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
     };
 
     struct Attachment {
@@ -199,6 +209,10 @@ class Device final : public gpu::Device {
         std::array<std::array<D3D12_CPU_DESCRIPTOR_HANDLE, DescriptorRing::kMaxTable>, kTables> tables{};
         std::array<UINT, kTables> tableCounts{};
         std::array<bool, kTables> tablesSet{};
+        // The buffers of the last bindings that the list of the passes writes, which the next draw promotes, and whether a draw since them did.
+        std::array<Promotion, kMaxVertexBuffers + 1 + kMaxBlocks> promotions{};
+        UINT promotionCount = 0;
+        bool promoted = false;
     };
 
     // What the open pass does when it ends: the barriers that return its attachments to their states, and the storage that its render pass reads for the resolves.
@@ -257,7 +271,16 @@ class Device final : public gpu::Device {
     void makeTextureView(ImageRecord& image);
     void stagePixels(const ImageRecord& image, std::span<const std::span<const std::byte>> levels);
     void stageRegion(const ImageRecord& image, const Region& region, std::span<const std::byte> pixels);
-    [[nodiscard]] Microsoft::WRL::ComPtr<ID3D12Resource> makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 size, D3D12_RESOURCE_STATES state, std::string_view label);
+    [[nodiscard]] Microsoft::WRL::ComPtr<ID3D12Resource> makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 size, D3D12_RESOURCE_STATES state, D3D12_RESOURCE_FLAGS flags, std::string_view label);
+    [[nodiscard]] UploadAllocator::Allocation stageBytes(std::span<const std::byte> data);
+    [[nodiscard]] static bool isWrittenBetweenPasses(const BufferRules::Description& description) noexcept;
+    [[nodiscard]] static D3D12_RESOURCE_STATES getReadState(const BufferUsage& usage) noexcept;
+    [[nodiscard]] D3D12_RESOURCE_STATES getListState(const BufferRecord& record) const noexcept;
+    void setListState(BufferRecord& record, D3D12_RESOURCE_STATES state) const noexcept;
+    void notePromotion(const BufferRecord& record, std::uint64_t id, D3D12_RESOURCE_STATES state) noexcept;
+    void promoteBound() noexcept;
+    void copyIntoBuffer(BufferRecord& record, std::size_t offset, ID3D12Resource& source, UINT64 sourceOffset, std::size_t size);
+    void bindUniformBuffers(const PipelineRecord& pipeline, const Bindings& bindings);
     [[nodiscard]] DescriptorRing* applyTables(const PipelineRecord& pipeline, const Bindings& bindings);
     [[nodiscard]] bool applyTable(std::size_t table, int parameter, std::span<const D3D12_CPU_DESCRIPTOR_HANDLE> handles);
     void drainMessages();
@@ -305,6 +328,8 @@ class Device final : public gpu::Device {
 
     std::array<Frame, kFramesInFlight> frames;
     std::size_t frameIndex = 0;
+    // The frame that records, counted from 1, whose list of passes holds the states that the buffers written between passes keep.
+    std::uint64_t frameNumber = 1;
     bool frameOpen = false;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> commands;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> transfers;
@@ -315,6 +340,9 @@ class Device final : public gpu::Device {
     int pipelineSampleCount = 1;
 
     ListState bound;
+    // The uniform blocks that `applyUniforms` fed since the pipeline, and the blocks that the uniform buffers of the last bindings feed.
+    std::array<bool, kMaxBlocks> blocksApplied{};
+    std::array<bool, kMaxBlocks> blocksFromBuffers{};
     PassState pass;
     bool passOpen = false;
     // A pass into the swapchain of a window without a drawable, such as a minimized one, records nothing.

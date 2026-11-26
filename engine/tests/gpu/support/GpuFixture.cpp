@@ -184,7 +184,7 @@ std::vector<std::uint8_t> GpuFixture::finishCopy(gpu::Device::Readback& copy) {
         EventLoop::yield();
     }
 
-    throw std::runtime_error(std::format("The copy of a render target did not finish within {} seconds.", kReadTimeout.count()));
+    throw std::runtime_error(std::format("The copy of a render target or a buffer did not finish within {} seconds.", kReadTimeout.count()));
 }
 
 GpuFixture::Pixels GpuFixture::clearAndRead(math::Color color, int width, int height) {

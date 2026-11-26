@@ -19,11 +19,13 @@
 #include <utility>
 #include <vector>
 
+#include "gpu/BufferRules.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/ProgramSlots.hpp"
 #include "gpu/SamplerRules.hpp"
+#include "gpu/metal/BufferReadback.hpp"
 #include "gpu/metal/EncoderState.hpp"
 #include "gpu/metal/Formats.hpp"
 #include "gpu/metal/Graveyard.hpp"
@@ -43,8 +45,11 @@ struct Device::Native {
     // Uniform blocks take the buffer indices from 0 of each stage, so vertex buffers take the ones after them.
     static constexpr NSUInteger kFirstVertexBuffer = kMaxBlocks;
 
-    // Every region of a dynamic buffer starts at a multiple of this many bytes, which every Metal GPU accepts as the offset of a vertex buffer.
+    // Every region of a stream buffer starts at a multiple of this many bytes, which every Metal GPU accepts as the offset of a vertex buffer and `kUniformBufferAlignment` asks of a uniform buffer.
     static constexpr std::size_t kRegionAlignment = 256;
+
+    // The bytes of a write into a dynamic buffer start in the upload ring at a multiple of this many bytes, which blits between buffers ask of their offsets on macOS.
+    static constexpr std::size_t kCopyAlignment = 4;
 
     static constexpr std::size_t kUploadRingSize = 256 * 1024;
 
@@ -58,10 +63,8 @@ struct Device::Native {
     struct BufferEntry {
         id<MTLBuffer> buffer = nil;
         std::byte* contents = nullptr;
-        std::size_t size = 0;
         std::size_t region = 0;
-        bool dynamic = false;
-        bool index = false;
+        BufferRules::Description description{};
     };
 
     struct ImageEntry {
@@ -156,6 +159,8 @@ struct Device::Native {
     [[nodiscard]] id<MTLBlitCommandEncoder> getTransferBlit();
     [[nodiscard]] id<MTLDepthStencilState> getDepthStencilState(const DepthStencil& desc, bool depth, bool stencil);
     [[nodiscard]] NSUInteger getRegionOffset(const BufferEntry& entry) const noexcept;
+    void upload(id<MTLBuffer> target, std::span<const std::byte> data);
+    [[nodiscard]] std::uint32_t bindUniformBuffers(const ProgramEntry& program, const Bindings& bound);
     static void checkPipeline(const PipelineDesc& desc);
     [[nodiscard]] MTLTextureDescriptor* describeImage(const ImageDesc& desc) const;
     void releaseLibraries(const ProgramEntry& entry);
@@ -217,6 +222,11 @@ struct Device::Native {
     Applied applied;
     Bindings bindings;
     bool bindingsApplied = false;
+
+    // The uniform blocks that `applyUniforms` fed since the pipeline was applied, and those that the uniform buffers of the bindings feed, as bits of their slots.
+    std::uint32_t uniformBlocks = 0;
+    std::uint32_t bufferBlocks = 0;
+
     id<MTLBuffer> indexBuffer = nil;
     NSUInteger indexOffset = 0;
     std::vector<std::uint32_t> debugGroups;
@@ -261,7 +271,7 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     passDesc = [MTLRenderPassDescriptor new];
 }
 
-// Every Metal GPU samples and draws into every uncompressed format of the contract, with `Depth24Stencil8` as `Depth32FloatStencil8`, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats. The sizes and the samples follow the feature set tables of Metal: volumes of 2048 pixels on a side, cubes as large as flat images, and the sample counts the GPU takes for every format, except that a format of 32 bit floats resolves only on a GPU that filters it. Apple GPUs sample the ETC2, EAC and ASTC formats, with the HDR profile of ASTC from the A13 and M1 on, and the GPUs that report it sample the BC formats, which every Mac and the iPads of the M1 on do. Shaders write the uncompressed color formats as storage images, and the sRGB one only on Apple GPUs. A GPU outside the Apple families is the GPU of an Intel Mac, which takes images of 16384 pixels and blends, filters and resolves every format.
+// Every Metal GPU samples and draws into every uncompressed format of the contract, with `Depth24Stencil8` as `Depth32FloatStencil8`, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats. The sizes and the samples follow the feature set tables of Metal: volumes of 2048 pixels on a side, cubes as large as flat images, and the sample counts the GPU takes for every format, except that a format of 32 bit floats resolves only on a GPU that filters it. Apple GPUs sample the ETC2, EAC and ASTC formats, with the HDR profile of ASTC from the A13 and M1 on, and the GPUs that report it sample the BC formats, which every Mac and the iPads of the M1 on do. Shaders write the uncompressed color formats as storage images, and the sRGB one only on Apple GPUs. Shaders of every Metal GPU read and write buffers, the GPUs from the A9 on draw with indirect arguments, and a uniform block reads any range of a buffer, so it holds as many bytes as the largest buffer. A GPU outside the Apple families is the GPU of an Intel Mac, which takes images of 16384 pixels, draws with indirect arguments and blends, filters and resolves every format.
 gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     Capabilities made;
     const bool apple = [metal supportsFamily:MTLGPUFamilyApple1];
@@ -282,6 +292,9 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     made.gpuTiming = true;
     made.maxAnisotropy = 16;
     made.borderColors = [metal supportsFamily:MTLGPUFamilyApple7] || !apple;
+    made.storageBuffers = true;
+    made.indirectBuffers = [metal supportsFamily:MTLGPUFamilyApple3] || !apple;
+    made.maxUniformBlockSize = static_cast<std::size_t>(metal.maxBufferLength);
 
     bool bc = false;
     if (@available(macOS 11.0, iOS 16.4, tvOS 16.4, *)) {
@@ -486,7 +499,41 @@ id<MTLDepthStencilState> Device::Native::getDepthStencilState(const DepthStencil
 }
 
 NSUInteger Device::Native::getRegionOffset(const BufferEntry& entry) const noexcept {
-    return entry.dynamic ? frameSlot * entry.region : 0;
+    return entry.description.update == BufferUpdate::Stream ? frameSlot * entry.region : 0;
+}
+
+// The bytes go into a staging buffer of their own, which the transfer command buffer retains until it copied them before the frame.
+void Device::Native::upload(id<MTLBuffer> target, std::span<const std::byte> data) {
+    id<MTLBuffer> staging = [device newBufferWithBytes:data.data() length:data.size() options:MTLResourceStorageModeShared];
+    if (staging == nil) {
+        throw std::runtime_error(std::format("The GPU has no memory to stage the {} bytes of a buffer.", data.size()));
+    }
+
+    [getTransferBlit() copyFromBuffer:staging sourceOffset:0 toBuffer:target destinationOffset:0 size:data.size()];
+}
+
+// A uniform block reads the uniform buffer that the bindings name at its slot, from the region of the frame for a stream buffer, unless `applyUniforms` fed the slot since the pipeline was applied.
+std::uint32_t Device::Native::bindUniformBuffers(const ProgramEntry& program, const Bindings& bound) {
+    std::uint32_t fed = 0;
+    for (std::size_t slot = 0; slot < kMaxBlocks; ++slot) {
+        const BlockSlot& block = program.blocks[slot];
+        const BufferRange& range = bound.uniformBuffers[slot];
+        if (!block.used || !range.buffer.isValid()) {
+            continue;
+        }
+
+        const std::uint32_t bit = 1U << slot;
+        if ((uniformBlocks & bit) != 0) {
+            throw ContractError(ContractError::Rule::Uniforms);
+        }
+
+        const BufferEntry& buffer = requireBuffer(range.buffer);
+        BufferRules::checkUniform(buffer.description, range.offset, block.size);
+        encoder.setBuffer(block.stage, buffer.buffer, getRegionOffset(buffer) + range.offset, block.binding);
+        fed |= bit;
+    }
+
+    return fed;
 }
 
 void Device::Native::checkPipeline(const PipelineDesc& desc) {
@@ -669,33 +716,26 @@ bool Device::isLost() const noexcept {
     return native->signals->lost.load(std::memory_order_relaxed);
 }
 
-// Dynamic buffers hold a region for each frame in flight, which the CPU writes while the GPU reads the regions of the frames before. Immutable buffers live in shared memory on GPUs that share the memory of the CPU, and in the memory of the GPU elsewhere.
+// Stream buffers hold a region for each frame in flight in shared memory, which the CPU writes while the GPU reads the regions of the frames before. Dynamic buffers live in the memory of the GPU, where the blits of the frames write them. Immutable buffers live in shared memory on GPUs that share the memory of the CPU, and in the memory of the GPU elsewhere. A Metal buffer serves every usage, so the usages only decide what the contract lets the buffer do.
 gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
-    const std::size_t size = desc.data.empty() ? desc.size : desc.data.size();
-    if (size == 0) {
-        throw ContractError(ContractError::Rule::Buffer);
-    }
+    const BufferRules::Description description = BufferRules::check(desc, native->capabilities);
+    const std::size_t size = description.size;
 
-    if (desc.usage == Usage::Immutable && desc.data.empty()) {
-        throw ContractError(ContractError::Rule::Buffer);
-    }
-
-    Native::BufferEntry entry{.size = size, .dynamic = desc.usage == Usage::Dynamic, .index = desc.index};
+    Native::BufferEntry entry{.description = description};
     @autoreleasepool {
-        if (entry.dynamic) {
+        if (description.update == BufferUpdate::Stream) {
             entry.region = (size + Native::kRegionAlignment - 1U) & ~(Native::kRegionAlignment - 1U);
             entry.buffer = [native->device newBufferWithLength:entry.region * kFramesInFlight options:MTLResourceStorageModeShared];
             entry.contents = entry.buffer == nil ? nullptr : static_cast<std::byte*>(entry.buffer.contents);
             for (std::size_t frame = 0; entry.contents != nullptr && !desc.data.empty() && frame < kFramesInFlight; ++frame) {
                 std::memcpy(entry.contents + frame * entry.region, desc.data.data(), size);
             }
-        } else if (native->unifiedMemory) {
+        } else if (description.update == BufferUpdate::Immutable && native->unifiedMemory) {
             entry.buffer = [native->device newBufferWithBytes:desc.data.data() length:size options:MTLResourceStorageModeShared];
         } else {
             entry.buffer = [native->device newBufferWithLength:size options:MTLResourceStorageModePrivate];
-            id<MTLBuffer> staging = [native->device newBufferWithBytes:desc.data.data() length:size options:MTLResourceStorageModeShared];
-            if (entry.buffer != nil && staging != nil) {
-                [native->getTransferBlit() copyFromBuffer:staging sourceOffset:0 toBuffer:entry.buffer destinationOffset:0 size:size];
+            if (entry.buffer != nil && !desc.data.empty()) {
+                native->upload(entry.buffer, desc.data);
             }
         }
     }
@@ -811,7 +851,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
 
     Native::ProgramEntry entry;
     for (const BlockBinding& block : desc.blocks) {
-        if (block.binding >= static_cast<int>(Native::kFirstVertexBuffer)) {
+        if (block.binding >= static_cast<int>(Native::kFirstVertexBuffer) || block.size > native->capabilities.maxUniformBlockSize) {
             throw ContractError(ContractError::Rule::Program);
         }
 
@@ -982,22 +1022,45 @@ void Device::destroy(Pipeline pipeline) noexcept {
     }
 }
 
+// A stream buffer takes the bytes in the region of the frame at once. A dynamic buffer takes them through the upload ring of the frame and a blit between the passes around the write.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
-    const Native::BufferEntry& entry = native->requireBuffer(buffer);
-    if (!entry.dynamic) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
     if (native->passOpen) {
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
-    if (offset % 4 != 0 || offset + data.size() > entry.size) {
+    const Native::BufferEntry& entry = native->requireBuffer(buffer);
+    BufferRules::checkWrite(entry.description, offset, data.size());
+
+    if (entry.description.update == BufferUpdate::Stream) {
+        openFrame();
+        std::memcpy(entry.contents + native->getRegionOffset(entry) + offset, data.data(), data.size());
+        return;
+    }
+
+    prepareCopy();
+    const UploadRing::Allocation staged = native->rings[native->frameSlot].write(data, Native::kCopyAlignment);
+    @autoreleasepool {
+        const id<MTLBlitCommandEncoder> blit = [native->commands blitCommandEncoder];
+        [blit copyFromBuffer:staged.buffer sourceOffset:staged.offset toBuffer:entry.buffer destinationOffset:offset size:data.size()];
+        [blit endEncoding];
+    }
+}
+
+void Device::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) {
+    if (native->passOpen) {
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
-    openFrame();
-    std::memcpy(entry.contents + native->getRegionOffset(entry) + offset, data.data(), data.size());
+    const Native::BufferEntry& from = native->requireBuffer(source);
+    const Native::BufferEntry& to = native->requireBuffer(destination);
+    BufferRules::checkCopy(source, from.description, sourceOffset, destination, to.description, destinationOffset, size);
+
+    prepareCopy();
+    @autoreleasepool {
+        const id<MTLBlitCommandEncoder> blit = [native->commands blitCommandEncoder];
+        [blit copyFromBuffer:from.buffer sourceOffset:sourceOffset toBuffer:to.buffer destinationOffset:destinationOffset size:size];
+        [blit endEncoding];
+    }
 }
 
 // Every image goes into the upload ring of the frame before the blit copies any of them, and the blit runs before the first pass of the frame.
@@ -1236,6 +1299,8 @@ void Device::applyPipeline(Pipeline pipeline) {
 
     native->applied = {.program = entry->program, .primitive = entry->primitive, .indexType = entry->indexType, .indexSize = entry->indexSize, .buffers = entry->buffers, .valid = true};
     native->bindingsApplied = false;
+    native->uniformBlocks = 0;
+    native->bufferBlocks = 0;
     if (native->encoder.get() == nil) {
         return;
     }
@@ -1259,20 +1324,19 @@ void Device::applyBindings(const Bindings& bindings) {
 
     for (std::size_t index = 0; index < native->applied.buffers; ++index) {
         const Native::BufferEntry& buffer = native->requireBuffer(bindings.vertexBuffers[index]);
+        BufferRules::checkVertex(buffer.description);
         native->encoder.setBuffer(Stage::Vertex, buffer.buffer, native->getRegionOffset(buffer) + static_cast<NSUInteger>(bindings.vertexOffsets[index]), Native::kFirstVertexBuffer + index);
     }
 
     if (native->applied.indexSize != 0) {
         const Native::BufferEntry& buffer = native->requireBuffer(bindings.indexBuffer);
-        if (!buffer.index) {
-            throw ContractError(ContractError::Rule::PipelineState);
-        }
-
+        BufferRules::checkIndex(buffer.description);
         native->indexBuffer = buffer.buffer;
         native->indexOffset = native->getRegionOffset(buffer) + static_cast<NSUInteger>(bindings.indexOffset);
     }
 
     const Native::ProgramEntry& program = native->requireProgram(native->applied.program);
+    native->bufferBlocks = native->bindUniformBuffers(program, bindings);
     for (const Native::ResourceSlot& texture : program.textures) {
         native->encoder.setTexture(texture.stage, native->requireImage(bindings.textures[texture.slot]).texture, texture.binding);
     }
@@ -1303,9 +1367,12 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     }
 
     const Native::BlockSlot& block = program.blocks[static_cast<std::size_t>(slot)];
-    if (data.size() != block.size) {
+    const std::uint32_t bit = 1U << static_cast<unsigned>(slot);
+    if (data.size() != block.size || (native->bufferBlocks & bit) != 0) {
         throw ContractError(ContractError::Rule::Uniforms);
     }
+
+    native->uniformBlocks |= bit;
 
     if (native->encoder.get() == nil) {
         return;
@@ -1472,6 +1539,12 @@ void Device::endPendingPass() {
     }
 }
 
+// A copy between passes ends the swapchain encoder that waits for a pass that keeps its contents, and Metal orders the blit after the passes before it and before the passes after it.
+void Device::prepareCopy() {
+    openFrame();
+    endPendingPass();
+}
+
 void Device::submitTransfers() {
     if (native->transferBlit == nil) {
         return;
@@ -1606,6 +1679,17 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     }
 
     return std::make_unique<ImageReadback>(native->queue, entry.texture, entry.format, width, height);
+}
+
+// A stream buffer is never a copy source, so the buffer holds its bytes from its start.
+std::unique_ptr<gpu::Device::Readback> Device::readBuffer(Buffer buffer, std::size_t offset, std::size_t size) {
+    if (native->passOpen) {
+        throw ContractError(ContractError::Rule::Readback);
+    }
+
+    const Native::BufferEntry& entry = native->requireBuffer(buffer);
+    BufferRules::checkRead(entry.description, offset, size);
+    return std::make_unique<BufferReadback>(native->queue, entry.buffer, offset, size);
 }
 
 gpu::Device::CaptureSupport Device::getCaptureSupport() const {

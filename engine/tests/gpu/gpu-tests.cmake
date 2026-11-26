@@ -2,6 +2,7 @@
 set(haylen_tests_dir "${HAYLEN_ENGINE_DIR}/tests")
 set(haylen_gpu_test_sources
   "${haylen_tests_dir}/gpu/BlendTests.cpp"
+  "${haylen_tests_dir}/gpu/BufferTests.cpp"
   "${haylen_tests_dir}/gpu/DepthStencilTests.cpp"
   "${haylen_tests_dir}/gpu/DrawTests.cpp"
   "${haylen_tests_dir}/gpu/DriverIssuesTests.cpp"

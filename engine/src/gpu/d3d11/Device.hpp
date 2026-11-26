@@ -16,6 +16,7 @@
 #include <string_view>
 #include <vector>
 
+#include "gpu/BufferRules.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/d3d11/DynamicRing.hpp"
@@ -32,7 +33,7 @@ class Swapchain;
 
 namespace haylen::gpu::d3d11 {
 
-// The device of Direct3D 11, on GPUs of feature level 11_0 and later with the runtime of Direct3D 11.4 and a driver that has its fences, which binds parts of one constant buffer to each draw. Uniforms go through a ring of one dynamic buffer and dynamic buffers take their data straight from the CPU, both mapped without waiting, images take their pixels through the staging of the driver, and the context state it keeps skips every binding that would change nothing. The GPU runs at most `kFramesInFlight` frames behind the CPU, which a fence enforces, whose event the CPU sleeps on while it waits. Validation turns on the debug layer and moves its messages into the log.
+// The device of Direct3D 11, on GPUs of feature level 11_0 and later with the runtime of Direct3D 11.4 and a driver that has its fences, which binds parts of constant buffers to each draw. Uniforms go through a ring of one dynamic buffer and stream buffers take their data straight from the CPU, both mapped without waiting, while dynamic buffers keep their contents in GPU memory and take new bytes through copies from a ring of uploads, which the context orders with the passes, as it does the copies between buffers. Images take their pixels through the staging of the driver, readbacks copy into staging resources, and the context state it keeps skips every binding that would change nothing. The GPU runs at most `kFramesInFlight` frames behind the CPU, which a fence enforces, whose event the CPU sleeps on while it waits. Validation turns on the debug layer and moves its messages into the log.
 class Device final : public gpu::Device {
   public:
     static constexpr std::size_t kFramesInFlight = 2;
@@ -70,6 +71,7 @@ class Device final : public gpu::Device {
     void destroy(Pipeline pipeline) noexcept override;
 
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
+    void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
 
     void beginPass(const PassDesc& desc) override;
@@ -103,6 +105,7 @@ class Device final : public gpu::Device {
     void removeSurface(int number) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+    [[nodiscard]] std::unique_ptr<Readback> readBuffer(Buffer buffer, std::size_t offset, std::size_t size) override;
 
     [[nodiscard]] CaptureSupport getCaptureSupport() const override;
     void beginCapture(const std::filesystem::path& path) override;
@@ -110,15 +113,16 @@ class Device final : public gpu::Device {
 
   private:
     static constexpr UINT kUniformRingSize = 4U << 20U;
+    static constexpr UINT kUploadRingSize = 4U << 20U;
     static constexpr UINT kUniformAlignment = 256;
     static constexpr UINT kMaxBlockSize = D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16;
     static_assert(kUniformRingSize >= kMaxBlocks * kMaxBlockSize, "The ring of uniforms holds every block of a pipeline at once.");
 
-    // A dynamic buffer remembers the frame that wrote it last, since the first write of a frame hands the GPU a fresh copy of it.
+    // A stream buffer that the CPU maps remembers the frame that wrote it last, since the first write of a frame hands the GPU a fresh copy of it.
     struct BufferRecord {
         Microsoft::WRL::ComPtr<ID3D11Buffer> buffer{};
-        std::size_t size = 0;
-        Usage usage = Usage::Immutable;
+        BufferRules::Description description{};
+        bool mapped = false;
         std::uint64_t writtenFrame = 0;
     };
 
@@ -250,7 +254,11 @@ class Device final : public gpu::Device {
     [[nodiscard]] static std::vector<D3D11_SUBRESOURCE_DATA> describeLevels(const ImageDesc& desc);
     [[nodiscard]] static std::vector<Register> readRegisters(std::span<const TextureBinding> textures);
     [[nodiscard]] static std::vector<Register> readRegisters(std::span<const SamplerBinding> samplersOfProgram);
-    void bindBlock(const Register& block, UINT offset);
+    [[nodiscard]] static UINT getByteWidth(const BufferRules::Description& description) noexcept;
+    void writeMapped(BufferRecord& record, std::size_t offset, std::span<const std::byte> data);
+    void writeCopied(const BufferRecord& record, std::size_t offset, std::span<const std::byte> data);
+    void bindUniformBuffers(const PipelineRecord& pipeline, const Bindings& bindings);
+    void bindBlock(const Register& block, ID3D11Buffer* buffer, UINT offset);
     void rewriteBlocks(const PipelineRecord& pipeline, std::size_t written);
     void applyTextures(const PipelineRecord& pipeline, const Bindings& bindings);
     void applySamplers(const PipelineRecord& pipeline, const Bindings& bindings);
@@ -278,9 +286,11 @@ class Device final : public gpu::Device {
     HandleTable<PipelineRecord> pipelines{"pipeline"};
 
     std::unique_ptr<DynamicRing> uniforms;
-    // The bytes of the uniform blocks applied since the pipeline, which the blocks take again when the ring starts over.
+    std::unique_ptr<DynamicRing> uploads;
+    // The bytes of the uniform blocks applied since the pipeline, which the blocks take again when the ring starts over, and the blocks that the uniform buffers of the last bindings feed.
     std::array<std::vector<std::byte>, kMaxBlocks> blockBytes;
     std::array<bool, kMaxBlocks> blocksApplied{};
+    std::array<bool, kMaxBlocks> blocksFromBuffers{};
     std::unique_ptr<FrameTimer> timer;
     // The fence that the context signals at the end of each frame, with the value that each frame in flight signaled.
     Microsoft::WRL::ComPtr<ID3D11Fence> fence;

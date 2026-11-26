@@ -3,11 +3,13 @@
 #include <array>
 #include <string_view>
 
+#include "haylen/graphics/Buffer.hpp"
+
 struct lua_State;
 
 namespace haylen::lua::graphics {
 
-// Installs `haylen.graphics` with the `Texture`, `RenderTarget`, `Image`, `Font`, `FontFamily`, `Shader` and `VectorImage` classes.
+// Installs `haylen.graphics` with the `Buffer`, `Texture`, `RenderTarget`, `Image`, `Font`, `FontFamily`, `Shader` and `VectorImage` classes.
 class GraphicsBinding final {
   public:
     static void install(lua_State* L);
@@ -17,6 +19,18 @@ class GraphicsBinding final {
     static constexpr std::array<std::string_view, 1> kImageTextureFields{"dynamic"};
     static constexpr std::array<std::string_view, 2> kTextureDataFields{"format", "levels"};
     static constexpr std::array<std::string_view, 1> kUpdateFields{"region"};
+    static constexpr std::array<std::string_view, 4> kBufferFields{"data", "usage", "update", "label"};
+    static constexpr std::array<std::string_view, 3> kCopyFields{"sourceOffset", "offset", "size"};
+
+    static int newBuffer(lua_State* L);
+    [[nodiscard]] static haylen::graphics::Buffer::Usage readUsage(lua_State* L, int index);
+    static int bufferSize(lua_State* L);
+    static int bufferUsage(lua_State* L);
+    static int bufferUpdate(lua_State* L);
+    static int bufferLabel(lua_State* L);
+    static int writeBuffer(lua_State* L);
+    static int copyBuffer(lua_State* L);
+    static int readBufferAsync(lua_State* L);
 
     static int newRenderTarget(lua_State* L);
     static int newTexture(lua_State* L);

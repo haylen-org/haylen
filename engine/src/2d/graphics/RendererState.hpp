@@ -329,7 +329,7 @@ struct RendererState {
     [[nodiscard]] gpu::Device::Pipeline getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target);
     [[nodiscard]] const graphics::ShaderResource::Compiled& getMaterialProgram(MaterialResource& material, Program program, graphics::PassTarget target);
 
-    // Grows a dynamic buffer to hold at least the needed number of elements.
+    // Grows a stream buffer to hold at least the needed number of elements.
     void ensureBuffer(gpu::Device::Buffer& buffer, std::size_t& capacity, std::size_t needed, std::size_t elementSize, bool isIndexBuffer);
 
     // Reads the packages of the programs of the renderer and starts compiling them in the background, so the first draws that make them do not wait for a cold compiler.

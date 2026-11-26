@@ -99,7 +99,7 @@ TEST_F(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
 
     EXPECT_THROW(graphics2d::Material{graphics::Shader{}}, std::invalid_argument);
     EXPECT_THROW((void)graphics2d::Material{}.getShader(), std::logic_error);
-    const std::string bare = R"({"format": "haylen-shader", "version": 3, "name": "bare", "sources": [], "programs": {"sprite": {"attributes": [], "blocks": [], "textures": [], "samplers": [], "pairs": [], "outputs": 1, "targets": {}}}})";
+    const std::string bare = R"({"format": "haylen-shader", "version": 4, "name": "bare", "sources": [], "programs": {"sprite": {"attributes": [], "blocks": [], "textures": [], "samplers": [], "pairs": [], "outputs": 1, "targets": {}}}})";
     EXPECT_THROW(graphics2d::Material{graphics::Shader::parse(test::TestFiles::bytes(bare))}, std::invalid_argument);
 }
 

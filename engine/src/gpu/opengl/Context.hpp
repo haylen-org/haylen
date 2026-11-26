@@ -5,7 +5,7 @@
 
 namespace haylen::gpu::opengl {
 
-// The entry points of the context of a device and the state the device set in it, which the readbacks of the device share, so a readback that outlives its device finds no context and touches nothing.
+// The entry points of the context of a device, the state the device set in it and whether the device found the context lost, which the readbacks of the device share, so a readback ends once the device is lost and touches nothing once its device is gone.
 struct Context {
     Context() = default;
     Context(const Context&) = delete;
@@ -13,6 +13,7 @@ struct Context {
 
     Gl gl;
     StateCache state{gl};
+    bool lost = false;
 };
 
 } // namespace haylen::gpu::opengl

@@ -29,10 +29,13 @@ When the window goes away, such as an Android app in the background, the platfor
 
 ## Shaders
 
-Shader packages carry GLSL code for each flavour. OpenGL reads each uniform block of a program as one array of `vec4` or `ivec4` values, as the package describes it. The device looks up the location of each array once, when it links the program. A program keeps the last values it was given, so the device sends a block again only when its bytes changed.
+Shader packages carry GLSL code for each flavour. Each uniform block of a package is a uniform block of GLSL in the `std140` layout without a binding, so its bytes are the bytes that every other graphics API reads. When a program links, the device finds each block by its name and binds it to the binding point of its slot, and a block that the linker removed binds nothing.
 
 ```glsl
-uniform vec4 haylen_vs_params[5];
+layout(std140) uniform haylen_vs_params {
+    mat4 view_projection;
+    vec4 premultiplied;
+};
 uniform highp sampler2D sprite_texture_sprite_sampler;
 ```
 
@@ -40,9 +43,13 @@ A texture and a sampler that a program reads together become one GLSL sampler, n
 
 OpenGL can only compile and link programs in its own context, which belongs to the frame thread. So `prepareProgram` does nothing, and a program links when `makeProgram` makes it.
 
-## Dynamic data
+## Uniform blocks
 
-A dynamic buffer and a dynamic image take new data every frame. On OpenGL and OpenGL ES the data goes through an upload ring: one buffer with a region for each frame in flight. The CPU writes the region of the frame, and the GPU copies the data into the buffer with `glCopyBufferSubData` or into the texture from a pixel unpack buffer.
+A uniform block reads either the range of a uniform buffer of the bindings, which `glBindBufferRange` binds at its offset, or the bytes that `applyUniforms` writes into the uniform ring of the frame. The ring holds chunks for each frame in flight at offsets of `GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT`. A frame that needs more room takes another chunk, so the ranges that the frame bound earlier keep their buffer, and bytes that come again for a slot in the frame reuse their range. The state cache skips the binds of a range that a binding point already holds, and a trim lets go of the chunks that the last frames left empty.
+
+## Buffers and dynamic data
+
+Immutable, dynamic and stream buffers take the hints `GL_STATIC_DRAW`, `GL_DYNAMIC_DRAW` and `GL_STREAM_DRAW`. OpenGL orders every write into a buffer with the draws, so a stream buffer is one buffer, and a write into a dynamic or stream buffer and a dynamic image take new data the same way. On OpenGL and OpenGL ES the data goes through an upload ring: one buffer with a region for each frame in flight. The CPU writes the region of the frame, and the GPU copies the data into the buffer with `glCopyBufferSubData` or into the texture from a pixel unpack buffer. A copy between buffers is a `glCopyBufferSubData` too.
 
 - Where the context has buffer storage, the ring stays mapped the whole time, so a write is a plain copy in memory.
 - Elsewhere the device maps the part it writes without waiting for the GPU, which is safe because of the fences below.
@@ -73,7 +80,7 @@ Every call that changes OpenGL state goes through a state cache. The cache knows
 
 ## Reading pixels back
 
-`readImage` copies a render target into a pixel buffer object with `glReadPixels` and places a fence after it. `Readback::poll` checks the fence without waiting, which WebGL2 allows on the main thread, and copies the pixels out once the GPU passed it. The rows come from the bottom row up, since the first row of an OpenGL render target is its bottom row. Float targets come back as bytes from 0 to 255.
+`readBuffer` copies a range of a buffer into another buffer behind a fence, which the device polls the same way, and hands the bytes over with `glGetBufferSubData` or, on OpenGL ES, through a map. A device that finds its context lost ends every pending copy with an error. `readImage` copies a render target into a pixel buffer object with `glReadPixels` and places a fence after it. `Readback::poll` checks the fence without waiting, which WebGL2 allows on the main thread, and copies the pixels out once the GPU passed it. The rows come from the bottom row up, since the first row of an OpenGL render target is its bottom row. Float targets come back as bytes from 0 to 255.
 
 ## Capabilities
 

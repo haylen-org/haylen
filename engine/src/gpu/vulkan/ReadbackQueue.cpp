@@ -1,7 +1,11 @@
 #include "gpu/vulkan/ReadbackQueue.hpp"
 
+#include <algorithm>
+#include <cstring>
 #include <span>
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 #include "gpu/ImageInfo.hpp"
 #include "gpu/PixelConverter.hpp"
@@ -30,16 +34,32 @@ ReadbackQueue::~ReadbackQueue() {
     context.getFunctions().vkDestroyCommandPool(context.getDevice(), pool, nullptr);
 }
 
-std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const Source& source) {
+std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const ImageSource& source) {
     if (ImageInfo::isDepth(source.format)) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    auto copy = std::make_shared<Copy>(Copy{.queue = this, .width = source.width, .height = source.height, .format = source.format});
+    const auto size = static_cast<VkDeviceSize>(ImageInfo::getRegionBytes(source.format, source.width, source.height));
+    std::shared_ptr<Copy> copy = open(size);
+    copy->pixels = Pixels{.width = source.width, .height = source.height, .format = source.format};
+    recordImage(copy->commands, source, copy->buffer);
+    submit(copy);
+    return copy;
+}
+
+std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const BufferSource& source) {
+    std::shared_ptr<Copy> copy = open(source.size);
+    recordBuffer(copy->commands, source, copy->buffer);
+    submit(copy);
+    return copy;
+}
+
+// A copy starts with a buffer of its size that the CPU reads and a command buffer that records it.
+std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::open(VkDeviceSize size) {
+    auto copy = std::make_shared<Copy>(Copy{.queue = this, .size = size});
     const VolkDeviceTable& vk = context.getFunctions();
     const VkDevice device = context.getDevice();
 
-    const VkDeviceSize size = static_cast<VkDeviceSize>(ImageInfo::getRegionBytes(source.format, source.width, source.height));
     const VkBufferCreateInfo bufferInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .pNext = nullptr, .flags = 0, .size = size, .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT, .sharingMode = VK_SHARING_MODE_EXCLUSIVE, .queueFamilyIndexCount = 0, .pQueueFamilyIndices = nullptr};
     const VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
     VmaAllocationInfo allocated{};
@@ -48,26 +68,35 @@ std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const Source& source) 
 
     const VkCommandBufferAllocateInfo commandsInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, .pNext = nullptr, .commandPool = pool, .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, .commandBufferCount = 1};
     const VkFenceCreateInfo fenceInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = 0};
+    const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, .pInheritanceInfo = nullptr};
     try {
         Context::check(vk.vkAllocateCommandBuffers(device, &commandsInfo, &copy->commands), "record a readback");
         Context::check(vk.vkCreateFence(device, &fenceInfo, nullptr, &copy->fence), "make the fence of a readback");
-        record(copy->commands, source, copy->buffer);
-        const VkSubmitInfo submit{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO, .pNext = nullptr, .waitSemaphoreCount = 0, .pWaitSemaphores = nullptr, .pWaitDstStageMask = nullptr, .commandBufferCount = 1, .pCommandBuffers = &copy->commands, .signalSemaphoreCount = 0, .pSignalSemaphores = nullptr};
-        Context::check(vk.vkQueueSubmit(context.getQueue(), 1, &submit, copy->fence), "submit a readback");
+        Context::check(vk.vkBeginCommandBuffer(copy->commands, &begin), "record a readback");
+    } catch (...) {
+        release(*copy);
+        throw;
+    }
+
+    return copy;
+}
+
+void ReadbackQueue::submit(const std::shared_ptr<Copy>& copy) {
+    const VolkDeviceTable& vk = context.getFunctions();
+    try {
+        Context::check(vk.vkEndCommandBuffer(copy->commands), "record a readback");
+        const VkSubmitInfo info{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO, .pNext = nullptr, .waitSemaphoreCount = 0, .pWaitSemaphores = nullptr, .pWaitDstStageMask = nullptr, .commandBufferCount = 1, .pCommandBuffers = &copy->commands, .signalSemaphoreCount = 0, .pSignalSemaphores = nullptr};
+        Context::check(vk.vkQueueSubmit(context.getQueue(), 1, &info, copy->fence), "submit a readback");
     } catch (...) {
         release(*copy);
         throw;
     }
 
     copies.push_back(copy);
-    return copy;
 }
 
-void ReadbackQueue::record(VkCommandBuffer commands, const Source& source, VkBuffer buffer) const {
+void ReadbackQueue::recordImage(VkCommandBuffer commands, const ImageSource& source, VkBuffer buffer) const {
     const VolkDeviceTable& vk = context.getFunctions();
-    const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, .pInheritanceInfo = nullptr};
-    Context::check(vk.vkBeginCommandBuffer(commands, &begin), "record a readback");
-
     const VkImageSubresourceRange range{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1};
     const VkImageMemoryBarrier toSource = ImageLayouts::makeBarrier(source.image, range, source.layout, source.layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     vk.vkCmdPipelineBarrier(commands, ImageLayouts::getStages(source.layout), VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toSource);
@@ -76,9 +105,22 @@ void ReadbackQueue::record(VkCommandBuffer commands, const Source& source, VkBuf
     vk.vkCmdCopyImageToBuffer(commands, source.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
 
     const VkImageMemoryBarrier toRest = ImageLayouts::makeBarrier(source.image, range, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, source.layout);
-    const VkBufferMemoryBarrier toHost{.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_HOST_READ_BIT, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .buffer = buffer, .offset = 0, .size = VK_WHOLE_SIZE};
+    const VkBufferMemoryBarrier toHost = makeHostBarrier(buffer);
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, ImageLayouts::getStages(source.layout) | VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &toHost, 1, &toRest);
-    Context::check(vk.vkEndCommandBuffer(commands), "record a readback");
+}
+
+// The frames make what they wrote into a buffer visible to the copies that follow them in the queue, so the copy reads the range at once.
+void ReadbackQueue::recordBuffer(VkCommandBuffer commands, const BufferSource& source, VkBuffer buffer) const {
+    const VolkDeviceTable& vk = context.getFunctions();
+    const VkBufferCopy region{.srcOffset = source.offset, .dstOffset = 0, .size = source.size};
+    vk.vkCmdCopyBuffer(commands, source.buffer, buffer, 1, &region);
+
+    const VkBufferMemoryBarrier toHost = makeHostBarrier(buffer);
+    vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &toHost, 0, nullptr);
+}
+
+VkBufferMemoryBarrier ReadbackQueue::makeHostBarrier(VkBuffer buffer) noexcept {
+    return {.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_HOST_READ_BIT, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .buffer = buffer, .offset = 0, .size = VK_WHOLE_SIZE};
 }
 
 void ReadbackQueue::update(Copy& copy) {
@@ -92,7 +134,7 @@ void ReadbackQueue::update(Copy& copy) {
     }
 
     if (status != VK_SUCCESS) {
-        copy.failure = "The Vulkan device was lost before the copy of the render target finished.";
+        copy.failure = copy.pixels ? "The Vulkan device was lost before the copy of the render target finished." : "The Vulkan device was lost before the copy of the buffer finished.";
         release(copy);
         return;
     }
@@ -102,11 +144,18 @@ void ReadbackQueue::update(Copy& copy) {
 
 void ReadbackQueue::finish(Copy& copy) {
     vmaInvalidateAllocation(context.getAllocator(), copy.allocation, 0, VK_WHOLE_SIZE);
-    copy.pixels = convert(copy.data, copy.width, copy.height, copy.format);
+    if (copy.pixels) {
+        copy.bytes = convert(copy.data, *copy.pixels);
+    } else {
+        std::vector<std::uint8_t> bytes(static_cast<std::size_t>(copy.size));
+        std::memcpy(bytes.data(), copy.data, bytes.size());
+        copy.bytes = std::move(bytes);
+    }
+
     release(copy);
 }
 
-// A copy that its readback no longer holds goes without converting its pixels.
+// A copy that its readback no longer holds goes without taking its bytes.
 void ReadbackQueue::sweep() {
     // clang-format off
     std::erase_if(copies, [this](const std::shared_ptr<Copy>& copy) {
@@ -117,6 +166,11 @@ void ReadbackQueue::sweep() {
         return copy->fence == VK_NULL_HANDLE;
     });
     // clang-format on
+}
+
+bool ReadbackQueue::isCopying() const {
+    const VolkDeviceTable& vk = context.getFunctions();
+    return std::ranges::any_of(copies, [&](const std::shared_ptr<Copy>& copy) { return copy->fence != VK_NULL_HANDLE && vk.vkGetFenceStatus(context.getDevice(), copy->fence) == VK_NOT_READY; });
 }
 
 void ReadbackQueue::release(Copy& copy) const {
@@ -141,15 +195,15 @@ void ReadbackQueue::release(Copy& copy) const {
     copy.queue = nullptr;
 }
 
-std::vector<std::uint8_t> ReadbackQueue::convert(const std::byte* data, int width, int height, Device::PixelFormat format) {
-    const std::size_t rowBytes = ImageInfo::getRowBytes(format, width);
-    const std::size_t pixelRow = static_cast<std::size_t>(width) * 4;
-    std::vector<std::uint8_t> pixels(pixelRow * static_cast<std::size_t>(height));
-    for (std::size_t row = 0; row < static_cast<std::size_t>(height); ++row) {
-        PixelConverter::convertRow(format, {data + row * rowBytes, rowBytes}, std::span(pixels).subspan(row * pixelRow, pixelRow));
+std::vector<std::uint8_t> ReadbackQueue::convert(const std::byte* data, const Pixels& pixels) {
+    const std::size_t rowBytes = ImageInfo::getRowBytes(pixels.format, pixels.width);
+    const std::size_t pixelRow = static_cast<std::size_t>(pixels.width) * 4;
+    std::vector<std::uint8_t> converted(pixelRow * static_cast<std::size_t>(pixels.height));
+    for (std::size_t row = 0; row < static_cast<std::size_t>(pixels.height); ++row) {
+        PixelConverter::convertRow(pixels.format, {data + row * rowBytes, rowBytes}, std::span(converted).subspan(row * pixelRow, pixelRow));
     }
 
-    return pixels;
+    return converted;
 }
 
 } // namespace haylen::gpu::vulkan

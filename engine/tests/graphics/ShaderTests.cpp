@@ -30,7 +30,7 @@ namespace haylen::graphics {
 class ShaderTest : public ::testing::Test {
   protected:
     // A small shader package with a block, a texture and one program for the desktop GLSL and Metal, which the malformed cases change field by field.
-    static constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 3, "name": "small", "sources": ["void main() {}"],
+    static constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 4, "name": "small", "sources": ["void main() {}"],
     "programs": {"sprite": {
         "attributes": [{"location": 0, "name": "corner", "type": "vec2"}],
         "blocks": [{"name": "params", "stage": "fragment", "slot": 1, "size": 16, "members": [{"name": "tint", "type": "vec4", "count": 1, "offset": 0}]}],
@@ -39,7 +39,7 @@ class ShaderTest : public ::testing::Test {
         "pairs": [{"stage": "fragment", "texture": 1, "sampler": 1, "name": "mask_mask_sampler"}],
         "outputs": 1,
         "targets": {
-            "glsl430": {"vertex": {"source": 0, "entry": "main"}, "fragment": {"source": 0, "entry": "main"}, "blocks": {"1": {"name": "params", "type": "vec4", "count": 1}}},
+            "glsl430": {"vertex": {"source": 0, "entry": "main"}, "fragment": {"source": 0, "entry": "main"}, "blocks": {"1": "params"}},
             "msl-macos": {"vertex": {"source": 0, "entry": "main0"}, "fragment": {"source": 0, "entry": "main0"}, "blocks": {"1": 1}, "textures": {"1": 1}, "samplers": {"1": 1}}}}}})";
 
     using Problem = graphics::ShaderPackageError::Problem;
@@ -140,9 +140,9 @@ TEST_F(ShaderTest, RejectsFilesThatAreNotShaders) {
     // clang-format on
     EXPECT_EQ(problem("not json"), Problem::Structure);
     EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 1, "name": "x", "sources": [], "programs": {"p": {}}})"), Problem::Version);
-    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 3, "name": "x", "sources": [], "programs": {}, "extra": 1})"), Problem::Structure);
-    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 3, "name": "x", "sources": [], "programs": {}})"), Problem::NoPrograms);
-    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 3, "name": "x", "sources": [], "programs": []})"), Problem::NoPrograms);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 4, "name": "x", "sources": [], "programs": {}, "extra": 1})"), Problem::Structure);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 4, "name": "x", "sources": [], "programs": {}})"), Problem::NoPrograms);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 4, "name": "x", "sources": [], "programs": []})"), Problem::NoPrograms);
 
     const graphics::Shader empty;
     EXPECT_FALSE(empty.isValid());
@@ -177,11 +177,10 @@ TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     EXPECT_EQ(parseError({{program + "/blocks/0/members/0/type", "mat3"}}), Problem::UniformType);
     EXPECT_EQ(parseError({{program + "/targets/dxil", core::Json::object()}}), Problem::UnknownLanguage);
 
-    // Blocks hold whole vectors, OpenGL reads each one as an array that fills it, and every other language binds every slot.
+    // Blocks hold whole vectors, OpenGL finds each block of the program by a name, and every other language binds every slot.
     EXPECT_EQ(parseError({{program + "/blocks/0/size", 24}}), Problem::BlockSize);
-    EXPECT_EQ(parseError({{glsl + "/blocks/1/count", 2}}), Problem::OpenGlBlock);
-    EXPECT_EQ(parseError({{glsl + "/blocks/1/count", 268435457}}), Problem::OpenGlBlock);
-    EXPECT_EQ(parseError({{glsl + "/blocks/1/type", "mat4"}}), Problem::OpenGlBlock);
+    EXPECT_EQ(parseError({{glsl + "/blocks/1", ""}}), Problem::OpenGlBlock);
+    EXPECT_EQ(parseError({{glsl + "/blocks/2", "extra"}}), Problem::OpenGlBlock);
     EXPECT_EQ(parseError({{metal + "/textures", core::Json::object()}}), Problem::MissingBinding);
     EXPECT_EQ(parseError({{metal + "/samplers/1", 256}}), Problem::BindingRange);
 

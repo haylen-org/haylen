@@ -1,10 +1,10 @@
-#include "gpu/vulkan/ImageReadback.hpp"
+#include "gpu/vulkan/CopyReadback.hpp"
 
 #include <stdexcept>
 
 namespace haylen::gpu::vulkan {
 
-std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
+std::optional<std::vector<std::uint8_t>> CopyReadback::poll() {
     if (copy->queue != nullptr) {
         copy->queue->update(*copy);
     }
@@ -13,7 +13,7 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
         throw std::runtime_error(copy->failure);
     }
 
-    return std::exchange(copy->pixels, std::nullopt);
+    return std::exchange(copy->bytes, std::nullopt);
 }
 
 } // namespace haylen::gpu::vulkan

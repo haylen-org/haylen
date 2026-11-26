@@ -37,6 +37,7 @@ class Conversions final {
     [[nodiscard]] static VkSampleCountFlagBits toSampleCount(int count) noexcept;
     [[nodiscard]] static VkIndexType toIndexType(Device::IndexType type) noexcept;
     [[nodiscard]] static std::size_t getIndexSize(Device::IndexType type) noexcept;
+    [[nodiscard]] static VkBufferUsageFlags toBufferUsage(const Device::BufferUsage& usage) noexcept;
 
     // The name of a result code, which error messages show.
     [[nodiscard]] static std::string_view describe(VkResult result) noexcept;

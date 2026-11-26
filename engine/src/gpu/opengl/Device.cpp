@@ -16,6 +16,7 @@
 #include "gpu/ImageRules.hpp"
 #include "gpu/ProgramSlots.hpp"
 #include "gpu/SamplerRules.hpp"
+#include "gpu/opengl/BufferReadback.hpp"
 #include "gpu/opengl/PixelReadback.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/gpu/ContractError.hpp"
@@ -42,7 +43,7 @@ std::shared_ptr<Context> Device::makeContext(Api flavour, const Surface& surface
     return made;
 }
 
-Device::Device(Api flavour, const Surface& surface, bool validation) : context(makeContext(flavour, surface)), gl(context->gl), state(context->state), api(flavour), surfaceContext(surface.gl), surfaceSize(surface.size), surfaceSamples(surface.sampleCount), surfaceAttached(true), surfaceVsync(surface.vsync), adapterName(gl.getString(Gl::kRenderer)), debug(gl, validation), timer(gl), framebuffers(gl, state) {
+Device::Device(Api flavour, const Surface& surface, bool validation) : context(makeContext(flavour, surface)), gl(context->gl), state(context->state), api(flavour), surfaceContext(surface.gl), surfaceSize(surface.size), surfaceSamples(surface.sampleCount), surfaceAttached(true), surfaceVsync(surface.vsync), adapterName(gl.getString(Gl::kRenderer)), debug(gl, validation), timer(gl), uniformRing(gl, state, kFramesInFlight, readUniformAlignment(gl)), framebuffers(gl, state) {
     gl.pixelStorei(Gl::kPackAlignment, 1);
     gl.pixelStorei(Gl::kUnpackAlignment, 1);
 
@@ -94,6 +95,12 @@ Device::Language Device::toLanguage(Api flavour) noexcept {
 
 std::uintptr_t Device::toAddress(const void* pointer) noexcept {
     return reinterpret_cast<std::uintptr_t>(pointer);
+}
+
+std::size_t Device::readUniformAlignment(const Gl& functions) {
+    Gl::Int value = 0;
+    functions.getIntegerv(Gl::kUniformBufferOffsetAlignment, &value);
+    return static_cast<std::size_t>(value);
 }
 
 int Device::getLevelSize(int size, int level) noexcept {
@@ -197,6 +204,18 @@ void Device::readCapabilities() {
     }
 
     capabilities.borderColors = features.borderClamp;
+
+    // OpenGL 4.3 and OpenGL ES 3.1 bring the storage buffers and the indirect draws that OpenGL ES 3.0 and WebGL2 lack, and the context names the largest uniform block that it reads.
+    capabilities.storageBuffers = hasComputeVersion();
+    capabilities.indirectBuffers = hasComputeVersion();
+    gl.getIntegerv(Gl::kMaxUniformBlockSize, &value);
+    capabilities.maxUniformBlockSize = static_cast<std::size_t>(value);
+}
+
+// Whether the context runs OpenGL 4.3 or OpenGL ES 3.1 or later, the versions that bring compute shaders with storage buffers, image units and indirect draws.
+bool Device::hasComputeVersion() const noexcept {
+    const Gl::Features& features = gl.getFeatures();
+    return gl.isDesktop() || (!gl.isWeb() && features.majorVersion * 10 + features.minorVersion >= 31);
 }
 
 // The context lists the sample counts of the multisampled renderbuffers of each format, which the multisampled attachments of the device are, into a list that it fills from the start, and one sample stands for every format it draws into. WebGL2 answers only the list itself, so the device asks for no count of its entries.
@@ -264,14 +283,12 @@ bool Device::isSampled(PixelFormat format) const noexcept {
 
 // Shaders write as storage images the formats of the image units of OpenGL 4.3 and of OpenGL ES 3.1, and OpenGL ES 3.0 and WebGL2 have no image units.
 bool Device::isStorage(PixelFormat format) const noexcept {
-    const Gl::Features& features = gl.getFeatures();
-    const bool embedded31 = !gl.isDesktop() && !gl.isWeb() && features.majorVersion * 10 + features.minorVersion >= 31;
     switch (format) {
     case PixelFormat::Rgba8:
     case PixelFormat::Rgba16Float:
     case PixelFormat::R32Float:
     case PixelFormat::Rgba32Float:
-        return gl.isDesktop() || embedded31;
+        return hasComputeVersion();
     case PixelFormat::R8:
     case PixelFormat::Rg8:
     case PixelFormat::Rgb10A2:
@@ -316,36 +333,30 @@ void Device::readPools(std::vector<Pool>& pools) const {
 }
 
 bool Device::isLost() const noexcept {
-    return lost;
+    return context->lost;
 }
 
-// An index buffer takes its data while the vertex array of uploads is bound, since the element array binding belongs to a vertex array, and WebGL2 fixes a buffer to indices by the first target it is bound to.
+// A buffer of indices takes its data while the vertex array of uploads is bound, since the element array binding belongs to a vertex array, and WebGL2 fixes a buffer to indices by the first target it is bound to, after which only the targets of copies take it. The other buffers take their data through the target of copy destinations, which fixes no kind of buffer on WebGL2.
 Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
-    const std::size_t size = desc.data.empty() ? desc.size : desc.data.size();
-    if (size == 0) {
-        throw ContractError(ContractError::Rule::Buffer);
-    }
-
-    if (desc.usage == Usage::Immutable && desc.data.empty()) {
-        throw ContractError(ContractError::Rule::Buffer);
-    }
+    const BufferRules::Description description = BufferRules::check(desc, capabilities);
 
     Gl::Uint name = 0;
     gl.genBuffers(1, &name);
-    const Gl::Enum usage = desc.usage == Usage::Immutable ? Gl::kStaticDraw : Gl::kDynamicDraw;
+    const auto size = static_cast<Gl::SizeiPtr>(description.size);
     const void* data = desc.data.empty() ? nullptr : desc.data.data();
-    if (desc.index) {
+    const Gl::Enum usage = Conversions::toBufferUsage(description.update);
+    if (description.usage.index) {
         state.bindVertexArray(uploadVertexArray);
         gl.bindBuffer(Gl::kElementArrayBuffer, name);
-        gl.bufferData(Gl::kElementArrayBuffer, static_cast<Gl::SizeiPtr>(size), data, usage);
+        gl.bufferData(Gl::kElementArrayBuffer, size, data, usage);
         gl.bindBuffer(Gl::kElementArrayBuffer, 0);
     } else {
-        state.bindBuffer(Gl::kArrayBuffer, name);
-        gl.bufferData(Gl::kArrayBuffer, static_cast<Gl::SizeiPtr>(size), data, usage);
+        state.bindBuffer(Gl::kCopyWriteBuffer, name);
+        gl.bufferData(Gl::kCopyWriteBuffer, size, data, usage);
     }
 
     debug.label(Gl::kBuffer, name, desc.label);
-    return {buffers.add(BufferRecord{.name = name, .size = size, .usage = desc.usage, .index = desc.index})};
+    return {buffers.add(BufferRecord{.name = name, .description = description})};
 }
 
 Gl::Uint Device::makeRenderbuffer(const ImageDesc& desc, const Conversions::Pixel& pixel) {
@@ -513,6 +524,10 @@ Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
 
 Device::Program Device::makeProgram(const ProgramDesc& desc) {
     ProgramSlots::check(desc);
+    if (std::ranges::any_of(desc.blocks, [this](const BlockBinding& block) { return block.size > capabilities.maxUniformBlockSize; })) {
+        throw ContractError(ContractError::Rule::Program);
+    }
+
     auto program = std::make_shared<ShaderProgram>(gl, state, desc);
     debug.label(Gl::kProgram, program->getName(), desc.label);
     return {programs.add(std::move(program))};
@@ -633,10 +648,11 @@ void Device::beginFrame() {
         ring->beginFrame(frameIndex);
     }
 
+    uniformRing.beginFrame(frameIndex);
     timer.beginFrame();
 }
 
-// The region of the upload ring that the frame writes was read by the frame that ran as many frames ago as there are frames in flight, so the CPU waits for its fence, which bounds how far it runs ahead of the GPU.
+// The regions of the upload ring and of the uniform ring that the frame writes were read by the frame that ran as many frames ago as there are frames in flight, so the CPU waits for its fence, which bounds how far it runs ahead of the GPU.
 // A context without robustness never reports a GPU that stopped, so a frame that the GPU did not finish within `kFrameTimeout` loses the device.
 void Device::waitForFrame(std::size_t slot) {
     Gl::Sync& fence = frameFences[slot];
@@ -646,14 +662,14 @@ void Device::waitForFrame(std::size_t slot) {
 
     Gl::Uint64 waited = kWaitStep;
     Gl::Enum result = gl.clientWaitSync(fence, Gl::kSyncFlushCommandsBit, kWaitStep);
-    while (result == Gl::kTimeoutExpired && !lost && waited < kFrameTimeout) {
+    while (result == Gl::kTimeoutExpired && !context->lost && waited < kFrameTimeout) {
         checkLost();
         result = gl.clientWaitSync(fence, 0, kWaitStep);
         waited += kWaitStep;
     }
 
-    if (result == Gl::kTimeoutExpired && !lost) {
-        lost = true;
+    if (result == Gl::kTimeoutExpired && !context->lost) {
+        context->lost = true;
         core::Log::error("The GPU did not finish a frame within {} seconds, so the OpenGL device stops drawing.", kFrameTimeout / 1'000'000'000);
     }
 
@@ -661,20 +677,14 @@ void Device::waitForFrame(std::size_t slot) {
     fence = nullptr;
 }
 
+// The bytes of a dynamic or a stream buffer reach it through a copy from the upload ring, or straight on WebGL2, whose browser stages them. OpenGL orders the write with the draws around it, so the passes before it read the old bytes and the passes after it the new ones.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
-    const BufferRecord& record = buffers.get(buffer.id);
-    if (record.usage != Usage::Dynamic) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
     if (pass.open) {
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
-    if (offset % 4 != 0 || offset + data.size() > record.size) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
+    const BufferRecord& record = buffers.get(buffer.id);
+    BufferRules::checkWrite(record.description, offset, data.size());
     if (data.empty()) {
         return;
     }
@@ -693,6 +703,21 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     state.bindBuffer(Gl::kCopyReadBuffer, ring->getBuffer());
     state.bindBuffer(Gl::kCopyWriteBuffer, record.name);
     gl.copyBufferSubData(Gl::kCopyReadBuffer, Gl::kCopyWriteBuffer, static_cast<Gl::IntPtr>(slice.offset), static_cast<Gl::IntPtr>(offset), static_cast<Gl::SizeiPtr>(data.size()));
+}
+
+// The targets of copies take a buffer of any kind, even a buffer of indices on WebGL2, and OpenGL orders the copy with the draws around it.
+void Device::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::BufferWrite);
+    }
+
+    const BufferRecord& from = buffers.get(source.id);
+    const BufferRecord& to = buffers.get(destination.id);
+    BufferRules::checkCopy(source, from.description, sourceOffset, destination, to.description, destinationOffset, size);
+
+    state.bindBuffer(Gl::kCopyReadBuffer, from.name);
+    state.bindBuffer(Gl::kCopyWriteBuffer, to.name);
+    gl.copyBufferSubData(Gl::kCopyReadBuffer, Gl::kCopyWriteBuffer, static_cast<Gl::IntPtr>(sourceOffset), static_cast<Gl::IntPtr>(destinationOffset), static_cast<Gl::SizeiPtr>(size));
 }
 
 std::size_t Device::checkImageWrites(std::span<const ImageWrite> writes) {
@@ -1053,6 +1078,8 @@ void Device::applyPipeline(Pipeline pipeline) {
 
     applied = &pipelines.get(pipeline.id);
     appliedUnits = 0;
+    appliedBlocks = 0;
+    bufferBlocks = 0;
     state.useProgram(applied->shader->getName());
     state.bindVertexArray(applied->vertexArray->getName());
     state.applyRaster(applied->raster);
@@ -1071,20 +1098,20 @@ void Device::applyBindings(const Bindings& bindings) {
 
     std::array<Gl::Uint, kMaxVertexBuffers> vertexBuffers{};
     for (std::size_t index = 0; index < applied->bufferCount; ++index) {
-        vertexBuffers[index] = buffers.get(bindings.vertexBuffers[index].id).name;
+        const BufferRecord& record = buffers.get(bindings.vertexBuffers[index].id);
+        BufferRules::checkVertex(record.description);
+        vertexBuffers[index] = record.name;
     }
 
     Gl::Uint indexBuffer = 0;
     if (applied->indexed) {
         const BufferRecord& record = buffers.get(bindings.indexBuffer.id);
-        if (!record.index) {
-            throw ContractError(ContractError::Rule::PipelineState);
-        }
-
+        BufferRules::checkIndex(record.description);
         indexBuffer = record.name;
         indexOffset = bindings.indexOffset;
     }
 
+    bindUniformBuffers(bindings);
     applied->vertexArray->bind(vertexBuffers, bindings.vertexOffsets, indexBuffer);
 
     const std::span<const ShaderProgram::Unit> units = applied->shader->getUnits();
@@ -1112,6 +1139,32 @@ void Device::bindApplied() {
     }
 }
 
+// A uniform block whose slot the bindings name a uniform buffer for reads the range of that buffer from the offset, which `applyUniforms` never fed since the pipeline, so no block has to choose between the two. The other blocks read what `applyUniforms` gives them.
+void Device::bindUniformBuffers(const Bindings& bindings) {
+    std::uint32_t fed = 0;
+    for (const ShaderProgram::Block& block : applied->shader->getBlocks()) {
+        const BufferRange& range = bindings.uniformBuffers[static_cast<std::size_t>(block.slot)];
+        if (!range.buffer.isValid()) {
+            continue;
+        }
+
+        const std::uint32_t bit = 1U << static_cast<unsigned>(block.slot);
+        if ((appliedBlocks & bit) != 0) {
+            throw ContractError(ContractError::Rule::Uniforms);
+        }
+
+        const BufferRecord& record = buffers.get(range.buffer.id);
+        BufferRules::checkUniform(record.description, range.offset, block.size);
+        if (block.active) {
+            state.bindUniformRange(static_cast<std::size_t>(block.slot), {.buffer = record.name, .offset = static_cast<Gl::IntPtr>(range.offset), .size = static_cast<Gl::SizeiPtr>(block.size)});
+        }
+
+        fed |= bit;
+    }
+
+    bufferBlocks = fed;
+}
+
 void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     requirePass();
 
@@ -1123,8 +1176,21 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         throw ContractError(ContractError::Rule::PipelineState);
     }
 
-    state.useProgram(applied->shader->getName());
-    applied->shader->applyUniforms(slot, data);
+    const ShaderProgram::Block* block = applied->shader->findBlock(slot);
+    if (block == nullptr || data.size() != block->size) {
+        throw ContractError(ContractError::Rule::Uniforms);
+    }
+
+    const std::uint32_t bit = 1U << static_cast<unsigned>(slot);
+    if ((bufferBlocks & bit) != 0) {
+        throw ContractError(ContractError::Rule::Uniforms);
+    }
+
+    appliedBlocks |= bit;
+    if (block->active) {
+        const auto point = static_cast<std::size_t>(slot);
+        state.bindUniformRange(point, uniformRing.write(point, data));
+    }
 }
 
 void Device::applyStencilReference(std::uint8_t value) {
@@ -1262,16 +1328,22 @@ void Device::trim() {
         throw ContractError(ContractError::Rule::PassOrder);
     }
 
-    if (ring && !lost) {
+    if (context->lost) {
+        return;
+    }
+
+    if (ring) {
         ring->trim();
     }
+
+    uniformRing.trim();
 }
 
 std::size_t Device::getSpareBytes() const noexcept {
-    return ring ? ring->getSpareBytes() : 0;
+    return (ring ? ring->getSpareBytes() : 0) + uniformRing.getSpareBytes();
 }
 
-// The depth and stencil of the window are never kept past the frame, so they are invalidated before the swap, and the fence of the frame tells a later frame when its region of the upload ring is free.
+// The depth and stencil of the window are never kept past the frame, so they are invalidated before the swap, and the fence of the frame tells a later frame when its regions of the upload ring and of the uniform ring are free.
 void Device::commit() {
     if (pass.open) {
         throw ContractError(ContractError::Rule::PassOrder);
@@ -1305,15 +1377,15 @@ void Device::commit() {
 }
 
 void Device::checkLost() {
-    if (lost) {
+    if (context->lost) {
         return;
     }
 #if defined(__EMSCRIPTEN__)
-    lost = emscripten_is_webgl_context_lost(emscripten_webgl_get_current_context()) != 0;
+    context->lost = emscripten_is_webgl_context_lost(emscripten_webgl_get_current_context()) != 0;
 #else
-    lost = gl.getFeatures().robustness && gl.getGraphicsResetStatus() != Gl::kNoError;
+    context->lost = gl.getFeatures().robustness && gl.getGraphicsResetStatus() != Gl::kNoError;
 #endif
-    if (lost) {
+    if (context->lost) {
         core::Log::error("The OpenGL context of the GPU device was lost, so the device stops drawing.");
     }
 }
@@ -1361,6 +1433,21 @@ std::unique_ptr<Device::Readback> Device::readImage(Image image, int width, int 
 
     const Gl::Uint framebuffer = getSingleFramebuffer(image, "haylen-readback");
     return std::make_unique<PixelReadback>(context, framebuffer, width, height, record.pixel.floating || record.pixel.halfFloating || record.pixel.packedFloating);
+}
+
+// The copy takes its place in the command stream after the frames that the device committed, so it reads what they left in the buffer.
+std::unique_ptr<Device::Readback> Device::readBuffer(Buffer buffer, std::size_t offset, std::size_t size) {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::Readback);
+    }
+
+    const BufferRecord& record = buffers.get(buffer.id);
+    BufferRules::checkRead(record.description, offset, size);
+    if (context->lost) {
+        throw std::runtime_error("The OpenGL device stopped working, so it reads back no buffer.");
+    }
+
+    return std::make_unique<BufferReadback>(context, record.name, offset, size);
 }
 
 // The drawable takes the swap interval of its surface while it is current, and the window takes its own back, since some platforms keep the interval with the context rather than with the drawable.

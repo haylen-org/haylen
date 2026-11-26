@@ -1,8 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <array>
-#include <cstddef>
-#include <span>
 #include <stdexcept>
 #include <string>
 
@@ -26,7 +24,7 @@ class ShaderProgramTest : public OpenGlTest {
         opened.gl.load(*context, GetParam());
         opened.state.reset();
         const std::string header = GetParam() == Device::Api::OpenGl ? "#version 430\n" : "#version 300 es\nprecision highp float;\n";
-        vertex = header + "uniform vec4 tint[2];\nin vec2 position;\nout vec4 shade;\nvoid main() { shade = tint[0] + tint[1]; gl_Position = vec4(position, 0.0, 1.0); }\n";
+        vertex = header + "layout(std140) uniform tint { vec4 tints[2]; };\nin vec2 position;\nout vec4 shade;\nvoid main() { shade = tints[0] + tints[1]; gl_Position = vec4(position, 0.0, 1.0); }\n";
         fragment = header + "uniform highp sampler2D picture;\nin vec4 shade;\nout vec4 color;\nvoid main() { color = shade * texture(picture, vec2(0.5)); }\n";
     }
 
@@ -38,7 +36,7 @@ class ShaderProgramTest : public OpenGlTest {
     std::string vertex;
     std::string fragment;
     std::array<Device::Attribute, 1> attributes{{{.location = 0, .name = "position"}}};
-    std::array<Device::BlockBinding, 1> blocks{{{.slot = 2, .stage = Device::Stage::Vertex, .size = 32, .glslName = "tint", .glslCount = 2}}};
+    std::array<Device::BlockBinding, 1> blocks{{{.slot = 2, .stage = Device::Stage::Vertex, .size = 32, .glslName = "tint"}}};
     std::array<Device::TextureBinding, 1> textures{{{.slot = 0}}};
     std::array<Device::SamplerBinding, 1> samplers{{{.slot = 0}}};
     std::array<Device::TexturePair, 1> pairs{{{.texture = 0, .sampler = 0, .glslName = "picture"}}};
@@ -58,21 +56,22 @@ TEST_P(ShaderProgramTest, LeavesNoProgramInUseForAClear) {
     EXPECT_EQ(counter.getCalls(), 2);
 }
 
-TEST_P(ShaderProgramTest, SendsAUniformBlockOnlyWhenItsBytesChange) {
-    ShaderProgram program(opened.gl, opened.state, describe());
-    opened.state.useProgram(program.getName());
-    std::array<float, 8> values{1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.5F, 0.0F, 0.0F};
+// A block that the program lacks, as a block that the linker removed, takes no binding point and reads nothing, while the others take the binding points of their slots.
+TEST_P(ShaderProgramTest, BindsOnlyTheUniformBlocksThatTheProgramHas) {
+    const std::array<Device::BlockBinding, 2> named{{blocks[0], {.slot = 5, .stage = Device::Stage::Fragment, .size = 16, .glslName = "removed"}}};
+    Device::ProgramDesc desc = describe();
+    desc.blocks = named;
     GlCallCounter counter(opened.gl);
-    counter.watch<&Gl::uniform4fv>();
+    counter.watch<&Gl::uniformBlockBinding>();
 
-    program.applyUniforms(2, std::as_bytes(std::span(values)));
-    program.applyUniforms(2, std::as_bytes(std::span(values)));
+    const ShaderProgram program(opened.gl, opened.state, desc);
     EXPECT_EQ(counter.getCalls(), 1);
-    values[5] = 1.0F;
-    program.applyUniforms(2, std::as_bytes(std::span(values)));
-    EXPECT_EQ(counter.getCalls(), 2);
-    EXPECT_EQ(test::ContractRule::of([&] { (void)program.applyUniforms(2, std::as_bytes(std::span(values)).first(16)); }), gpu::ContractError::Rule::Uniforms);
-    EXPECT_EQ(test::ContractRule::of([&] { (void)program.applyUniforms(0, std::as_bytes(std::span(values))); }), gpu::ContractError::Rule::Uniforms);
+    ASSERT_NE(program.findBlock(2), nullptr);
+    EXPECT_TRUE(program.findBlock(2)->active);
+    EXPECT_EQ(program.findBlock(2)->size, 32U);
+    ASSERT_NE(program.findBlock(5), nullptr);
+    EXPECT_FALSE(program.findBlock(5)->active);
+    EXPECT_EQ(program.findBlock(0), nullptr);
 }
 
 TEST_P(ShaderProgramTest, GivesEachTexturePairTheUnitOfItsIndex) {

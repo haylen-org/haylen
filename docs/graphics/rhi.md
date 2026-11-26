@@ -55,7 +55,7 @@ A device makes five kinds of objects. Each `make` method returns a small handle,
 
 | Object | Made with | What it is |
 | --- | --- | --- |
-| `Buffer` | `makeBuffer(BufferDesc)` | Vertices or indices. An immutable buffer keeps the data it was made with. A dynamic buffer takes new data each frame. |
+| `Buffer` | `makeBuffer(BufferDesc)` | Bytes with the usages they serve, such as vertices, indices or uniform blocks, and an update that says how they change, as [buffers](#buffers) explain. |
 | `Image` | `makeImage(ImageDesc)` | A flat image, an array, a cube or a volume, with mip levels and a pixel format. Its kind is a texture, a dynamic image, a render target or a depth stencil image. |
 | `Sampler` | `makeSampler(SamplerDesc)` | Filters, a wrap for each axis with a border color, levels of detail with a bias, anisotropy and an optional compare function. |
 | `Program` | `makeProgram(ProgramDesc)` | The vertex and fragment stages in the language of the device, with the bindings that the reflection of the shader package gives. |
@@ -66,20 +66,53 @@ A device makes the native state object of a pipeline once, in `makePipeline`, an
 Programs that the API compiles when they are made, such as Metal and Direct3D, start compiling early through `prepareProgram`. The engine calls it as soon as it knows a program, from any thread, and `makeProgram` later takes the result or waits only for what is left. The Metal device loads the programs of the renderer from the Metal libraries that the Apple build precompiled, and compiles only the source of the other programs, such as the shaders of the app.
 
 ```cpp
-const gpu::Device::Buffer quad = device.makeBuffer({.data = std::as_bytes(std::span(vertices)), .label = "quad"});
+const gpu::Device::Buffer quad = device.makeBuffer({.data = std::as_bytes(std::span(vertices)), .usage = {.vertex = true}, .label = "quad"});
 const gpu::Device::Image target = device.makeImage({.width = 256, .height = 256, .kind = gpu::Device::ImageKind::RenderTarget, .label = "minimap"});
+```
+
+## Buffers
+
+A `BufferDesc` names the size of a buffer, or its first data, the usages it serves and how its contents change. The usages of `BufferUsage` are `vertex`, `index`, `uniform`, `storage`, `indirect`, `copySource` and `copyDestination`, and a buffer has at least one. Storage that shaders read and write needs `Capabilities::storageBuffers`, and the arguments of indirect draws need `Capabilities::indirectBuffers`. The contract keeps to what the strictest graphics API allows, so every device refuses the same buffers and a renderer that runs on one runs on all of them:
+
+- A uniform buffer is no vertex, index, storage or indirect buffer, since Direct3D 11 binds a constant buffer as nothing else.
+- An index buffer is no vertex buffer, since WebGL2 binds a buffer of indices to no other target than the copies.
+- A stream buffer is no copy source or destination, since each frame holds its own copy of it on Metal, Vulkan and Direct3D 11, which no copy between frames could name.
+- An immutable buffer is no copy destination, since Direct3D 11 makes an immutable buffer that nothing writes after it was made.
+- A uniform block reads either a uniform buffer of the bindings or the uniforms of `applyUniforms` under one pipeline, never both, since Vulkan and WebGPU pick the buffer of each block when they make the descriptor set or the bind group of the uniforms.
+
+`BufferRules` of `engine/src/gpu/BufferRules.hpp` checks these rules for every device, which throws `gpu::ContractError` of the rule `Buffer`, `Bindings` or `Uniforms`, and `graphics::Device::createBuffer` refuses such a buffer first with a sentence that says what the app asked for. The update of `BufferUpdate` is one of three:
+
+| Update | Contents | Writes |
+| --- | --- | --- |
+| `Immutable` | The data it was made with, for as long as it lives. | None, and no copy reaches it. |
+| `Dynamic` | What the last write or copy left, across frames. | `writeBuffer` and `copyBuffer` of whole words at any point between passes. The passes after a write read the new bytes, and the passes before it the old ones. |
+| `Stream` | What the frame wrote, for that frame alone. | `writeBuffer` before the passes of the frame that read it, each part once a frame. It is never the source or destination of a copy. |
+
+The renderer writes the vertices of its draws into stream buffers every frame and keeps the vertices of a baked batch in an immutable buffer. A dynamic buffer suits data that changes now and then, such as the bones of a model or the instances of a field of grass, since it keeps what it holds and takes only the ranges that change.
+
+`copyBuffer(source, sourceOffset, destination, destinationOffset, size)` copies a range of a copy source into a copy destination between passes, at offsets and of a size that are multiples of four bytes. Each device records the writes into dynamic buffers and the copies at their place among the passes of the frame, so a write or a copy between two swapchain passes ends what the device keeps open of the first one, as an offscreen pass does.
+
+A uniform block of a program reads either the bytes that `applyUniforms` gives its slot or a range of a uniform buffer, which the field `uniformBuffers` of the `Bindings` names at that slot as a `BufferRange` of a buffer and an offset. The offset is a multiple of `kUniformBufferAlignment`, 256 bytes, the strictest alignment of the graphics APIs, and the buffer holds the whole block from there. So many draws share one buffer of their uniforms, each at its own offset, and data that stays the same across frames never travels again.
+
+```cpp
+const gpu::Device::Buffer lights = device.makeBuffer({.size = 4096, .usage = {.uniform = true}, .update = gpu::Device::BufferUpdate::Dynamic, .label = "lights"});
+device.writeBuffer(lights, 0, std::as_bytes(std::span(sun)));
+gpu::Device::Bindings bindings;
+bindings.vertexBuffers[0] = quad;
+bindings.uniformBuffers[2] = {.buffer = lights, .offset = 0};
+device.applyBindings(bindings);
 ```
 
 ## Passes and draws
 
-A pass draws into attachments. A `PassDesc` that names color attachments draws offscreen, into up to four render targets at a mip level and layer of each, with an optional depth stencil image. A `PassDesc` that names no attachment draws into the swapchain of the window. Each attachment says how it loads, with `Clear`, `Keep` or `DontCare`, and how it stores, with `Store` or `Discard`. Tile GPUs skip memory traffic for `DontCare` and `Discard`. A multisampled color attachment resolves into its `resolve` image when the pass ends. A pass that cannot begin, such as one into an image that is not a render target, throws `gpu::ContractError` and leaves no pass open, so the next pass begins as usual. A swapchain pass that keeps the contents keeps the depth, the stencil and the multisampled color of the window only when it directly follows the swapchain pass of the same surface, with no debug group pushed or popped between them. After an offscreen pass or a debug group between them, a window of one sample keeps its color alone, and a multisampled window keeps no color, since its multisampled color lives in tile memory for one run of swapchain passes. So the renderer draws the offscreen passes of a frame before its swapchain passes, and a screen whose canvases hold glass draws into an image of its own. The null device refuses a swapchain pass of a multisampled window that keeps its color after such a pass, so a renderer that would lose that color fails in the engine tests. A window system may show the images of a swapchain turned, such as Android on a phone held across its panel, and then the device draws into images that hold the window turned by quarter turns, so the window system shows them without turning them itself. The method `getPassTurns` gives the clockwise quarter turns of the pass that is open, which is 0 in every offscreen pass and on every device but Vulkan. The device turns the viewports and scissors of such a pass, which the renderer gives in the pixels of the window, and the renderer turns the positions that the vertex stages of its draws write in clip space through `gpu::SurfaceTurn`, so every pixel lands where the turn of the images takes it.
+A pass draws into attachments. A `PassDesc` that names color attachments draws offscreen, into up to four render targets at a mip level and layer of each, with an optional depth stencil image. A `PassDesc` that names no attachment draws into the swapchain of the window. Each attachment says how it loads, with `Clear`, `Keep` or `DontCare`, and how it stores, with `Store` or `Discard`. Tile GPUs skip memory traffic for `DontCare` and `Discard`. A multisampled color attachment resolves into its `resolve` image when the pass ends. A pass that cannot begin, such as one into an image that is not a render target, throws `gpu::ContractError` and leaves no pass open, so the next pass begins as usual. A swapchain pass that keeps the contents keeps the depth, the stencil and the multisampled color of the window only when it directly follows the swapchain pass of the same surface, with no debug group pushed or popped and no write into a dynamic buffer or copy of buffers between them. After an offscreen pass, a debug group, such a write or a copy between them, a window of one sample keeps its color alone, and a multisampled window keeps no color, since its multisampled color lives in tile memory for one run of swapchain passes. So the renderer draws the offscreen passes of a frame before its swapchain passes, and a screen whose canvases hold glass draws into an image of its own. The null device refuses a swapchain pass of a multisampled window that keeps its color after such a pass, so a renderer that would lose that color fails in the engine tests. A window system may show the images of a swapchain turned, such as Android on a phone held across its panel, and then the device draws into images that hold the window turned by quarter turns, so the window system shows them without turning them itself. The method `getPassTurns` gives the clockwise quarter turns of the pass that is open, which is 0 in every offscreen pass and on every device but Vulkan. The device turns the viewports and scissors of such a pass, which the renderer gives in the pixels of the window, and the renderer turns the positions that the vertex stages of its draws write in clip space through `gpu::SurfaceTurn`, so every pixel lands where the turn of the images takes it.
 
 Inside a pass the renderer calls, in this order for each draw:
 
 1. `applyViewport` and `applyScissor`, in pixels from the top left of the attachment, or of the window in a swapchain pass whose images are turned.
 2. `applyPipeline`.
-3. `applyBindings`, with up to four vertex buffers and their offsets, an index buffer, up to 32 textures and up to 12 samplers.
-4. `applyUniforms` for each uniform block of the program, up to eight, which copy their bytes into the frame.
+3. `applyBindings`, with up to four vertex buffers and their offsets, an index buffer, a uniform buffer for each uniform block that reads one, up to 32 textures and up to 12 samplers.
+4. `applyUniforms` for each other uniform block of the program, up to eight, which copy their bytes into the frame.
 5. `applyStencilReference` and `applyBlendColor` when the pipeline uses them.
 6. `draw(first, count, instances)`.
 
@@ -89,14 +122,14 @@ Every device remembers what it sent last, so a binding, a pipeline or a value th
 
 Two calls bring data from the CPU into a frame:
 
-- `writeBuffer(buffer, offset, data)` writes part of a dynamic buffer at an offset that is a multiple of four bytes. A frame writes each part once, before a pass binds the buffer, and the buffer holds in that frame only what the frame wrote.
+- `writeBuffer(buffer, offset, data)` writes part of a stream or dynamic buffer at an offset that is a multiple of four bytes, as [buffers](#buffers) explain. A frame writes each part of a stream buffer once, before a pass binds the buffer, and the buffer holds in that frame only what the frame wrote. A dynamic buffer takes writes of whole words between passes, which each device stages in its upload memory and copies into the buffer at that place among the passes.
 - `writeImages(writes)` replaces a region of dynamic images, which are flat with one mip level, and keeps their other pixels. Each write names its image, its `Region` of whole pixels from the first row and column, and the pixels of the region alone, row after row without a gap. A frame makes one call before its first pass, with at most one write for each image, so the device stages every region before it copies any and no copy waits for another. Metal blits each region from its upload ring, Vulkan copies it from its staging ring into the image, which leaves its resting layout with its contents, Direct3D 12 copies it from upload memory at the footprint of its size, Direct3D 11 hands its box to the driver, which discards the old pixels only for a write of the whole image, OpenGL and OpenGL ES copy it from the pixel unpack buffer, and WebGL2 and WebGPU hand it to the browser.
 
 Each device moves this data through upload memory of its own for each frame in flight. That memory stays mapped where the API allows it, and it grows only when a frame needs more room, so a frame that writes what the frame before it wrote allocates nothing, even when the GPU falls behind. A device opens its frame, which waits for the frame in flight that used the same memory, before it stages any data. The engine tests check this with `test::AllocationTracker`.
 
-## Reading pixels back
+## Reading pixels and bytes back
 
-`readImage(image, width, height)` starts copying the first mip level and layer of a render target after the frame that drew it was committed. Every device refuses a size larger than the render target. It returns a `Readback`, whose `poll` gives nothing until the GPU finished the copy, then hands over four bytes a pixel, red, green, blue and alpha, whatever the format, and gives nothing again after that. The rows start with the first row that the device stores, which `Capabilities::originTopLeft` names. No device waits for the GPU to finish a copy. The [rendering guide](rendering.md#reading-pixels-back) shows how each API copies.
+`readBuffer(buffer, offset, size)` copies a range of a buffer that is a copy source, of whole words, into memory that the CPU reads, after the frame that wrote it was committed, and its `Readback` hands the bytes over as they are once the GPU finished the copy. `readImage(image, width, height)` starts copying the first mip level and layer of a render target after the frame that drew it was committed. Every device refuses a size larger than the render target. It returns a `Readback`, whose `poll` gives nothing until the GPU finished the copy, then hands over four bytes a pixel, red, green, blue and alpha, whatever the format, and gives nothing again after that. The rows start with the first row that the device stores, which `Capabilities::originTopLeft` names. No device waits for the GPU to finish a copy. The [rendering guide](rendering.md#reading-pixels-back) shows how each API copies.
 
 ## Frames in flight and lifetimes
 
@@ -192,6 +225,9 @@ A device is lost when the GPU resets or is removed, when its driver fails or upd
 | `maxAnisotropy` | The most samples of anisotropic filtering that a sampler takes, 1 without anisotropic filtering. |
 | `maxLodBias` | The largest bias of the level of detail that a sampler adds in either direction, 0 where samplers take no bias. |
 | `borderColors` | Whether samplers read a border color through `Wrap::ClampToBorder`. |
+| `storageBuffers` | Whether buffers take the usage `storage`, which shaders read and write. |
+| `indirectBuffers` | Whether buffers take the usage `indirect`, the arguments of indirect draws. |
+| `maxUniformBlockSize` | The most bytes of one uniform block of a program, whether a uniform buffer feeds it or `applyUniforms` takes it. |
 | `formats` | What the device does with each pixel format, a `FormatSupport` for each value of `PixelFormat`, which `getFormat(format)` returns. |
 
 A `FormatSupport` holds six values:
@@ -291,8 +327,9 @@ A frame capture records every command of the device during some frames into a fi
 - A sampler follows the [rules of samplers](#samplers): anisotropy within the device and with linear filters, levels of detail in order, a bias within the device and border colors only where the device has them.
 - Passes open and close in turn, with attachments of one size and sample count, and a pipeline draws only in a pass whose attachments match it.
 - A draw comes inside a pass, after a pipeline, its bindings and every uniform block of its program, and reads only indices its buffer holds.
+- A buffer follows the [rules of buffers](#buffers): usages that the device has and that serve together, data for an immutable buffer, no copy of a stream buffer, writes, copies and readbacks of whole words inside the buffer, vertex, index and uniform buffers with those usages, and uniform buffers at aligned offsets with room for their block, which no `applyUniforms` of the same slot meets.
 - A texture slot that filters never takes a format the device cannot filter, and a pass never samples its own attachments or the images they resolve into.
-- Dynamic buffers and images take their data before the passes that read them, once a frame.
+- Stream buffers and dynamic images take their data before the passes that read them, once a frame.
 - Debug groups close inside the pass that opened them, and the surface goes and comes back in turn.
 - A readback hands its pixels over once.
 - The swapchain passes of a frame into one surface follow one another.
@@ -341,6 +378,9 @@ The matrix lists what each device reports. "From the GPU" means that the device 
 | Anisotropic filtering | 16 | 16 | From the GPU, with the feature `samplerAnisotropy` | From the GPU, with its extension | From the GPU, with its extension | From the GPU, with its extension | 16 |
 | Bias of the level of detail | No | From -15.99 to 15.99 | From the GPU, as `maxSamplerLodBias` | From the GPU, as `GL_MAX_TEXTURE_LOD_BIAS` | No | No | No |
 | Border colors | From the A14 and M1 on, and on every Mac | Yes | Yes | Yes | On OpenGL ES 3.2 or with `GL_EXT_texture_border_clamp` | No | No |
+| Storage buffers | Yes | Yes | Yes | Yes | From OpenGL ES 3.1 | No | Yes |
+| Indirect buffers | Every Mac and the A9 and later | Yes | Yes | Yes | From OpenGL ES 3.1 | No | Yes |
+| Largest uniform block | The largest buffer of the GPU | 65536 bytes | From the GPU, as `maxUniformBufferRange` | From the GPU, as `GL_MAX_UNIFORM_BLOCK_SIZE` | From the GPU, as `GL_MAX_UNIFORM_BLOCK_SIZE` | From the GPU, as `GL_MAX_UNIFORM_BLOCK_SIZE` | From the adapter, at most 65536 bytes |
 | GPU timing | Yes | Yes | Where the queue writes timestamps | Yes | With `GL_EXT_disjoint_timer_query` | With `EXT_disjoint_timer_query_webgl2` | With the feature `timestamp-query` |
 | First row | Top | Top | Top | Bottom | Bottom | Bottom | Top |
 | Range of depth | 0 to 1 | 0 to 1 | 0 to 1 | 0 to 1 with `glClipControl` of OpenGL 4.5 or `GL_ARB_clip_control`, -1 to 1 without | 0 to 1 with `GL_EXT_clip_control`, -1 to 1 without | 0 to 1 with `EXT_clip_control`, -1 to 1 without | 0 to 1 |

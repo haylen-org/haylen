@@ -4,12 +4,14 @@ include("${CMAKE_CURRENT_LIST_DIR}/../renderdoc/renderdoc.cmake")
 
 target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/BufferArena.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/BufferReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/DescriptorHeap.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/DescriptorRing.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Device.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/FrameTimer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ImageReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/PixCapturer.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/ReadbackCopy.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/RootSignatures.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/StateDescriptions.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/UploadAllocator.cpp"

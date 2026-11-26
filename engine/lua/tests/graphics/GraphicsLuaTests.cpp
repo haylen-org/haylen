@@ -243,4 +243,43 @@ TEST(GraphicsLuaTest, ReadsTargetsCapturesTheScreenAndEncodesPngFiles) {
     EXPECT_NE(fixture.lua("graphics.readTarget(5)").find("haylen.RenderTarget expected"), std::string::npos);
 }
 
+// Buffers take their usages and update by name, refuse what no device allows with a sentence, take writes and copies, and read their bytes back in a later frame, which the headless device hands over as zeros.
+TEST(GraphicsLuaTest, CreatesWritesCopiesAndReadsBuffers) {
+    test::LuaFixture fixture;
+    fixture.runLua("graphics = require('haylen.graphics') buffer = graphics.newBuffer(16, {usage = {'vertex', 'copySource'}, update = 'dynamic', label = 'points'})");
+    EXPECT_EQ(fixture.lua("return buffer.size .. ' ' .. table.concat(buffer.usage, ',') .. ' ' .. buffer.update .. ' ' .. buffer.label"), "16 vertex,copySource dynamic points");
+    EXPECT_EQ(fixture.lua("local b = graphics.newBuffer('abcdefgh', {usage = {'uniform'}}) return b.size .. ' ' .. b.update"), "8 immutable");
+    EXPECT_EQ(fixture.lua("local c = graphics.capabilities() return tostring(c.storageBuffers) .. ' ' .. tostring(c.indirectBuffers) .. ' ' .. c.maxUniformBlockSize .. ' ' .. c.uniformBufferAlignment"), "true true 65536 256");
+
+    EXPECT_NE(fixture.lua("graphics.newBuffer(16, {usage = {'vertex'}})").find("An immutable buffer keeps the data it is made with"), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newBuffer(16, {usage = {}, update = 'dynamic'})").find("A buffer needs at least one usage"), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newBuffer(16, {usage = {'uniform', 'vertex'}, update = 'dynamic'})").find("A uniform buffer serves no other draw."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newBuffer(16, {usage = {'texture'}, update = 'dynamic'})").find("The buffer usage \"texture\" does not exist."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newBuffer(16, {usage = {'copySource'}, update = 'stream'})").find("A stream buffer holds new contents every frame"), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newBuffer(0, {usage = {'vertex'}, update = 'dynamic'})").find("must be a positive number of bytes."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newBuffer(16, {usage = {'vertex'}, update = 'dynamic', size = 4})").find("Unknown option \"size\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("buffer:write(2, 'abcd')").find("the offset must be a multiple of 4 bytes"), std::string::npos);
+    EXPECT_NE(fixture.lua("buffer:write(12, 'abcdefgh')").find("the range must lie inside the buffer."), std::string::npos);
+    EXPECT_NE(fixture.lua("buffer:copy(buffer)").find("A copy reads a buffer with the \"copySource\" usage"), std::string::npos);
+
+    // clang-format off
+    fixture.runLua(R"(
+        async = require('async')
+        source = graphics.newBuffer('ABCDEFGH', {usage = {'copySource'}})
+        target = graphics.newBuffer(12, {usage = {'copySource', 'copyDestination'}, update = 'dynamic'})
+        buffer:write(4, 'wxyz')
+        target:copy(source, {sourceOffset = 4, offset = 8, size = 4})
+        async.spawn(function()
+            local written = buffer:readAsync():await()
+            local copied = target:readAsync(8, 4):await()
+            done = #written .. ' ' .. #copied
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return done") != "nil" || fixture.engine().getError() != nullptr; }));
+    ASSERT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
+    EXPECT_EQ(fixture.lua("return done"), "16 4");
+    EXPECT_NE(fixture.lua("buffer:readAsync(0, 6)").find("the offset must be a multiple of 4 bytes"), std::string::npos);
+}
+
 } // namespace haylen::lua::graphics

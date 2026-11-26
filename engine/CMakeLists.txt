@@ -376,6 +376,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/TraceSpan.cpp
   src/gpu/SurfaceTurn.cpp
   src/graphics/BlendMode.cpp
+  src/graphics/Buffer.cpp
+  src/graphics/BufferResource.cpp
   src/graphics/Device.cpp
   src/graphics/DeviceState.cpp
   src/graphics/Gradient.cpp

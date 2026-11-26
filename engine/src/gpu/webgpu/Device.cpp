@@ -10,6 +10,7 @@
 #include "gpu/ImageRules.hpp"
 #include "gpu/ProgramSlots.hpp"
 #include "gpu/SamplerRules.hpp"
+#include "gpu/webgpu/BufferReadback.hpp"
 #include "gpu/webgpu/Conversion.hpp"
 #include "gpu/webgpu/ImageReadback.hpp"
 #include "haylen/gpu/ContractError.hpp"
@@ -20,7 +21,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surfac
     return std::make_unique<Device>(Connection::take(), surface);
 }
 
-Device::Device(std::unique_ptr<Connection> owned, const std::optional<Surface>& surface) : connection(std::move(owned)), device(connection->getDevice()), queue(connection->getQueue()), capabilities(describeCapabilities(*connection)), ring(device, connection->getLimits().minUniformBufferOffsetAlignment) {
+Device::Device(std::unique_ptr<Connection> owned, const std::optional<Surface>& surface) : connection(std::move(owned)), device(connection->getDevice()), queue(connection->getQueue()), capabilities(describeCapabilities(*connection)), uniformRing(device, WGPUBufferUsage_Uniform, connection->getLimits().minUniformBufferOffsetAlignment, "haylen-uniforms"), uploads(device, WGPUBufferUsage_CopySrc, kCopyAlignment, "haylen-uploads") {
     if (connection->hasFeature(WGPUFeatureName_TimestampQuery)) {
         timer = std::make_unique<FrameTimer>(device);
     }
@@ -67,17 +68,15 @@ Device::~Device() {
     }
 
     for (const auto& [key, layout] : blockLayouts) {
-        for (const WGPUBindGroup group : layout->groups) {
-            if (group != nullptr) {
-                wgpuBindGroupRelease(group);
-            }
+        for (const auto& [reads, group] : layout->groups) {
+            wgpuBindGroupRelease(group);
         }
 
         wgpuBindGroupLayoutRelease(layout->layout);
     }
 }
 
-// WebGPU renders and samples every uncompressed color format of the RHI, while 32-bit floats filter and blend only with their features, `Rg11B10Float` renders only with its own, and the depth format with a 32-bit float and stencil exists only with its own. Each family of compressed formats samples with its feature, and WebGPU has no HDR profile of ASTC. Shaders write the storage formats of its core as storage images. Its attachments take one or four samples, except the 32-bit floats, which WebGPU resolves into no image, so they take one. A cube takes faces as large as a flat image.
+// WebGPU renders and samples every uncompressed color format of the RHI, while 32-bit floats filter and blend only with their features, `Rg11B10Float` renders only with its own, and the depth format with a 32-bit float and stencil exists only with its own. Each family of compressed formats samples with its feature, and WebGPU has no HDR profile of ASTC. Shaders write the storage formats of its core as storage images. Its attachments take one or four samples, except the 32-bit floats, which WebGPU resolves into no image, so they take one. A cube takes faces as large as a flat image. The core of WebGPU binds storage buffers and draws with indirect arguments, and a uniform block holds what one binding of the adapter reads, at most what the uniform ring takes for a block.
 gpu::Device::Capabilities Device::describeCapabilities(const Connection& connection) {
     const WGPULimits& limits = connection.getLimits();
     Capabilities result;
@@ -89,6 +88,9 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
     result.independentBlend = true;
     result.gpuTiming = connection.hasFeature(WGPUFeatureName_TimestampQuery);
     result.maxAnisotropy = 16;
+    result.storageBuffers = true;
+    result.indirectBuffers = true;
+    result.maxUniformBlockSize = static_cast<std::size_t>(std::min<std::uint64_t>(limits.maxUniformBufferBindingSize, UploadRing::kMaxBlockSize));
 
     const bool floatBlending = connection.hasFeature(WGPUFeatureName_Float32Blendable);
     const bool floatFiltering = connection.hasFeature(WGPUFeatureName_Float32Filterable);
@@ -173,16 +175,14 @@ bool Device::isLost() const noexcept {
     return connection->isLost();
 }
 
-// Buffers with data start mapped, which hands their contents over without a copy through the queue, and every size is a multiple of four bytes, which WebGPU writes in.
+// Buffers with data start mapped, which hands their contents over without a copy through the queue, and every size is a multiple of four bytes, which WebGPU maps, writes and copies in. A buffer that is not immutable takes the queue writes of a stream buffer or the copies of the writes into a dynamic buffer.
 gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
-    const std::size_t size = std::max(desc.size, desc.data.size());
-    if (size == 0) {
-        throw ContractError(ContractError::Rule::Buffer);
-    }
+    const BufferRules::Description description = BufferRules::check(desc, capabilities);
+    const std::size_t size = description.size;
 
     WGPUBufferDescriptor descriptor = WGPU_BUFFER_DESCRIPTOR_INIT;
     descriptor.label = Conversion::toText(desc.label);
-    descriptor.usage = (desc.index ? WGPUBufferUsage_Index : WGPUBufferUsage_Vertex) | WGPUBufferUsage_CopyDst;
+    descriptor.usage = Conversion::toBufferUsage(desc.usage) | (desc.update == BufferUpdate::Immutable ? WGPUBufferUsage_None : WGPUBufferUsage_CopyDst);
     descriptor.size = alignTo(size, 4);
     descriptor.mappedAtCreation = !desc.data.empty();
     holdRetirements(1);
@@ -196,7 +196,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         wgpuBufferUnmap(buffer);
     }
 
-    return {buffers.add({.buffer = buffer, .size = static_cast<std::size_t>(descriptor.size)})};
+    return {buffers.add({.buffer = buffer, .description = description})};
 }
 
 // A compressed level copies whole blocks, so its extent reaches the edge of its last block.
@@ -399,6 +399,10 @@ WGPUPipelineLayout Device::getPipelineLayout(WGPUBindGroupLayout blocks, WGPUBin
 // WebGPU programs of Haylen keep their uniform blocks in bind group 0 and their textures and samplers in bind group 1, as the shader compiler writes them.
 gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     ProgramSlots::check(desc);
+    if (std::ranges::any_of(desc.blocks, [this](const BlockBinding& block) { return block.size > capabilities.maxUniformBlockSize; })) {
+        throw ContractError(ContractError::Rule::Program);
+    }
+
     const bool blocksInGroupZero = std::ranges::all_of(desc.blocks, [](const BlockBinding& block) { return block.set == 0; });
     const bool imagesInGroupOne = std::ranges::all_of(desc.textures, [](const TextureBinding& texture) { return texture.set == 1; }) && std::ranges::all_of(desc.samplers, [](const SamplerBinding& sampler) { return sampler.set == 1; });
     if (!blocksInGroupZero || !imagesInGroupOne) {
@@ -593,11 +597,13 @@ void Device::releaseImage(ImageRecord& image) noexcept {
     retire(Retired::Kind::Texture, image.texture);
 }
 
-// A destroyed object may hand its address to the next one, so the state the pass encoder holds is sent again.
+// A destroyed object may hand its address to the next one, so the state the pass encoder holds is sent again. The commands that recorded a bind group keep what it points at, so the groups of a destroyed buffer go away at once.
 void Device::destroy(Buffer buffer) noexcept {
     if (std::optional<BufferRecord> record = buffers.remove(buffer.id)) {
+        releaseBlockGroups([id = buffer.id](const BlockGroupKey& key) { return std::ranges::find(key.buffers, id) != key.buffers.end(); });
         retire(Retired::Kind::Buffer, record->buffer);
         bound = {};
+        blocksDirty = true;
     }
 }
 
@@ -635,18 +641,20 @@ void Device::destroy(Pipeline pipeline) noexcept {
     }
 }
 
-// Queue writes take offsets and sizes in multiples of four bytes, so the last bytes of data of another size go through a padded copy that ends inside the buffer, whose size is a multiple of four.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
+    requireNoPass(ContractError::Rule::BufferWrite);
     const BufferRecord& record = buffers.get(buffer.id);
+    BufferRules::checkWrite(record.description, offset, data.size());
 
-    if (offset % 4U != 0) {
-        throw ContractError(ContractError::Rule::BufferWrite);
+    if (record.description.update == BufferUpdate::Dynamic) {
+        writeDynamic(record, offset, data);
+    } else {
+        writeStream(record, offset, data);
     }
+}
 
-    if (offset + data.size() > record.size) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
+// The queue writes the contents of a stream buffer before the commands of the frame that read them. Queue writes take offsets and sizes in multiples of four bytes, so the last bytes of data of another size go through a padded copy that ends inside the buffer, whose size is a multiple of four.
+void Device::writeStream(const BufferRecord& record, std::size_t offset, std::span<const std::byte> data) {
     const std::size_t whole = data.size() & ~std::size_t{3U};
     if (whole != 0) {
         wgpuQueueWriteBuffer(queue, record.buffer, offset, data.data(), whole);
@@ -659,6 +667,27 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     padded.assign(4, std::byte{0});
     std::memcpy(padded.data(), data.data() + whole, data.size() - whole);
     wgpuQueueWriteBuffer(queue, record.buffer, offset + whole, padded.data(), 4);
+}
+
+// The queue would write a dynamic buffer before every command of the frame, so its bytes go into the uploads of the frame, which reach the GPU before those commands, and a copy of the encoder between the passes around the write moves them into the buffer, which the passes before it never see.
+void Device::writeDynamic(const BufferRecord& record, std::size_t offset, std::span<const std::byte> data) {
+    if (!uploads.fits(data.size())) {
+        uploads.advance(data.size());
+    }
+
+    const std::uint32_t staged = uploads.push(data);
+    openEncoder();
+    wgpuCommandEncoderCopyBufferToBuffer(encoder, uploads.getBuffer(uploads.getChunk()), staged, record.buffer, offset, data.size());
+}
+
+void Device::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) {
+    requireNoPass(ContractError::Rule::BufferWrite);
+    const BufferRecord& from = buffers.get(source.id);
+    const BufferRecord& to = buffers.get(destination.id);
+    BufferRules::checkCopy(source, from.description, sourceOffset, destination, to.description, destinationOffset, size);
+
+    openEncoder();
+    wgpuCommandEncoderCopyBufferToBuffer(encoder, from.buffer, sourceOffset, to.buffer, destinationOffset, size);
 }
 
 void Device::writeImages(std::span<const ImageWrite> writes) {
@@ -689,6 +718,13 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
 void Device::openEncoder() {
     if (encoder == nullptr) {
         encoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
+    }
+}
+
+// A swapchain pass of a frame without a canvas to draw into is open too, though it records nothing.
+void Device::requireNoPass(ContractError::Rule rule) const {
+    if (pass != nullptr || skipping) {
+        throw ContractError(rule);
     }
 }
 
@@ -876,6 +912,8 @@ void Device::applyPipeline(Pipeline pipeline) {
     }
 
     currentPipeline = pipeline.id;
+    appliedBlocks = 0;
+    bufferBlocks = 0;
     blocksDirty = true;
     imagesDirty = true;
 }
@@ -885,12 +923,24 @@ void Device::applyBindings(const Bindings& value) {
         return;
     }
 
+    if (currentPipeline == 0) {
+        throw ContractError(ContractError::Rule::PipelineState);
+    }
+
+    const PipelineRecord& pipeline = pipelines.get(currentPipeline);
+    if (pipeline.indexFormat != WGPUIndexFormat_Undefined) {
+        BufferRules::checkIndex(buffers.get(value.indexBuffer.id).description);
+    }
+
+    const std::uint32_t fed = bindUniformBuffers(programs.get(pipeline.program), value);
     for (std::size_t index = 0; index < kMaxVertexBuffers; ++index) {
         if (!value.vertexBuffers[index].isValid()) {
             continue;
         }
 
-        WGPUBuffer buffer = buffers.get(value.vertexBuffers[index].id).buffer;
+        const BufferRecord& record = buffers.get(value.vertexBuffers[index].id);
+        BufferRules::checkVertex(record.description);
+        WGPUBuffer buffer = record.buffer;
         if (buffer == bound.vertexBuffers[index] && value.vertexOffsets[index] == bound.vertexOffsets[index]) {
             continue;
         }
@@ -900,8 +950,32 @@ void Device::applyBindings(const Bindings& value) {
         bound.vertexOffsets[index] = value.vertexOffsets[index];
     }
 
+    blocksDirty = blocksDirty || fed != bufferBlocks || value.uniformBuffers != bindings.uniformBuffers;
     imagesDirty = imagesDirty || value.textures != bindings.textures || value.samplers != bindings.samplers;
+    bufferBlocks = fed;
     bindings = value;
+}
+
+// A uniform block of the program reads the uniform buffer that the bindings name at its slot, which `applyUniforms` never fed since the pipeline, so no slot has two sources.
+std::uint32_t Device::bindUniformBuffers(const ProgramRecord& program, const Bindings& value) {
+    std::uint32_t fed = 0;
+    for (std::uint32_t index = 0; index < program.blockCount; ++index) {
+        const int slot = program.blockSlots[index];
+        const BufferRange& range = value.uniformBuffers[static_cast<std::size_t>(slot)];
+        if (!range.buffer.isValid()) {
+            continue;
+        }
+
+        const std::uint32_t bit = 1U << static_cast<unsigned>(slot);
+        if ((appliedBlocks & bit) != 0) {
+            throw ContractError(ContractError::Rule::Uniforms);
+        }
+
+        BufferRules::checkUniform(buffers.get(range.buffer.id).description, range.offset, program.blocks->blocks[index].second);
+        fed |= bit;
+    }
+
+    return fed;
 }
 
 // A frame whose uniforms outgrow the chunk of the ring moves on to the next one, and the blocks that draws still read move with them, so one bind group reaches all of them.
@@ -921,21 +995,19 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         throw ContractError(ContractError::Rule::Uniforms);
     }
 
+    const std::uint32_t bit = 1U << static_cast<unsigned>(slot);
     const std::uint32_t size = program.blocks->blocks[static_cast<std::size_t>(found - slots.begin())].second;
-    if (data.size() != size) {
+    if ((bufferBlocks & bit) != 0 || data.size() != size) {
         throw ContractError(ContractError::Rule::Uniforms);
     }
 
-    if (data.size() > std::min<std::uint64_t>(connection->getLimits().maxUniformBufferBindingSize, UniformRing::kMaxBlockSize)) {
-        throw ContractError(ContractError::Rule::Program);
-    }
-
-    if (!ring.fits(data.size())) {
-        ring.advance();
+    if (!uniformRing.fits(data.size())) {
+        uniformRing.advance(data.size());
         carryUniforms();
     }
 
-    uniforms.at(static_cast<std::size_t>(slot)) = {.chunk = ring.getChunk(), .offset = ring.push(data), .size = static_cast<std::uint32_t>(data.size())};
+    uniforms.at(static_cast<std::size_t>(slot)) = {.chunk = uniformRing.getChunk(), .offset = uniformRing.push(data), .size = static_cast<std::uint32_t>(data.size())};
+    appliedBlocks |= bit;
     blocksDirty = true;
 }
 
@@ -945,8 +1017,8 @@ void Device::carryUniforms() noexcept {
             continue;
         }
 
-        block.offset = ring.push(ring.view(block.chunk, block.offset, block.size));
-        block.chunk = ring.getChunk();
+        block.offset = uniformRing.push(uniformRing.view(block.chunk, block.offset, block.size));
+        block.chunk = uniformRing.getChunk();
     }
 }
 
@@ -963,22 +1035,19 @@ void Device::applyBlendColor(math::Color value) {
     }
 }
 
-WGPUBindGroup Device::getBlockGroup(BlockLayout& layout, std::uint32_t chunk) {
-    if (layout.groups.size() <= chunk) {
-        layout.groups.resize(ring.getChunkCount(), nullptr);
-    }
-
-    WGPUBindGroup& group = layout.groups[chunk];
-    if (group != nullptr) {
-        return group;
+WGPUBindGroup Device::getBlockGroup(BlockLayout& layout, const BlockGroupKey& key) {
+    const auto found = layout.groups.find(key);
+    if (found != layout.groups.end()) {
+        return found->second;
     }
 
     std::vector<WGPUBindGroupEntry> entries;
-    for (const auto& [binding, size] : layout.blocks) {
+    for (std::size_t index = 0; index < layout.blocks.size(); ++index) {
+        const std::uint64_t buffer = key.buffers[index];
         WGPUBindGroupEntry entry = WGPU_BIND_GROUP_ENTRY_INIT;
-        entry.binding = binding;
-        entry.buffer = ring.getBuffer(chunk);
-        entry.size = size;
+        entry.binding = layout.blocks[index].first;
+        entry.buffer = buffer != 0 ? buffers.get(buffer).buffer : uniformRing.getBuffer(key.chunk);
+        entry.size = layout.blocks[index].second;
         entries.push_back(entry);
     }
 
@@ -987,8 +1056,22 @@ WGPUBindGroup Device::getBlockGroup(BlockLayout& layout, std::uint32_t chunk) {
     descriptor.layout = layout.layout;
     descriptor.entryCount = entries.size();
     descriptor.entries = entries.data();
-    group = wgpuDeviceCreateBindGroup(device, &descriptor);
+    WGPUBindGroup group = wgpuDeviceCreateBindGroup(device, &descriptor);
+    layout.groups.emplace(key, group);
     return group;
+}
+
+template <typename Matches> void Device::releaseBlockGroups(Matches&& matches) noexcept {
+    for (const auto& [blocks, layout] : blockLayouts) {
+        for (auto entry = layout->groups.begin(); entry != layout->groups.end();) {
+            if (matches(entry->first)) {
+                wgpuBindGroupRelease(entry->second);
+                entry = layout->groups.erase(entry);
+            } else {
+                ++entry;
+            }
+        }
+    }
 }
 
 WGPUBindGroup Device::makeImageGroup(const ProgramRecord& program, const BindGroupCache::Key& key) {
@@ -1027,6 +1110,7 @@ WGPUBindGroup Device::makeImageGroup(const ProgramRecord& program, const BindGro
     return group;
 }
 
+// Each block reads its range of the uniform buffer of the bindings from the dynamic offset of the range, or its bytes in the uniform ring.
 void Device::bindBlocks(const ProgramRecord& program) {
     if (!blocksDirty) {
         return;
@@ -1034,12 +1118,24 @@ void Device::bindBlocks(const ProgramRecord& program) {
 
     blocksDirty = false;
 
+    BlockGroupKey key;
     std::array<std::uint32_t, kMaxBlocks> offsets{};
+    bool readsRing = false;
     for (std::uint32_t index = 0; index < program.blockCount; ++index) {
-        offsets[index] = uniforms[static_cast<std::size_t>(program.blockSlots[index])].offset;
+        const auto slot = static_cast<std::size_t>(program.blockSlots[index]);
+        if ((bufferBlocks & (1U << static_cast<unsigned>(slot))) == 0) {
+            offsets[index] = uniforms[slot].offset;
+            readsRing = true;
+            continue;
+        }
+
+        const BufferRange& range = bindings.uniformBuffers[slot];
+        key.buffers[index] = range.buffer.id;
+        offsets[index] = static_cast<std::uint32_t>(range.offset);
     }
 
-    WGPUBindGroup group = getBlockGroup(*program.blocks, ring.getChunk());
+    key.chunk = readsRing ? uniformRing.getChunk() : 0U;
+    WGPUBindGroup group = getBlockGroup(*program.blocks, key);
     if (group == bound.blockGroup && offsets == bound.blockOffsets) {
         return;
     }
@@ -1151,24 +1247,18 @@ void Device::trim() {
         throw ContractError(ContractError::Rule::PassOrder);
     }
 
-    const std::size_t kept = ring.trim();
-    for (const auto& [key, layout] : blockLayouts) {
-        while (layout->groups.size() > kept) {
-            if (layout->groups.back() != nullptr) {
-                wgpuBindGroupRelease(layout->groups.back());
-            }
-
-            layout->groups.pop_back();
-        }
-    }
+    const std::size_t kept = uniformRing.trim();
+    releaseBlockGroups([kept](const BlockGroupKey& key) { return key.chunk >= kept; });
+    uploads.trim();
 }
 
 std::size_t Device::getSpareBytes() const noexcept {
-    return ring.getSpareBytes();
+    return uniformRing.getSpareBytes() + uploads.getSpareBytes();
 }
 
 void Device::commit() {
-    ring.flush(queue);
+    uniformRing.flush(queue);
+    uploads.flush(queue);
 
     if (encoder != nullptr) {
         if (swapchain) {
@@ -1285,6 +1375,13 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     }
 
     return std::make_unique<ImageReadback>(device, queue, record.texture, record.format, width, height);
+}
+
+std::unique_ptr<gpu::Device::Readback> Device::readBuffer(Buffer buffer, std::size_t offset, std::size_t size) {
+    requireNoPass(ContractError::Rule::Readback);
+    const BufferRecord& record = buffers.get(buffer.id);
+    BufferRules::checkRead(record.description, offset, size);
+    return std::make_unique<BufferReadback>(device, queue, record.buffer, offset, size);
 }
 
 gpu::Device::CaptureSupport Device::getCaptureSupport() const {

@@ -454,6 +454,39 @@ std::size_t Conversions::getIndexSize(Device::IndexType type) noexcept {
     return type == Device::IndexType::UInt32 ? 4 : 2;
 }
 
+VkBufferUsageFlags Conversions::toBufferUsage(const Device::BufferUsage& usage) noexcept {
+    VkBufferUsageFlags flags = 0;
+    if (usage.vertex) {
+        flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    }
+
+    if (usage.index) {
+        flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    }
+
+    if (usage.uniform) {
+        flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    }
+
+    if (usage.storage) {
+        flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    }
+
+    if (usage.indirect) {
+        flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+    }
+
+    if (usage.copySource) {
+        flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    }
+
+    if (usage.copyDestination) {
+        flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    }
+
+    return flags;
+}
+
 std::string_view Conversions::describe(VkResult result) noexcept {
     switch (result) {
     case VK_SUCCESS:

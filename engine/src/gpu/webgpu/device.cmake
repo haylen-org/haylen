@@ -1,15 +1,17 @@
 # The WebGPU device draws through the WebGPU C API of the port of Dawn for Emscripten, which the web builds compile against and link.
 target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/BindGroupCache.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/BufferReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Connection.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Conversion.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Device.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/FrameTimer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ImageReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/PassTimeline.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/ReadbackBuffer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ScaledDrawable.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Swapchain.cpp"
-  "${CMAKE_CURRENT_LIST_DIR}/UniformRing.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/UploadRing.cpp"
 )
 target_compile_definitions(haylen-gpu PUBLIC HAYLEN_GPU_WEBGPU)
 target_compile_options(haylen-gpu PUBLIC --use-port=emdawnwebgpu)

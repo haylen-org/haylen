@@ -3,10 +3,10 @@ include("${CMAKE_CURRENT_LIST_DIR}/../renderdoc/renderdoc.cmake")
 target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/Context.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Conversions.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/CopyReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/DescriptorCache.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Device.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ImageLayouts.cpp"
-  "${CMAKE_CURRENT_LIST_DIR}/ImageReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Instance.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/LayoutCache.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/PreparedModules.cpp"

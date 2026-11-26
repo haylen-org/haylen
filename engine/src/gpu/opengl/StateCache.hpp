@@ -14,6 +14,7 @@ class StateCache final {
   public:
     static constexpr std::size_t kMaxUnits = Device::kMaxTextures;
     static constexpr std::size_t kTargets = Device::kMaxColorTargets;
+    static constexpr std::size_t kUniformPoints = Device::kMaxBlocks;
 
     struct Blend {
         bool enabled = false;
@@ -67,6 +68,15 @@ class StateCache final {
         friend bool operator==(const Rectangle&, const Rectangle&) = default;
     };
 
+    // A range of a buffer at a binding point of uniform blocks, which the block bound to that point reads.
+    struct UniformRange {
+        Gl::Uint buffer = 0;
+        Gl::IntPtr offset = 0;
+        Gl::SizeiPtr size = 0;
+
+        friend bool operator==(const UniformRange&, const UniformRange&) = default;
+    };
+
     explicit StateCache(Gl& functions) noexcept : gl(functions) {}
 
     // Sends every state the cache tracks, so the context holds what the cache says whatever the platform left in it.
@@ -87,6 +97,9 @@ class StateCache final {
     void useProgram(Gl::Uint program);
     void bindVertexArray(Gl::Uint array);
     void bindBuffer(Gl::Enum target, Gl::Uint buffer);
+
+    // Binds the range to the binding point of uniform blocks, which binds its buffer to the target of uniform buffers too, as OpenGL does.
+    void bindUniformRange(std::size_t point, const UniformRange& range);
     void bindDrawFramebuffer(Gl::Uint framebuffer);
     void bindReadFramebuffer(Gl::Uint framebuffer);
     void bindTexture(std::size_t unit, Gl::Enum target, Gl::Uint texture);
@@ -117,6 +130,7 @@ class StateCache final {
         Gl::Uint copyWrite = 0;
         Gl::Uint pixelPack = 0;
         Gl::Uint pixelUnpack = 0;
+        Gl::Uint uniform = 0;
     };
 
     static void toggle(Gl& functions, Gl::Enum capability, bool value);
@@ -157,6 +171,7 @@ class StateCache final {
     Gl::Uint program = 0;
     Gl::Uint vertexArray = 0;
     BufferBindings buffers;
+    std::array<UniformRange, kUniformPoints> uniformRanges{};
     Gl::Uint drawFramebuffer = 0;
     Gl::Uint readFramebuffer = 0;
     std::size_t activeUnit = 0;

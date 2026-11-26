@@ -14,6 +14,18 @@ std::string_view Conversion::fromText(WGPUStringView text) noexcept {
     return text.length == WGPU_STRLEN ? std::string_view(text.data) : std::string_view(text.data, text.length);
 }
 
+WGPUBufferUsage Conversion::toBufferUsage(const Device::BufferUsage& usage) noexcept {
+    WGPUBufferUsage result = WGPUBufferUsage_None;
+    result |= usage.vertex ? WGPUBufferUsage_Vertex : WGPUBufferUsage_None;
+    result |= usage.index ? WGPUBufferUsage_Index : WGPUBufferUsage_None;
+    result |= usage.uniform ? WGPUBufferUsage_Uniform : WGPUBufferUsage_None;
+    result |= usage.storage ? WGPUBufferUsage_Storage : WGPUBufferUsage_None;
+    result |= usage.indirect ? WGPUBufferUsage_Indirect : WGPUBufferUsage_None;
+    result |= usage.copySource ? WGPUBufferUsage_CopySrc : WGPUBufferUsage_None;
+    result |= usage.copyDestination ? WGPUBufferUsage_CopyDst : WGPUBufferUsage_None;
+    return result;
+}
+
 WGPUTextureFormat Conversion::toTextureFormat(Device::PixelFormat format) noexcept {
     switch (format) {
     case Device::PixelFormat::R8:

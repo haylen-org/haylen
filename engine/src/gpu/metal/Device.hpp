@@ -9,7 +9,7 @@
 
 namespace haylen::gpu::metal {
 
-// The device of Metal on macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS. It records each frame into one command buffer that holds no references, keeps up to `kFramesInFlight` frames on the GPU behind a semaphore, and releases destroyed objects once the frames that may use them finished. Uniforms and the pixels of dynamic images pass through an upload ring of each frame in shared memory, dynamic buffers keep a region for each frame in flight, and the encoder of a pass receives only the state that changes. Swapchain passes draw into the drawables of the `CAMetalLayer` of the surface, with their multisampled color and their depth and stencil in tile memory on Apple GPUs. Its Metal objects live in the source file, so the device factory includes this header from C++.
+// The device of Metal on macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS. It records each frame into one command buffer that holds no references, keeps up to `kFramesInFlight` frames on the GPU behind a semaphore, and releases destroyed objects once the frames that may use them finished. Uniforms, the pixels of dynamic images and the writes into dynamic buffers pass through an upload ring of each frame in shared memory, stream buffers keep a region for each frame in flight, dynamic buffers live in the memory of the GPU and take their writes and copies as blits between the passes of the frame, readbacks copy on command buffers of their own, and the encoder of a pass receives only the state that changes. Swapchain passes draw into the drawables of the `CAMetalLayer` of the surface, with their multisampled color and their depth and stencil in tile memory on Apple GPUs. Its Metal objects live in the source file, so the device factory includes this header from C++.
 class Device final : public gpu::Device {
   public:
     static constexpr int kFramesInFlight = 3;
@@ -44,6 +44,7 @@ class Device final : public gpu::Device {
     void destroy(Pipeline pipeline) noexcept override;
 
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
+    void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
 
     void beginPass(const PassDesc& desc) override;
@@ -78,6 +79,7 @@ class Device final : public gpu::Device {
     void removeSurface(int surface) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+    [[nodiscard]] std::unique_ptr<Readback> readBuffer(Buffer buffer, std::size_t offset, std::size_t size) override;
 
     [[nodiscard]] CaptureSupport getCaptureSupport() const override;
     void beginCapture(const std::filesystem::path& path) override;
@@ -91,6 +93,7 @@ class Device final : public gpu::Device {
     void requirePass() const;
     void openFrame();
     void endPendingPass();
+    void prepareCopy();
     void submitTransfers();
     void reportErrors();
     void beginSwapchainPass(const PassDesc& desc);

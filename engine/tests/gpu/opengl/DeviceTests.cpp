@@ -3,6 +3,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <span>
@@ -73,7 +74,7 @@ class OpenGlDeviceTest : public OpenGlTest {
 
         device = Device::create(GetParam(), context->getSurface(), {.validation = true});
         const std::string header = GetParam() == Device::Api::OpenGl ? "#version 430\n" : "#version 300 es\nprecision highp float;\n";
-        vertex = header + "uniform vec4 shift[1];\nin vec2 position;\nin vec2 offset;\nvoid main() { gl_Position = vec4(position + offset + shift[0].xy, 0.0, 1.0); }\n";
+        vertex = header + "layout(std140) uniform shift { vec4 amount; };\nin vec2 position;\nin vec2 offset;\nvoid main() { gl_Position = vec4(position + offset + amount.xy, 0.0, 1.0); }\n";
         fragment = header + "uniform highp sampler2D picture;\nout vec4 color;\nvoid main() { color = texture(picture, vec2(0.5)); }\n";
     }
 
@@ -85,7 +86,7 @@ class OpenGlDeviceTest : public OpenGlTest {
     // Makes what a frame of sprites needs: a program with a block and a texture, a pipeline with an instanced buffer, a dynamic buffer and image, and a render target.
     void makeScene() {
         const std::array<Device::Attribute, 2> attributes{{{.location = 0, .name = "position"}, {.location = 1, .name = "offset"}}};
-        const std::array<Device::BlockBinding, 1> blocks{{{.slot = 0, .stage = Device::Stage::Vertex, .size = 16, .glslName = "shift", .glslCount = 1}}};
+        const std::array<Device::BlockBinding, 1> blocks{{{.slot = 0, .stage = Device::Stage::Vertex, .size = 16, .glslName = "shift"}}};
         const std::array<Device::TextureBinding, 1> textures{{{.slot = 0}}};
         const std::array<Device::SamplerBinding, 1> samplers{{{.slot = 0}}};
         const std::array<Device::TexturePair, 1> pairs{{{.texture = 0, .sampler = 0, .glslName = "picture"}}};
@@ -97,8 +98,8 @@ class OpenGlDeviceTest : public OpenGlTest {
         pipeline = device->makePipeline({.program = program, .buffers = layouts, .attributes = inputs, .colors = colors, .label = "scene"});
 
         const std::array<float, 6> corners{-1.0F, -1.0F, 1.0F, -1.0F, 0.0F, 1.0F};
-        quad = device->makeBuffer({.data = std::as_bytes(std::span(corners)), .label = "corners"});
-        instances = device->makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "instances"});
+        quad = device->makeBuffer({.data = std::as_bytes(std::span(corners)), .usage = {.vertex = true}, .label = "corners"});
+        instances = device->makeBuffer({.size = 64, .usage = {.vertex = true}, .update = Device::BufferUpdate::Stream, .label = "instances"});
         image = device->makeImage({.width = 2, .height = 2, .kind = Device::ImageKind::Dynamic, .label = "picture"});
         sampler = device->makeSampler({});
         target = device->makeImage({.width = 16, .height = 16, .kind = Device::ImageKind::RenderTarget, .label = "target"});
@@ -198,6 +199,35 @@ TEST_P(OpenGlDeviceTest, FailsAReadbackWhoseBufferTheContextCannotHandOver) {
     }
 
     EXPECT_EQ(failure, "The GPU could not hand over the pixels of a render target.");
+}
+
+// A readback whose device found the context lost ends with the reason, since a lost context may never signal the fence of the copy.
+TEST_P(OpenGlDeviceTest, EndsAReadbackOnceTheDeviceFindsTheContextLost) {
+    const auto opened = std::make_shared<Context>();
+    opened->gl.load(*context, GetParam());
+    PixelReadback readback(opened, 0, 4, 4, false);
+    opened->lost = true;
+
+    try {
+        static_cast<void>(readback.poll());
+        FAIL() << "The readback went on after the context was lost.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "The OpenGL device was lost before it copied the pixels of a render target.");
+    }
+
+    EXPECT_FALSE(readback.poll().has_value());
+}
+
+// The device reports the largest uniform block that the context reads, and refuses a program with a larger block, which the context would not link.
+TEST_P(OpenGlDeviceTest, RefusesAUniformBlockLargerThanTheContextReads) {
+    Context opened;
+    opened.gl.load(*context, GetParam());
+    Gl::Int largest = 0;
+    opened.gl.getIntegerv(Gl::kMaxUniformBlockSize, &largest);
+    EXPECT_EQ(device->getCapabilities().maxUniformBlockSize, static_cast<std::size_t>(largest));
+
+    const std::array<Device::BlockBinding, 1> blocks{{{.slot = 0, .stage = Device::Stage::Vertex, .size = static_cast<std::uint32_t>(largest) + 16, .glslName = "shift"}}};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device->makeProgram({.vertex = {.source = vertex}, .fragment = {.source = fragment}, .blocks = blocks, .label = "too-large"}); }), gpu::ContractError::Rule::Program);
 }
 
 // The context would refuse the storage of such an image with an error that only validation shows, and the image would read as empty.

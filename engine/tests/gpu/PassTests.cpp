@@ -129,7 +129,7 @@ TEST_P(GpuPassTest, ResolvesMultisampledTargets) {
 
     // The triangle covers the half of the target below its diagonal.
     const std::array<float, 21> vertices{-1.0F, -1.0F, 0.0F, 1.0F, 1.0F, 1.0F, 1.0F, 1.0F, -1.0F, 0.0F, 1.0F, 1.0F, 1.0F, 1.0F, -1.0F, 1.0F, 0.0F, 1.0F, 1.0F, 1.0F, 1.0F};
-    const Device::Buffer buffer = device().makeBuffer({.data = std::as_bytes(std::span(vertices)), .label = "haylen-test-triangle"});
+    const Device::Buffer buffer = device().makeBuffer({.data = std::as_bytes(std::span(vertices)), .usage = {.vertex = true}, .label = "haylen-test-triangle"});
     const std::array<float, 8> uniforms{0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 1.0F, 1.0F, 1.0F};
     const std::array<Device::ColorAttachment, 1> colors{{{.image = samples, .store = Device::Store::Discard, .clear = math::Color::black(), .resolve = resolved}}};
 

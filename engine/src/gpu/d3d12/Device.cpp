@@ -13,7 +13,9 @@
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/SamplerRules.hpp"
+#include "gpu/d3d12/BufferReadback.hpp"
 #include "gpu/d3d12/ImageReadback.hpp"
+#include "gpu/d3d12/ReadbackCopy.hpp"
 #include "gpu/d3d12/StateDescriptions.hpp"
 #include "gpu/direct3d/Adapter.hpp"
 #include "gpu/direct3d/Formats.hpp"
@@ -156,6 +158,11 @@ void Device::readCapabilities() {
     capabilities.maxAnisotropy = 16;
     capabilities.maxLodBias = 15.99F;
     capabilities.borderColors = true;
+
+    // Feature level 11_0 brings storage buffers and the arguments of indirect draws, and a constant buffer view reads at most 4096 constants of 16 bytes.
+    capabilities.storageBuffers = true;
+    capabilities.indirectBuffers = true;
+    capabilities.maxUniformBlockSize = static_cast<std::size_t>(D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT) * 16;
 
     // Images sample through the view of their format, depth images draw through the view of their depth, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
     for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
@@ -389,7 +396,7 @@ ID3D12GraphicsCommandList4& Device::getTransferList() {
     return *transfers.Get();
 }
 
-ComPtr<ID3D12Resource> Device::makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 size, D3D12_RESOURCE_STATES state, std::string_view label) {
+ComPtr<ID3D12Resource> Device::makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 size, D3D12_RESOURCE_STATES state, D3D12_RESOURCE_FLAGS flags, std::string_view label) {
     const D3D12_HEAP_PROPERTIES properties = StateDescriptions::makeHeap(heap);
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -399,6 +406,7 @@ ComPtr<ID3D12Resource> Device::makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 s
     desc.MipLevels = 1;
     desc.SampleDesc.Count = 1;
     desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    desc.Flags = flags;
 
     ComPtr<ID3D12Resource> resource;
     HResult::check(device->CreateCommittedResource(&properties, D3D12_HEAP_FLAG_NONE, &desc, state, nullptr, IID_PPV_ARGS(resource.GetAddressOf())), std::format("create a buffer of {} bytes", size));
@@ -406,29 +414,77 @@ ComPtr<ID3D12Resource> Device::makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 s
     return resource;
 }
 
-gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
-    const std::size_t size = desc.data.empty() ? desc.size : desc.data.size();
-    if (size == 0) {
-        throw ContractError(ContractError::Rule::Buffer);
+// The frame opens before the bytes go into upload memory, since opening it takes back the upload memory of the frames the GPU finished.
+UploadAllocator::Allocation Device::stageBytes(std::span<const std::byte> data) {
+    openFrame();
+    const UploadAllocator::Allocation staged = uploads->allocate(data.size(), 16);
+    std::memcpy(staged.data, data.data(), data.size());
+    return staged;
+}
+
+bool Device::isWrittenBetweenPasses(const BufferRules::Description& description) noexcept {
+    return description.update == BufferUpdate::Dynamic || description.usage.copyDestination;
+}
+
+// The states that the device reads a buffer in for its usages, which a buffer written between passes takes after each write, so the draws and copies after it read it as it is.
+D3D12_RESOURCE_STATES Device::getReadState(const BufferUsage& usage) noexcept {
+    D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+    if (usage.vertex || usage.uniform) {
+        state |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
     }
 
-    if (desc.usage == Usage::Immutable && desc.data.empty()) {
-        throw ContractError(ContractError::Rule::Buffer);
+    if (usage.index) {
+        state |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
     }
+
+    if (usage.copySource) {
+        state |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+    }
+
+    return state;
+}
+
+// Every list starts with the buffers in the common state, to which they return as the list before it ends.
+D3D12_RESOURCE_STATES Device::getListState(const BufferRecord& record) const noexcept {
+    return record.stateFrame == frameNumber ? record.state : D3D12_RESOURCE_STATE_COMMON;
+}
+
+void Device::setListState(BufferRecord& record, D3D12_RESOURCE_STATES state) const noexcept {
+    record.state = state;
+    record.stateFrame = frameNumber;
+}
+
+// A buffer that copies or the list of the passes write, a copy source, which the readbacks of the transfer list read, and storage, whose resource takes unordered access, take resources of their own, whose states no other buffer shares.
+gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
+    const BufferRules::Description description = BufferRules::check(desc, capabilities);
+    const BufferUsage& usage = description.usage;
+    const bool own = isWrittenBetweenPasses(description) || usage.copySource || usage.storage;
 
     reserveGarbage();
-    BufferArena::Allocation allocation = bufferArena->allocate(size);
-    BufferRecord record{.resource = std::move(allocation.resource), .range = allocation.range, .size = size, .usage = desc.usage};
-    record.address = record.resource->GetGPUVirtualAddress() + record.range.offset;
-    if (record.range.block == BufferArena::Range::kOwnResource) {
-        setName(*record.resource.Get(), desc.label);
+    BufferRecord record{.description = description, .readState = getReadState(usage)};
+    if (own) {
+        record.resource = makeBufferResource(D3D12_HEAP_TYPE_DEFAULT, description.size, D3D12_RESOURCE_STATE_COMMON, usage.storage ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE, desc.label);
+    } else {
+        BufferArena::Allocation allocation = bufferArena->allocate(description.size);
+        record.resource = std::move(allocation.resource);
+        record.range = allocation.range;
+        if (record.range.block == BufferArena::Range::kOwnResource) {
+            setName(*record.resource.Get(), desc.label);
+        }
     }
 
+    record.address = record.resource->GetGPUVirtualAddress() + record.range.offset;
+
     if (!desc.data.empty()) {
+        const UploadAllocator::Allocation staged = stageBytes(desc.data);
         ID3D12GraphicsCommandList4& list = getTransferList();
-        const UploadAllocator::Allocation staged = uploads->allocate(size, 16);
-        std::memcpy(staged.data, desc.data.data(), size);
-        list.CopyBufferRegion(record.resource.Get(), record.range.offset, staged.resource, staged.offset, size);
+        list.CopyBufferRegion(record.resource.Get(), record.range.offset, staged.resource, staged.offset, description.size);
+
+        // A copy source leaves the copy in the common state again, so the readbacks that the same list copies out of it promote it.
+        if (usage.copySource) {
+            const D3D12_RESOURCE_BARRIER toCommon = makeTransition(record.resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+            list.ResourceBarrier(1, &toCommon);
+        }
     }
 
     return {buffers.add(std::move(record))};
@@ -560,6 +616,12 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
 }
 
 gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
+    for (const BlockBinding& block : desc.blocks) {
+        if (block.size > capabilities.maxUniformBlockSize) {
+            throw ContractError(ContractError::Rule::Program);
+        }
+    }
+
     ProgramRecord record{.layout = rootSignatures->make(desc)};
     record.vertexCode = compiler->compile(desc.vertex, desc.label);
     record.fragmentCode = compiler->compile(desc.fragment, desc.label);
@@ -696,24 +758,54 @@ void Device::destroy(Pipeline pipeline) noexcept {
     }
 }
 
+// A stream buffer takes the bytes in the transfer list, before the passes of the frame that read them, and the other buffers take them in the list of the passes at the place of the write.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
-    const BufferRecord& record = buffers.get(buffer.id);
-    if (record.usage != Usage::Dynamic) {
+    if (passOpen) {
         throw ContractError(ContractError::Rule::BufferWrite);
     }
 
-    if (offset % 4 != 0 || offset + data.size() > record.size) {
-        throw ContractError(ContractError::Rule::BufferWrite);
-    }
-
+    BufferRecord& record = buffers.get(buffer.id);
+    BufferRules::checkWrite(record.description, offset, data.size());
     if (data.empty()) {
         return;
     }
 
-    ID3D12GraphicsCommandList4& list = getTransferList();
-    const UploadAllocator::Allocation staged = uploads->allocate(data.size(), 16);
-    std::memcpy(staged.data, data.data(), data.size());
-    list.CopyBufferRegion(record.resource.Get(), record.range.offset + offset, staged.resource, staged.offset, data.size());
+    const UploadAllocator::Allocation staged = stageBytes(data);
+    if (record.description.update == BufferUpdate::Stream) {
+        ID3D12GraphicsCommandList4& list = getTransferList();
+        list.CopyBufferRegion(record.resource.Get(), record.range.offset + offset, staged.resource, staged.offset, data.size());
+        return;
+    }
+
+    copyIntoBuffer(record, offset, *staged.resource, staged.offset, data.size());
+}
+
+// A copy promotes its source from the state that the list gave it, as a draw does, and a source that a write of the list left in its read states reads as it is.
+void Device::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::BufferWrite);
+    }
+
+    BufferRecord& from = buffers.get(source.id);
+    BufferRecord& to = buffers.get(destination.id);
+    BufferRules::checkCopy(source, from.description, sourceOffset, destination, to.description, destinationOffset, size);
+    openFrame();
+
+    if (isWrittenBetweenPasses(from.description)) {
+        setListState(from, getListState(from) | D3D12_RESOURCE_STATE_COPY_SOURCE);
+    }
+
+    copyIntoBuffer(to, destinationOffset, *from.resource.Get(), from.range.offset + sourceOffset, size);
+}
+
+// The buffer goes from the state that the list gave it to the copy and on to the read states of its usages, so the passes and copies before the copy read the old bytes, those after it the new ones, and two writes of one range land in their order.
+void Device::copyIntoBuffer(BufferRecord& record, std::size_t offset, ID3D12Resource& source, UINT64 sourceOffset, std::size_t size) {
+    const D3D12_RESOURCE_BARRIER toCopy = makeTransition(record.resource.Get(), getListState(record), D3D12_RESOURCE_STATE_COPY_DEST);
+    commands->ResourceBarrier(1, &toCopy);
+    commands->CopyBufferRegion(record.resource.Get(), record.range.offset + offset, &source, sourceOffset, size);
+    const D3D12_RESOURCE_BARRIER toRead = makeTransition(record.resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, record.readState);
+    commands->ResourceBarrier(1, &toRead);
+    setListState(record, record.readState);
 }
 
 void Device::writeImages(std::span<const ImageWrite> writes) {
@@ -1086,6 +1178,9 @@ void Device::applyScissor(const math::Rect& pixels) {
 
 // A new root signature drops every root argument, so the tables are set again for the next draw.
 void Device::applyPipeline(Pipeline pipeline) {
+    blocksApplied = {};
+    blocksFromBuffers = {};
+
     if (skipping || bound.pipeline == pipeline.id) {
         return;
     }
@@ -1118,12 +1213,15 @@ void Device::applyBindings(const Bindings& bindings) {
     }
 
     const PipelineRecord& pipeline = pipelines.get(bound.pipeline);
+    bound.promotionCount = 0;
 
     std::array<D3D12_VERTEX_BUFFER_VIEW, kMaxVertexBuffers> views{};
     for (std::size_t index = 0; index < pipeline.bufferCount; ++index) {
         const BufferRecord& buffer = buffers.get(bindings.vertexBuffers[index].id);
+        BufferRules::checkVertex(buffer.description);
         const auto offset = static_cast<std::size_t>(bindings.vertexOffsets[index]);
-        views[index] = {.BufferLocation = buffer.address + offset, .SizeInBytes = static_cast<UINT>(buffer.size - offset), .StrideInBytes = pipeline.strides[index]};
+        views[index] = {.BufferLocation = buffer.address + offset, .SizeInBytes = static_cast<UINT>(buffer.description.size - offset), .StrideInBytes = pipeline.strides[index]};
+        notePromotion(buffer, bindings.vertexBuffers[index].id, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
     }
 
     if (pipeline.bufferCount != bound.vertexBufferCount || std::memcmp(views.data(), bound.vertexBuffers.data(), sizeof(D3D12_VERTEX_BUFFER_VIEW) * pipeline.bufferCount) != 0) {
@@ -1134,18 +1232,70 @@ void Device::applyBindings(const Bindings& bindings) {
 
     if (pipeline.indexFormat != DXGI_FORMAT_UNKNOWN) {
         const BufferRecord& buffer = buffers.get(bindings.indexBuffer.id);
+        BufferRules::checkIndex(buffer.description);
         const auto offset = static_cast<std::size_t>(bindings.indexOffset);
-        const D3D12_INDEX_BUFFER_VIEW view{.BufferLocation = buffer.address + offset, .SizeInBytes = static_cast<UINT>(buffer.size - offset), .Format = pipeline.indexFormat};
+        const D3D12_INDEX_BUFFER_VIEW view{.BufferLocation = buffer.address + offset, .SizeInBytes = static_cast<UINT>(buffer.description.size - offset), .Format = pipeline.indexFormat};
+        notePromotion(buffer, bindings.indexBuffer.id, D3D12_RESOURCE_STATE_INDEX_BUFFER);
         if (std::memcmp(&view, &bound.indexBuffer, sizeof(view)) != 0) {
             commands->IASetIndexBuffer(&view);
             bound.indexBuffer = view;
         }
     }
 
+    bindUniformBuffers(pipeline, bindings);
+
     // A heap that runs out of room is replaced, which drops every table that the list set in its heaps, so the tables go into the new heaps again, and a new heap always has room for the tables of one draw.
     for (DescriptorRing* full = applyTables(pipeline, bindings); full != nullptr; full = applyTables(pipeline, bindings)) {
         retire(full->grow());
         setHeaps();
+    }
+}
+
+// A block reads the range of the uniform buffer that the bindings name at its slot, which `applyUniforms` never fed since the pipeline, through a root constant buffer view at the address of the range.
+void Device::bindUniformBuffers(const PipelineRecord& pipeline, const Bindings& bindings) {
+    for (std::size_t slot = 0; slot < kMaxBlocks; ++slot) {
+        const int parameter = pipeline.layout.blockParameters[slot];
+        const BufferRange& range = bindings.uniformBuffers[slot];
+        if (parameter < 0 || !range.buffer.isValid()) {
+            blocksFromBuffers[slot] = false;
+            continue;
+        }
+
+        if (blocksApplied[slot]) {
+            throw ContractError(ContractError::Rule::Uniforms);
+        }
+
+        const BufferRecord& buffer = buffers.get(range.buffer.id);
+        BufferRules::checkUniform(buffer.description, range.offset, pipeline.layout.blockSizes[slot]);
+        commands->SetGraphicsRootConstantBufferView(static_cast<UINT>(parameter), buffer.address + range.offset);
+        notePromotion(buffer, range.buffer.id, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+        blocksFromBuffers[slot] = true;
+    }
+}
+
+// Only the buffers that the list of the passes writes need the states that the draws promote them to, which the next write starts from.
+void Device::notePromotion(const BufferRecord& record, std::uint64_t id, D3D12_RESOURCE_STATES state) noexcept {
+    if (!isWrittenBetweenPasses(record.description)) {
+        return;
+    }
+
+    bound.promotions[bound.promotionCount++] = {.buffer = id, .state = state};
+    bound.promoted = false;
+}
+
+// A draw promotes the buffers that it reads from the common state, and a buffer that a write of the list left in its read states keeps them, so the state of each buffer joins what the draw reads. A buffer destroyed since the bindings needs no state, since nothing writes it again.
+void Device::promoteBound() noexcept {
+    if (bound.promoted) {
+        return;
+    }
+
+    bound.promoted = true;
+    for (UINT index = 0; index < bound.promotionCount; ++index) {
+        const Promotion& promotion = bound.promotions[index];
+        BufferRecord* record = buffers.find(promotion.buffer);
+        if (record != nullptr) {
+            setListState(*record, getListState(*record) | promotion.state);
+        }
     }
 }
 
@@ -1204,9 +1354,15 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         throw ContractError(ContractError::Rule::Uniforms);
     }
 
+    const auto index = static_cast<std::size_t>(slot);
+    if (blocksFromBuffers[index]) {
+        throw ContractError(ContractError::Rule::Uniforms);
+    }
+
     const UploadAllocator::Allocation staged = uploads->allocate(data.size(), kUniformAlignment);
     std::memcpy(staged.data, data.data(), data.size());
-    commands->SetGraphicsRootConstantBufferView(static_cast<UINT>(pipeline.layout.blockParameters[static_cast<std::size_t>(slot)]), staged.address);
+    commands->SetGraphicsRootConstantBufferView(static_cast<UINT>(pipeline.layout.blockParameters[index]), staged.address);
+    blocksApplied[index] = true;
 }
 
 void Device::applyStencilReference(std::uint8_t value) {
@@ -1231,6 +1387,8 @@ void Device::draw(int first, int count, int instances) {
     if (skipping || count <= 0 || instances <= 0) {
         return;
     }
+
+    promoteBound();
 
     if (bound.indexed) {
         commands->DrawIndexedInstanced(static_cast<UINT>(count), static_cast<UINT>(instances), static_cast<UINT>(first), 0, 0);
@@ -1339,6 +1497,7 @@ void Device::commit() {
     textureTables->endFrame(fenceValue);
     samplerTables->endFrame(fenceValue);
     frameIndex = (frameIndex + 1) % kFramesInFlight;
+    ++frameNumber;
     frameOpen = false;
     transfersOpen = false;
 
@@ -1437,7 +1596,7 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
 
     const auto rowBytes = static_cast<UINT>(ImageInfo::getRowBytes(record.format, width));
     const UINT pitch = (rowBytes + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1) / D3D12_TEXTURE_DATA_PITCH_ALIGNMENT * D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
-    ComPtr<ID3D12Resource> buffer = makeBufferResource(D3D12_HEAP_TYPE_READBACK, static_cast<UINT64>(pitch) * static_cast<UINT64>(height), D3D12_RESOURCE_STATE_COPY_DEST, "haylen-readback");
+    ComPtr<ID3D12Resource> buffer = makeBufferResource(D3D12_HEAP_TYPE_READBACK, static_cast<UINT64>(pitch) * static_cast<UINT64>(height), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, "haylen-readback");
 
     ID3D12GraphicsCommandList4& list = getTransferList();
     const D3D12_RESOURCE_BARRIER toCopy = makeTransition(record.resource.Get(), record.home, D3D12_RESOURCE_STATE_COPY_SOURCE, 0);
@@ -1451,7 +1610,21 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     list.ResourceBarrier(1, &toHome);
 
     // The copy runs with the frame that the next commit submits, which signals the next fence value.
-    return std::make_unique<ImageReadback>(std::move(buffer), fence, fenceValue + 1, pitch, record.format, width, height);
+    return std::make_unique<ImageReadback>(ReadbackCopy(std::move(buffer), fence, fenceValue + 1), pitch, record.format, width, height);
+}
+
+// The copy runs in the transfer list of the frame that the next commit submits, before its passes, so it reads what the committed frames left in the buffer.
+std::unique_ptr<gpu::Device::Readback> Device::readBuffer(Buffer buffer, std::size_t offset, std::size_t size) {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::Readback);
+    }
+
+    const BufferRecord& record = buffers.get(buffer.id);
+    BufferRules::checkRead(record.description, offset, size);
+    ComPtr<ID3D12Resource> copy = makeBufferResource(D3D12_HEAP_TYPE_READBACK, size, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, "haylen-readback");
+    ID3D12GraphicsCommandList4& list = getTransferList();
+    list.CopyBufferRegion(copy.Get(), 0, record.resource.Get(), record.range.offset + offset, size);
+    return std::make_unique<BufferReadback>(ReadbackCopy(std::move(copy), fence, fenceValue + 1), size);
 }
 
 // A surface beyond the window draws through the pipelines of the swapchain, so its attachments take their sample count, and it makes its swapchain now, so a surface that Direct3D 12 cannot draw into fails at once and gives back the views it took.

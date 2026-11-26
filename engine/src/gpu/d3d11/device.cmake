@@ -3,10 +3,12 @@ include("${CMAKE_CURRENT_LIST_DIR}/../direct3d/direct3d.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/../renderdoc/renderdoc.cmake")
 
 target_sources(haylen-gpu PRIVATE
+  "${CMAKE_CURRENT_LIST_DIR}/BufferReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Device.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/DynamicRing.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/FrameTimer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ImageReadback.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/StagingCopy.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/StateObjects.cpp"
 )
 target_compile_definitions(haylen-gpu PUBLIC HAYLEN_GPU_DIRECT3D11)

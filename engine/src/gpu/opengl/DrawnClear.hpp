@@ -10,7 +10,7 @@
 
 namespace haylen::gpu::opengl {
 
-// Clears a color attachment of the bound draw framebuffer by drawing the color over every sample of it, for an OpenGL ES driver whose clears miss parts of an attachment that its draws reach, such as a later layer of an array or the other samples of a multisampled image.
+// Clears a color attachment of the bound draw framebuffer by drawing the color over every sample of it, for an OpenGL ES driver whose clears miss parts of an attachment that its draws reach, such as a later layer of an array or the other samples of a multisampled image. The color reaches the draw through a uniform buffer of its own, which takes a color only when it differs from the one it holds.
 class DrawnClear final {
   public:
     DrawnClear(Gl& functions, StateCache& cache);
@@ -31,6 +31,8 @@ class DrawnClear final {
     StateCache& state;
     ShaderProgram program;
     Gl::Uint vertexArray = 0;
+    Gl::Uint colorBuffer = 0;
+    std::array<float, 4> written{};
 };
 
 } // namespace haylen::gpu::opengl

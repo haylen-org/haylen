@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "gpu/BufferRules.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageInfo.hpp"
@@ -23,13 +24,14 @@
 #include "gpu/webgpu/Connection.hpp"
 #include "gpu/webgpu/FrameTimer.hpp"
 #include "gpu/webgpu/Swapchain.hpp"
-#include "gpu/webgpu/UniformRing.hpp"
+#include "gpu/webgpu/UploadRing.hpp"
+#include "haylen/gpu/ContractError.hpp"
 #include "haylen/gpu/Device.hpp"
 #include "haylen/gpu/Surface.hpp"
 
 namespace haylen::gpu::webgpu {
 
-// The device of WebGPU, which draws through the WebGPU C API of the browser into the canvas of the page. The uniform blocks of a program live in bind group 0 with dynamic offsets into the uniform ring, and its textures and samplers in bind group 1, whose groups the device keeps by what they hold. Queue writes carry buffers and images to the GPU in the order of the frames, and WebGPU frees a destroyed object only once the GPU finished the frames that use it, so the device hands what is destroyed to WebGPU once the frame that may still record it is submitted.
+// The device of WebGPU, which draws through the WebGPU C API of the browser into the canvas of the page. The uniform blocks of a program live in bind group 0 with dynamic offsets into the uniform ring or into the uniform buffers that the bindings name, and its textures and samplers in bind group 1, whose groups the device keeps by what they hold. Queue writes carry images and the contents of stream buffers to the GPU in the order of the frames, the writes into dynamic buffers and the copies between buffers are copies of the command encoder of the frame between its passes, and WebGPU frees a destroyed object only once the GPU finished the frames that use it, so the device hands what is destroyed to WebGPU once the frame that may still record it is submitted.
 class Device final : public gpu::Device {
   public:
     // Creates the device on the connection that `DeviceFactory::prepare` made ready, drawing into the canvas of the surface, or offscreen when there is none. Throws `std::runtime_error` with the reason when WebGPU cannot start, so the platform tries the next graphics API. The adapter followed the options when `DeviceFactory::prepare` requested it, and WebGPU validates every call and the device labels every object in every build.
@@ -61,6 +63,7 @@ class Device final : public gpu::Device {
     void destroy(Pipeline pipeline) noexcept override;
 
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
+    void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
 
     void beginPass(const PassDesc& desc) override;
@@ -84,7 +87,7 @@ class Device final : public gpu::Device {
 
     void commit() override;
 
-    // Releases the chunks of the uniform ring that the last frame did not reach, with their bind groups. The browser holds every other upload and frees each object that the device releases, so the ring is all that the device keeps for later.
+    // Releases the chunks of the uniform ring and of the uploads that the last frame did not reach, with the bind groups of the uniform ring. The browser holds every other upload and frees each object that the device releases, so the rings are all that the device keeps for later.
     void trim() override;
     void resizeSurface(const Surface::Size& size) override;
     void detachSurface() override;
@@ -94,17 +97,21 @@ class Device final : public gpu::Device {
     void removeSurface(int surface) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
+    [[nodiscard]] std::unique_ptr<Readback> readBuffer(Buffer buffer, std::size_t offset, std::size_t size) override;
 
     [[nodiscard]] CaptureSupport getCaptureSupport() const override;
     void beginCapture(const std::filesystem::path& path) override;
     [[nodiscard]] std::filesystem::path endCapture() override;
 
   private:
+    // WebGPU copies between buffers from offsets that are multiples of this many bytes.
+    static constexpr std::uint32_t kCopyAlignment = 4;
+
     static constexpr std::string_view kMissingCaptureTool = "Browsers give a page no capture tool for WebGPU, so the engine cannot capture its frames. Capture them on a desktop, where RenderDoc captures Vulkan and Direct3D and Metal captures its own.";
 
     struct BufferRecord {
         WGPUBuffer buffer = nullptr;
-        std::size_t size = 0;
+        BufferRules::Description description{};
     };
 
     // The texture of an image, the view that draws sample it through and the views that passes draw into it through, by mip level and layer.
@@ -125,11 +132,19 @@ class Device final : public gpu::Device {
         WGPUSampler sampler = nullptr;
     };
 
-    // The uniform blocks that the programs of one layout of bind group 0 hold, by binding number and size, with the bind group of every chunk of the uniform ring.
+    // The buffer that each block of a group of bind group 0 reads, in the order of the blocks of its layout: a uniform buffer by its id, or the chunk of the uniform ring where the id is zero. A group whose blocks all read uniform buffers names the first chunk, since it reads none.
+    struct BlockGroupKey {
+        std::uint32_t chunk = 0;
+        std::array<std::uint64_t, kMaxBlocks> buffers{};
+
+        friend auto operator<=>(const BlockGroupKey&, const BlockGroupKey&) = default;
+    };
+
+    // The uniform blocks that the programs of one layout of bind group 0 hold, by binding number and size, with the bind groups of the buffers they read.
     struct BlockLayout {
         WGPUBindGroupLayout layout = nullptr;
         std::vector<std::pair<std::uint32_t, std::uint32_t>> blocks;
-        std::vector<WGPUBindGroup> groups;
+        std::map<BlockGroupKey, WGPUBindGroup> groups;
     };
 
     // A shader module made from one source text, which the programs that run it share.
@@ -226,17 +241,22 @@ class Device final : public gpu::Device {
     [[nodiscard]] BlockLayout& getBlockLayout(std::span<const BlockBinding> blocks);
     [[nodiscard]] WGPUBindGroupLayout getImageLayout(std::span<const TextureBinding> textures, std::span<const SamplerBinding> samplers);
     [[nodiscard]] WGPUPipelineLayout getPipelineLayout(WGPUBindGroupLayout blocks, WGPUBindGroupLayout images);
-    [[nodiscard]] WGPUBindGroup getBlockGroup(BlockLayout& layout, std::uint32_t chunk);
+    [[nodiscard]] WGPUBindGroup getBlockGroup(BlockLayout& layout, const BlockGroupKey& key);
+    template <typename Matches> void releaseBlockGroups(Matches&& matches) noexcept;
     [[nodiscard]] WGPUBindGroup makeImageGroup(const ProgramRecord& program, const BindGroupCache::Key& key);
     [[nodiscard]] WGPURenderPipeline createPipeline(const PipelineDesc& desc);
     void rebuildSwapchainPipelines();
 
     void openEncoder();
+    void requireNoPass(ContractError::Rule rule) const;
+    void writeStream(const BufferRecord& record, std::size_t offset, std::span<const std::byte> data);
+    void writeDynamic(const BufferRecord& record, std::size_t offset, std::span<const std::byte> data);
     void beginSwapchainPass(const PassDesc& desc);
     [[nodiscard]] Swapchain& requireSwapchain(int surface);
     [[nodiscard]] std::unique_ptr<Swapchain>& requireAddedSurface(int surface);
     void beginOffscreenPass(const PassDesc& desc);
     void carryUniforms() noexcept;
+    [[nodiscard]] std::uint32_t bindUniformBuffers(const ProgramRecord& program, const Bindings& value);
     void bindBlocks(const ProgramRecord& program);
     void bindImages(const ProgramRecord& program);
     void bindIndexBuffer(WGPUIndexFormat format);
@@ -257,7 +277,8 @@ class Device final : public gpu::Device {
     // The format of every canvas, which the browser prefers for the whole page, and the samples of the canvas of the window, which every canvas draws with.
     const PixelFormat swapchainFormat = Swapchain::getPreferredFormat();
     int swapchainSamples = 1;
-    UniformRing ring;
+    UploadRing uniformRing;
+    UploadRing uploads;
     std::unique_ptr<FrameTimer> timer;
     BindGroupCache imageGroups;
 
@@ -285,6 +306,9 @@ class Device final : public gpu::Device {
     std::uint64_t currentPipeline = 0;
     Bindings bindings;
     std::array<UniformBlock, kMaxBlocks> uniforms{};
+    // The blocks that `applyUniforms` fed since the pipeline was applied, and those that the uniform buffers of the bindings feed, by bind slot.
+    std::uint32_t appliedBlocks = 0;
+    std::uint32_t bufferBlocks = 0;
     bool blocksDirty = true;
     bool imagesDirty = true;
     BoundState bound;

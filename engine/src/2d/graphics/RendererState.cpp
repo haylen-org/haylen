@@ -1033,7 +1033,7 @@ void RendererState::ensureBuffer(gpu::Device::Buffer& buffer, std::size_t& capac
     bufferBytes += (grown - capacity) * elementSize;
     buffersTracked.setBytes(bufferBytes);
     capacity = grown;
-    buffer = getGpu().makeBuffer({.size = capacity * elementSize, .usage = gpu::Device::Usage::Dynamic, .index = isIndexBuffer, .label = isIndexBuffer ? "haylen-index-buffer" : "haylen-vertex-buffer"});
+    buffer = getGpu().makeBuffer({.size = capacity * elementSize, .usage = {.vertex = !isIndexBuffer, .index = isIndexBuffer}, .update = gpu::Device::BufferUpdate::Stream, .label = isIndexBuffer ? "haylen-index-buffer" : "haylen-vertex-buffer"});
 }
 
 } // namespace haylen::graphics2d

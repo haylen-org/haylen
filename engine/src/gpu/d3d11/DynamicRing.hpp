@@ -10,7 +10,7 @@
 
 namespace haylen::gpu::d3d11 {
 
-// A dynamic buffer that takes data for the GPU one piece after another, mapping each piece without waiting: the pieces append behind the ones the GPU may still read, and when the ring is full it starts over on a fresh copy of the buffer that the driver hands out, while the GPU keeps reading the old one. Uniforms bind parts of it as constant buffers.
+// A dynamic buffer that takes data for the GPU one piece after another, mapping each piece without waiting: the pieces append behind the ones the GPU may still read, and when the ring is full it starts over on a fresh copy of the buffer that the driver hands out, while the GPU keeps reading the old one. Uniforms bind parts of it as constant buffers, and the writes into buffers in GPU memory copy their bytes out of it.
 class DynamicRing final {
   public:
     // Where a piece went in the ring, and whether the ring started over on a fresh copy for it, which holds none of the pieces written before.

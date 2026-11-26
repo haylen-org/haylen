@@ -14,7 +14,7 @@
 
 namespace haylen::gpu::d3d12 {
 
-// Builds the root signature of a program from its reflection: a root constant buffer view for each uniform block, which points into the upload memory of the frame, and for each stage a descriptor table of its textures and one of its samplers, with every register where the HLSL of the package puts it. Programs of the same layout share one root signature, so switching between their pipelines keeps every root argument.
+// Builds the root signature of a program from its reflection: a root constant buffer view for each uniform block, which points into the upload memory of the frame or into a uniform buffer, and for each stage a descriptor table of its textures and one of its samplers, with every register where the HLSL of the package puts it. Programs of the same layout share one root signature, so switching between their pipelines keeps every root argument.
 class RootSignatures final {
   public:
     // A descriptor table of one stage, with the slots of the bindings in the order of its descriptors.

@@ -391,8 +391,8 @@ TEST_F(NullDeviceTest, FiltersOnlyTheFormatsTheDeviceFilters) {
 // A frame writes each part of a dynamic buffer once, at an offset that is a multiple of four, and before a pass binds it, and an indexed draw reads only the indices its buffer holds.
 TEST_F(NullDeviceTest, WritesBuffersBeforeTheirPassesAndDrawsWithinTheirIndices) {
     NullDevice device;
-    const Device::Buffer vertices = device.makeBuffer({.size = 64, .usage = Device::Usage::Dynamic, .label = "vertices"});
-    const Device::Buffer indices = device.makeBuffer({.size = 12, .usage = Device::Usage::Dynamic, .index = true, .label = "indices"});
+    const Device::Buffer vertices = device.makeBuffer({.size = 64, .usage = {.vertex = true}, .update = Device::BufferUpdate::Stream, .label = "vertices"});
+    const Device::Buffer indices = device.makeBuffer({.size = 12, .usage = {.index = true}, .update = Device::BufferUpdate::Stream, .label = "indices"});
     device.writeBuffer(vertices, 0, pixels);
     device.writeBuffer(vertices, 16, pixels);
     EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeBuffer(vertices, 8, pixels); }), gpu::ContractError::Rule::BufferWrite);
@@ -415,6 +415,98 @@ TEST_F(NullDeviceTest, WritesBuffersBeforeTheirPassesAndDrawsWithinTheirIndices)
     EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeBuffer(vertices, 32, pixels); }), gpu::ContractError::Rule::BufferWrite);
     device.commit();
     EXPECT_NO_THROW(device.writeBuffer(vertices, 0, pixels));
+}
+
+// A buffer has a size and a usage that the device has, a uniform buffer and an index buffer serve no other draw, an immutable buffer comes with its data and takes no copy, and a stream buffer is no copy source or destination.
+TEST_F(NullDeviceTest, ChecksTheUsagesAndTheUpdateOfBuffers) {
+    NullDevice device;
+    const auto refuses = [&device](const Device::BufferDesc& desc) { return test::ContractRule::of([&] { (void)device.makeBuffer(desc); }) == gpu::ContractError::Rule::Buffer; };
+    EXPECT_TRUE(refuses({.size = 0, .usage = {.vertex = true}, .update = Device::BufferUpdate::Dynamic, .label = "empty"}));
+    EXPECT_TRUE(refuses({.size = 64, .update = Device::BufferUpdate::Dynamic, .label = "unused"}));
+    EXPECT_TRUE(refuses({.size = 64, .usage = {.vertex = true, .uniform = true}, .update = Device::BufferUpdate::Dynamic, .label = "uniform vertices"}));
+    EXPECT_TRUE(refuses({.size = 64, .usage = {.vertex = true, .index = true}, .update = Device::BufferUpdate::Dynamic, .label = "indexed vertices"}));
+    EXPECT_TRUE(refuses({.size = 64, .usage = {.vertex = true}, .label = "empty immutable"}));
+    EXPECT_TRUE(refuses({.data = pixels, .usage = {.copyDestination = true}, .label = "copied immutable"}));
+    EXPECT_TRUE(refuses({.size = 64, .usage = {.vertex = true, .copySource = true}, .update = Device::BufferUpdate::Stream, .label = "copied stream"}));
+    EXPECT_NO_THROW((void)device.makeBuffer({.size = 64, .usage = {.storage = true, .indirect = true, .copySource = true}, .update = Device::BufferUpdate::Dynamic, .label = "storage"}));
+
+    Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
+    capabilities.storageBuffers = false;
+    capabilities.indirectBuffers = false;
+    NullDevice limited(Device::Language::None, capabilities);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)limited.makeBuffer({.size = 64, .usage = {.storage = true}, .update = Device::BufferUpdate::Dynamic, .label = "storage"}); }), gpu::ContractError::Rule::Buffer);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)limited.makeBuffer({.size = 64, .usage = {.indirect = true}, .update = Device::BufferUpdate::Dynamic, .label = "indirect"}); }), gpu::ContractError::Rule::Buffer);
+}
+
+// A dynamic buffer takes writes of whole words between passes as often as the frame needs, and copies and readbacks reach whole words inside buffers that are their source and destination.
+TEST_F(NullDeviceTest, WritesCopiesAndReadsDynamicBuffersInWholeWords) {
+    NullDevice device;
+    const Device::Buffer source = device.makeBuffer({.data = pixels, .usage = {.copySource = true}, .label = "source"});
+    const Device::Buffer dynamic = device.makeBuffer({.size = 64, .usage = {.vertex = true, .copySource = true, .copyDestination = true}, .update = Device::BufferUpdate::Dynamic, .label = "dynamic"});
+    const auto bytes = std::span<const std::byte>(pixels);
+    device.writeBuffer(dynamic, 0, bytes);
+    device.writeBuffer(dynamic, 0, bytes);
+    EXPECT_EQ(test::ContractRule::of([&] { device.writeBuffer(dynamic, 4, bytes.first(6)); }), gpu::ContractError::Rule::BufferWrite);
+    EXPECT_EQ(test::ContractRule::of([&] { device.writeBuffer(source, 0, bytes); }), gpu::ContractError::Rule::BufferWrite);
+    EXPECT_EQ(test::ContractRule::of([&] { device.writeBuffer(dynamic, 56, bytes); }), gpu::ContractError::Rule::BufferWrite);
+
+    device.copyBuffer(source, 4, dynamic, 48, 12);
+    EXPECT_EQ(test::ContractRule::of([&] { device.copyBuffer(source, 2, dynamic, 0, 4); }), gpu::ContractError::Rule::BufferWrite);
+    EXPECT_EQ(test::ContractRule::of([&] { device.copyBuffer(source, 0, dynamic, 56, 16); }), gpu::ContractError::Rule::BufferWrite);
+    EXPECT_EQ(test::ContractRule::of([&] { device.copyBuffer(dynamic, 0, source, 0, 4); }), gpu::ContractError::Rule::BufferWrite);
+    EXPECT_EQ(test::ContractRule::of([&] { device.copyBuffer(dynamic, 0, dynamic, 32, 4); }), gpu::ContractError::Rule::BufferWrite);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.readBuffer(dynamic, 60, 8); }), gpu::ContractError::Rule::Readback);
+
+    device.beginPass({});
+    EXPECT_EQ(test::ContractRule::of([&] { device.writeBuffer(dynamic, 0, bytes); }), gpu::ContractError::Rule::BufferWrite);
+    EXPECT_EQ(test::ContractRule::of([&] { device.copyBuffer(source, 0, dynamic, 0, 4); }), gpu::ContractError::Rule::BufferWrite);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.readBuffer(dynamic, 0, 4); }), gpu::ContractError::Rule::Readback);
+    device.endPass();
+    device.commit();
+    EXPECT_EQ(device.getLastFrame().bufferWrites, 2);
+    EXPECT_EQ(device.getLastFrame().bufferCopies, 1);
+
+    const std::unique_ptr<Device::Readback> copy = device.readBuffer(dynamic, 8, 16);
+    EXPECT_FALSE(copy->poll().has_value());
+    EXPECT_EQ(copy->poll(), std::vector<std::uint8_t>(16, 0));
+}
+
+// A uniform block reads a uniform buffer at an aligned offset with room for the block, or the bytes of its slot, never both since the pipeline was applied.
+TEST_F(NullDeviceTest, FeedsEachUniformBlockFromABufferOrFromItsUniforms) {
+    NullDevice device;
+    const std::array<Device::BlockBinding, 1> blocks{{{.slot = 1, .stage = Device::Stage::Fragment, .size = 32}}};
+    const Device::Program program = device.makeProgram({.blocks = blocks, .label = "tinted"});
+    const std::array<Device::ColorTarget, 1> targets{};
+    const Device::Pipeline pipeline = device.makePipeline({.program = program, .colors = targets, .swapchain = true, .label = "tinted"});
+    const Device::Buffer uniforms = device.makeBuffer({.size = 512, .usage = {.uniform = true}, .update = Device::BufferUpdate::Dynamic, .label = "uniforms"});
+    const Device::Buffer vertices = device.makeBuffer({.data = pixels, .usage = {.vertex = true}, .label = "vertices"});
+    const std::array<std::byte, 32> values{};
+
+    device.beginPass({});
+    device.applyPipeline(pipeline);
+    // clang-format off
+    const auto bindsAt = [&](Device::Buffer buffer, std::size_t offset) {
+        Device::Bindings bindings;
+        bindings.uniformBuffers[1] = {.buffer = buffer, .offset = offset};
+        return test::ContractRule::of([&] { device.applyBindings(bindings); });
+    };
+    // clang-format on
+    EXPECT_EQ(bindsAt(uniforms, 128), gpu::ContractError::Rule::Bindings);
+    EXPECT_EQ(bindsAt(uniforms, 512), gpu::ContractError::Rule::Bindings);
+    EXPECT_EQ(bindsAt(vertices, 0), gpu::ContractError::Rule::Bindings);
+    EXPECT_EQ(bindsAt(uniforms, 256), std::nullopt);
+    EXPECT_NO_THROW(device.draw(0, 3, 1));
+    EXPECT_EQ(test::ContractRule::of([&] { device.applyUniforms(1, values); }), gpu::ContractError::Rule::Uniforms);
+
+    device.applyPipeline(pipeline);
+    device.applyUniforms(1, values);
+    EXPECT_EQ(bindsAt(uniforms, 0), gpu::ContractError::Rule::Uniforms);
+    EXPECT_NO_THROW(device.draw(0, 3, 1));
+    device.endPass();
+    device.commit();
+
+    const std::array<Device::BlockBinding, 1> large{{{.slot = 0, .size = static_cast<std::uint32_t>(NullDevice::kMaxUniformBlockSize + 16)}}};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeProgram({.blocks = large, .label = "large"}); }), gpu::ContractError::Rule::Program);
 }
 
 // A debug group pushed inside a pass closes in that pass, one pushed between passes closes between them, and a frame commits with none open.
