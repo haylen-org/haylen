@@ -50,6 +50,9 @@ set(HAYLEN_TEST_SOURCES
   2d/tiled/MapQueryTests.cpp
   2d/tiled/TileCollisionTests.cpp
   2d/tiled/TiledTests.cpp
+  3d/physics/BackendRegistryTests.cpp
+  3d/physics/WorldTests.cpp
+  3d/physics/jolt/SimulationTests.cpp
   3d/spatial/GridRayTests.cpp
   3d/spatial/KdTreeTests.cpp
   3d/spatial/MeshBvhTests.cpp
@@ -278,6 +281,8 @@ if(WIN32)
 endif()
 # The objects of the headless host reach only the programs that link it themselves.
 target_link_libraries(haylen-tests PRIVATE haylen-test-support haylen::headless)
+# The tests of the backend of Jolt build bodies with the API of Jolt itself.
+target_link_libraries(haylen-tests PRIVATE Jolt)
 # The queue of the compilations of Direct3D holds plain threads, so its tests run on every desktop, with its source from the GPU library on Windows and compiled into the tests elsewhere.
 if(NOT WIN32)
   target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/direct3d/CompileQueue.cpp")

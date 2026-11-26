@@ -24,7 +24,7 @@
 
 namespace haylen::core {
 
-const std::array<std::string_view, 28> AppConfig::kKeys{"name", "identifier", "version", "build", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "localization", "native", "plugins", "category", "kind", "cpp", "platforms"};
+const std::array<std::string_view, 29> AppConfig::kKeys{"name", "identifier", "version", "build", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "localization", "physics3d", "native", "plugins", "category", "kind", "cpp", "platforms"};
 
 const std::array<std::pair<std::string_view, content::Delivery>, 3> AppConfig::kDeliveryNames{{{"required", content::Delivery::Required}, {"prefetch", content::Delivery::Prefetch}, {"onDemand", content::Delivery::OnDemand}}};
 
@@ -857,6 +857,10 @@ AppConfig AppConfig::fromJson(const Json& document, std::span<const std::string_
         readDebug(document.at("debug"), config);
     }
 
+    if (document.contains("physics3d")) {
+        config.physics3d = document.at("physics3d");
+    }
+
     if (document.contains("native")) {
         if (!document.at("native").is_object()) {
             throw std::invalid_argument("The \"native\" section of \"haylen.json\" must be an object of libraries.");
@@ -973,7 +977,7 @@ Json AppConfig::toJson() const {
     }
 
     Json document{
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"build", build}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"localization", localizationJson}, {"native", native}, {"plugins", pluginsJson},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"build", build}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"localization", localizationJson}, {"physics3d", physics3d}, {"native", native}, {"plugins", pluginsJson},
     };
     for (const auto& [section, value] : sections) {
         document[section] = value;

@@ -18,7 +18,7 @@ struct lua_State;
 
 namespace haylen::lua::physics2d {
 
-// Installs the `PhysicsWorld` class of `haylen.physics2d`. The user value of a world object is its state table, which holds the event callbacks and the data of its bodies.
+// Installs the `PhysicsWorld2D` class of `haylen.physics2d`. The user value of a world object is its state table, which holds the event callbacks and the data of its bodies.
 class WorldBinding final {
   public:
     static void install(lua_State* L);

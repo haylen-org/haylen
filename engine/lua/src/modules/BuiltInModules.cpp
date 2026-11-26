@@ -21,6 +21,7 @@
 #include "modules/Nodes2DModule.hpp"
 #include "modules/Particles2DModule.hpp"
 #include "modules/Physics2DModule.hpp"
+#include "modules/Physics3DModule.hpp"
 #include "modules/PlatformModule.hpp"
 #include "modules/Procedural2DModule.hpp"
 #include "modules/Spatial2DModule.hpp"
@@ -55,6 +56,7 @@ void BuiltInModules::registerAll(Modules& modules) {
     modules.add(std::make_unique<DebugModule>());
     modules.add(std::make_unique<HotReloadModule>());
     modules.add(std::make_unique<Physics2DModule>());
+    modules.add(std::make_unique<Physics3DModule>());
     modules.add(std::make_unique<UiModule>());
     modules.add(std::make_unique<NetModule>());
     modules.add(std::make_unique<PlatformModule>());

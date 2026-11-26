@@ -191,6 +191,9 @@ struct AppConfig {
     Content content{};
     Localization localization{};
 
+    // The settings that every 3D physics world of the app starts from, which the 3D physics plugin reads and checks when it starts, before any script runs. The engine keeps the section as `haylen.json` wrote it.
+    Json physics3d = Json::object();
+
     // The native libraries the app ships by name, which the backend of each target builds and places in the app. The engine keeps the section as `haylen.json` wrote it.
     Json native = Json::object();
 
@@ -227,7 +230,7 @@ struct AppConfig {
     static constexpr std::uint32_t kMaxBuild = 2'100'000'000;
 
   private:
-    static const std::array<std::string_view, 28> kKeys;
+    static const std::array<std::string_view, 29> kKeys;
     static const std::array<std::pair<std::string_view, content::Delivery>, 3> kDeliveryNames;
     static const std::array<std::string_view, 10> kCategoryNames;
 

@@ -426,6 +426,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | Dear ImGui | v1.93.0 | Compiled as `haylen-imgui` with the ImGui configuration of the engine, which leaves out its own reader of fonts with `IMGUI_DISABLE_STB_TRUETYPE`, since the engine hands ImGui a font loader that reads through HarfBuzz. |
 | miniaudio | 0.11.26 | Compiled as `haylen-miniaudio`. |
 | Box2D | v3.2.0 | With the [patches](#patches) of `engine/cmake/patches`. It picks its SIMD instructions when the app starts, AVX2 where the processor has it and SSE2 otherwise on x64, Neon on 64-bit ARM, plain math on 32-bit ARM and the SIMD of WebAssembly on the web. |
+| Jolt Physics | v5.7.0 | The built-in backend of 3D physics, in single precision with 32-bit object layers, with the [patches](#patches) of `engine/cmake/patches`. Its own job system, profiler, object streams, asserts and GPU compute stay out, and its debug renderer builds into Debug alone. It compiles with RTTI, since classes of the engine derive from its classes, and without exceptions, as Jolt ships, so every function that the engine hands Jolt is `noexcept`. It picks its SIMD instructions when it compiles: SSE4.2 and POPCNT on x64, Neon on 64-bit ARM, plain math on 32-bit ARM and the SIMD of WebAssembly on the web. Its precompiled header stays off, so compiler caches keep its objects. |
 | Clipper2 | 2.0.1 | The polygon booleans, offsets and constrained triangulations of `math::Polygon`. A patch includes the header `iterator` in its core header, which uses `std::back_inserter` and which the standard library of Emscripten does not bring in through another header. |
 | zstd | v1.5.7 | A static library for compressed Tiled layers and for the chunks of protected content. |
 | Monocypher | 4.0.3 | BSD 2-clause or CC0. The authenticated encryption (XChaCha20-Poly1305), the hashes and key derivation (BLAKE2b) and the manifest signatures (Ed25519) of protected content, compiled from its two sources as `haylen-monocypher`. It is audited, has no dependencies and builds the same on every target, the web included. This release fixes a timing leak of its signatures. |
@@ -466,7 +467,7 @@ Three more notes hold for miniaudio. It manages the audio session on iOS and tvO
 
 The engine builds without warnings, and the code of a dependency is the one exception, since only that dependency can act on it. Its warnings are ignored where they appear and nowhere else, so no warning of engine code is ever covered:
 
-- The targets of a dependency that bring warning flags of their own, those of Varn, SDL, Box2D, Clipper2, Zstandard and googletest, build through `haylen_disable_warnings`, which drops those flags from the options and the flags of the target and turns warnings off for that target alone.
+- The targets of a dependency that bring warning flags of their own, those of Varn, SDL, Box2D, Jolt Physics, Clipper2, Zstandard and googletest, build through `haylen_disable_warnings`, which drops those flags from the options and the flags of the target and turns warnings off for that target alone.
 - The headers of every dependency reach the targets of the engine as system headers, through the `SYSTEM` of CMake, which Clang and GCC read as `-isystem` and MSVC as `/external:I` with `/external:W0`.
 - A warning that the code of a dependency still raises, at the link or in the code generator, is turned off by the narrowest flag of that link or around that code, as the table lists.
 
@@ -557,6 +558,14 @@ NanoSVG reads a style, such as the attribute `style` or the rules of a `<style>`
 #### imgui-key-repeats.patch
 
 Dear ImGui makes the repeats of a held key itself, from its own delay and rate, and a text field reads each key once a frame, so a held Backspace deleted at most one character a frame, at a pace other than the one of the settings of the system, and slower when the frames slowed down. The patch adds `io.ConfigKeyRepeatFromBackend` and `io.AddKeyRepeatEvent`. While the flag is on, a keyboard key repeats only through the repeats that the backend reports, each one press, and the editing keys of a text field, the arrows, Page Up, Page Down, Delete and Backspace, apply once for every press of the frame. Gamepad keys keep the repeats of Dear ImGui. The UI turns the flag on where [`window.hasKeyRepeats()`](../lua-api/window.md#windowhaskeyrepeats) is `true` and hands every repeat of a key-down to Dear ImGui.
+
+#### jolt-x86-instructions.patch
+
+Jolt picks the x86 instructions it compiles with from the generator and the machine that builds, not from the target. MSVC took them only under the Visual Studio generator, so a Windows build with Ninja compiled Jolt with SSE2 alone, and an x86_64 slice of an Apple platform built on an Apple silicon Mac took no x86 flags at all. The patch picks the flags of MSVC by the architecture of its compiler and takes an x86_64 slice of an Apple platform as x86, so every build of one target compiles Jolt with the same instructions.
+
+#### jolt-sanitizer-detection.patch
+
+Jolt finds ThreadSanitizer and AddressSanitizer through `__has_feature` wherever a compiler or a header defines it, and through the macros of GCC only otherwise. The sanitizer headers of GCC define `__has_feature` as a macro that answers 0, so a source that included one of them before Jolt, as GoogleTest does under ThreadSanitizer, saw no sanitizer, while the sources that included Jolt first saw it. The inline functions of Jolt then compiled two ways in one program, and the ones that took the fences that ThreadSanitizer refuses failed to build. The patch reads the macros `__SANITIZE_THREAD__` and `__SANITIZE_ADDRESS__` first, so every source sees the same sanitizers.
 
 #### clipper2-iterator.patch
 

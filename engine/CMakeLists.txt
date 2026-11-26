@@ -207,6 +207,16 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/tiled/Tileset.cpp
   src/2d/tiled/WangSet.cpp
   src/2d/tiled/World.cpp
+  src/3d/physics/BackendRegistry.cpp
+  src/3d/physics/World.cpp
+  src/3d/physics/WorldSettings.cpp
+  src/3d/physics/jolt/Backend.cpp
+  src/3d/physics/jolt/Layers.cpp
+  src/3d/physics/jolt/Library.cpp
+  src/3d/physics/jolt/Simulation.cpp
+  src/3d/physics/jolt/StateHasher.cpp
+  src/3d/physics/jolt/StepAllocator.cpp
+  src/3d/physics/jolt/StepJobs.cpp
   src/3d/spatial/AabbTree.cpp
   src/3d/spatial/Bvh.cpp
   src/3d/spatial/BvhNodes.cpp
@@ -492,6 +502,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/Nodes2DPlugin.cpp
   src/plugins/Particles2DPlugin.cpp
   src/plugins/Physics2DPlugin.cpp
+  src/plugins/Physics3DPlugin.cpp
   src/plugins/PlatformPlugin.cpp
   src/plugins/Plugin.cpp
   src/plugins/PluginRegistry.cpp
@@ -727,7 +738,7 @@ target_include_directories(haylen-engine
 
 target_link_libraries(haylen-engine
   PUBLIC nlohmann_json::nlohmann_json varn-runtime haylen-imgui
-  PRIVATE box2d::box2d Clipper2 msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static
+  PRIVATE box2d::box2d Jolt Clipper2 msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static
 )
 
 if(TARGET Poco::NetSSL)

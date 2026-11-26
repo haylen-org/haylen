@@ -22,7 +22,7 @@
 
 namespace haylen::physics2d {
 
-class PhysicsWorldTest : public ::testing::Test {
+class PhysicsWorld2DTest : public ::testing::Test {
   protected:
     static void simulate(World& world, float seconds) {
         for (float time = 0.0F; time < seconds; time += 1.0F / 60.0F) {
@@ -31,7 +31,7 @@ class PhysicsWorldTest : public ::testing::Test {
     }
 };
 
-TEST_F(PhysicsWorldTest, DropsBodiesOntoGroundAndReportsContacts) {
+TEST_F(PhysicsWorld2DTest, DropsBodiesOntoGroundAndReportsContacts) {
     World world({.gravity = {0.0F, 980.0F}, .pixelsPerMeter = 64.0F});
     Body ground = world.createBody({.type = Body::Type::Static, .position = {0.0F, 400.0F}});
     ground.addBox({1000.0F, 20.0F});
@@ -63,7 +63,7 @@ TEST_F(PhysicsWorldTest, DropsBodiesOntoGroundAndReportsContacts) {
     crate.destroy();
 }
 
-TEST_F(PhysicsWorldTest, MovesAndConfiguresBodies) {
+TEST_F(PhysicsWorld2DTest, MovesAndConfiguresBodies) {
     World world({.gravity = {}});
     Body body = world.createBody({.position = {10.0F, 20.0F}, .rotation = 0.5F, .velocity = {64.0F, 0.0F}, .linearDamping = 0.5F, .angularDamping = 0.25F, .gravityScale = 2.0F, .locks = {.rotation = true}, .bullet = true});
     body.addCircle(16.0F);
@@ -109,7 +109,7 @@ TEST_F(PhysicsWorldTest, MovesAndConfiguresBodies) {
     EXPECT_EQ(world.getGravity(), haylen::math::Vec2(0.0F, 10.0F));
 }
 
-TEST_F(PhysicsWorldTest, UsesWorldUnitsForTorquesAndMotors) {
+TEST_F(PhysicsWorld2DTest, UsesWorldUnitsForTorquesAndMotors) {
     // A disc spins and a slider moves by the same amounts at every scale, because inertia, torque and force all use world units.
     for (const float scale : {32.0F, 64.0F}) {
         World world({.gravity = {}, .pixelsPerMeter = scale});
@@ -136,7 +136,7 @@ TEST_F(PhysicsWorldTest, UsesWorldUnitsForTorquesAndMotors) {
     }
 }
 
-TEST_F(PhysicsWorldTest, SensesQueriesAndCastsRays) {
+TEST_F(PhysicsWorld2DTest, SensesQueriesAndCastsRays) {
     World world({.gravity = {0.0F, 980.0F}});
     Body zone = world.createBody({.type = Body::Type::Static, .position = {0.0F, 200.0F}});
     const Shape sensor = zone.addBox({200.0F, 40.0F}, {.sensor = true});
@@ -183,7 +183,7 @@ TEST_F(PhysicsWorldTest, SensesQueriesAndCastsRays) {
     EXPECT_EQ(moved.getFilter().mask, 1U);
 }
 
-TEST_F(PhysicsWorldTest, LocksBodiesAlongTheAxesOfTheWorld) {
+TEST_F(PhysicsWorld2DTest, LocksBodiesAlongTheAxesOfTheWorld) {
     // A body locked along x falls straight down whatever pushes it sideways, one locked along y floats at its height under gravity, and one locked in rotation keeps its angle when it is spun.
     World world;
     Body lift = world.createBody({.velocity = {300.0F, 0.0F}, .locks = {.x = true}});
@@ -213,7 +213,7 @@ TEST_F(PhysicsWorldTest, LocksBodiesAlongTheAxesOfTheWorld) {
     EXPECT_GT(sledge.getPosition().y, 50.0F);
 }
 
-TEST_F(PhysicsWorldTest, SweepsBodiesFromTheirContinuousThreshold) {
+TEST_F(PhysicsWorld2DTest, SweepsBodiesFromTheirContinuousThreshold) {
     // A thin sensor in the path of a fast body sees it cross, although the body stands on neither side of it at the end of any step.
     World world({.gravity = {}});
     Body gate = world.createBody({.type = Body::Type::Static, .position = {200.0F, 0.0F}});
@@ -236,7 +236,7 @@ TEST_F(PhysicsWorldTest, SweepsBodiesFromTheirContinuousThreshold) {
     EXPECT_THROW((void)world.createBody({.continuousThreshold = std::nanf("")}), std::invalid_argument);
 }
 
-TEST_F(PhysicsWorldTest, MergesChainPointsCloserThanTheLinearSlop) {
+TEST_F(PhysicsWorld2DTest, MergesChainPointsCloserThanTheLinearSlop) {
     // Points a tenth of a world unit apart merge, and so does a loop end that closes on its start, so the outline keeps one segment per side.
     World world;
     Body ground = world.createBody({.type = Body::Type::Static});
@@ -246,7 +246,7 @@ TEST_F(PhysicsWorldTest, MergesChainPointsCloserThanTheLinearSlop) {
     EXPECT_THROW((void)ground.addChain(speck, true), std::invalid_argument);
 }
 
-TEST_F(PhysicsWorldTest, FindsPointsOnTheDiagonalsOfAPolygon) {
+TEST_F(PhysicsWorld2DTest, FindsPointsOnTheDiagonalsOfAPolygon) {
     // The middle of a small box away from the origin of its body lies on both diagonals of the box, where a search for the distance to the box loses its direction.
     World world;
     Body holder = world.createBody({.type = Body::Type::Static, .position = {100.0F, 100.0F}});
@@ -256,7 +256,7 @@ TEST_F(PhysicsWorldTest, FindsPointsOnTheDiagonalsOfAPolygon) {
     EXPECT_TRUE(world.queryPoint({91.0F, 104.0F}).empty());
 }
 
-TEST_F(PhysicsWorldTest, BuildsPolygonsChainsAndCapsules) {
+TEST_F(PhysicsWorld2DTest, BuildsPolygonsChainsAndCapsules) {
     World world;
     Body body = world.createBody({.type = Body::Type::Static});
 
@@ -288,7 +288,7 @@ TEST_F(PhysicsWorldTest, BuildsPolygonsChainsAndCapsules) {
     EXPECT_THROW(World({.pixelsPerMeter = 0.0F}), std::invalid_argument);
 }
 
-TEST_F(PhysicsWorldTest, RejectsWhatBox2DCannotHoldBeforeCreatingIt) {
+TEST_F(PhysicsWorld2DTest, RejectsWhatBox2DCannotHoldBeforeCreatingIt) {
     World world;
     Body body = world.createBody();
     const std::vector<haylen::math::Vec2> outline{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}};
@@ -311,7 +311,7 @@ TEST_F(PhysicsWorldTest, RejectsWhatBox2DCannotHoldBeforeCreatingIt) {
     EXPECT_EQ(world.queryRect({0.0F, 0.0F, 20.0F, 0.0F}).size(), 1U);
 }
 
-TEST_F(PhysicsWorldTest, ReportsWhenBox2DHoldsTooManyWorlds) {
+TEST_F(PhysicsWorld2DTest, ReportsWhenBox2DHoldsTooManyWorlds) {
     std::vector<std::unique_ptr<World>> worlds;
     EXPECT_THROW(for (int index = 0; index < 1000; ++index) { worlds.push_back(std::make_unique<World>()); }, std::runtime_error);
 
@@ -321,7 +321,7 @@ TEST_F(PhysicsWorldTest, ReportsWhenBox2DHoldsTooManyWorlds) {
 }
 
 // A new world reuses the slot of a destroyed one and hands out the same body, shape and joint ids, so a handle checks the generation of its world as well.
-TEST_F(PhysicsWorldTest, DetectsHandlesOfADestroyedWorldWhoseSlotANewWorldReuses) {
+TEST_F(PhysicsWorld2DTest, DetectsHandlesOfADestroyedWorldWhoseSlotANewWorldReuses) {
     Body staleBody;
     Shape staleShape;
     Joint staleJoint;
@@ -369,7 +369,7 @@ TEST_F(PhysicsWorldTest, DetectsHandlesOfADestroyedWorldWhoseSlotANewWorldReuses
 }
 
 // A world destroyed before the object goes ends its bodies, shapes, joints and hooks at once, and every later use fails with a sentence instead of reaching Box2D.
-TEST_F(PhysicsWorldTest, DestroysTheWorldBeforeItsObjectGoes) {
+TEST_F(PhysicsWorld2DTest, DestroysTheWorldBeforeItsObjectGoes) {
     World world;
     Body body = world.createBody();
     const Shape shape = body.addBox({10.0F, 10.0F});
@@ -405,7 +405,7 @@ TEST_F(PhysicsWorldTest, DestroysTheWorldBeforeItsObjectGoes) {
 }
 
 // A hook may add and remove hooks while the step runs them: each phase runs the hooks it had when it began, except those removed since, and a step that repeats allocates nothing.
-TEST_F(PhysicsWorldTest, RunsHooksThatAddAndRemoveHooks) {
+TEST_F(PhysicsWorld2DTest, RunsHooksThatAddAndRemoveHooks) {
     World world;
     std::vector<std::string> runs;
     std::uint64_t second = 0;
@@ -444,7 +444,7 @@ TEST_F(PhysicsWorldTest, RunsHooksThatAddAndRemoveHooks) {
     EXPECT_TRUE(world.isDestroyed());
 }
 
-TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
+TEST_F(PhysicsWorld2DTest, ReportsTheGeometryAndOutlinesOfShapes) {
     World world;
     Body body = world.createBody({.type = Body::Type::Static, .position = {100.0F, 50.0F}, .rotation = std::numbers::pi_v<float> * 0.5F});
     // clang-format off
@@ -521,7 +521,7 @@ TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     EXPECT_FALSE(Shape::kindFromName("triangle").has_value());
 }
 
-TEST_F(PhysicsWorldTest, ConnectsBodiesWithJoints) {
+TEST_F(PhysicsWorld2DTest, ConnectsBodiesWithJoints) {
     World world({.gravity = {0.0F, 980.0F}});
     Body anchor = world.createBody({.type = Body::Type::Static, .position = {0.0F, 0.0F}});
     anchor.addCircle(4.0F);
@@ -595,7 +595,7 @@ TEST_F(PhysicsWorldTest, ConnectsBodiesWithJoints) {
     EXPECT_FALSE(Body::typeFromName("ghost").has_value());
 }
 
-TEST_F(PhysicsWorldTest, MeasuresJointAnglesFromThePoseAtCreation) {
+TEST_F(PhysicsWorld2DTest, MeasuresJointAnglesFromThePoseAtCreation) {
     // A tight revolute limit and a prismatic joint both keep a body turned the way it was when they joined it.
     World world({.gravity = {}});
     const Body anchor = world.createBody({.type = Body::Type::Static});
@@ -612,7 +612,7 @@ TEST_F(PhysicsWorldTest, MeasuresJointAnglesFromThePoseAtCreation) {
     EXPECT_GT(slider.getPosition().x, 10.0F);
 }
 
-TEST_F(PhysicsWorldTest, DrawsDebugShapes) {
+TEST_F(PhysicsWorld2DTest, DrawsDebugShapes) {
     test::EngineFixture fixture;
     World world;
     Body body = world.createBody({.type = Body::Type::Static});

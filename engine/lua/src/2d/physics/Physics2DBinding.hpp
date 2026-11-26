@@ -22,7 +22,7 @@
 namespace haylen::lua {
 
 template <> struct Type<haylen::physics2d::World> {
-    static constexpr const char* name = "haylen.PhysicsWorld";
+    static constexpr const char* name = "haylen.PhysicsWorld2D";
     using Storage = std::shared_ptr<haylen::physics2d::World>;
 };
 
@@ -76,7 +76,7 @@ template <> struct EnumNames<haylen::physics2d::Joint::Type> {
 
 namespace haylen::lua::physics2d {
 
-// Installs `haylen.physics2d` with the `PhysicsWorld`, `Body`, `Shape` and `Joint` classes, and the ropes, ragdolls, vehicles, movers, grabbers, force fields, terrains, explosions, fractures and fluids built on them.
+// Installs `haylen.physics2d` with the `PhysicsWorld2D`, `Body`, `Shape` and `Joint` classes, and the ropes, ragdolls, vehicles, movers, grabbers, force fields, terrains, explosions, fractures and fluids built on them.
 class Physics2DBinding final {
   public:
     static void install(lua_State* L);

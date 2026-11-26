@@ -1,0 +1,36 @@
+--- a/Jolt/Core/Core.h
++++ b/Jolt/Core/Core.h
+@@ -687,12 +687,10 @@
+ #endif
+ 
+ // Check if Thread Sanitizer is enabled
+-#ifdef __has_feature
++#if defined(__SANITIZE_THREAD__)
++	#define JPH_TSAN_ENABLED
++#elif defined(__has_feature)
+ 	#if __has_feature(thread_sanitizer)
+-		#define JPH_TSAN_ENABLED
+-	#endif
+-#else
+-	#ifdef __SANITIZE_THREAD__
+ 		#define JPH_TSAN_ENABLED
+ 	#endif
+ #endif
+@@ -705,14 +703,12 @@
+ #endif
+ 
+ // Check if Address Sanitizer is enabled
+-#ifdef __has_feature
++#if defined(__SANITIZE_ADDRESS__)
++	#define JPH_ASAN_ENABLED
++#elif defined(__has_feature)
+ 	#if __has_feature(address_sanitizer)
+ 		#define JPH_ASAN_ENABLED
+ 	#endif
+-#else
+-	#ifdef __SANITIZE_ADDRESS__
+-		#define JPH_ASAN_ENABLED
+-	#endif
+ #endif
+ 
+ // DirectX 12 is only supported on Windows

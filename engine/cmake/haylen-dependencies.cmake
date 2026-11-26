@@ -300,6 +300,61 @@ CPMAddPackage(
 )
 haylen_disable_warnings(box2d)
 
+# Jolt Physics simulates the 3D worlds in single precision. The worlds run its jobs on the job system of the engine and its memory through the allocator of the engine, so its own job system, profiler, object streams and GPU compute stay out, and its debug renderer builds into Debug alone.
+# Jolt picks its SIMD instructions when it compiles, so x64 builds take SSE4.2 and POPCNT, which every x64 processor of the platforms of the engine runs, the web takes the SIMD of WebAssembly, and ARM takes Neon where it has it. A patch makes the instructions follow the architecture of the target instead of the generator and the machine that builds, and another one finds the sanitizers of GCC whatever a source included before Jolt.
+set(jolt_patches "${CMAKE_CURRENT_LIST_DIR}/patches/jolt-x86-instructions.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/jolt-sanitizer-detection.patch")
+set(jolt_hash 9a0a405f2375dc4bd9f72486c56e1cbc7794c6a62e42fc48fadea45dfc93dacc)
+haylen_patched_package_key(jolt_cache_key ${jolt_hash} ${jolt_patches})
+CPMAddPackage(
+  NAME jolt
+  URL "https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v5.7.0.tar.gz"
+  URL_HASH SHA256=${jolt_hash}
+  PATCHES ${jolt_patches}
+  CUSTOM_CACHE_KEY ${jolt_cache_key}
+  SOURCE_SUBDIR Build
+  OPTIONS
+    "DOUBLE_PRECISION OFF"
+    "CROSS_PLATFORM_DETERMINISTIC OFF"
+    "OBJECT_LAYER_BITS 32"
+    "USE_SSE4_1 ON"
+    "USE_SSE4_2 ON"
+    "USE_AVX OFF"
+    "USE_AVX2 OFF"
+    "USE_AVX512 OFF"
+    "USE_LZCNT OFF"
+    "USE_TZCNT OFF"
+    "USE_F16C OFF"
+    "USE_FMADD OFF"
+    "USE_WASM_SIMD ON"
+    "JPH_USE_WASM64 OFF"
+    "CPP_RTTI_ENABLED ON"
+    "CPP_EXCEPTIONS_ENABLED OFF"
+    "FLOATING_POINT_EXCEPTIONS_ENABLED OFF"
+    "USE_ASSERTS OFF"
+    "GENERATE_DEBUG_SYMBOLS OFF"
+    "OVERRIDE_CXX_FLAGS OFF"
+    "INTERPROCEDURAL_OPTIMIZATION ${HAYLEN_LINK_TIME_OPTIMIZATION}"
+    "USE_STATIC_MSVC_RUNTIME_LIBRARY OFF"
+    "JPH_BUILD_SHARED_LIBS OFF"
+    "ENABLE_ALL_WARNINGS OFF"
+    "ENABLE_INSTALL OFF"
+    "ENABLE_OBJECT_STREAM OFF"
+    "PROFILER_IN_DEBUG_AND_RELEASE OFF"
+    "PROFILER_IN_DISTRIBUTION OFF"
+    "DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF"
+    "DEBUG_RENDERER_IN_DISTRIBUTION OFF"
+    "JPH_USE_DX12 OFF"
+    "JPH_USE_VK OFF"
+    "JPH_USE_MTL OFF"
+    "JPH_USE_CPU_COMPUTE OFF"
+  EXCLUDE_FROM_ALL YES
+  SYSTEM YES
+)
+haylen_disable_warnings(Jolt)
+target_compile_definitions(Jolt PUBLIC "$<$<CONFIG:Debug>:JPH_DEBUG_RENDERER>")
+# A precompiled header keeps the objects of Jolt out of compiler caches, so its sources compile on their own.
+set_property(TARGET Jolt PROPERTY DISABLE_PRECOMPILE_HEADERS ON)
+
 # Clipper2 computes the polygon booleans, offsets and constrained triangulations of `math::Polygon`. Its core header uses `std::back_inserter` without the header `iterator` that declares it, which the standard library of Emscripten does not bring in through another header, so a patch includes it.
 set(clipper2_patches "${CMAKE_CURRENT_LIST_DIR}/patches/clipper2-iterator.patch")
 set(clipper2_hash 2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e)

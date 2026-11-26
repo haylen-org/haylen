@@ -12,7 +12,7 @@
 
 namespace haylen::lua::physics2d {
 
-// Binds the casts of `physics2d::Raycaster` as methods of `PhysicsWorld`, the `RayBatch` class and the ray debug drawing. Hits cross into Lua as `{shape, body, x, y, normalX, normalY, fraction, distance}` tables.
+// Binds the casts of `physics2d::Raycaster` as methods of `PhysicsWorld2D`, the `RayBatch` class and the ray debug drawing. Hits cross into Lua as `{shape, body, x, y, normalX, normalY, fraction, distance}` tables.
 class WorldRaycastBinding final {
   public:
     static void install(lua_State* L);

@@ -55,6 +55,8 @@ set(HAYLEN_LUA_SOURCES
   src/2d/tiled/MapBuilderBinding.cpp
   src/2d/tiled/MapQueryBinding.cpp
   src/2d/tiled/TiledBinding.cpp
+  src/3d/physics/Physics3DBinding.cpp
+  src/3d/physics/WorldBinding.cpp
   src/3d/spatial/MeshBvhBinding.cpp
   src/3d/spatial/Spatial3DBinding.cpp
   src/3d/spatial/SpatialIndexBinding.cpp
@@ -148,6 +150,7 @@ set(HAYLEN_LUA_SOURCES
   src/modules/Nodes2DModule.cpp
   src/modules/Particles2DModule.cpp
   src/modules/Physics2DModule.cpp
+  src/modules/Physics3DModule.cpp
   src/modules/PlatformModule.cpp
   src/modules/Procedural2DModule.cpp
   src/modules/Spatial2DModule.cpp

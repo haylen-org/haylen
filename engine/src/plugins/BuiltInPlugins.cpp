@@ -10,6 +10,7 @@
 #include "haylen/plugins/Nodes2DPlugin.hpp"
 #include "haylen/plugins/Particles2DPlugin.hpp"
 #include "haylen/plugins/Physics2DPlugin.hpp"
+#include "haylen/plugins/Physics3DPlugin.hpp"
 #include "haylen/plugins/PlatformPlugin.hpp"
 #include "haylen/plugins/PluginRegistry.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
@@ -40,6 +41,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<DebugPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<Physics2DPlugin>());
+    registry.add(std::make_unique<Physics3DPlugin>());
     registry.add(std::make_unique<UiPlugin>());
     registry.add(std::make_unique<ReturnHoldPlugin>(host));
     registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement(), host.getBlockedReason()));

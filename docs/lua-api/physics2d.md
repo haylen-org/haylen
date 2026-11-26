@@ -16,7 +16,7 @@ The module has these functions. Each one is described in the section of what it 
 
 | Function | Returns | Section |
 | --- | --- | --- |
-| [`physics2d.newWorld(options)`](#physics2dnewworldoptions) | A world | [PhysicsWorld](#physicsworld) |
+| [`physics2d.newWorld(options)`](#physics2dnewworldoptions) | A world | [PhysicsWorld2D](#physicsworld2d) |
 | [`physics2d.newRayBatch(count)`](#physics2dnewraybatchcount) | A batch of rays | [Queries and ray casts](#queries-and-ray-casts) |
 | [`physics2d.drawRay(x1, y1, x2, y2, hit, order)`](#physics2ddrawrayx1-y1-x2-y2-hit-order) | Nothing | [Queries and ray casts](#queries-and-ray-casts) |
 | [`physics2d.newRope(world, options)`](#physics2dnewropeworld-options) | A rope | [Rope](#rope) |
@@ -35,9 +35,9 @@ The module has these functions. Each one is described in the section of what it 
 
 A vehicle, top-down vehicle, mover, grabber, force field, terrain or fluid owns what it adds to the world. It lives while a Lua value refers to it, and the garbage collector removes it, with its bodies, once none does. So keep it in a variable or in the table of its scene. Each one keeps its world alive.
 
-## PhysicsWorld
+## PhysicsWorld2D
 
-A `PhysicsWorld`, named `haylen.PhysicsWorld` in messages, holds bodies, shapes and joints and moves them when the app steps it. The function `physics2d.newWorld` makes one. Its bodies, shapes, joints and helpers keep it alive, so a world lives as long as any of them. The [guide](../2d/physics.md#what-a-world-holds) explains what a world holds.
+A `PhysicsWorld2D`, named `haylen.PhysicsWorld2D` in messages, holds bodies, shapes and joints and moves them when the app steps it. The function `physics2d.newWorld` makes one. Its bodies, shapes, joints and helpers keep it alive, so a world lives as long as any of them. The [guide](../2d/physics.md#what-a-world-holds) explains what a world holds.
 
 A world has many methods. This section describes those that step and read the world, and the other sections describe the rest:
 
@@ -721,7 +721,7 @@ print(enemy.valid)
 
 ### body:moveToWorld(world)
 
-Moves the body to another `PhysicsWorld` and returns the body there. From the next step, the body obeys that world, such as an object thrown through a portal into a world of other gravity.
+Moves the body to another `PhysicsWorld2D` and returns the body there. From the next step, the body obeys that world, such as an object thrown through a portal into a world of other gravity.
 
 The body keeps its type, place, rotation, velocities, damping, gravity scale, flags and mass. It keeps every shape with its material, filter, sensor, events, tangent speed and one-way side. All of these are in world units, so in a world of another `pixelsPerMeter` the body keeps its size and speed. Its `data` goes along. The body of the first world is destroyed with its joints, since joints cannot cross worlds, so the old handle reports `valid` as `false`. Moving a body to the world it is in raises `A body moves only to another world.`.
 
@@ -743,7 +743,7 @@ print(rock.world == space, rock.data.name)
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
 | `valid` | boolean | read | The value is `false` once the body is destroyed. |
-| `world` | PhysicsWorld | read | The world that owns the body. |
+| `world` | PhysicsWorld2D | read | The world that owns the body. |
 | `type` | string | read and write | `'static'`, `'kinematic'` or `'dynamic'`. |
 | `x`, `y` | number | read and write | Position of the body origin. Writing teleports the body. |
 | `position` | Vec2 | read and write | Position as a `Vec2`. Writing takes a `Vec2` or `{x, y}` and teleports the body. |

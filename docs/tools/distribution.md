@@ -978,6 +978,19 @@ The desktop SDK of this machine holds three things, which one build tree of the 
 - The content tool `haylen-content`, which builds the protected releases of apps, as the [content guide](../content/content.md#the-content-tool) describes.
 - The CMake package of the engine, which the Windows and Linux projects of apps and the native libraries of the desktop link.
 
+### The size of 3D physics
+
+Jolt Physics, the backend of 3D physics, joins the static library of every SDK. These are the sizes of its archive in Release, with the options of the engine and without debug information, before the link of an app drops the code that the app never reaches. An app keeps only the part of it that its 3D worlds reach. Each archive compiles in about 15 seconds on 8 threads of a desktop processor.
+
+| SDK | Architecture | Archive of Jolt |
+| --- | --- | --- |
+| Apple | macOS arm64 | 2.7 MB |
+| Android | arm64-v8a | 4.2 MB |
+| Android | armeabi-v7a | 4.4 MB |
+| Android | x86_64 | 4.3 MB |
+| Web | wasm32 with SIMD | 3.3 MB |
+| Desktop | Linux x64 | 4.8 MB |
+
 ## Templates
 
 The tooling keeps two kinds of templates:
@@ -1161,7 +1174,7 @@ A deeper change, such as another layout, edits the rules below the variables and
 | watchOS | Not possible | The watchOS 27 SDK has no Metal, MetalKit, GameController or AudioToolbox, which the renderer, the input and the audio of the engine need. |
 | Android | Supported | Phones, tablets and Android TV from one APK, on arm64-v8a, armeabi-v7a and x86_64, Android 8.1 (API 27) and later. |
 | Web | Supported | Desktop and mobile browsers with WebGPU or WebGL2 and the exception handling and SIMD instructions of WebAssembly, which Chrome 95, Firefox 100 and Safari 16.4 all have, since Lua unwinds its errors and yields through exceptions and every target of the web build, apps included, compiles with SIMD. Sound needs `AudioWorklet`, which browsers offer only to pages served over https or from localhost, and apps on other pages run without sound. |
-| x64 processors | Supported | x86-64-v2 and later, the processors that run SSE4.2 and POPCNT, which every x64 processor made since 2011 runs, on Windows, Linux, the Intel Macs of macOS, the x86_64 slices of the Apple simulators and the `x86_64` ABI of Android. Libraries that pick their SIMD instructions when they compile use them, so every x64 target of the engine and its dependencies, and app code through the engine target, compiles with `-msse4.2 -mpopcnt`, which gives the inline functions that the objects of a program share one code, while MSVC compiles the intrinsics of those instructions without a flag of its own. The entry points of Windows and Linux, the desktop player, the apps and `haylen-headless`, check CPUID as their first statement and stop with a sentence that names the instructions the processor lacks, in a message box on Windows and on the standard error on Linux. The static initializers of the program run before that statement and compile with those instructions too, so on a processor without them a static initializer that the compiler gave one of them may stop the app before the check. Every Mac that runs macOS 14, the translation of Apple silicon and the `x86_64` ABI of Android run both instructions, so they check nothing. |
+| x64 processors | Supported | x86-64-v2 and later, the processors that run SSE4.2 and POPCNT, which every x64 processor made since 2011 runs, on Windows, Linux, the Intel Macs of macOS, the x86_64 slices of the Apple simulators and the `x86_64` ABI of Android. Libraries that pick their SIMD instructions when they compile use them, such as Jolt Physics, the backend of 3D physics, so every x64 target of the engine and its dependencies, and app code through the engine target, compiles with `-msse4.2 -mpopcnt`, which gives the inline functions that the objects of a program share one code, while MSVC compiles the intrinsics of those instructions without a flag of its own. The entry points of Windows and Linux, the desktop player, the apps and `haylen-headless`, check CPUID as their first statement and stop with a sentence that names the instructions the processor lacks, in a message box on Windows and on the standard error on Linux. The static initializers of the program run before that statement and compile with those instructions too, so on a processor without them a static initializer that the compiler gave one of them may stop the app before the check. Every Mac that runs macOS 14, the translation of Apple silicon and the `x86_64` ABI of Android run both instructions, so they check nothing. |
 | Game consoles | Through a port | A console needs a [port](../platform/ports.md) that a developer with access to its SDK writes in a private repository, since those SDKs come under licenses that keep their code out of this repository. The repository holds the mechanism of ports and a test port that runs on a desktop, and no port of a console. |
 
 The engine and the apps of Apple platforms build with Xcode 27.1 or later, the first whose SDKs declare the hinge, the reserved regions and the scene accessory of external displays that the engine uses. Continuous integration selects the newest Xcode of its image by its exact version in `.github/actions/build-environment`, and a job stops with a sentence that names the version when the image lacks it.
