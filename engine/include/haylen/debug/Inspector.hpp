@@ -6,6 +6,8 @@
 #include <string_view>
 #include <vector>
 
+#include "haylen/debug/Picking.hpp"
+
 namespace haylen::debug {
 
 // Lists and edits the values of the running app for the inspector of the debug tools, by a path of keys from one of its roots, through the provider that the runtime of the scripts of the app gives the debug plugin.
@@ -41,6 +43,10 @@ class Inspector final {
 
         // Sets the value at the path from text, read as the kind of value it holds now: a number, `true` or `false`, or a string.
         virtual void set(std::span<const std::string> path, std::string_view text) = 0;
+
+        // Makes the thing that the tag of a pick names the root `selected`, and returns `false` when no value of the app answers to the tag, such as a thing that is gone.
+        virtual bool select(const Picking::Tag& tag) = 0;
+        virtual void clearSelection() = 0;
     };
 
     Inspector() = delete;

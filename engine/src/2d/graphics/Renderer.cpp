@@ -1173,6 +1173,36 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
     }
 }
 
+void Renderer::setPicking(debug::Picking* value) noexcept {
+    picking = value;
+}
+
+// A canvas reaches the screen at its area of the visible rectangle, so the view of the canvas and the place of that area take its coordinates to the design units of the screen.
+void Renderer::offerPick(const debug::Picking::Tag& tag, const debug::Picking::Placement& placement, int layer) {
+    (void)state->getCanvas();
+    if (!isPicking()) {
+        return;
+    }
+
+    const std::size_t index = state->groups.empty() ? state->canvases.size() - 1 : state->groups.front().parent;
+    const Canvas& canvas = state->canvases[index];
+    if (canvas.kind == Canvas::Kind::Target || canvas.capture != 0) {
+        return;
+    }
+
+    const math::Rect& visible = state->visibleRect;
+    const math::Vec2 origin{visible.x + canvas.frame.x * visible.width, visible.y + canvas.frame.y * visible.height};
+    const math::Transform2D toScreen = math::Transform2D::translation(origin) * canvas.view;
+
+    debug::Picking::Placement onScreen = placement;
+    onScreen.frame = toScreen * placement.frame;
+    for (math::Vec2& corner : onScreen.outline) {
+        corner = toScreen.apply(corner);
+    }
+
+    picking->offer(tag, onScreen, {.canvasOrder = canvas.options.order, .canvas = index, .layer = layer + state->layerOffset});
+}
+
 void Renderer::pushClip(const math::Rect& rect) {
     (void)state->getCanvas();
     math::Rect clip = rect;

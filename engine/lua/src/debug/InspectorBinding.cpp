@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "debug/PickRegistry.hpp"
 #include "debug/ScriptInspector.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/debug/Inspector.hpp"
@@ -81,9 +82,25 @@ int InspectorBinding::inspectorKey(lua_State* L) {
     return 1;
 }
 
+int InspectorBinding::setPicking(lua_State* L) {
+    lua::Runtime::getEngine(L).getPlugin<haylen::plugins::DebugPlugin>().setPicking(lua::Stack::read<bool>(L, 1));
+    return 0;
+}
+
+int InspectorBinding::picking(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<haylen::plugins::DebugPlugin>().isPicking());
+    return 1;
+}
+
+// Returns what the pick on the screen selected with `selected()`, the value of the root `selected` of the inspector, or nil.
+int InspectorBinding::selected(lua_State* L) {
+    PickRegistry::pushSelected(L);
+    return 1;
+}
+
 void InspectorBinding::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"watch", &lua::Binding::native<&watch>}, {"unwatch", &lua::Binding::native<&unwatch>}, {"inspect", &lua::Binding::native<&inspect>}, {"setInspectorVisible", &lua::Binding::native<&setInspectorVisible>}, {"inspectorVisible", &lua::Binding::native<&inspectorVisible>}, {"setInspectorKey", &lua::Binding::native<&setInspectorKey>}, {"inspectorKey", &lua::Binding::native<&inspectorKey>}, {nullptr, nullptr},
+        {"watch", &lua::Binding::native<&watch>}, {"unwatch", &lua::Binding::native<&unwatch>}, {"inspect", &lua::Binding::native<&inspect>}, {"setInspectorVisible", &lua::Binding::native<&setInspectorVisible>}, {"inspectorVisible", &lua::Binding::native<&inspectorVisible>}, {"setInspectorKey", &lua::Binding::native<&setInspectorKey>}, {"inspectorKey", &lua::Binding::native<&inspectorKey>}, {"setPicking", &lua::Binding::native<&setPicking>}, {"picking", &lua::Binding::native<&picking>}, {"selected", &lua::Binding::native<&selected>}, {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
 }

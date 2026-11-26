@@ -92,6 +92,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   debug/InspectorTests.cpp
   debug/InspectorWindowTests.cpp
   debug/PackageWatcherTests.cpp
+  debug/PickingTests.cpp
   debug/StatsTests.cpp
   debug/ThreadWalkTests.cpp
   debug/TraceRecorderTests.cpp

@@ -28,6 +28,7 @@
 #include "haylen/2d/graphics/SpriteLayout.hpp"
 #include "haylen/2d/graphics/StaticSpriteBatch.hpp"
 #include "haylen/2d/graphics/Stroke.hpp"
+#include "haylen/debug/Picking.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/graphics/VectorImage.hpp"
@@ -264,6 +265,22 @@ class Renderer final {
     // Calls the visitor with every textured quad and text block the open canvas holds so far, in canvas coordinates, the way `drawBounds` outlines them. The visitor may draw, and what it draws is not visited.
     void visitDrawn(const DrawnVisitor& visitor) const;
 
+    // Hands the draws that can be picked to the picking of the debug tools, or to none with null. The picking must outlive the renderer or be removed first.
+    void setPicking(debug::Picking* value) noexcept;
+
+    // Whether the draws that can be picked offer themselves now, which they do only while the picking looks for a hit or follows a selection.
+    [[nodiscard]] bool isPicking() const noexcept {
+        return picking != nullptr && picking->isActive();
+    }
+
+    // Whether the picking looks for its hit in this frame, so a drawer records what its tags name.
+    [[nodiscard]] bool isPickSearching() const noexcept {
+        return picking != nullptr && picking->isSearching();
+    }
+
+    // Offers a thing that the open canvas draws to the picking, with its placement in the coordinates of the canvas: the transform from the space of its position to the canvas and its corners in the canvas. Only world and screen canvases that reach the screen take part, and a draw inside a group takes the place of the canvas around the group. It needs an active canvas.
+    void offerPick(const debug::Picking::Tag& tag, const debug::Picking::Placement& placement, int layer);
+
     // Runs an overlay in every canvas just before it closes, with the clips and layer offsets of the canvas cleared, such as the debug drawings of the engine. Overlays never run while an overlay draws. The returned id removes the overlay.
     std::uint64_t addCanvasOverlay(CanvasOverlay overlay);
     void removeCanvasOverlay(std::uint64_t id);
@@ -366,6 +383,7 @@ class Renderer final {
     template <typename DataAt> static void checkBatch(std::span<const graphics::Texture> textures, std::size_t count, const DataAt& dataAt, bool hasData);
 
     std::unique_ptr<RendererState> state;
+    debug::Picking* picking = nullptr;
 };
 
 } // namespace haylen::graphics2d

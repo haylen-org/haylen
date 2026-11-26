@@ -15,6 +15,7 @@
 
 #include <fast_float/fast_float.h>
 
+#include "debug/PickRegistry.hpp"
 #include "haylen/core/Utf8.hpp"
 #include "haylen/lua/Runtime.hpp"
 
@@ -168,6 +169,16 @@ void ScriptInspector::assign(lua_State* L, std::span<const std::string> path, st
     lua_settable(L, container);
 }
 
+bool ScriptInspector::select(const haylen::debug::Picking::Tag& tag) {
+    bool found = false;
+    lua::Runtime::protectedRun(state, [&found, tag](lua_State* thread) { found = PickRegistry::select(thread, tag); });
+    return found;
+}
+
+void ScriptInspector::clearSelection() {
+    lua::Runtime::protectedRun(state, [](lua_State* thread) { PickRegistry::clear(thread); });
+}
+
 void ScriptInspector::watch(lua_State* L, std::string_view name, int index) {
     const int value = lua_absindex(L, index);
     pushWatched(L);
@@ -202,8 +213,10 @@ void ScriptInspector::pushRoot(lua_State* L, std::string_view name) {
         pushModuleField(L, "haylen", "autoloads", false);
     } else if (name == "globals") {
         lua_pushglobaltable(L);
+    } else if (name == "selected") {
+        PickRegistry::pushSelected(L);
     } else {
-        throw std::invalid_argument(std::format("The inspector has no root \"{}\". Its roots are \"watched\", \"scenes\", \"autoloads\" and \"globals\".", name));
+        throw std::invalid_argument(std::format("The inspector has no root \"{}\". Its roots are \"watched\", \"scenes\", \"autoloads\", \"globals\" and \"selected\".", name));
     }
 }
 

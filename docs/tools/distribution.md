@@ -242,7 +242,7 @@ Keys  10
 | `R` | Restarts every connected app from its package with a fresh Lua state, which the app reports back. |
 | `d` | Opens the [developer console](../lua-api/debug.md#console), as the next section describes. |
 | `s` | Moves the [statistics](../lua-api/debug.md#statistics) of every connected app to the next mode: the compact numbers in a corner, then the statistics window, then nothing. It runs the console command `stats`. |
-| `i` | Shows or hides the [inspector](../lua-api/debug.md#inspector) of every connected app, a window that lists and edits the values of its scenes, its autoloads, its watched values and its globals. It runs the console command `inspector`. |
+| `i` | Shows or hides the [inspector](../lua-api/debug.md#inspector) of every connected app, a window that lists and edits the values of its scenes, its autoloads, its watched values, its globals and its selection, and that picks a sprite or a node on the screen and moves, turns and scales it with handles, as [picking on the screen](../lua-api/debug.md#picking-on-the-screen) describes. It runs the console command `inspector`. |
 | `p` | Turns the [debug drawings](../lua-api/debug.md#drawings) of every connected app on or off, such as the shapes of physics and the bounds of sprites. It runs the console command `draw`. |
 | `g` | Asks every connected app for a capture of its next frame with the capture tool of its graphics API, through the console command `gpuCapture`, and the terminal prints the path of each capture file once the app wrote it, as [GPU captures](../lua-api/debug.md#gpu-captures) describes. The command `app capture` does the same from another terminal. |
 | `c` | Clears the screen and its scrollback. |

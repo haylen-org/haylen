@@ -93,6 +93,7 @@ set(HAYLEN_LUA_SOURCES
   src/debug/GpuCaptureBinding.cpp
   src/debug/HaltedStack.cpp
   src/debug/InspectorBinding.cpp
+  src/debug/PickRegistry.cpp
   src/debug/ScriptInspector.cpp
   src/debug/ThreadWalk.cpp
   src/debug/TraceBinding.cpp

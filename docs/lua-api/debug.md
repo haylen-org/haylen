@@ -801,12 +801,13 @@ The inspector lists the values of the running app by paths of keys from its root
 | `scenes` | The tables of the scenes on the stack, from the bottom, as [`scene.list()`](scene.md#scenelist) returns them. |
 | `autoloads` | The tables of the [autoloads](haylen.md#haylenautoloads) by name. |
 | `globals` | The global table. |
+| `selected` | What the [pick on the screen](#picking-on-the-screen) selected, a sprite or a node, or `nil`. It holds it weakly. |
 
 A table lists its keys, at most 200 of them, in order, integer keys first, and describes itself by how many values it holds, such as `3 values`, after its `name` when it holds a string under that key, such as `play, 6 values` for a scene. An object of a bound type, such as a camera, a sprite or a body, lists the properties that its type declares, which the engine records for every type, those of plugins too. A path joins keys with dots, such as `watched.player.items.2`, where a key that reads as an integer names the item of a sequence. Numbers, booleans and strings are editable. An edit goes through the same setter that Lua uses, with its checks, so `set watched.camera.minZoom -1` fails with the error of the camera.
 
 The inspector window shows the roots as rows of a table, with the scenes open. A tap or a click on the name of a row opens the values it holds below it. A boolean shows a check box, and a number or a string shows a field, which sets the value once Enter confirms it or the field lets go of the focus. A line at the top of the window says what the window holds and that an edit changes the value of the app at once, which the app shows where it reads that value. After an edit, the line says what it set, such as `Set "watched.player.speed" to 300.`, or shows the error of a setter that refused it. The open rows read their values again four times per second, so the window follows the app as it runs.
 
-The window opens with F2, which `debug.setInspectorKey` changes, with the key `i` in the terminal of `haylen app run`, which reaches a phone or a TV too, with the console command `inspector` or with `debug.setInspectorVisible(true)`. It moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its rows. It follows the console: it is on in development runs and with `"debug": {"console": true}` in `haylen.json`. The console commands `inspect` and `set` reach the same values as text. Nothing of the inspector runs while its window is closed. The inspector does not pick objects on the screen or move them with handles.
+The window opens with F2, which `debug.setInspectorKey` changes, with the key `i` in the terminal of `haylen app run`, which reaches a phone or a TV too, with the console command `inspector` or with `debug.setInspectorVisible(true)`. It moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its rows. It follows the console: it is on in development runs and with `"debug": {"console": true}` in `haylen.json`. The console commands `inspect` and `set` reach the same values as text. Nothing of the inspector runs while its window is closed.
 
 ### debug.watch(name, value)
 
@@ -849,7 +850,7 @@ Returns the values at a path of the inspector, such as `'watched.player'`, or it
 | `editable` | Whether the inspector edits the value. |
 | `expandable` | Whether the value holds values to list. |
 
-A missing root raises `The inspector has no root "<name>". Its roots are "watched", "scenes", "autoloads" and "globals".`. A path through a value that holds nothing raises `The value at "<path>" is of the type "<type>", which holds no "<key>".`. A path that ends at a value with nothing to list raises `The value at "<path>" is of the type "<type>", which holds nothing to list.`.
+A missing root raises `The inspector has no root "<name>". Its roots are "watched", "scenes", "autoloads", "globals" and "selected".`. A path through a value that holds nothing raises `The value at "<path>" is of the type "<type>", which holds no "<key>".`. A path that ends at a value with nothing to list raises `The value at "<path>" is of the type "<type>", which holds nothing to list.`.
 
 ```lua
 local debug = require('haylen.debug')
@@ -900,6 +901,67 @@ Returns the key that shows the inspector, or `nil` when the shortcut is off.
 local debug = require('haylen.debug')
 
 print(debug.inspectorKey()) -- f2
+```
+
+### Picking on the screen
+
+In development, the inspector picks what the app draws. Its check box `Pick on the screen`, or `debug.setPicking(true)`, turns the pick on while the window shows. A tap or a click on the app then selects the sprite or the node that draws on top under it, instead of reaching the app, and the root `selected` of the inspector shows it, with the values of its properties. A press where nothing draws clears the selection. The windows of the tools stay above, and they take their presses as before.
+
+The selection shows its outline and three handles in the colors of the windows of the tools, and a finger or the mouse drags them:
+
+| Handle | Where | What a drag does |
+| --- | --- | --- |
+| A dot | At the position of the selection. | Moves it by the distance of the pointer on the screen, through the camera, so a camera that zooms by 2 moves it by half that distance in the world. |
+| A ring | Past the outline, along the first axis of the selection. | Turns it around its position by the angle that the pointer turns. |
+| A square | On the corner of the outline that its width and height reach. | Scales it along its own axes by how far the pointer moves from the position. |
+
+Every drag sets `selected.x`, `selected.y`, `selected.rotation`, `selected.scaleX` or `selected.scaleY`, the path of the other edits of the inspector, so the setters of Lua check each value and the line of the window says what the drag set. A node keeps its position, rotation and scale in the space of its parent, and the handles move it there. The handles stay inside the safe area.
+
+These draws can be picked: sprites that draw with [`sprite:draw()`](graphics2d.md#spritedraw), and the nodes of [node trees](nodes2d.md) that show a sprite, text or a frame, in world and screen canvases that reach the screen. Of the draws under the press, the one of the later canvas wins, then the one of the higher layer and then the one that drew last. Nothing of the pick runs outside development, and while the pick is off, no draw offers itself.
+
+```lua
+local debug = require('haylen.debug')
+
+debug.setInspectorVisible(true)
+debug.setPicking(true)
+```
+
+### debug.setPicking(enabled)
+
+Turns the [pick on the screen](#picking-on-the-screen) on or off. Turning it on outside development raises `The pick on the screen works only in development runs, such as the runs of "haylen app run".`.
+
+```lua
+local debug = require('haylen.debug')
+
+debug.setPicking(true)
+```
+
+### debug.picking()
+
+Returns whether the pick on the screen is on.
+
+```lua
+local debug = require('haylen.debug')
+
+print(debug.picking())
+```
+
+### debug.selected()
+
+Returns what the pick on the screen selected, the value of the root `selected`, or `nil`.
+
+```lua
+local debug = require('haylen.debug')
+local scene = require('haylen.scene')
+
+scene.push({
+    update = function(self, dt)
+        local picked = debug.selected()
+        if picked and picked.name then
+            print('Selected the node ' .. picked.name .. '.')
+        end
+    end,
+})
 ```
 
 ## Debugger

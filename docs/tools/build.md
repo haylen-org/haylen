@@ -746,7 +746,7 @@ The request `pause` keeps the last frame on screen and the app sees the pause as
 
 #### Inspecting the app
 
-The request `inspect` lists the values of the running app at a path of the [inspector](../lua-api/debug.md#inspector), without changing anything: an empty path lists the roots `watched`, `scenes`, `autoloads` and `globals`, and a path such as `scenes.1` lists the keys of that value. Each entry is `{key, type, value, expandable}`, where `value` is the value as short text and `expandable` tells whether the path of the entry lists more. The inspector reads tables raw, so it never runs code of the app. A request outside development fails with `unsupported` unless `debug.console` of `haylen.json` turns the console on, and a path that leads nowhere fails with `invalidPath`.
+The request `inspect` lists the values of the running app at a path of the [inspector](../lua-api/debug.md#inspector), without changing anything: an empty path lists the roots `watched`, `scenes`, `autoloads`, `globals` and `selected`, and a path such as `scenes.1` lists the keys of that value. Each entry is `{key, type, value, expandable}`, where `value` is the value as short text and `expandable` tells whether the path of the entry lists more. The inspector reads tables raw, so it never runs code of the app. A request outside development fails with `unsupported` unless `debug.console` of `haylen.json` turns the console on, and a path that leads nowhere fails with `invalidPath`.
 
 #### Ending the runtime
 

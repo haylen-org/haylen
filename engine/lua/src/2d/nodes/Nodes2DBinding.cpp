@@ -1,5 +1,6 @@
 #include "2d/nodes/Nodes2DBinding.hpp"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -7,6 +8,8 @@
 #include "2d/particles/Particles2DBinding.hpp"
 #include "2d/physics/Physics2DBinding.hpp"
 #include "core/FloatBufferBinding.hpp"
+#include "debug/PickRegistry.hpp"
+#include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/nodes/NodeTree.hpp"
 #include "haylen/2d/nodes/Prefab.hpp"
 #include "haylen/2d/particles/Effect.hpp"
@@ -325,6 +328,12 @@ int Nodes2DBinding::treeFind(lua_State* L) {
     return 1;
 }
 
+// Finds a node with `findByKey(key)` by the key of its handle, or returns nil once that node is gone.
+int Nodes2DBinding::treeFindByKey(lua_State* L) {
+    pushNode(L, checkTree(L, 1).findByKey(static_cast<std::uint64_t>(lua::Stack::read<lua_Integer>(L, 2))));
+    return 1;
+}
+
 int Nodes2DBinding::treeRoots(lua_State* L) {
     pushNodes(L, checkTree(L, 1).getRoots());
     return 1;
@@ -337,9 +346,21 @@ int Nodes2DBinding::treeUpdate(lua_State* L) {
     return 0;
 }
 
+// While a pick looks for its hit, the tree tells the inspector which Lua value its tags name.
 int Nodes2DBinding::treeDraw(lua_State* L) {
-    checkTree(L, 1).draw(lua::Runtime::getEngine(L).getRenderer2D());
+    haylen::nodes2d::NodeTree& tree = checkTree(L, 1);
+    haylen::graphics2d::Renderer& renderer = lua::Runtime::getEngine(L).getRenderer2D();
+    if (renderer.isPickSearching()) {
+        lua::debug::PickRegistry::remember(L, 1, lua::debug::PickRegistry::ownerOf(&tree), &lua::Binding::native<&pickNode>);
+    }
+
+    tree.draw(renderer);
     return 0;
+}
+
+int Nodes2DBinding::pickNode(lua_State* L) {
+    pushNode(L, checkTree(L, 1).findByKey(static_cast<std::uint64_t>(lua_tointeger(L, 2))));
+    return 1;
 }
 
 int Nodes2DBinding::treeClear(lua_State* L) {
@@ -616,7 +637,7 @@ void Nodes2DBinding::install(lua_State* L) {
     lua_setmetatable(L, -2);
     lua_setfield(L, LUA_REGISTRYINDEX, kTrees);
 
-    lua::ClassBuilder<haylen::nodes2d::NodeTree>(L).function("add", &lua::Binding::native<&treeAdd>).function("instantiate", &lua::Binding::native<&treeInstantiate>).function("load", &lua::Binding::native<&treeLoad>).function("find", &lua::Binding::native<&treeFind>).function("roots", &lua::Binding::native<&treeRoots>).function("update", &lua::Binding::native<&treeUpdate>).function("draw", &lua::Binding::native<&treeDraw>).function("clear", &lua::Binding::native<&treeClear>).function("writeTransforms", &lua::Binding::native<&treeWriteTransforms>).function("readTransforms", &lua::Binding::native<&treeReadTransforms>).property("size", &treeSize).property("drawnCount", &treeDrawnCount).property("culledCount", &treeCulledCount).meta("__eq", &lua::Userdata::equal<haylen::nodes2d::NodeTree>).install();
+    lua::ClassBuilder<haylen::nodes2d::NodeTree>(L).function("add", &lua::Binding::native<&treeAdd>).function("instantiate", &lua::Binding::native<&treeInstantiate>).function("load", &lua::Binding::native<&treeLoad>).function("find", &lua::Binding::native<&treeFind>).function("roots", &lua::Binding::native<&treeRoots>).function("findByKey", &lua::Binding::native<&treeFindByKey>).function("update", &lua::Binding::native<&treeUpdate>).function("draw", &lua::Binding::native<&treeDraw>).function("clear", &lua::Binding::native<&treeClear>).function("writeTransforms", &lua::Binding::native<&treeWriteTransforms>).function("readTransforms", &lua::Binding::native<&treeReadTransforms>).property("size", &treeSize).property("drawnCount", &treeDrawnCount).property("culledCount", &treeCulledCount).meta("__eq", &lua::Userdata::equal<haylen::nodes2d::NodeTree>).install();
 
     lua::ClassBuilder<haylen::nodes2d::Node>(L).accessor<&haylen::nodes2d::Node::getName, &haylen::nodes2d::Node::setName>("name").accessor<&haylen::nodes2d::Node::getX, &haylen::nodes2d::Node::setX>("x").accessor<&haylen::nodes2d::Node::getY, &haylen::nodes2d::Node::setY>("y").accessor<&haylen::nodes2d::Node::getPosition, &haylen::nodes2d::Node::setPosition>("position").accessor<&haylen::nodes2d::Node::getRotation, &haylen::nodes2d::Node::setRotation>("rotation").accessor<&haylen::nodes2d::Node::getScaleX, &haylen::nodes2d::Node::setScaleX>("scaleX").accessor<&haylen::nodes2d::Node::getScaleY, &haylen::nodes2d::Node::setScaleY>("scaleY").accessor<&haylen::nodes2d::Node::getColor, &haylen::nodes2d::Node::setColor>("color").accessor<&haylen::nodes2d::Node::isVisible, &haylen::nodes2d::Node::setVisible>("visible").accessor<&haylen::nodes2d::Node::getLayer, &haylen::nodes2d::Node::setLayer>("layer").accessor<&haylen::nodes2d::Node::getDepth, &haylen::nodes2d::Node::setDepth>("depth").accessor<&haylen::nodes2d::Node::getSortOffset, &haylen::nodes2d::Node::setSortOffset>("sortOffset").property("worldColor", &lua::Binding::method<&haylen::nodes2d::Node::getWorldColor>).property("worldLayer", &lua::Binding::method<&haylen::nodes2d::Node::getWorldLayer>).property("worldVisible", &lua::Binding::method<&haylen::nodes2d::Node::isWorldVisible>).property("valid", &nodeValid).property("key", &lua::Binding::native<&nodeKey>).property("path", &lua::Binding::native<&nodePath>).property("childCount", &lua::Binding::native<&nodeChildCount>).property("content", &lua::Binding::native<&nodeContent>).property("parent", &lua::Binding::native<&nodeGetParent>, &lua::Binding::native<&nodeSetParent>).property("sprite", &lua::Binding::native<&nodeGetSprite>, &lua::Binding::native<&nodeSetSprite>).property("text", &lua::Binding::native<&nodeGetText>, &lua::Binding::native<&nodeSetText>).property("body", &lua::Binding::native<&nodeGetBody>, &lua::Binding::native<&nodeSetBody>).property("data", &lua::Binding::native<&nodeData>).function("add", &lua::Binding::native<&nodeAdd>).function("find", &lua::Binding::native<&nodeFind>).function("children", &lua::Binding::native<&nodeChildren>).function("show", &lua::Binding::native<&nodeShow>).function("toWorld", &lua::Binding::native<&nodeToWorld>).function("toLocal", &lua::Binding::native<&nodeToLocal>).function("worldTransform", &lua::Binding::native<&nodeWorldTransform>).function("destroy", &lua::Binding::native<&nodeDestroy>).function("on", &lua::Binding::native<&nodeOn>).meta("__eq", &lua::Userdata::equal<haylen::nodes2d::Node>).install();
 

@@ -26,6 +26,7 @@
 #include "haylen/debug/Inspector.hpp"
 #include "haylen/debug/LogLine.hpp"
 #include "haylen/debug/Monitor.hpp"
+#include "haylen/debug/Picking.hpp"
 #include "haylen/debug/Stats.hpp"
 #include "haylen/debug/StatsDisplay.hpp"
 #include "haylen/debug/TraceRecorder.hpp"
@@ -36,6 +37,7 @@
 namespace haylen::debug {
 class InspectorWindow;
 class OverlayWindow;
+class SelectionOverlay;
 } // namespace haylen::debug
 
 namespace haylen::platform {
@@ -44,7 +46,7 @@ class DevelopmentSession;
 
 namespace haylen::plugins {
 
-// Shows the debug statistics and the debug drawings. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the statistics window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `haylen.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `haylen.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, from the lines that the terminal of the development server and the web page send, in development runs and wherever `haylen.json` turns it on. The inspector window lists and edits the values of the scenes, the autoloads, the watched values and the globals, opened by F2 unless the app picks another key, by the terminal or by the console.
+// Shows the debug statistics and the debug drawings. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the statistics window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `haylen.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `haylen.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, from the lines that the terminal of the development server and the web page send, in development runs and wherever `haylen.json` turns it on. The inspector window lists and edits the values of the scenes, the autoloads, the watched values, the globals and the selection, opened by F2 unless the app picks another key, by the terminal or by the console. In development it picks what the app draws under a press and shows gizmos that move, turn and scale the selection.
 class DebugPlugin final : public Plugin {
   public:
     static constexpr std::size_t kLogLines = 200;
@@ -59,6 +61,9 @@ class DebugPlugin final : public Plugin {
     static constexpr std::size_t kReportTextSize = 256;
     static constexpr std::string_view kCrashReportFile = "crash-report.json";
     static constexpr std::string_view kGpuCaptureFolder = "gpu-captures";
+
+    // The titles of the windows of the tools, which draw over the surface of the pick.
+    static constexpr std::array<const char*, 2> kToolWindows{"Statistics", "Inspector"};
 
     // Draws a drawing into the open canvas, whose kind the renderer tells.
     using Drawer = std::function<void(graphics2d::Renderer& renderer)>;
@@ -176,6 +181,17 @@ class DebugPlugin final : public Plugin {
     void setInspectorKey(std::optional<input::Key> value) noexcept {
         inspectorKey = value;
     }
+
+    // Turns on the pick on the screen while the inspector shows: a press on the app selects what draws under it instead of reaching the app, and gizmos move, turn and scale the selection. Throws `std::logic_error` outside development, where the renderer offers nothing to pick.
+    void setPicking(bool value);
+    [[nodiscard]] bool isPicking() const noexcept {
+        return picking;
+    }
+
+    // The picking that the drawers of things that can be selected offer them to, which the 2D renderer reaches on its own and other renderers, such as those of plugins, reach here.
+    [[nodiscard]] debug::Picking& getPicking() noexcept {
+        return picker;
+    }
     [[nodiscard]] std::optional<input::Key> getInspectorKey() const noexcept {
         return inspectorKey;
     }
@@ -245,6 +261,9 @@ class DebugPlugin final : public Plugin {
     // Throws `std::logic_error` while no provider gives the inspector the values of the app.
     [[nodiscard]] debug::Inspector::Provider& getInspected() const;
 
+    // Hands the hit of the pick that looked through the draws of this frame to the inspector, which selects it, or clears the selection when nothing drew under the press.
+    void resolvePick();
+
     void answerInspection(const std::vector<std::string>& path, const std::function<void(bool ok, const core::Json& result)>& reply) const;
     [[nodiscard]] core::Json describeCommands() const;
     void detachTrace();
@@ -280,6 +299,8 @@ class DebugPlugin final : public Plugin {
     debug::Console console;
     std::unique_ptr<debug::InspectorWindow> inspectorWindow;
     std::unique_ptr<debug::OverlayWindow> overlayWindow;
+    std::unique_ptr<debug::SelectionOverlay> selectionOverlay;
+    debug::Picking picker;
     std::vector<core::Connection> builtInCommands;
     std::optional<input::Key> inspectorKey = input::Key::F2;
     std::function<std::size_t()> scriptMemory;
@@ -297,6 +318,7 @@ class DebugPlugin final : public Plugin {
     bool development = false;
     bool consoleEnabled = false;
     bool inspectorVisible = false;
+    bool picking = false;
 };
 
 } // namespace haylen::plugins

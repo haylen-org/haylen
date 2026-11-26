@@ -86,10 +86,10 @@ TEST_F(InspectorWindowTest, FollowsAFingerAndStaysInsideTheSafeArea) {
     EXPECT_EQ(window->Pos.x, kept.x);
     EXPECT_EQ(window->Pos.y, kept.y);
 
-    // The first row is the root of the watched values, and the row under it the watched table. The table starts with five rows of one height, the four roots and the scene that the open root of the scenes lists.
+    // The first row is the root of the watched values, and the row under it the watched table. The table starts with six rows of one height, the five roots and the scene that the open root of the scenes lists.
     const ImGuiTable* table = ImGui::TableFindByID(window->GetID("##values"));
     ASSERT_NE(table, nullptr);
-    const float row = (table->OuterRect.Max.y - table->OuterRect.Min.y) / 5.0F;
+    const float row = (table->OuterRect.Max.y - table->OuterRect.Min.y) / 6.0F;
     const ImVec2 first{table->OuterRect.Min.x + 60.0F, table->OuterRect.Min.y + row * 0.5F};
     tap(place(first));
     tap(place({first.x, first.y + row}));
@@ -131,7 +131,7 @@ TEST_F(InspectorWindowTest, DrawsTheSameRowsWithoutAllocating) {
     ASSERT_NE(window, nullptr);
     const ImGuiTable* table = ImGui::TableFindByID(window->GetID("##values"));
     ASSERT_NE(table, nullptr);
-    const float row = (table->OuterRect.Max.y - table->OuterRect.Min.y) / 5.0F;
+    const float row = (table->OuterRect.Max.y - table->OuterRect.Min.y) / 6.0F;
     const ImVec2 first{table->OuterRect.Min.x + 60.0F, table->OuterRect.Min.y + row * 0.5F};
     tap(place(first));
     tap(place({first.x, first.y + row}));
@@ -154,7 +154,7 @@ TEST_F(InspectorWindowTest, TellsWhatAnEditChangedOrWhyItFailed) {
     ASSERT_NE(window, nullptr);
     const ImGuiTable* table = ImGui::TableFindByID(window->GetID("##values"));
     ASSERT_NE(table, nullptr);
-    const float row = (table->OuterRect.Max.y - table->OuterRect.Min.y) / 5.0F;
+    const float row = (table->OuterRect.Max.y - table->OuterRect.Min.y) / 6.0F;
     const ImVec2 first{table->OuterRect.Min.x + 60.0F, table->OuterRect.Min.y + row * 0.5F};
     tap(place(first));
     tap(place({first.x, first.y + row}));

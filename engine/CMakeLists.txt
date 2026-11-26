@@ -341,7 +341,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/Monitor.cpp
   src/debug/ObjectCounter.cpp
   src/debug/OverlayWindow.cpp
+  src/debug/Picking.cpp
   src/debug/Profiler.cpp
+  src/debug/SelectionOverlay.cpp
   src/debug/Stats.cpp
   src/debug/StatsDisplay.cpp
   src/debug/TraceRecorder.cpp

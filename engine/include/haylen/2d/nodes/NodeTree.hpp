@@ -61,6 +61,9 @@ class NodeTree final : public std::enable_shared_from_this<NodeTree> {
     // Finds a node by a path of names from the roots separated by slashes, such as `tank/turret`, or returns an invalid node.
     [[nodiscard]] Node find(std::string_view path) const;
     [[nodiscard]] std::vector<Node> getRoots() const;
+
+    // Finds a node by the key of its handle, or returns an invalid node once that node is gone.
+    [[nodiscard]] Node findByKey(std::uint64_t key) const;
     [[nodiscard]] std::size_t size() const noexcept {
         return count;
     }
@@ -74,7 +77,7 @@ class NodeTree final : public std::enable_shared_from_this<NodeTree> {
     // Whether the particles of a node live, which the next update moves.
     [[nodiscard]] bool hasLiveParticles() const noexcept;
 
-    // Draws the content of every visible node into the open canvas, parents before their children and siblings in order, and leaves out the nodes whose bounds lie outside the area the canvas shows. Particles are never left out. Nodes that changed since the last update take their new place first, without advancing particles.
+    // Draws the content of every visible node into the open canvas, parents before their children and siblings in order, and leaves out the nodes whose bounds lie outside the area the canvas shows. Particles are never left out. Nodes that changed since the last update take their new place first, without advancing particles. While the renderer picks, every node it draws with bounds offers itself, tagged by the address of the tree and the key of the node, with its local position, rotation and scale in the space of its parent.
     void draw(graphics2d::Renderer& renderer);
 
     // Sets the position and rotation of each node from three floats of the values, x, y and rotation, in order, which moves many nodes in one call. Throws `std::invalid_argument` unless the values hold three floats for each node.
@@ -210,6 +213,7 @@ class NodeTree final : public std::enable_shared_from_this<NodeTree> {
     void refresh(core::JobSystem* jobs);
     void advanceParticles(float deltaSeconds, core::JobSystem* jobs);
     void drawNode(graphics2d::Renderer& renderer, std::uint32_t index);
+    void offerPick(graphics2d::Renderer& renderer, std::uint32_t index) const;
 
     // Draws the sprites gathered so far as one batch.
     void flushSprites(graphics2d::Renderer& renderer);

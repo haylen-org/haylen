@@ -110,6 +110,10 @@ class Nodes2DBinding final {
     static int treeLoad(lua_State* L);
     static int treeFind(lua_State* L);
     static int treeRoots(lua_State* L);
+    static int treeFindByKey(lua_State* L);
+
+    // Turns a tree and the key of one of its nodes into the node, for the selection of the inspector.
+    static int pickNode(lua_State* L);
     static int treeUpdate(lua_State* L);
     static int treeDraw(lua_State* L);
     static int treeClear(lua_State* L);

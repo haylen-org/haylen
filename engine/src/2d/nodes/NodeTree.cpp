@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <stdexcept>
 #include <utility>
 
@@ -11,6 +12,7 @@
 #include "haylen/2d/particles/System.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/debug/Picking.hpp"
 #include "haylen/math/Geometry2D.hpp"
 #include "haylen/text/Font.hpp"
 
@@ -294,11 +296,27 @@ void NodeTree::draw(graphics2d::Renderer& renderer) {
 
         drawNode(renderer, index);
         ++drawn;
+
+        if (slot.bounded && renderer.isPicking()) {
+            offerPick(renderer, index);
+        }
     }
 
     flushSprites(renderer);
     runTexture = {};
     runOrder = {};
+}
+
+void NodeTree::offerPick(graphics2d::Renderer& renderer, std::uint32_t index) const {
+    const Slot& slot = slots[index];
+    const math::Rect& area = slot.localBounds;
+    const math::Transform2D& world = slot.world;
+    debug::Picking::Placement placement{.position = slot.position, .rotation = slot.rotation, .scale = slot.scale};
+    placement.frame = slot.parent == kNone ? math::Transform2D::identity() : slots[static_cast<std::size_t>(slot.parent)].world;
+    placement.outline = {world.apply(area.getMin()), world.apply({area.getRight(), area.y}), world.apply(area.getMax()), world.apply({area.x, area.getBottom()})};
+
+    const std::uint64_t key = (static_cast<std::uint64_t>(details[index].generation) << 32U) | index;
+    renderer.offerPick({.owner = reinterpret_cast<std::uintptr_t>(this), .item = key}, placement, slot.worldLayer);
 }
 
 void NodeTree::flushSprites(graphics2d::Renderer& renderer) {
@@ -434,6 +452,16 @@ std::uint32_t NodeTree::check(const Node& node) const {
     }
 
     return node.index;
+}
+
+Node NodeTree::findByKey(std::uint64_t key) const {
+    const auto slot = static_cast<std::uint32_t>(key & 0xFFFFFFFFU);
+    const auto generation = static_cast<std::uint32_t>(key >> 32U);
+    if (slot >= slots.size() || !holds(slot, generation)) {
+        return {};
+    }
+
+    return handle(static_cast<std::int32_t>(slot));
 }
 
 Node NodeTree::handle(std::int32_t index) const {

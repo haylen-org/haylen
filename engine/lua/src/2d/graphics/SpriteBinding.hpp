@@ -2,6 +2,11 @@
 
 struct lua_State;
 
+namespace haylen::graphics2d {
+class Renderer;
+struct Sprite;
+} // namespace haylen::graphics2d
+
 namespace haylen::lua::graphics2d {
 
 // Installs the `Sprite` class of `haylen.graphics2d`, whose properties write straight into the sprite that `draw` submits.
@@ -21,6 +26,9 @@ class SpriteBinding final {
     static int getNormalMap(lua_State* L);
     static int setNormalMap(lua_State* L);
     static int draw(lua_State* L);
+
+    // Offers the sprite at index 1, which the renderer just drew, to the picking of the inspector, tagged by its address.
+    static void offerPick(lua_State* L, haylen::graphics2d::Renderer& renderer, const haylen::graphics2d::Sprite& sprite);
 };
 
 } // namespace haylen::lua::graphics2d

@@ -14,7 +14,7 @@ struct lua_State;
 
 namespace haylen::lua::debug {
 
-// Lists and edits the values of the Lua state of the running app for the inspector of the debug tools, by a path of keys from one of its roots: `watched` for the values that `debug.watch` exposes, `scenes` for the scene stack, `autoloads` for the autoloads and `globals` for the global table. Tables list their keys, bound objects list the properties their type declares, and an edit of a number, a boolean or a string goes through the same setter that Lua uses, with its checks.
+// Lists and edits the values of the Lua state of the running app for the inspector of the debug tools, by a path of keys from one of its roots: `watched` for the values that `debug.watch` exposes, `scenes` for the scene stack, `autoloads` for the autoloads, `globals` for the global table and `selected` for what a pick on the screen selected. Tables list their keys, bound objects list the properties their type declares, and an edit of a number, a boolean or a string goes through the same setter that Lua uses, with its checks.
 class ScriptInspector final : public haylen::debug::Inspector::Provider {
   public:
     static constexpr const char* kWatchedKey = "haylen.debug.watched";
@@ -23,12 +23,14 @@ class ScriptInspector final : public haylen::debug::Inspector::Provider {
 
     void list(std::span<const std::string> path, haylen::debug::Inspector::Listing& listing) override;
     void set(std::span<const std::string> path, std::string_view text) override;
+    bool select(const haylen::debug::Picking::Tag& tag) override;
+    void clearSelection() override;
 
     // Exposes a value under `watched` without keeping it alive, or removes it with `nil`.
     static void watch(lua_State* L, std::string_view name, int index);
 
   private:
-    static constexpr std::string_view kRoots[] = {"watched", "scenes", "autoloads", "globals"};
+    static constexpr std::string_view kRoots[] = {"watched", "scenes", "autoloads", "globals", "selected"};
 
     static void collect(lua_State* L, std::span<const std::string> path, std::vector<haylen::debug::Inspector::Entry>& found, std::size_t& count);
 

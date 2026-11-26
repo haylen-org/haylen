@@ -1,5 +1,8 @@
 #include "2d/graphics/SpriteBinding.hpp"
 
+#include <cstdint>
+
+#include "debug/PickRegistry.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
@@ -53,8 +56,30 @@ int SpriteBinding::setPartMask(lua_State* L) {
 }
 
 int SpriteBinding::draw(lua_State* L) {
-    lua::Runtime::getEngine(L).getRenderer2D().draw(lua::Userdata::check<haylen::graphics2d::Sprite>(L, 1));
+    const haylen::graphics2d::Sprite& sprite = lua::Userdata::check<haylen::graphics2d::Sprite>(L, 1);
+    haylen::graphics2d::Renderer& renderer = lua::Runtime::getEngine(L).getRenderer2D();
+    renderer.draw(sprite);
+    if (renderer.isPicking()) {
+        offerPick(L, renderer, sprite);
+    }
+
     return 0;
+}
+
+// The sprite covers the rectangle of its size around its pivot, placed by its position, rotation and scale, as the renderer draws it, and its position lives in the coordinates of the canvas.
+void SpriteBinding::offerPick(lua_State* L, haylen::graphics2d::Renderer& renderer, const haylen::graphics2d::Sprite& sprite) {
+    const std::uint64_t owner = lua::debug::PickRegistry::ownerOf(&sprite);
+    if (renderer.isPickSearching()) {
+        lua::debug::PickRegistry::remember(L, 1, owner, nullptr);
+    }
+
+    const haylen::math::Vec2 source = sprite.source.isEmpty() ? sprite.texture.getSize() : sprite.source.getSize();
+    const haylen::math::Vec2 size = sprite.size.isZero() ? source : sprite.size;
+    const haylen::math::Rect area{-sprite.pivot.x * size.x, -sprite.pivot.y * size.y, size.x, size.y};
+    const haylen::math::Transform2D placed = haylen::math::Transform2D::compose(sprite.position, sprite.rotation, sprite.scale);
+    haylen::debug::Picking::Placement placement{.position = sprite.position, .rotation = sprite.rotation, .scale = sprite.scale};
+    placement.outline = {placed.apply(area.getMin()), placed.apply({area.getRight(), area.y}), placed.apply(area.getMax()), placed.apply({area.x, area.getBottom()})};
+    renderer.offerPick({.owner = owner}, placement, sprite.order.layer);
 }
 
 void SpriteBinding::install(lua_State* L) {

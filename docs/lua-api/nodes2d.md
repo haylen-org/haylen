@@ -222,6 +222,18 @@ tree:add({name = 'tank', children = {{name = 'turret'}}})
 print(tree:find('tank/turret').path, tree:find('tank/wheel'))
 ```
 
+### tree:findByKey(key)
+
+Returns the node whose `key` is the number, or `nil` once that node is gone, such as a node that an app keeps by its key in a save or a message.
+
+```lua
+local nodes2d = require('haylen.nodes2d')
+
+local tree = nodes2d.newTree()
+local key = tree:add({name = 'tank'}).key
+print(tree:findByKey(key).name)
+```
+
 ### tree:roots()
 
 Returns the nodes at the root, in order.

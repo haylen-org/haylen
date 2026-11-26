@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <map>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,9 +23,13 @@ class InspectorWindow final {
     static constexpr float kWidth = 460.0F;
     static constexpr std::string_view kOpenRoot = "scenes";
     static constexpr std::string_view kHint = "The values of the app. A check box or a field changes a value of the app at once, and the app shows the change where it reads that value.";
+    static constexpr std::string_view kPickLabel = "Pick on the screen";
 
-    // Draws the window, `seconds` after the frame that drew it last, and returns `false` once the player closed it.
-    bool draw(Inspector::Provider& provider, ui::Backend& backend, ui::Context& context, double seconds);
+    // Draws the window, `seconds` after the frame that drew it last, and returns `false` once the player closed it. Where the inspector can pick what the app draws, `picking` is the switch of the check box that turns the pick on, and it is null elsewhere.
+    bool draw(Inspector::Provider& provider, ui::Backend& backend, ui::Context& context, double seconds, bool* picking);
+
+    // Sets the value at the path through the provider, as an edit of a row does, and shows what it set, or why the setter refused it, in the line of the window.
+    void apply(Inspector::Provider& provider, std::span<const std::string> edited, std::string_view text);
 
   private:
     // The values at one path as the last refresh listed them, with the path of each value.
@@ -44,7 +49,6 @@ class InspectorWindow final {
     void drawRows(Inspector::Provider& provider, std::size_t depth, const std::string& key, double now);
     void drawValue(Inspector::Provider& provider, std::size_t depth, const std::string& key, const Inspector::Entry& entry);
     void drawField(Inspector::Provider& provider, std::size_t depth, const std::string& key, const Inspector::Entry& entry);
-    void edit(Inspector::Provider& provider, std::size_t depth, std::string_view text);
     [[nodiscard]] const Snapshot& snapshotOf(Inspector::Provider& provider, std::size_t depth, const std::string& key, double now);
     void reset();
 

@@ -10,6 +10,7 @@
 
 #include "debug/InspectorWindow.hpp"
 #include "debug/OverlayWindow.hpp"
+#include "debug/SelectionOverlay.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/FrameClock.hpp"
@@ -30,7 +31,7 @@
 
 namespace haylen::plugins {
 
-DebugPlugin::DebugPlugin(platform::DevelopmentSession* developmentSession) : session(developmentSession), inspectorWindow(std::make_unique<debug::InspectorWindow>()), overlayWindow(std::make_unique<debug::OverlayWindow>()), development(developmentSession != nullptr) {}
+DebugPlugin::DebugPlugin(platform::DevelopmentSession* developmentSession) : session(developmentSession), inspectorWindow(std::make_unique<debug::InspectorWindow>()), overlayWindow(std::make_unique<debug::OverlayWindow>()), selectionOverlay(std::make_unique<debug::SelectionOverlay>()), development(developmentSession != nullptr) {}
 
 DebugPlugin::~DebugPlugin() = default;
 
@@ -52,6 +53,11 @@ void DebugPlugin::start(core::Engine& engine) {
     setObjectEvents(engine.getConfig().debug.objectEvents);
     drawings.insert(engine.getConfig().debug.drawings.begin(), engine.getConfig().debug.drawings.end());
     overlay = engine.getRenderer2D().addCanvasOverlay([this, &engine](graphics2d::Renderer& renderer) { drawOverlay(engine, renderer); });
+
+    // Only development gives the renderer something to offer its draws to, so outside it no draw ever offers itself.
+    if (development) {
+        engine.getRenderer2D().setPicking(&picker);
+    }
 }
 
 // The commands that scripts add hold functions of their runtime, which closes after the plugins stop.
@@ -72,6 +78,9 @@ void DebugPlugin::stop(core::Engine& engine) {
     }
 
     inspectorVisible = false;
+    picking = false;
+    picker.clear();
+    engine.getRenderer2D().setPicking(nullptr);
     detachTrace();
     trace.reset();
     engine.getRenderer2D().removeCanvasOverlay(overlay);
@@ -359,8 +368,19 @@ void DebugPlugin::cycleStatsMode() noexcept {
     }
 }
 
+// The pick of the last frame found its hit among the draws of the scenes of this one, which come before the interface.
 void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
-    if (!view.current || (statsMode != debug::StatsDisplay::Mode::Full && !inspectorVisible)) {
+    if (!view.current) {
+        return;
+    }
+
+    resolvePick();
+    const bool surface = picking && inspectorVisible && inspected != nullptr;
+    if (!surface && picker.getSelected()) {
+        picker.clear();
+    }
+
+    if (statsMode != debug::StatsDisplay::Mode::Full && !inspectorVisible) {
         return;
     }
 
@@ -368,14 +388,45 @@ void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     ui::Backend& backend = uiPlugin.getBackend();
     backend.makeCurrent();
 
+    if (surface) {
+        selectionOverlay->draw(picker, *inspectorWindow, *inspected, backend);
+    }
+
     if (statsMode == debug::StatsDisplay::Mode::Full && !overlayWindow->draw(engine, backend, *this)) {
         statsMode = debug::StatsDisplay::Mode::Off;
     }
 
     // The inspector refreshes by the real time of the frames, which the time scale and the pause leave alone.
     if (inspectorVisible) {
-        inspectorVisible = inspected != nullptr && inspectorWindow->draw(*inspected, backend, uiPlugin.getContext(), engine.getClock().getUnscaledDelta());
+        inspectorVisible = inspected != nullptr && inspectorWindow->draw(*inspected, backend, uiPlugin.getContext(), engine.getClock().getUnscaledDelta(), development ? &picking : nullptr);
     }
+
+    if (surface) {
+        debug::SelectionOverlay::raise(kToolWindows);
+    }
+}
+
+void DebugPlugin::resolvePick() {
+    std::optional<debug::Picking::Tag> hit;
+    if (inspected == nullptr || !picker.takeResult(hit)) {
+        return;
+    }
+
+    if (hit && inspected->select(*hit)) {
+        picker.select(*hit);
+        return;
+    }
+
+    inspected->clearSelection();
+    picker.clear();
+}
+
+void DebugPlugin::setPicking(bool value) {
+    if (value && !development) {
+        throw std::logic_error("The pick on the screen works only in development runs, such as the runs of \"haylen app run\".");
+    }
+
+    picking = value;
 }
 
 void DebugPlugin::setInspectorVisible(bool value) {
@@ -388,6 +439,7 @@ void DebugPlugin::setInspectorVisible(bool value) {
 
 // A trace of a number of frames stops at the start of the next frame, since the profiler records the end of the last one after the plugins end their frame.
 void DebugPlugin::beginFrame(core::Engine& engine, float) {
+    picker.beginFrame();
     if (tracing && traceFramesLeft && *traceFramesLeft <= 0) {
         detachTrace();
     }

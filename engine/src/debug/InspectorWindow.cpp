@@ -14,7 +14,7 @@
 
 namespace haylen::debug {
 
-bool InspectorWindow::draw(Inspector::Provider& provider, ui::Backend& backend, ui::Context& context, double seconds) {
+bool InspectorWindow::draw(Inspector::Provider& provider, ui::Backend& backend, ui::Context& context, double seconds, bool* picking) {
     elapsed += seconds;
     const math::Rect safe = backend.getSafeRect();
     const float width = std::min(kWidth, safe.width - DebugWindow::kMargin * 2.0F);
@@ -26,6 +26,10 @@ bool InspectorWindow::draw(Inspector::Provider& provider, ui::Backend& backend, 
         ImGui::TextWrapped("%.*s", static_cast<int>(line.size()), line.data());
         ImGui::PopStyleColor();
         DebugWindow::describeItem(context, ImGui::GetID("##line"), line);
+
+        if (picking != nullptr) {
+            ImGui::Checkbox(kPickLabel.data(), picking);
+        }
 
         if (std::exchange(expired, false)) {
             for (auto& [key, snapshot] : snapshots) {
@@ -117,7 +121,7 @@ void InspectorWindow::drawValue(Inspector::Provider& provider, std::size_t depth
     if (entry.type == "boolean") {
         bool checked = entry.value == "true";
         if (ImGui::Checkbox("##value", &checked)) {
-            edit(provider, depth, checked ? "true" : "false");
+            apply(provider, std::span<const std::string>(path.data(), depth), checked ? "true" : "false");
         }
 
         return;
@@ -148,12 +152,11 @@ void InspectorWindow::drawField(Inspector::Provider& provider, std::size_t depth
     }
 
     if (ImGui::IsItemDeactivatedAfterEdit()) {
-        edit(provider, depth, text);
+        apply(provider, std::span<const std::string>(path.data(), depth), text);
     }
 }
 
-void InspectorWindow::edit(Inspector::Provider& provider, std::size_t depth, std::string_view text) {
-    const std::span<const std::string> edited(path.data(), depth);
+void InspectorWindow::apply(Inspector::Provider& provider, std::span<const std::string> edited, std::string_view text) {
     try {
         provider.set(edited, text);
         status = std::format("Set \"{}\" to {}.", Inspector::joinPath(edited), text);

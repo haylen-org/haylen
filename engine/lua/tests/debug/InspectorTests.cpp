@@ -45,6 +45,7 @@ class InspectorTest : public ::testing::Test {
 
 TEST_F(InspectorTest, ListsTheRootsTablesAndThePropertiesOfBoundObjects) {
     EXPECT_TRUE(fixture.lua("return describe()").starts_with("watched:table:2 values:open scenes:table:Empty:open autoloads:table:Empty:open globals:table:")) << fixture.lua("return describe()");
+    EXPECT_TRUE(fixture.lua("return describe()").ends_with(" selected:nil:nil")) << fixture.lua("return describe()");
     fixture.runLua("require('haylen.scene').push({name = 'play', score = 3})");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return describe('scenes')"), "1:table:play, 2 values:open");
