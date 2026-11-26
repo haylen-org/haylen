@@ -273,6 +273,7 @@
 | **[KB-296 · Texturas HDR carregadas de arquivo no 2D e no 3D](#kb-296)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-304 · Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo](#kb-304)**<br>🟡 medium · `task` · 7/10 | — | — | — | — | — |
 | **[KB-319 · Juntar famílias de métodos que descrevem um só estado num método com um enum](#kb-319)**<br>🟡 medium · `refactor` · 6/10 | — | — | — | — | — |
+| **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -8441,6 +8442,29 @@ A execução completa 45711109150 falhou no teste de UI do Android `TextInputTes
 
 - None
 
+### KB-331
+
+- **Title:** A verificação de cada commit pega os avisos que só o GCC e o MSVC dão
+- **Status:** todo
+- **Type:** improvement
+- **Priority:** medium
+- **Complexity:** 5
+- **Progress:** Ainda não começou.
+- **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
+
+#### Description
+
+No mesmo dia, três commits passaram na verificação do Mac e quebraram a CI completa por avisos que o clang não dá. Dois foram o `-Wshadow` do GCC, com um local de um teste de GPU que esconde um membro da fixture, e um foi o C4189 do MSVC, com um local sem uso no Direct3D 11. Cada rodada da CI do Windows leva horas. A regra de nomes do `AGENTS.md` já proíbe um local com o nome de um membro da sua classe. O esperado é que a verificação de cada commit pegue esses casos antes da CI, pela forma mais comum e rápida que se mostrar certa: um teste do repositório para a regra dos nomes, a compilação dos arquivos mudados com o GCC num contêiner, ou as duas.
+
+#### Acceptance criteria
+
+- [ ] Um local que esconde um membro e um local sem uso falham na verificação de cada commit, no Mac, antes da CI.
+- [ ] A verificação continua rápida, e a documentação dos testes a descreve.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8463,7 +8487,7 @@ A execução completa 45711109150 falhou no teste de UI do Android `TextInputTes
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-331. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-332. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
