@@ -39,7 +39,14 @@ class GraphicsBinding final {
     static int textureWidth(lua_State* L);
     static int textureHeight(lua_State* L);
     static int textureFilter(lua_State* L);
-    static int textureWrap(lua_State* L);
+    static int textureWrapU(lua_State* L);
+    static int textureWrapV(lua_State* L);
+    static int textureWrapW(lua_State* L);
+    static int textureAnisotropy(lua_State* L);
+    static int textureLodBias(lua_State* L);
+    static int textureMinLod(lua_State* L);
+    static int textureMaxLod(lua_State* L);
+    static int textureBorderColor(lua_State* L);
     static int textureMipmaps(lua_State* L);
     static int textureFormat(lua_State* L);
 

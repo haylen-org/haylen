@@ -73,7 +73,7 @@ TEST_F(AssetsManagerTest, LoadsAndCachesSynchronously) {
     EXPECT_THROW((void)assets.load("model", "images/red.png"), std::invalid_argument);
     EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"filter", "blurry"}}), std::invalid_argument);
     EXPECT_THROW((void)assets.getTypeForPath("images/readme.txt"), std::invalid_argument);
-    EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"filter", "linear"}, {"anisotropy", 4}}), std::invalid_argument);
+    EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"filter", "linear"}, {"sharpness", 4}}), std::invalid_argument);
     EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"mipmaps", "yes"}}), std::invalid_argument);
     EXPECT_TRUE(assets.texture("images/red.png", {.filter = haylen::graphics::Texture::Filter::Linear, .mipmaps = true}).getOptions().hasMipmaps());
     EXPECT_THROW((void)assets.load("json", "data/config.json", {{"strict", true}}), std::invalid_argument);
@@ -151,7 +151,7 @@ TEST_F(AssetsManagerTest, EqualOptionsShareOneCachedAsset) {
 
     const haylen::graphics::Texture preloaded(std::static_pointer_cast<haylen::graphics::TextureResource>(assets.load("texture", "images/red.png")));
     EXPECT_EQ(assets.texture("images/red.png"), preloaded);
-    EXPECT_EQ(assets.texture("images/red.png", {.filter = haylen::graphics::Texture::Filter::Nearest, .wrap = haylen::graphics::Texture::Wrap::Clamp}), preloaded);
+    EXPECT_EQ(assets.texture("images/red.png", {.filter = haylen::graphics::Texture::Filter::Nearest}), preloaded);
     EXPECT_EQ(haylen::graphics::Texture(std::static_pointer_cast<haylen::graphics::TextureResource>(assets.load("texture", "./images/red.png", {{"wrap", "clamp"}}))), preloaded);
     const std::shared_ptr<haylen::text::Font> font = assets.font("fonts/ui.ttf");
     EXPECT_EQ(std::static_pointer_cast<haylen::text::Font>(assets.load("font", "fonts/ui.ttf", haylen::core::Json::object())), font);

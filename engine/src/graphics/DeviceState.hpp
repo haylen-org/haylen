@@ -25,7 +25,7 @@ struct DeviceState {
 
     std::unique_ptr<gpu::Device> gpu;
     std::shared_ptr<ResourceGraveyard> graveyard = std::make_shared<ResourceGraveyard>();
-    std::unordered_map<std::uint8_t, gpu::Device::Sampler> samplers;
+    std::vector<std::pair<Texture::Options, gpu::Device::Sampler>> samplers;
     Texture white;
     std::uint32_t nextTextureId = 1;
     gpu::Device::PixelFormat offscreenFormat = gpu::Device::PixelFormat::Rgba8;
@@ -62,6 +62,9 @@ struct DeviceState {
     // Returns the sampler that every texture with the options shares, creating it on first use.
     [[nodiscard]] gpu::Device::Sampler getSampler(Texture::Options options);
 
+    // Checks the sampling of the options against the device, with their mipmaps settled, and gives a texture with the linear filter and mipmaps the most anisotropy of the device unless the options name one. Throws `std::invalid_argument` with a sentence for options that the device cannot sample with.
+    [[nodiscard]] Texture::Options settle(Texture::Options options) const;
+
     // Creates the image of a texture, with its mipmaps when asked for, and counts the bytes they hold.
     [[nodiscard]] gpu::Device::Image createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes);
 
@@ -82,9 +85,8 @@ struct DeviceState {
 
   private:
     // The samples a linear texture with mipmaps takes along the longer side of the footprint of a pixel, so a texture drawn much smaller along one side than the other, such as the middle of a nine-slice squeezed into a narrow button, keeps the detail of its other side.
-    static constexpr int kMaxAnisotropy = 16;
 
-    [[nodiscard]] static std::uint8_t samplerKey(Texture::Options options) noexcept;
+    [[nodiscard]] static gpu::Device::BorderColor toBorderColor(Texture::BorderColor color) noexcept;
     [[nodiscard]] static gpu::Device::Wrap toWrap(Texture::Wrap wrap) noexcept;
 };
 

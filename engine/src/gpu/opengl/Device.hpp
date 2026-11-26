@@ -283,7 +283,6 @@ class Device final : public gpu::Device {
     std::size_t appliedUnits = 0;
 
     // The largest anisotropy of a sampler, which stays 1 where samplers filter without it.
-    float maxAnisotropy = 1.0F;
     std::vector<std::byte> staging;
 };
 

@@ -1,8 +1,12 @@
 #include "graphics/DeviceState.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
+#include <format>
 #include <memory>
+#include <stdexcept>
+#include <string_view>
 #include <utility>
 
 #include "gpu/ImageInfo.hpp"
@@ -19,28 +23,88 @@ gpu::Device::Wrap DeviceState::toWrap(Texture::Wrap wrap) noexcept {
         return gpu::Device::Wrap::Repeat;
     case Texture::Wrap::Mirror:
         return gpu::Device::Wrap::MirroredRepeat;
+    case Texture::Wrap::Border:
+        return gpu::Device::Wrap::ClampToBorder;
     }
 
     return gpu::Device::Wrap::ClampToEdge;
 }
 
-// A sampler asked for without mipmaps, such as the one of a render target, reads only the image itself, since the textures that keep mipmaps settle them when they are made.
-std::uint8_t DeviceState::samplerKey(Texture::Options options) noexcept {
-    return static_cast<std::uint8_t>(static_cast<unsigned>(options.filter) | (static_cast<unsigned>(options.wrap) << 1U) | (options.mipmaps.value_or(false) ? 8U : 0U));
+gpu::Device::BorderColor DeviceState::toBorderColor(Texture::BorderColor color) noexcept {
+    switch (color) {
+    case Texture::BorderColor::TransparentBlack:
+        return gpu::Device::BorderColor::TransparentBlack;
+    case Texture::BorderColor::OpaqueBlack:
+        return gpu::Device::BorderColor::OpaqueBlack;
+    case Texture::BorderColor::OpaqueWhite:
+        return gpu::Device::BorderColor::OpaqueWhite;
+    }
+
+    return gpu::Device::BorderColor::TransparentBlack;
 }
 
+// A sampler asked for without mipmaps, such as the one of a render target, reads only the image itself, since the textures that keep mipmaps settle them when they are made. The options reach here checked against the device, with their anisotropy settled.
 gpu::Device::Sampler DeviceState::getSampler(Texture::Options options) {
-    const std::uint8_t key = samplerKey(options);
-    if (const auto found = samplers.find(key); found != samplers.end()) {
+    options.mipmaps = options.mipmaps.value_or(false);
+    options.anisotropy = options.anisotropy.value_or(1);
+    const auto found = std::ranges::find(samplers, options, &std::pair<Texture::Options, gpu::Device::Sampler>::first);
+    if (found != samplers.end()) {
         return found->second;
     }
 
     const gpu::Device::Filter filter = options.filter == Texture::Filter::Nearest ? gpu::Device::Filter::Nearest : gpu::Device::Filter::Linear;
-    const bool mipmaps = options.mipmaps.value_or(false);
-    const int anisotropy = mipmaps && filter == gpu::Device::Filter::Linear ? kMaxAnisotropy : 1;
-    const gpu::Device::Sampler sampler = gpu->makeSampler({.minification = filter, .magnification = filter, .mipmap = mipmaps ? filter : gpu::Device::Filter::Nearest, .wrapU = toWrap(options.wrap), .wrapV = toWrap(options.wrap), .maxAnisotropy = anisotropy});
-    samplers.emplace(key, sampler);
+    const bool mipmaps = *options.mipmaps;
+    const gpu::Device::Sampler sampler = gpu->makeSampler({
+        .minification = filter,
+        .magnification = filter,
+        .mipmap = mipmaps ? filter : gpu::Device::Filter::Nearest,
+        .wrapU = toWrap(options.wrapU),
+        .wrapV = toWrap(options.wrapV),
+        .wrapW = toWrap(options.wrapW),
+        .minLod = options.minLod,
+        .maxLod = options.maxLod,
+        .lodBias = options.lodBias,
+        .maxAnisotropy = options.anisotropy.value_or(1),
+        .borderColor = toBorderColor(options.borderColor),
+    });
+    samplers.emplace_back(options, sampler);
     return sampler;
+}
+
+Texture::Options DeviceState::settle(Texture::Options options) const {
+    const gpu::Device::Capabilities& capabilities = gpu->getCapabilities();
+    const std::string_view api = std::ranges::find(gpu::Device::kApiNames, gpu->getApi(), &std::pair<std::string_view, gpu::Device::Api>::second)->first;
+    const bool mipmaps = options.mipmaps.value_or(false);
+    const bool linear = options.filter == Texture::Filter::Linear;
+    options.anisotropy = options.anisotropy.value_or(linear && mipmaps ? capabilities.maxAnisotropy : 1);
+
+    const int anisotropy = *options.anisotropy;
+    if (anisotropy < 1 || anisotropy > capabilities.maxAnisotropy) {
+        throw std::invalid_argument(std::format("The texture option \"anisotropy\" takes from 1 to {} samples on this device, not {}.", capabilities.maxAnisotropy, anisotropy));
+    }
+
+    if (anisotropy > 1 && !(linear && mipmaps)) {
+        throw std::invalid_argument("Anisotropic filtering takes the filter \"linear\" and mipmaps.");
+    }
+
+    if (!(options.minLod >= 0.0F) || !(options.minLod <= options.maxLod)) {
+        throw std::invalid_argument("The levels of detail of a texture run from \"minLod\" up to \"maxLod\", from 0 on.");
+    }
+
+    if (options.lodBias != 0.0F && capabilities.maxLodBias == 0.0F) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device takes no bias of the level of detail.", api));
+    }
+
+    if (!(std::abs(options.lodBias) <= capabilities.maxLodBias) && options.lodBias != 0.0F) {
+        throw std::invalid_argument(std::format("The bias of the level of detail of a texture lies within {} on this device, not {}.", capabilities.maxLodBias, options.lodBias));
+    }
+
+    const bool border = options.wrapU == Texture::Wrap::Border || options.wrapV == Texture::Wrap::Border || options.wrapW == Texture::Wrap::Border;
+    if (border && !capabilities.borderColors) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device reads no border color, so its textures take no wrap \"border\".", api));
+    }
+
+    return options;
 }
 
 // Mipmaps an image brings from its decoding are taken as they are, and the others are made here.
@@ -74,6 +138,7 @@ gpu::Device::Image DeviceState::createDynamicImage(int width, int height, gpu::D
 
 Texture DeviceState::createDynamicTexture(int width, int height, gpu::Device::PixelFormat format, std::span<const std::uint8_t> pixels, Texture::Options options) {
     options.mipmaps = false;
+    options = settle(options);
     auto resource = std::make_shared<TextureResource>();
     resource->image = createDynamicImage(width, height, format);
     resource->tracked.setBytes(getImageBytes(width, height, format));
@@ -114,6 +179,7 @@ std::size_t DeviceState::getImageBytes(int width, int height, gpu::Device::Pixel
 
 RenderTarget DeviceState::createRenderTarget(int width, int height, gpu::Device::PixelFormat format, Texture::Options options) {
     options.mipmaps = false;
+    options = settle(options);
     auto texture = std::make_shared<TextureResource>(TextureResource::targets);
     texture->image = gpu->makeImage({.width = width, .height = height, .format = format, .kind = gpu::Device::ImageKind::RenderTarget, .label = "haylen-render-target"});
     texture->tracked.setBytes(getImageBytes(width, height, format));

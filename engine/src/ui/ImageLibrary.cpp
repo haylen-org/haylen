@@ -188,7 +188,7 @@ ImageLibrary::File& ImageLibrary::requestFile(std::string_view path, graphics::T
         File& entry = files[static_cast<std::size_t>(filter)][key];
         entry.texture = std::move(texture);
         entry.error = std::move(error);
-    }, {.filter = filter, .wrap = graphics::Texture::Wrap::Clamp});
+    }, {.filter = filter});
     // clang-format on
 
     return file;
@@ -243,7 +243,7 @@ void ImageLibrary::requestRaster(const std::string& path, Vector& vector, int st
         }
 
         // A raster draws at the scale it was made for, so it needs no smaller copies.
-        const graphics::Texture::Options options{.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Clamp, .mipmaps = false};
+        const graphics::Texture::Options options{.filter = graphics::Texture::Filter::Linear, .mipmaps = false};
         const graphics::Image& pixels = *result.value;
         Raster raster{.texture = device.createTexture(pixels, options), .bytes = pixels.getPixels().size(), .frame = frame};
         rasterBytes += raster.bytes;

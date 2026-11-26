@@ -23,6 +23,7 @@
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/ProgramSlots.hpp"
+#include "gpu/SamplerRules.hpp"
 #include "gpu/metal/EncoderState.hpp"
 #include "gpu/metal/Formats.hpp"
 #include "gpu/metal/Graveyard.hpp"
@@ -279,6 +280,8 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     made.originTopLeft = true;
     made.independentBlend = true;
     made.gpuTiming = true;
+    made.maxAnisotropy = 16;
+    made.borderColors = [metal supportsFamily:MTLGPUFamilyApple7] || !apple;
 
     bool bc = false;
     if (@available(macOS 11.0, iOS 16.4, tvOS 16.4, *)) {
@@ -765,6 +768,7 @@ void Device::uploadLevels(Image image, std::span<const std::span<const std::byte
 }
 
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
+    SamplerRules::check(desc, native->capabilities);
     id<MTLSamplerState> sampler = nil;
     @autoreleasepool {
         MTLSamplerDescriptor* made = [MTLSamplerDescriptor new];
@@ -776,7 +780,8 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         made.rAddressMode = Formats::toAddressMode(desc.wrapW);
         made.lodMinClamp = desc.minLod;
         made.lodMaxClamp = desc.maxLod;
-        made.maxAnisotropy = static_cast<NSUInteger>(std::clamp(desc.maxAnisotropy, 1, 16));
+        made.maxAnisotropy = static_cast<NSUInteger>(desc.maxAnisotropy);
+        made.borderColor = Formats::toBorderColor(desc.borderColor);
         if (desc.compare) {
             made.compareFunction = Formats::toCompareFunction(*desc.compare);
         }

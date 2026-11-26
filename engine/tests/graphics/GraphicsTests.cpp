@@ -352,10 +352,10 @@ TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
     EXPECT_EQ(device.createTexture(graphics::Image(3072, 4)).getWidth(), 3072);
     EXPECT_EQ(device.createRenderTarget(4096, 2048).getWidth(), 4096);
 
-    const graphics::Texture texture = device.createTexture(graphics::Image(4, 2, math::Color::white()), {.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Repeat});
+    const graphics::Texture texture = device.createTexture(graphics::Image(4, 2, math::Color::white()), {.filter = graphics::Texture::Filter::Linear, .wrapU = graphics::Texture::Wrap::Repeat, .wrapV = graphics::Texture::Wrap::Repeat, .wrapW = graphics::Texture::Wrap::Repeat});
     EXPECT_TRUE(texture.isValid());
     EXPECT_EQ(texture.getSize(), math::Vec2(4.0F, 2.0F));
-    EXPECT_EQ(texture.getOptions(), (graphics::Texture::Options{.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Repeat, .mipmaps = true}));
+    EXPECT_EQ(texture.getOptions(), (graphics::Texture::Options{.filter = graphics::Texture::Filter::Linear, .wrapU = graphics::Texture::Wrap::Repeat, .wrapV = graphics::Texture::Wrap::Repeat, .wrapW = graphics::Texture::Wrap::Repeat, .mipmaps = true, .anisotropy = 16}));
     EXPECT_NE(texture.getId(), 0U);
 
     device.replaceTexture(texture, graphics::Image(8, 8));
@@ -658,7 +658,7 @@ TEST(GraphicsNamesTest, ParsesAndNamesBlendFilterWrapAndScalingValues) {
     EXPECT_EQ(graphics::BlendMode::name(graphics::BlendMode::Type::Screen), "screen");
     EXPECT_FALSE(graphics::BlendMode::parse("burn").has_value());
     EXPECT_FALSE(graphics::Texture::filterFromName("cubic").has_value());
-    EXPECT_FALSE(graphics::Texture::wrapFromName("border").has_value());
+    EXPECT_FALSE(graphics::Texture::wrapFromName("diagonal").has_value());
     EXPECT_FALSE(graphics::Viewport::scalingPolicyFromName("zoom").has_value());
 
     for (const std::string_view name : {"nearest", "linear"}) {
@@ -667,7 +667,7 @@ TEST(GraphicsNamesTest, ParsesAndNamesBlendFilterWrapAndScalingValues) {
         EXPECT_EQ(graphics::Texture::filterName(*filter), name);
     }
 
-    for (const std::string_view name : {"clamp", "repeat", "mirror"}) {
+    for (const std::string_view name : {"clamp", "repeat", "mirror", "border"}) {
         const std::optional<graphics::Texture::Wrap> wrap = graphics::Texture::wrapFromName(name);
         ASSERT_TRUE(wrap.has_value()) << name;
         EXPECT_EQ(graphics::Texture::wrapName(*wrap), name);

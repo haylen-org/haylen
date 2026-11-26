@@ -20,8 +20,8 @@ TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
     EXPECT_EQ(fixture.lua("return hero.width .. 'x' .. hero.height"), "16x8");
     EXPECT_EQ(fixture.lua("return hero == require('haylen.assets').texture('images/hero.png') and hero ~= graphics.whiteTexture()"), "true");
     EXPECT_EQ(fixture.lua("local white = graphics.whiteTexture() return white.width .. 'x' .. white.height .. ' ' .. tostring(white == graphics.whiteTexture())"), "1x1 true");
-    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 2, {fill = '#FF0000', filter = 'linear'}) return t.width .. 'x' .. t.height .. ' ' .. t.filter .. ' ' .. t.wrap"), "4x2 linear clamp");
-    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(1, 1, {wrap = 'mirror'}) return t.filter .. ' ' .. t.wrap"), "nearest mirror");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 2, {fill = '#FF0000', filter = 'linear'}) return t.width .. 'x' .. t.height .. ' ' .. t.filter .. ' ' .. t.wrapU"), "4x2 linear clamp");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(1, 1, {wrap = 'mirror'}) return t.filter .. ' ' .. t.wrapV"), "nearest mirror");
     EXPECT_NE(fixture.lua("return graphics.newTexture(2, 2, 5)").find("bad argument #3 to 'newTexture' (table expected, got number)"), std::string::npos);
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(1, 1, {pixels = string.char(255, 0, 0, 255)}) return t.width"), "1");
     EXPECT_NE(fixture.lua("return graphics.newTexture(2, 2, {pixels = 'short'})").find("error: "), std::string::npos);
@@ -48,6 +48,25 @@ TEST(GraphicsLuaTest, ReportsTheCapabilitiesOfTheDeviceAndOfEachFormat) {
     EXPECT_EQ(fixture.lua("local s = graphics.formatSupport('astc6x6Srgb') return tostring(s.sample) .. ' ' .. tostring(s.render) .. ' ' .. #s.sampleCounts"), "true false 0");
     EXPECT_EQ(fixture.lua("local s = graphics.formatSupport('depth32Float') return tostring(s.render) .. ' ' .. tostring(s.filter)"), "true false");
     EXPECT_NE(fixture.lua("return graphics.formatSupport('rgba7')").find("unknown value 'rgba7'"), std::string::npos);
+}
+
+// The sampling of a texture follows its options on each axis, with anisotropy, levels of detail, a bias and a border color that the device checks.
+TEST(GraphicsLuaTest, SamplesTexturesAsTheirOptionsSay) {
+    test::LuaFixture fixture;
+    fixture.runLua("graphics = require('haylen.graphics')");
+
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4, {wrap = 'repeat', wrapV = 'mirror'}) return t.wrapU .. ' ' .. t.wrapV .. ' ' .. t.wrapW"), "repeat mirror repeat");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4, {wrapV = 'border', borderColor = 'opaqueWhite'}) return t.wrapU .. ' ' .. t.wrapV .. ' ' .. t.borderColor"), "clamp border opaqueWhite");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4, {filter = 'linear'}) return t.anisotropy"), "16");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4, {filter = 'linear', anisotropy = 4}) return t.anisotropy"), "4");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4) return t.anisotropy .. ' ' .. t.lodBias .. ' ' .. t.minLod .. ' ' .. t.maxLod"), "1 0.0 0.0 1000.0");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4, {filter = 'linear', lodBias = -1, minLod = 1, maxLod = 2}) return t.lodBias .. ' ' .. t.minLod .. ' ' .. t.maxLod"), "-1.0 1.0 2.0");
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {filter = 'linear', anisotropy = 32})").find("The texture option \"anisotropy\" takes from 1 to 16 samples on this device, not 32."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {anisotropy = 4})").find("Anisotropic filtering takes the filter \"linear\" and mipmaps."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {minLod = 3, maxLod = 2})").find("The levels of detail of a texture run from \"minLod\" up to \"maxLod\", from 0 on."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {lodBias = 20})").find("The bias of the level of detail of a texture lies within 16"), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {borderColor = 'gray'})").find("gray"), std::string::npos);
+    EXPECT_EQ(fixture.lua("local c = graphics.capabilities() return c.maxAnisotropy .. ' ' .. c.maxLodBias .. ' ' .. tostring(c.borderColors)"), "16 16.0 true");
 }
 
 // A texture made in a format takes the bytes of each of its levels as they are, such as the blocks of a compressed format, and refuses levels that do not fit.
@@ -94,7 +113,7 @@ TEST(GraphicsLuaTest, CreatesTexturesFromTheBytesOfImageFiles) {
     fixture.runLua("graphics = require('haylen.graphics')");
 
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(png) return t.width .. 'x' .. t.height .. ' ' .. t.filter"), "5x3 nearest");
-    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(png, {dynamic = true, filter = 'linear', wrap = 'repeat'}) t:update(string.rep('\\0', 60)) return t.filter .. ' ' .. t.wrap"), "linear repeat");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(png, {dynamic = true, filter = 'linear', wrap = 'repeat'}) t:update(string.rep('\\0', 60)) return t.filter .. ' ' .. t.wrapU"), "linear repeat");
     EXPECT_NE(fixture.lua("graphics.newTexture('not an image')").find("The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file."), std::string::npos);
     EXPECT_NE(fixture.lua("graphics.newTexture(png, {fill = '#FF0000'})").find("fill"), std::string::npos);
 }

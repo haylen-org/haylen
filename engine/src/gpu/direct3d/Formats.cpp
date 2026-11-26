@@ -101,6 +101,19 @@ DXGI_FORMAT Formats::getDepthFormat(PixelFormat format) noexcept {
     }
 }
 
+std::array<float, 4> Formats::getBorderColor(Device::BorderColor color) noexcept {
+    switch (color) {
+    case Device::BorderColor::TransparentBlack:
+        return {0.0F, 0.0F, 0.0F, 0.0F};
+    case Device::BorderColor::OpaqueBlack:
+        return {0.0F, 0.0F, 0.0F, 1.0F};
+    case Device::BorderColor::OpaqueWhite:
+        return {1.0F, 1.0F, 1.0F, 1.0F};
+    }
+
+    return {0.0F, 0.0F, 0.0F, 0.0F};
+}
+
 DXGI_FORMAT Formats::getVertexFormat(Device::VertexFormat format) noexcept {
     using VertexFormat = Device::VertexFormat;
     switch (format) {

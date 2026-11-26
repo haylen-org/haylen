@@ -56,6 +56,7 @@ gpu::Device& Device::getGpu() noexcept {
 Texture Device::createTexture(const Image& image, Texture::Options options) {
     validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
     options.mipmaps = options.hasMipmaps();
+    options = state->settle(options);
 
     auto resource = std::make_shared<TextureResource>();
     std::size_t bytes = 0;
@@ -74,6 +75,7 @@ Texture Device::createTexture(const Image& image, Texture::Options options) {
 Texture Device::createTexture(const TextureData& data, Texture::Options options) {
     validateData(data, options);
     options.mipmaps = options.mipmaps.value_or(data.levels.size() > 1);
+    options = state->settle(options);
     const std::span<const std::span<const std::byte>> levels = *options.mipmaps ? data.levels : data.levels.first(1);
 
     std::size_t bytes = 0;

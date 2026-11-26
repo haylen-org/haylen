@@ -309,6 +309,25 @@ TEST_F(NullDeviceTest, SamplesNoImageThatThePassResolvesInto) {
     device.commit();
 }
 
+// A sampler takes anisotropy only within the device and with linear filters, levels of detail in order, a bias only within the device and a border color only on a device that reads one.
+TEST_F(NullDeviceTest, ChecksSamplersAgainstTheCapabilities) {
+    Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
+    capabilities.maxAnisotropy = 8;
+    capabilities.maxLodBias = 0.0F;
+    capabilities.borderColors = false;
+    NullDevice device(Device::Language::None, capabilities);
+
+    EXPECT_NO_THROW((void)device.makeSampler({.mipmap = Device::Filter::Linear, .maxAnisotropy = 8, .label = "anisotropic"}));
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeSampler({.mipmap = Device::Filter::Linear, .maxAnisotropy = 16}); }), gpu::ContractError::Rule::Sampler);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeSampler({.maxAnisotropy = 2}); }), gpu::ContractError::Rule::Sampler);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeSampler({.minLod = 3.0F, .maxLod = 2.0F}); }), gpu::ContractError::Rule::Sampler);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeSampler({.lodBias = 0.5F}); }), gpu::ContractError::Rule::Sampler);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeSampler({.wrapW = Device::Wrap::ClampToBorder}); }), gpu::ContractError::Rule::Sampler);
+
+    NullDevice full;
+    EXPECT_NO_THROW((void)full.makeSampler({.wrapU = Device::Wrap::ClampToBorder, .lodBias = -2.0F, .borderColor = Device::BorderColor::OpaqueWhite, .label = "border"}));
+}
+
 // A block compressed format makes only textures whose sides hold whole blocks and whose levels hold their rows of blocks, never an attachment or a volume, and only on a device that samples it.
 TEST_F(NullDeviceTest, MakesCompressedTexturesOfWholeBlocks) {
     Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();

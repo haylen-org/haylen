@@ -8,6 +8,7 @@
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/ProgramSlots.hpp"
+#include "gpu/SamplerRules.hpp"
 #include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu {
@@ -21,7 +22,7 @@ std::optional<std::vector<std::uint8_t>> NullDevice::NullReadback::poll() {
 }
 
 Device::Capabilities NullDevice::getDefaultCapabilities() noexcept {
-    Capabilities capabilities{.maxImageSize = kMaxImageSize, .maxArrayLayers = kMaxArrayLayers, .maxVolumeSize = kMaxVolumeSize, .maxCubeSize = kMaxImageSize, .originTopLeft = true, .independentBlend = false, .gpuTiming = false};
+    Capabilities capabilities{.maxImageSize = kMaxImageSize, .maxArrayLayers = kMaxArrayLayers, .maxVolumeSize = kMaxVolumeSize, .maxCubeSize = kMaxImageSize, .originTopLeft = true, .independentBlend = false, .gpuTiming = false, .maxAnisotropy = kMaxAnisotropy, .maxLodBias = kMaxLodBias, .borderColors = true};
     for (std::size_t format = 0; format < capabilities.formats.size(); ++format) {
         const auto pixelFormat = static_cast<PixelFormat>(format);
         const bool wide = pixelFormat == PixelFormat::R32Float || pixelFormat == PixelFormat::Rg32Float || pixelFormat == PixelFormat::Rgba32Float;
@@ -108,14 +109,7 @@ Device::Image NullDevice::makeImage(const ImageDesc& desc) {
 }
 
 Device::Sampler NullDevice::makeSampler(const SamplerDesc& desc) {
-    if (desc.maxAnisotropy < 1 || desc.maxAnisotropy > kMaxAnisotropy) {
-        throw ContractError(ContractError::Rule::Sampler);
-    }
-
-    if (desc.minLod < 0.0F || desc.minLod > desc.maxLod) {
-        throw ContractError(ContractError::Rule::Sampler);
-    }
-
+    SamplerRules::check(desc, features);
     requireRoom(samplers.size(), kSamplerPoolSize, "The graphics device has no room for another sampler. At most {} samplers can exist at once.");
     const std::uint64_t id = nextId++;
     SamplerDesc kept = desc;

@@ -103,8 +103,18 @@ core::Json Manager::fontOptionsToJson(const text::TrueTypeFont::Options& options
     return {{"bakeSize", core::JsonNumber::fromFloat(options.bakeSize)}, {"spread", options.spread}, {"atlasSize", options.atlasSize}, {"face", options.face}};
 }
 
+// The option "wrap" sets every axis, and the wraps of single axes replace it on their axes.
 graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& options) {
-    core::JsonValidator::requireKnownOptions(options, {"filter", "wrap", "mipmaps"}, "texture options");
+    if (!options.is_object()) {
+        throw std::invalid_argument("Expected texture options to be a JSON object.");
+    }
+
+    for (const auto& [key, value] : options.items()) {
+        if (std::ranges::find(kTextureOptionKeys, key) == kTextureOptionKeys.end()) {
+            throw std::invalid_argument("Unknown option \"" + key + "\".");
+        }
+    }
+
     graphics::Texture::Options result;
     if (options.contains("filter")) {
         const core::Json& value = options.at("filter");
@@ -117,13 +127,19 @@ graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& opt
     }
 
     if (options.contains("wrap")) {
-        const core::Json& value = options.at("wrap");
-        const std::optional<graphics::Texture::Wrap> wrap = value.is_string() ? graphics::Texture::wrapFromName(value.get<std::string>()) : std::nullopt;
-        if (!wrap) {
-            throw std::invalid_argument("The texture wrap must be \"clamp\", \"repeat\" or \"mirror\", not " + describe(value) + ".");
-        }
+        result.setWrap(readWrap(options.at("wrap"), "wrap"));
+    }
 
-        result.wrap = *wrap;
+    if (options.contains("wrapU")) {
+        result.wrapU = readWrap(options.at("wrapU"), "wrapU");
+    }
+
+    if (options.contains("wrapV")) {
+        result.wrapV = readWrap(options.at("wrapV"), "wrapV");
+    }
+
+    if (options.contains("wrapW")) {
+        result.wrapW = readWrap(options.at("wrapW"), "wrapW");
     }
 
     if (options.contains("mipmaps")) {
@@ -135,11 +151,74 @@ graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& opt
         result.mipmaps = value.get<bool>();
     }
 
+    if (options.contains("anisotropy")) {
+        const core::Json& value = options.at("anisotropy");
+        if (!value.is_number_integer()) {
+            throw std::invalid_argument("The texture option \"anisotropy\" must be a whole number, not " + describe(value) + ".");
+        }
+
+        result.anisotropy = value.get<int>();
+    }
+
+    result.lodBias = readLevel(options, "lodBias", result.lodBias);
+    result.minLod = readLevel(options, "minLod", result.minLod);
+    result.maxLod = readLevel(options, "maxLod", result.maxLod);
+
+    if (options.contains("borderColor")) {
+        const core::Json& value = options.at("borderColor");
+        const std::optional<graphics::Texture::BorderColor> color = value.is_string() ? graphics::Texture::borderColorFromName(value.get<std::string>()) : std::nullopt;
+        if (!color) {
+            throw std::invalid_argument("The texture option \"borderColor\" must be \"transparentBlack\", \"opaqueBlack\" or \"opaqueWhite\", not " + describe(value) + ".");
+        }
+
+        result.borderColor = *color;
+    }
+
     return result;
 }
 
+core::Json Manager::pickTextureOptions(const core::Json& options) {
+    core::Json picked = core::Json::object();
+    for (const std::string_view key : kTextureOptionKeys) {
+        if (const auto found = options.find(key); found != options.end()) {
+            picked[std::string(key)] = *found;
+        }
+    }
+
+    return picked;
+}
+
+graphics::Texture::Wrap Manager::readWrap(const core::Json& value, const char* key) {
+    const std::optional<graphics::Texture::Wrap> wrap = value.is_string() ? graphics::Texture::wrapFromName(value.get<std::string>()) : std::nullopt;
+    if (!wrap) {
+        throw std::invalid_argument(std::string("The texture option \"") + key + "\" must be \"clamp\", \"repeat\", \"mirror\" or \"border\", not " + describe(value) + ".");
+    }
+
+    return *wrap;
+}
+
+float Manager::readLevel(const core::Json& options, const char* key, float fallback) {
+    if (!options.contains(key)) {
+        return fallback;
+    }
+
+    const core::Json& value = options.at(key);
+    if (!value.is_number()) {
+        throw std::invalid_argument(std::string("The texture option \"") + key + "\" must be a number, not " + describe(value) + ".");
+    }
+
+    return value.get<float>();
+}
+
 core::Json Manager::textureOptionsToJson(graphics::Texture::Options options) {
-    return {{"filter", graphics::Texture::filterName(options.filter)}, {"wrap", graphics::Texture::wrapName(options.wrap)}, {"mipmaps", options.hasMipmaps()}};
+    core::Json json = {
+        {"filter", graphics::Texture::filterName(options.filter)}, {"wrapU", graphics::Texture::wrapName(options.wrapU)}, {"wrapV", graphics::Texture::wrapName(options.wrapV)}, {"wrapW", graphics::Texture::wrapName(options.wrapW)}, {"mipmaps", options.hasMipmaps()}, {"lodBias", core::JsonNumber::fromFloat(options.lodBias)}, {"minLod", core::JsonNumber::fromFloat(options.minLod)}, {"maxLod", core::JsonNumber::fromFloat(options.maxLod)}, {"borderColor", graphics::Texture::borderColorName(options.borderColor)},
+    };
+    if (options.anisotropy) {
+        json["anisotropy"] = *options.anisotropy;
+    }
+
+    return json;
 }
 
 Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphics::Device& graphicsDevice, core::EventBus& eventBus) : package(contentPackage), jobs(jobSystem), device(graphicsDevice), publisher(std::make_shared<Publisher>(eventBus)) {

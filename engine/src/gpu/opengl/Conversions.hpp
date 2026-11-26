@@ -46,6 +46,7 @@ class Conversions final {
     [[nodiscard]] static Gl::Enum toMinification(Device::Filter minification, Device::Filter mipmap) noexcept;
     [[nodiscard]] static Gl::Enum toMagnification(Device::Filter magnification) noexcept;
     [[nodiscard]] static Gl::Enum toWrap(Device::Wrap wrap) noexcept;
+    [[nodiscard]] static std::array<float, 4> toBorderColor(Device::BorderColor color) noexcept;
     [[nodiscard]] static Gl::Enum toTextureTarget(Device::TextureType type) noexcept;
 };
 

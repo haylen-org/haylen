@@ -83,14 +83,7 @@ text::BitmapFont::Grid TextPlugin::readGrid(const core::Json& options) {
 core::Json TextPlugin::normalizeGrid(const core::Json& options) {
     core::JsonValidator::requireKnownOptions(options, {"characters", "cellWidth", "cellHeight", "spacing", "margin", "advance", "lineHeight", "baseline", "filter", "wrap"}, "grid font options");
     const text::BitmapFont::Grid grid = readGrid(options);
-    core::Json texture = core::Json::object();
-    for (const char* key : {"filter", "wrap"}) {
-        if (options.contains(key)) {
-            texture[key] = options.at(key);
-        }
-    }
-
-    core::Json normalized = assets::Manager::textureOptionsToJson(assets::Manager::textureOptionsFromJson(texture));
+    core::Json normalized = assets::Manager::textureOptionsToJson(assets::Manager::textureOptionsFromJson(assets::Manager::pickTextureOptions(options)));
     normalized.update({{"characters", grid.characters}, {"cellWidth", core::JsonNumber::fromFloat(grid.cellWidth)}, {"cellHeight", core::JsonNumber::fromFloat(grid.cellHeight)}, {"spacing", {core::JsonNumber::fromFloat(grid.spacing.x), core::JsonNumber::fromFloat(grid.spacing.y)}}, {"margin", {core::JsonNumber::fromFloat(grid.margin.x), core::JsonNumber::fromFloat(grid.margin.y)}}, {"advance", core::JsonNumber::fromFloat(grid.advance)}, {"lineHeight", core::JsonNumber::fromFloat(grid.lineHeight)}, {"baseline", core::JsonNumber::fromFloat(grid.baseline)}});
     return normalized;
 }
@@ -144,7 +137,7 @@ void TextPlugin::start(core::Engine& engine) {
         },
         .finalize = [&manager, &device](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
             const graphics::Image& image = *std::static_pointer_cast<graphics::Image>(result);
-            const core::Json textureOptions{{"filter", request.options.at("filter")}, {"wrap", request.options.at("wrap")}};
+            const core::Json textureOptions = assets::Manager::pickTextureOptions(request.options);
             const auto resource = manager.share("texture", request.path, textureOptions, [&](const assets::Manager::Request& texture) {
                 return device.createTexture(image, assets::Manager::textureOptionsFromJson(texture.options)).getResource();
             });

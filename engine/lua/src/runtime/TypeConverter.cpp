@@ -770,20 +770,44 @@ haylen::graphics::Texture::Options TypeConverter::readTextureOptions(lua_State* 
         return options;
     }
 
+    // The option "wrap" sets every axis, and the wraps of single axes replace it on their axes, whatever order the table holds them in.
     luaL_checktype(L, index, LUA_TTABLE);
+    std::array<std::optional<haylen::graphics::Texture::Wrap>, 4> wraps{};
     // clang-format off
-    Table::readFields(L, index, kTextureOptionFields, extraFields, [L, &options](std::string_view key) {
+    Table::readFields(L, index, kTextureOptionFields, extraFields, [L, &options, &wraps](std::string_view key) {
         if (key == "filter") {
             Table::readValue(L, key, options.filter);
         } else if (key == "wrap") {
-            Table::readValue(L, key, options.wrap);
+            Table::readValue(L, key, wraps[0].emplace());
+        } else if (key == "wrapU") {
+            Table::readValue(L, key, wraps[1].emplace());
+        } else if (key == "wrapV") {
+            Table::readValue(L, key, wraps[2].emplace());
+        } else if (key == "wrapW") {
+            Table::readValue(L, key, wraps[3].emplace());
         } else if (key == "mipmaps") {
             bool mipmaps = false;
             Table::readValue(L, key, mipmaps);
             options.mipmaps = mipmaps;
+        } else if (key == "anisotropy") {
+            int anisotropy = 1;
+            Table::readValue(L, key, anisotropy);
+            options.anisotropy = anisotropy;
+        } else if (key == "lodBias") {
+            Table::readValue(L, key, options.lodBias);
+        } else if (key == "minLod") {
+            Table::readValue(L, key, options.minLod);
+        } else if (key == "maxLod") {
+            Table::readValue(L, key, options.maxLod);
+        } else if (key == "borderColor") {
+            Table::readValue(L, key, options.borderColor);
         }
     });
     // clang-format on
+    options.setWrap(wraps[0].value_or(haylen::graphics::Texture::Wrap::Clamp));
+    options.wrapU = wraps[1].value_or(options.wrapU);
+    options.wrapV = wraps[2].value_or(options.wrapV);
+    options.wrapW = wraps[3].value_or(options.wrapW);
     return options;
 }
 

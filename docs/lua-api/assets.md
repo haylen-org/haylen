@@ -21,7 +21,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 
 | Type | Extensions | Lua value | Options |
 | --- | --- | --- | --- |
-| `texture` | `.png`, `.jpg`, `.jpeg`, `.tga`, `.bmp`, `.gif` | Texture from [`haylen.graphics`](graphics.md). | The option `filter` is `'nearest'` (default) or `'linear'`. The option `wrap` is `'clamp'` (default), `'repeat'` or `'mirror'`. The option `mipmaps` is `true` or `false`, and by default `true` with the `'linear'` filter and `false` with `'nearest'`. |
+| `texture` | `.png`, `.jpg`, `.jpeg`, `.tga`, `.bmp`, `.gif` | Texture from [`haylen.graphics`](graphics.md). | The option `filter` is `'nearest'` (default) or `'linear'`. The option `wrap` is `'clamp'` (default), `'repeat'`, `'mirror'` or `'border'` on every axis, and `wrapU`, `wrapV` and `wrapW` replace it on one axis. The option `mipmaps` is `true` or `false`, and by default `true` with the `'linear'` filter and `false` with `'nearest'`. The options `anisotropy`, `lodBias`, `minLod`, `maxLod` and `borderColor` sample as the [texture options](graphics.md#graphicsnewtexturewidth-height-options) say. |
 | `font` | `.ttf`, `.otf`, `.ttc` | Font from [`haylen.graphics`](graphics.md). | The option `bakeSize` is the em size that the glyphs are baked at in the distance field atlas (default `48`). The option `spread` is how far the distance field reaches past a glyph, in pixels at the bake size (default `8`). The option `atlasSize` is the starting side of the glyph atlas in pixels, which grows as new glyphs are used (default `512`). The option `face` is the index from 0 of the face that a collection, a `.ttc` file, holds (default `0`). |
 | `bitmapFont` | `.fnt` | Bitmap Font from a BMFont file in its text or binary format, whose page images sit next to it. | The `filter` and `wrap` of its page textures. |
 | `gridFont` | None, so load an image with the type `'gridFont'` | Bitmap Font from an image of equal cells. | The options `characters`, `cellWidth` and `cellHeight`, which it needs, and `spacing`, `margin`, `advance`, `lineHeight` and `baseline`, like `graphics.newGridFont` from [`haylen.graphics`](graphics.md), plus the `filter` and `wrap` of its texture. |
@@ -66,7 +66,7 @@ print(hero.width, hero.height, #level.enemies, theme.duration, #atlas:frameNames
 
 ### assets.texture(path, options)
 
-Loads a texture at once with the options `filter`, `wrap` and `mipmaps`, and returns it.
+Loads a texture at once with the options of the type `texture`, such as `filter`, `wrap` and `mipmaps`, and returns it.
 
 ```lua
 local assets = require('haylen.assets')
@@ -713,8 +713,11 @@ end
 | `The asset type "<type>" does not exist.` | The type argument names no asset type. |
 | `Unknown option "<key>".` | An options table has a key that the asset type does not accept. |
 | `The texture filter must be "nearest" or "linear", not <filter>.` | The `filter` option is not `nearest` or `linear`. The message shows it as JSON, such as `"blurry"` or `3`. |
-| `The texture wrap must be "clamp", "repeat" or "mirror", not <wrap>.` | The `wrap` option is not `clamp`, `repeat` or `mirror`. The message shows it as JSON. |
+| `The texture option "<option>" must be "clamp", "repeat", "mirror" or "border", not <wrap>.` | The `wrap`, `wrapU`, `wrapV` or `wrapW` option is not `clamp`, `repeat`, `mirror` or `border`. The message shows it as JSON. |
 | `The texture option "mipmaps" must be true or false, not <value>.` | The `mipmaps` option is not a boolean. The message shows it as JSON. |
+| `The texture option "anisotropy" must be a whole number, not <value>.` | The `anisotropy` option is not a whole number. The message shows it as JSON. |
+| `The texture option "<option>" must be a number, not <value>.` | The `lodBias`, `minLod` or `maxLod` option is not a number. The message shows it as JSON. |
+| `The texture option "borderColor" must be "transparentBlack", "opaqueBlack" or "opaqueWhite", not <value>.` | The `borderColor` option names no border color. The message shows it as JSON. |
 | `The font option "<option>" must be a number, not <value>.` | The `bakeSize`, `spread`, `atlasSize` or `face` of a font is not a number. |
 | `The font option "<option>" must be a whole number from -2147483648 to 2147483647, not <value>.` | The `spread`, `atlasSize` or `face` of a font has a fraction or is out of range. |
 | `The font option "bakeSize" must be a finite number that a float holds, not <value>.` | The `bakeSize` of a font is beyond the range of a float. |

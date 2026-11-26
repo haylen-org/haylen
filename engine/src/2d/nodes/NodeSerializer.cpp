@@ -145,10 +145,10 @@ graphics::Texture::Options NodeSerializer::textureOptions(const core::Json& obje
     if (const std::string wrap = text(object, "wrap", node, part); !wrap.empty()) {
         const auto found = graphics::Texture::wrapFromName(wrap);
         if (!found) {
-            throw std::invalid_argument(describe(node, part, "wrap") + " must be \"clamp\", \"repeat\" or \"mirror\".");
+            throw std::invalid_argument(describe(node, part, "wrap") + " must be \"clamp\", \"repeat\", \"mirror\" or \"border\".");
         }
 
-        options.wrap = *found;
+        options.setWrap(*found);
     }
 
     return options;
@@ -383,8 +383,8 @@ void NodeSerializer::writeTexture(core::Json& object, const graphics::Texture& t
         object["filter"] = graphics::Texture::filterName(options.filter);
     }
 
-    if (options.wrap != graphics::Texture::Wrap::Clamp) {
-        object["wrap"] = graphics::Texture::wrapName(options.wrap);
+    if (options.wrapU != graphics::Texture::Wrap::Clamp) {
+        object["wrap"] = graphics::Texture::wrapName(options.wrapU);
     }
 }
 

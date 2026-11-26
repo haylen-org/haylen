@@ -425,9 +425,25 @@ MTLSamplerAddressMode Formats::toAddressMode(gpu::Device::Wrap wrap) noexcept {
         return MTLSamplerAddressModeRepeat;
     case Wrap::MirroredRepeat:
         return MTLSamplerAddressModeMirrorRepeat;
+    case Wrap::ClampToBorder:
+        return MTLSamplerAddressModeClampToBorderColor;
     }
 
     return MTLSamplerAddressModeClampToEdge;
+}
+
+MTLSamplerBorderColor Formats::toBorderColor(gpu::Device::BorderColor color) noexcept {
+    using BorderColor = gpu::Device::BorderColor;
+    switch (color) {
+    case BorderColor::TransparentBlack:
+        return MTLSamplerBorderColorTransparentBlack;
+    case BorderColor::OpaqueBlack:
+        return MTLSamplerBorderColorOpaqueBlack;
+    case BorderColor::OpaqueWhite:
+        return MTLSamplerBorderColorOpaqueWhite;
+    }
+
+    return MTLSamplerBorderColorTransparentBlack;
 }
 
 MTLLoadAction Formats::toLoadAction(gpu::Device::Load load) noexcept {

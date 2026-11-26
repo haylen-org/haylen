@@ -156,7 +156,7 @@ TEST_F(AssetsLuaTest, SettlesPreloadsOfAGroupThatUnloads) {
 
 TEST_F(AssetsLuaTest, ExplainsInvalidOptionsAndGroups) {
     EXPECT_NE(lua("return assets.texture('images/hero.png', {filter = 3})").find("The texture filter must be \"nearest\" or \"linear\", not 3."), std::string::npos);
-    EXPECT_NE(lua("return assets.texture('images/hero.png', {wrap = 'diagonal'})").find("The texture wrap must be \"clamp\", \"repeat\" or \"mirror\", not \"diagonal\"."), std::string::npos);
+    EXPECT_NE(lua("return assets.texture('images/hero.png', {wrap = 'diagonal'})").find("The texture option \"wrap\" must be \"clamp\", \"repeat\", \"mirror\" or \"border\", not \"diagonal\"."), std::string::npos);
     EXPECT_NE(lua("return assets.font('fonts/ui.ttf', {bakeSize = 'large'})").find("The font option \"bakeSize\" must be a number, not \"large\"."), std::string::npos);
     EXPECT_NE(lua("return assets.font('fonts/ui.ttf', {atlasSize = 1e300})").find("The font option \"atlasSize\" must be a whole number from -2147483648 to 2147483647, not 1e+300."), std::string::npos);
     EXPECT_NE(lua("return assets.font('fonts/ui.ttf', {face = 1.5})").find("The font option \"face\" must be a whole number from -2147483648 to 2147483647, not 1.5."), std::string::npos);

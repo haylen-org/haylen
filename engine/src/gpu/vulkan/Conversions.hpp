@@ -29,6 +29,7 @@ class Conversions final {
     [[nodiscard]] static VkFilter toFilter(Device::Filter filter) noexcept;
     [[nodiscard]] static VkSamplerMipmapMode toMipmapMode(Device::Filter filter) noexcept;
     [[nodiscard]] static VkSamplerAddressMode toAddressMode(Device::Wrap wrap) noexcept;
+    [[nodiscard]] static VkBorderColor toBorderColor(Device::BorderColor color) noexcept;
     [[nodiscard]] static VkShaderStageFlags toStage(Device::Stage stage) noexcept;
     [[nodiscard]] static VkImageViewType toViewType(Device::TextureType type) noexcept;
     [[nodiscard]] static VkAttachmentLoadOp toLoad(Device::Load load) noexcept;

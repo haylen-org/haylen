@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -93,8 +94,16 @@ class Manager final {
     Manager& operator=(const Manager&) = delete;
 
     // Texture options travel as `{"filter": "nearest" or "linear", "wrap": "clamp", "repeat" or "mirror"}` in asset requests.
+    // The keys of the options of a texture, which every asset that makes textures takes.
+    static constexpr std::array<std::string_view, 11> kTextureOptionKeys{"filter", "wrap", "wrapU", "wrapV", "wrapW", "mipmaps", "anisotropy", "lodBias", "minLod", "maxLod", "borderColor"};
+
     [[nodiscard]] static graphics::Texture::Options textureOptionsFromJson(const core::Json& options);
+
+    // The options of a texture among the options of another asset, such as a grid font that makes the texture of its page.
+    [[nodiscard]] static core::Json pickTextureOptions(const core::Json& options);
     [[nodiscard]] static core::Json textureOptionsToJson(graphics::Texture::Options options);
+    [[nodiscard]] static graphics::Texture::Wrap readWrap(const core::Json& value, const char* key);
+    [[nodiscard]] static float readLevel(const core::Json& options, const char* key, float fallback);
 
     void registerType(Type type);
     [[nodiscard]] bool hasType(std::string_view name) const noexcept;

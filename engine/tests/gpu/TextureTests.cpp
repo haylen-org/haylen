@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cmath>
@@ -154,6 +155,20 @@ class GpuTextureTest : public test::GpuFixture {
     // A flat texture of the rows of texels, the top row first, with one span per mip level.
     [[nodiscard]] Device::Image makeTexture(int width, int height, std::span<const std::span<const std::byte>> levels, Device::PixelFormat format = Device::PixelFormat::Rgba8, Device::TextureType type = Device::TextureType::Flat, int layers = 1) {
         return makeImage({.type = type, .width = width, .height = height, .layers = layers, .mipLevels = static_cast<int>(levels.size()), .format = format, .levels = levels, .label = "haylen-test-texture"});
+    }
+
+    // A texture of 64 by 64 pixels whose every mip level is one color, with a red of 32 for each level below the first, so the red that a draw samples tells the level of detail it read.
+    [[nodiscard]] Device::Image makeLevelTexture() {
+        std::vector<std::vector<std::byte>> pixels;
+        for (int level = 0; level < 7; ++level) {
+            const int side = 64 >> level;
+            const math::Color color{static_cast<float>(level * 32) / 255.0F, 0.0F, 0.0F, 1.0F};
+            const std::array<math::Color, 1> colors{color};
+            pixels.push_back(fill(colors, side * side));
+        }
+
+        std::vector<std::span<const std::byte>> levels(pixels.begin(), pixels.end());
+        return makeTexture(64, 64, levels);
     }
 
     [[nodiscard]] Device::Sampler makeSampler(const Device::SamplerDesc& desc) {
@@ -441,8 +456,96 @@ TEST_P(GpuTextureTest, FiltersAndWrapsAsTheSamplerSays) {
         EXPECT_TRUE(isNear(pixels.at(6, 0), expected[1])) << static_cast<int>(wrap);
     }
 
-    const Device::Sampler anisotropic = makeSampler({.mipmap = Device::Filter::Linear, .maxAnisotropy = 4});
+    const Device::Sampler anisotropic = makeSampler({.mipmap = Device::Filter::Linear, .maxAnisotropy = std::min(4, capabilities().maxAnisotropy)});
     EXPECT_TRUE(isNear(sample("textured", texture, anisotropic, {0.0F, 0.0F, 0.0F, 1.0F}, 4, 1).at(0, 0), math::Color::black()));
+}
+
+// A pixel that covers 16 texels across and one down reads a sharper level with anisotropic filtering than without it, which reads the level of the longer side.
+TEST_P(GpuTextureTest, ReadsSharperLevelsWithAnisotropicFiltering) {
+    if (capabilities().maxAnisotropy < 16) {
+        GTEST_SKIP() << "The GPU of this device filters with at most " << capabilities().maxAnisotropy << " samples of anisotropy.";
+    }
+
+    const Device::Image texture = makeLevelTexture();
+    const Device::SamplerDesc linear{.mipmap = Device::Filter::Linear, .wrapU = Device::Wrap::Repeat, .wrapV = Device::Wrap::Repeat};
+    Device::SamplerDesc anisotropic = linear;
+    anisotropic.maxAnisotropy = 16;
+    const std::array<float, 4> lookup{0.0F, 1.0F / 16.0F, 0.0F, 1.0F};
+    const Pixels plain = sample("implicit", texture, makeSampler(linear), lookup, 4, 4);
+    const Pixels sharp = sample("implicit", texture, makeSampler(anisotropic), lookup, 4, 4);
+    EXPECT_GT(plain.at(1, 1).r, 0.4F);
+    EXPECT_LT(sharp.at(1, 1).r, plain.at(1, 1).r - 0.2F);
+}
+
+// A bias of the level of detail moves a lookup to a smaller level, where the device takes one.
+TEST_P(GpuTextureTest, BiasesTheLevelOfDetailOfALookup) {
+    if (capabilities().maxLodBias < 2.0F) {
+        GTEST_SKIP() << "The samplers of this graphics API take no bias of the level of detail of 2.";
+    }
+
+    const Device::Image texture = makeLevelTexture();
+    const Device::SamplerDesc unbiased{.mipmap = Device::Filter::Linear, .wrapU = Device::Wrap::Repeat, .wrapV = Device::Wrap::Repeat};
+    Device::SamplerDesc biased = unbiased;
+    biased.lodBias = 2.0F;
+    const std::array<float, 4> lookup{0.0F, 0.25F, 0.0F, 0.25F};
+    const Pixels plain = sample("implicit", texture, makeSampler(unbiased), lookup, 4, 4);
+    const Pixels moved = sample("implicit", texture, makeSampler(biased), lookup, 4, 4);
+    EXPECT_TRUE(isNear(plain.at(1, 1), {64.0F / 255.0F, 0.0F, 0.0F, 1.0F}, 12));
+    EXPECT_TRUE(isNear(moved.at(1, 1), {128.0F / 255.0F, 0.0F, 0.0F, 1.0F}, 12));
+}
+
+// A sampler that clamps to its border across reads the border color past the right edge of the image, where the device has border colors.
+TEST_P(GpuTextureTest, ReadsTheBorderColorOutsideTheImage) {
+    if (!capabilities().borderColors) {
+        GTEST_SKIP() << "The samplers of this graphics API read no border color.";
+    }
+
+    const std::array<math::Color, 2> red{math::Color{1.0F, 0.0F, 0.0F, 1.0F}, math::Color{1.0F, 0.0F, 0.0F, 1.0F}};
+    const std::vector<std::byte> texels = fill(red, 1);
+    const std::array<std::span<const std::byte>, 1> levels{texels};
+    const Device::Image texture = makeTexture(2, 1, levels);
+    for (const auto& [border, expected] : std::array<std::pair<Device::BorderColor, math::Color>, 3>{{
+             {Device::BorderColor::OpaqueWhite, math::Color::white()},
+             {Device::BorderColor::OpaqueBlack, math::Color::black()},
+             {Device::BorderColor::TransparentBlack, math::Color::transparent()},
+         }}) {
+        const Device::Sampler sampler = makeSampler({.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest, .wrapU = Device::Wrap::ClampToBorder, .borderColor = border});
+        const Pixels pixels = sample("implicit", texture, sampler, {0.0F, 1.0F, 0.0F, 2.0F}, 8, 1);
+        EXPECT_TRUE(isNear(pixels.at(1, 0), math::Color{1.0F, 0.0F, 0.0F, 1.0F})) << static_cast<int>(border);
+        EXPECT_TRUE(isNear(pixels.at(6, 0), expected)) << static_cast<int>(border);
+    }
+}
+
+// Each axis of a sampler wraps as it says, so a texture repeats across while it clamps down.
+TEST_P(GpuTextureTest, WrapsEachAxisApart) {
+    const std::array<math::Color, 4> colors{math::Color::black(), math::Color::white(), math::Color{1.0F, 0.0F, 0.0F, 1.0F}, math::Color{0.0F, 1.0F, 0.0F, 1.0F}};
+    std::vector<std::byte> texels;
+    for (const math::Color color : colors) {
+        const std::array<math::Color, 1> one{color};
+        const std::vector<std::byte> texel = fill(one, 1);
+        texels.insert(texels.end(), texel.begin(), texel.end());
+    }
+
+    const std::array<std::span<const std::byte>, 1> levels{texels};
+    const Device::Image texture = makeTexture(2, 2, levels);
+    const Device::Sampler sampler = makeSampler({.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest, .wrapU = Device::Wrap::Repeat, .wrapV = Device::Wrap::ClampToEdge});
+    const Pixels pixels = sample("implicit", texture, sampler, {0.0F, 2.0F, 0.0F, 2.0F}, 8, 8);
+    EXPECT_TRUE(isNear(pixels.at(5, 1), math::Color::black()));
+    EXPECT_TRUE(isNear(pixels.at(7, 1), math::Color::white()));
+    EXPECT_TRUE(isNear(pixels.at(5, 6), math::Color{1.0F, 0.0F, 0.0F, 1.0F}));
+    EXPECT_TRUE(isNear(pixels.at(7, 6), math::Color{0.0F, 1.0F, 0.0F, 1.0F}));
+}
+
+// The rules of samplers refuse anisotropy beyond the device or with a nearest filter, levels of detail out of order, a bias beyond the device and border colors on a device without them.
+TEST_P(GpuTextureTest, RefusesSamplersBeyondTheCapabilities) {
+    const Device::Capabilities& limits = capabilities();
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeSampler({.mipmap = Device::Filter::Linear, .maxAnisotropy = limits.maxAnisotropy + 1}); }), gpu::ContractError::Rule::Sampler);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeSampler({.minification = Device::Filter::Nearest, .mipmap = Device::Filter::Linear, .maxAnisotropy = 2}); }), gpu::ContractError::Rule::Sampler);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeSampler({.minLod = 2.0F, .maxLod = 1.0F}); }), gpu::ContractError::Rule::Sampler);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeSampler({.lodBias = limits.maxLodBias + 1.0F}); }), gpu::ContractError::Rule::Sampler);
+    if (!limits.borderColors) {
+        EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeSampler({.wrapU = Device::Wrap::ClampToBorder}); }), gpu::ContractError::Rule::Sampler);
+    }
 }
 
 // A dynamic image takes new pixels every frame, which the draws of that frame sample.

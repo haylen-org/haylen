@@ -1,7 +1,9 @@
 #include "gpu/d3d11/StateObjects.hpp"
 
 #include <algorithm>
+#include <array>
 
+#include "gpu/direct3d/Formats.hpp"
 #include "gpu/direct3d/HResult.hpp"
 
 namespace haylen::gpu::d3d11 {
@@ -80,10 +82,13 @@ ComPtr<ID3D11SamplerState> StateObjects::makeSampler(ID3D11Device& device, const
     made.AddressU = toAddress(desc.wrapU);
     made.AddressV = toAddress(desc.wrapV);
     made.AddressW = toAddress(desc.wrapW);
-    made.MaxAnisotropy = static_cast<UINT>(std::clamp(desc.maxAnisotropy, 1, D3D11_REQ_MAXANISOTROPY));
+    made.MaxAnisotropy = static_cast<UINT>(desc.maxAnisotropy);
     made.ComparisonFunc = desc.compare ? toCompare(*desc.compare) : D3D11_COMPARISON_NEVER;
     made.MinLOD = desc.minLod;
     made.MaxLOD = desc.maxLod;
+    made.MipLODBias = desc.lodBias;
+    const std::array<float, 4> border = direct3d::Formats::getBorderColor(desc.borderColor);
+    std::copy(border.begin(), border.end(), made.BorderColor);
 
     ComPtr<ID3D11SamplerState> state;
     direct3d::HResult::check(device.CreateSamplerState(&made, state.GetAddressOf()), "create a sampler");
@@ -235,6 +240,8 @@ D3D11_TEXTURE_ADDRESS_MODE StateObjects::toAddress(Device::Wrap wrap) noexcept {
         return D3D11_TEXTURE_ADDRESS_WRAP;
     case Device::Wrap::MirroredRepeat:
         return D3D11_TEXTURE_ADDRESS_MIRROR;
+    case Device::Wrap::ClampToBorder:
+        return D3D11_TEXTURE_ADDRESS_BORDER;
     }
 
     return D3D11_TEXTURE_ADDRESS_CLAMP;

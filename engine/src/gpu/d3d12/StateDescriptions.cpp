@@ -1,6 +1,9 @@
 #include "gpu/d3d12/StateDescriptions.hpp"
 
 #include <algorithm>
+#include <array>
+
+#include "gpu/direct3d/Formats.hpp"
 
 namespace haylen::gpu::d3d12 {
 
@@ -69,10 +72,13 @@ D3D12_SAMPLER_DESC StateDescriptions::makeSampler(const Device::SamplerDesc& des
     made.AddressU = toAddress(desc.wrapU);
     made.AddressV = toAddress(desc.wrapV);
     made.AddressW = toAddress(desc.wrapW);
-    made.MaxAnisotropy = static_cast<UINT>(std::clamp(desc.maxAnisotropy, 1, D3D12_REQ_MAXANISOTROPY));
+    made.MaxAnisotropy = static_cast<UINT>(desc.maxAnisotropy);
     made.ComparisonFunc = desc.compare ? toCompare(*desc.compare) : D3D12_COMPARISON_FUNC_NEVER;
     made.MinLOD = desc.minLod;
     made.MaxLOD = desc.maxLod;
+    made.MipLODBias = desc.lodBias;
+    const std::array<float, 4> border = direct3d::Formats::getBorderColor(desc.borderColor);
+    std::copy(border.begin(), border.end(), made.BorderColor);
     return made;
 }
 
@@ -240,6 +246,8 @@ D3D12_TEXTURE_ADDRESS_MODE StateDescriptions::toAddress(Device::Wrap wrap) noexc
         return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
     case Device::Wrap::MirroredRepeat:
         return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+    case Device::Wrap::ClampToBorder:
+        return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
     }
 
     return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;

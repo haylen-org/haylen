@@ -2,6 +2,8 @@
 
 #include <dxgiformat.h>
 
+#include <array>
+
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::gpu::direct3d {
@@ -22,6 +24,9 @@ class Formats final {
     [[nodiscard]] static DXGI_FORMAT getViewFormat(PixelFormat format) noexcept;
     [[nodiscard]] static DXGI_FORMAT getDepthFormat(PixelFormat format) noexcept;
     [[nodiscard]] static DXGI_FORMAT getVertexFormat(Device::VertexFormat format) noexcept;
+
+    // The border color of a sampler as the four floats of its description.
+    [[nodiscard]] static std::array<float, 4> getBorderColor(Device::BorderColor color) noexcept;
     [[nodiscard]] static DXGI_FORMAT getIndexFormat(Device::IndexType type) noexcept;
 };
 

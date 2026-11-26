@@ -21,7 +21,7 @@ The functions `assets.load(path, nil, options)` and `assets.loadAsync(path, nil,
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `filter` | string | `'nearest'` | The texture filter of every image of the map, `'nearest'` or `'linear'`. |
-| `wrap` | string | `'clamp'` | The texture wrap of every image of the map, `'clamp'`, `'repeat'` or `'mirror'`. |
+| `wrap` | string | `'clamp'` | The texture wrap of every image of the map on every axis, `'clamp'`, `'repeat'`, `'mirror'` or `'border'`. |
 | `mipmaps` | boolean | `false` | Whether every image of the map keeps smaller copies of itself, as for [`assets.texture`](assets.md#assetstexturepath-options). |
 | `project` | string | none | The path of the `.tiled-project` file of the map inside the content folder, as [Tiled projects](#tiled-projects) describes. |
 
@@ -1035,7 +1035,7 @@ Loading a map raises these errors, and the builders raise `The option "<option>"
 | `A member of the class "<name>" of the Tiled project has no name.` | A member of a class of the project has no name. |
 | `Unknown option "<key>".` | The options of a map or a world have a key that they do not take. |
 | `The texture filter must be "nearest" or "linear", not <value>.` | The option `filter` has another value. |
-| `The texture wrap must be "clamp", "repeat" or "mirror", not <value>.` | The option `wrap` has another value. |
+| `The texture option "wrap" must be "clamp", "repeat", "mirror" or "border", not <value>.` | The option `wrap` has another value. |
 | `The texture option "mipmaps" must be true or false, not <value>.` | The option `mipmaps` is not a boolean. |
 
 The functions and methods raise these errors:

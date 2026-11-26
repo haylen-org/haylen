@@ -161,6 +161,10 @@ class Gl final {
     static constexpr Enum kClampToEdge = 0x812F;
     static constexpr Enum kRepeat = 0x2901;
     static constexpr Enum kMirroredRepeat = 0x8370;
+    static constexpr Enum kClampToBorder = 0x812D;
+    static constexpr Enum kTextureBorderColor = 0x1004;
+    static constexpr Enum kTextureLodBias = 0x8501;
+    static constexpr Enum kMaxTextureLodBias = 0x84FD;
     static constexpr Enum kUnpackAlignment = 0x0CF5;
     static constexpr Enum kPackAlignment = 0x0D05;
 
@@ -287,6 +291,7 @@ class Gl final {
         bool etc2 = false;
         bool astc = false;
         bool astcHdr = false;
+        bool borderClamp = false;
     };
 
     // Loads every entry point of the flavour from the context, which must be current, and throws `std::runtime_error` when the context is older than the flavour needs or lacks one of them.
@@ -308,6 +313,7 @@ class Gl final {
 
     Enum (*getError)() = nullptr;
     void (*getIntegerv)(Enum name, Int* data) = nullptr;
+    void (*getFloatv)(Enum name, float* data) = nullptr;
     const std::uint8_t* (*getStringValue)(Enum name) = nullptr;
     const std::uint8_t* (*getStringi)(Enum name, Uint index) = nullptr;
     void (*enable)(Enum capability) = nullptr;
@@ -363,6 +369,7 @@ class Gl final {
     void (*deleteSamplers)(Sizei count, const Uint* samplers) = nullptr;
     void (*bindSampler)(Uint unit, Uint sampler) = nullptr;
     void (*samplerParameteri)(Uint sampler, Enum name, Int value) = nullptr;
+    void (*samplerParameterfv)(Uint sampler, Enum name, const float* values) = nullptr;
     void (*samplerParameterf)(Uint sampler, Enum name, Float value) = nullptr;
 
     void (*genRenderbuffers)(Sizei count, Uint* renderbuffers) = nullptr;

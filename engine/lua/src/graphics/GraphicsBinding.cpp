@@ -184,7 +184,7 @@ void GraphicsBinding::setField(lua_State* L, const char* name, bool value) {
 
 int GraphicsBinding::capabilities(lua_State* L) {
     const haylen::gpu::Device::Capabilities& device = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities();
-    lua_createtable(L, 0, 8);
+    lua_createtable(L, 0, 11);
     setField(L, "maxTextureSize", device.maxImageSize);
     setField(L, "maxArrayLayers", device.maxArrayLayers);
     setField(L, "maxVolumeSize", device.maxVolumeSize);
@@ -194,6 +194,10 @@ int GraphicsBinding::capabilities(lua_State* L) {
     lua_setfield(L, -2, "depthRange");
     setField(L, "independentBlend", device.independentBlend);
     setField(L, "gpuTiming", device.gpuTiming);
+    setField(L, "maxAnisotropy", device.maxAnisotropy);
+    lua::Stack::push(L, device.maxLodBias);
+    lua_setfield(L, -2, "maxLodBias");
+    setField(L, "borderColors", device.borderColors);
     return 1;
 }
 
@@ -260,8 +264,43 @@ int GraphicsBinding::textureMipmaps(lua_State* L) {
     return 1;
 }
 
-int GraphicsBinding::textureWrap(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().wrap);
+int GraphicsBinding::textureWrapU(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().wrapU);
+    return 1;
+}
+
+int GraphicsBinding::textureWrapV(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().wrapV);
+    return 1;
+}
+
+int GraphicsBinding::textureWrapW(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().wrapW);
+    return 1;
+}
+
+int GraphicsBinding::textureAnisotropy(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().anisotropy.value_or(1));
+    return 1;
+}
+
+int GraphicsBinding::textureLodBias(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().lodBias);
+    return 1;
+}
+
+int GraphicsBinding::textureMinLod(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().minLod);
+    return 1;
+}
+
+int GraphicsBinding::textureMaxLod(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().maxLod);
+    return 1;
+}
+
+int GraphicsBinding::textureBorderColor(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().borderColor);
     return 1;
 }
 
@@ -412,7 +451,14 @@ void GraphicsBinding::install(lua_State* L) {
         .property("width", &textureWidth)
         .property("height", &textureHeight)
         .property("filter", &textureFilter)
-        .property("wrap", &textureWrap)
+        .property("wrapU", &textureWrapU)
+        .property("wrapV", &textureWrapV)
+        .property("wrapW", &textureWrapW)
+        .property("anisotropy", &textureAnisotropy)
+        .property("lodBias", &textureLodBias)
+        .property("minLod", &textureMinLod)
+        .property("maxLod", &textureMaxLod)
+        .property("borderColor", &textureBorderColor)
         .property("mipmaps", &textureMipmaps)
         .property("format", &textureFormat)
         .meta("__eq", &lua::Userdata::equal<haylen::graphics::Texture>)

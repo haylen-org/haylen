@@ -57,7 +57,7 @@ A device makes five kinds of objects. Each `make` method returns a small handle,
 | --- | --- | --- |
 | `Buffer` | `makeBuffer(BufferDesc)` | Vertices or indices. An immutable buffer keeps the data it was made with. A dynamic buffer takes new data each frame. |
 | `Image` | `makeImage(ImageDesc)` | A flat image, an array, a cube or a volume, with mip levels and a pixel format. Its kind is a texture, a dynamic image, a render target or a depth stencil image. |
-| `Sampler` | `makeSampler(SamplerDesc)` | Filters, wraps, levels of detail, anisotropy and an optional compare function. |
+| `Sampler` | `makeSampler(SamplerDesc)` | Filters, a wrap for each axis with a border color, levels of detail with a bias, anisotropy and an optional compare function. |
 | `Program` | `makeProgram(ProgramDesc)` | The vertex and fragment stages in the language of the device, with the bindings that the reflection of the shader package gives. |
 | `Pipeline` | `makePipeline(PipelineDesc)` | A program with its vertex layout, primitive, index type, blend and write mask for each color target, depth and stencil tests, culling and sample count. A pipeline without color targets draws depth alone, such as into a shadow map. |
 
@@ -189,6 +189,9 @@ A device is lost when the GPU resets or is removed, when its driver fails or upd
 | `depthRange` | The range of depth in clip space, `ZeroToOne` or `NegativeOneToOne` of `math::Mat4::DepthRange`, which the vertex stages write and the projections of the renderers take. |
 | `independentBlend` | Whether each color target of a pipeline takes a blend and a write mask of its own. Without it, every target takes those of the first. |
 | `gpuTiming` | Whether `getGpuFrameSeconds` measures the time the GPU took for a frame. |
+| `maxAnisotropy` | The most samples of anisotropic filtering that a sampler takes, 1 without anisotropic filtering. |
+| `maxLodBias` | The largest bias of the level of detail that a sampler adds in either direction, 0 where samplers take no bias. |
+| `borderColors` | Whether samplers read a border color through `Wrap::ClampToBorder`. |
 | `formats` | What the device does with each pixel format, a `FormatSupport` for each value of `PixelFormat`, which `getFormat(format)` returns. |
 
 A `FormatSupport` holds six values:
@@ -235,6 +238,17 @@ Each device fills the table of formats from its graphics API when it starts.
 
 The formats that shaders write as storage images are the ones that the API lists for its storage images or image units: from the format support of the GPU on Direct3D and Vulkan, the uncompressed color formats on Metal with the sRGB one only on Apple GPUs, the formats of the image units of OpenGL 4.3 and OpenGL ES 3.1, and `Rgba8`, `Rgba16Float`, `R32Float`, `Rg32Float` and `Rgba32Float` on WebGPU. OpenGL ES 3.0 and WebGL2 have no storage images.
 
+## Samplers
+
+A `SamplerDesc` names the filters of minification, magnification and mipmaps, a wrap for each axis `U`, `V` and `W`, the levels of detail that lookups stay within from `minLod` to `maxLod`, a `lodBias` that each lookup adds to its level of detail, the most samples of anisotropic filtering in `maxAnisotropy`, an optional compare function that turns the sampler into one that compares depth, as shadow maps read, and the `BorderColor` that `Wrap::ClampToBorder` reads outside the image. `gpu::SamplerRules` of `engine/src/gpu/SamplerRules.hpp` checks every description on every device before it makes a sampler, and a description that breaks a rule throws `ContractError` of the rule `Sampler`:
+
+- `maxAnisotropy` runs from 1 to `Capabilities::maxAnisotropy`, and more than one needs linear filters for minification, magnification and mipmaps, as WebGPU requires.
+- `minLod` is 0 or more and at most `maxLod`.
+- `lodBias` lies within `Capabilities::maxLodBias` in either direction. Metal, OpenGL ES, WebGL2 and WebGPU have no bias in their samplers, so their `maxLodBias` is 0.
+- `Wrap::ClampToBorder` needs `Capabilities::borderColors`. The border colors are transparent black, opaque black and opaque white, the ones that every API with border colors has. WebGL2 and WebGPU read no border color, so on the web no API has them and the gap stays, while Metal reads them on Apple GPUs from the A14 and M1 on and on every Mac.
+
+No device clamps a value of a sampler to what its API takes, since the rules refuse it before.
+
 ## Validation and profiling
 
 The option `validation` of `gpu::DeviceFactory::Options` turns on the validation of the API. Debug builds of the player and every GPU test turn it on.
@@ -273,6 +287,8 @@ A frame capture records every command of the device during some frames into a fi
 `gpu::NullDevice` in `engine/src/gpu/NullDevice.hpp` is the device of the headless host. It draws nothing, and it throws `gpu::ContractError` of `haylen/gpu/ContractError.hpp` on every call that breaks the contract, in every build, so the engine tests fail on a renderer that a real device would reject. Every device of the engine throws the same error for a call that breaks the contract. Only a bug of the engine or of a port makes such a call, so the message of the error says `Haylen hit an internal error in its graphics device. Report it with the steps that led to it.`, and the rule that the call breaks, such as `Rule::PassOrder` or `Rule::MissingObject`, is a value of the error that tests check with `getRule`, never part of its message. In short, the null device checks that:
 
 - Objects exist when they are used, and images fit their type, size, layers, mip levels, sample count, format and kind.
+- An image of a block compressed format is a texture of whole blocks that is no volume, in a format that the device samples, as the [pixel formats](#pixel-formats) say.
+- A sampler follows the [rules of samplers](#samplers): anisotropy within the device and with linear filters, levels of detail in order, a bias within the device and border colors only where the device has them.
 - Passes open and close in turn, with attachments of one size and sample count, and a pipeline draws only in a pass whose attachments match it.
 - A draw comes inside a pass, after a pipeline, its bindings and every uniform block of its program, and reads only indices its buffer holds.
 - A texture slot that filters never takes a format the device cannot filter, and a pass never samples its own attachments or the images they resolve into.
@@ -322,6 +338,9 @@ The matrix lists what each device reports. "From the GPU" means that the device 
 | HDR profile of ASTC | From the A13 and M1 on | No | With the feature of Vulkan 1.3 or its extension | With `GL_KHR_texture_compression_astc_hdr` | With `GL_KHR_texture_compression_astc_hdr` | No | No |
 | Storage images | The uncompressed color formats | From the GPU | From the GPU | The formats of the image units | From OpenGL ES 3.1 | No | `Rgba8`, `Rgba16Float`, `R32Float`, `Rg32Float` and `Rgba32Float` |
 | Independent blend | Yes | Yes | Where the GPU has the feature | Yes | On OpenGL ES 3.2 or with an extension | No | Yes |
+| Anisotropic filtering | 16 | 16 | From the GPU, with the feature `samplerAnisotropy` | From the GPU, with its extension | From the GPU, with its extension | From the GPU, with its extension | 16 |
+| Bias of the level of detail | No | From -15.99 to 15.99 | From the GPU, as `maxSamplerLodBias` | From the GPU, as `GL_MAX_TEXTURE_LOD_BIAS` | No | No | No |
+| Border colors | From the A14 and M1 on, and on every Mac | Yes | Yes | Yes | On OpenGL ES 3.2 or with `GL_EXT_texture_border_clamp` | No | No |
 | GPU timing | Yes | Yes | Where the queue writes timestamps | Yes | With `GL_EXT_disjoint_timer_query` | With `EXT_disjoint_timer_query_webgl2` | With the feature `timestamp-query` |
 | First row | Top | Top | Top | Bottom | Bottom | Bottom | Top |
 | Range of depth | 0 to 1 | 0 to 1 | 0 to 1 | 0 to 1 with `glClipControl` of OpenGL 4.5 or `GL_ARB_clip_control`, -1 to 1 without | 0 to 1 with `GL_EXT_clip_control`, -1 to 1 without | 0 to 1 with `EXT_clip_control`, -1 to 1 without | 0 to 1 |

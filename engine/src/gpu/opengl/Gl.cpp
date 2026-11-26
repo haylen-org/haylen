@@ -13,6 +13,7 @@ void Gl::load(GlContext& context, Device::Api flavour) {
     api = flavour;
     require(context, getError, "glGetError");
     require(context, getIntegerv, "glGetIntegerv");
+    require(context, getFloatv, "glGetFloatv");
     require(context, getStringValue, "glGetString");
     require(context, getStringi, "glGetStringi");
     readVersion();
@@ -85,6 +86,7 @@ void Gl::readFeatures() {
         features.etc2 = true;
         features.astc = hasExtension("GL_KHR_texture_compression_astc_ldr");
         features.astcHdr = hasExtension("GL_KHR_texture_compression_astc_hdr");
+        features.borderClamp = true;
         return;
     }
 
@@ -116,6 +118,7 @@ void Gl::readFeatures() {
     features.etc2 = true;
     features.astc = version >= 32 || hasExtension("GL_KHR_texture_compression_astc_ldr");
     features.astcHdr = hasExtension("GL_KHR_texture_compression_astc_hdr");
+    features.borderClamp = version >= 32 || hasExtension("GL_EXT_texture_border_clamp") || hasExtension("GL_OES_texture_border_clamp");
 
     features.bufferStorage = hasExtension("GL_EXT_buffer_storage");
     features.vertexAttribBinding = version >= 31;
@@ -190,6 +193,7 @@ void Gl::loadCore(GlContext& context) {
     require(context, bindSampler, "glBindSampler");
     require(context, samplerParameteri, "glSamplerParameteri");
     require(context, samplerParameterf, "glSamplerParameterf");
+    require(context, samplerParameterfv, "glSamplerParameterfv");
 
     require(context, genRenderbuffers, "glGenRenderbuffers");
     require(context, deleteRenderbuffers, "glDeleteRenderbuffers");

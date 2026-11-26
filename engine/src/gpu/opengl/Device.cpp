@@ -15,6 +15,7 @@
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/ProgramSlots.hpp"
+#include "gpu/SamplerRules.hpp"
 #include "gpu/opengl/PixelReadback.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/gpu/ContractError.hpp"
@@ -182,10 +183,20 @@ void Device::readCapabilities() {
         support.sampleCounts = renderable ? getSampleCounts(pixel) : std::uint8_t{0};
     }
 
+    // Only OpenGL biases the level of detail in its samplers, and OpenGL ES 3.2 and the extensions of OpenGL ES read border colors, which WebGL2 lacks.
+    capabilities.maxAnisotropy = 1;
     if (features.anisotropicFiltering && anisotropic) {
         gl.getIntegerv(Gl::kMaxTextureMaxAnisotropy, &value);
-        maxAnisotropy = static_cast<float>(std::max(1, value));
+        capabilities.maxAnisotropy = std::max(1, value);
     }
+
+    if (gl.isDesktop()) {
+        float bias = 0.0F;
+        gl.getFloatv(Gl::kMaxTextureLodBias, &bias);
+        capabilities.maxLodBias = bias;
+    }
+
+    capabilities.borderColors = features.borderClamp;
 }
 
 // The context lists the sample counts of the multisampled renderbuffers of each format, which the multisampled attachments of the device are, into a list that it fills from the start, and one sample stands for every format it draws into. WebGL2 answers only the list itself, so the device asks for no count of its entries.
@@ -467,6 +478,7 @@ Device::Image Device::makeImage(const ImageDesc& desc) {
 }
 
 Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
+    SamplerRules::check(desc, capabilities);
     Gl::Uint name = 0;
     gl.genSamplers(1, &name);
     gl.samplerParameteri(name, Gl::kTextureMinFilter, static_cast<Gl::Int>(Conversions::toMinification(desc.minification, desc.mipmap)));
@@ -482,8 +494,17 @@ Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         gl.samplerParameteri(name, Gl::kTextureCompareFunc, static_cast<Gl::Int>(Conversions::toCompare(*desc.compare)));
     }
 
-    if (desc.maxAnisotropy > 1 && maxAnisotropy > 1.0F) {
-        gl.samplerParameterf(name, Gl::kTextureMaxAnisotropy, std::min(static_cast<float>(desc.maxAnisotropy), maxAnisotropy));
+    if (desc.maxAnisotropy > 1) {
+        gl.samplerParameterf(name, Gl::kTextureMaxAnisotropy, static_cast<float>(desc.maxAnisotropy));
+    }
+
+    if (desc.lodBias != 0.0F) {
+        gl.samplerParameterf(name, Gl::kTextureLodBias, desc.lodBias);
+    }
+
+    if (desc.wrapU == Wrap::ClampToBorder || desc.wrapV == Wrap::ClampToBorder || desc.wrapW == Wrap::ClampToBorder) {
+        const std::array<float, 4> border = Conversions::toBorderColor(desc.borderColor);
+        gl.samplerParameterfv(name, Gl::kTextureBorderColor, border.data());
     }
 
     debug.label(Gl::kSampler, name, desc.label);

@@ -986,7 +986,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     // Every key of the format reads into the configuration, and the file filter applies unless the caller names another one.
     const auto everything = std::static_pointer_cast<Effect>(assets.load("particles", "effects/everything.particles"));
     const EmitterConfig& config = everything->config;
-    EXPECT_EQ(config.texture, assets.texture("images/spark.png", {.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Repeat}));
+    EXPECT_EQ(config.texture, assets.texture("images/spark.png", {.filter = graphics::Texture::Filter::Linear, .wrapU = graphics::Texture::Wrap::Repeat, .wrapV = graphics::Texture::Wrap::Repeat, .wrapW = graphics::Texture::Wrap::Repeat}));
     EXPECT_EQ(config.frameGrid.count, 3);
     EXPECT_EQ(config.frameMode, EmitterConfig::FrameMode::LoopRandomStart);
     EXPECT_EQ(config.bursts.front().cycles, 3);
@@ -1009,7 +1009,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(config.shape, EmitterConfig::Shape::Arc);
     EXPECT_FLOAT_EQ(config.shapeArc.max, 3.14F);
     EXPECT_EQ(config.particleOrder, EmitterConfig::ParticleOrder::NewestFirst);
-    EXPECT_EQ(config.trail.texture, assets.texture("images/line.png", {.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Repeat}));
+    EXPECT_EQ(config.trail.texture, assets.texture("images/line.png", {.filter = graphics::Texture::Filter::Linear, .wrapU = graphics::Texture::Wrap::Repeat, .wrapV = graphics::Texture::Wrap::Repeat, .wrapW = graphics::Texture::Wrap::Repeat}));
     ASSERT_TRUE(config.light.has_value());
     EXPECT_FLOAT_EQ(config.light->flicker.amount, 0.2F);
     EXPECT_EQ(config.light->fade, EmitterConfig::Light::Fade::Cycle);
@@ -1023,7 +1023,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(config.subEmitters.front().config->texture, assets.texture("images/line.png"));
     EXPECT_NO_THROW(Emitter(config, 1).update(0.5F));
     const auto nearest = std::static_pointer_cast<Effect>(assets.load("particles", "effects/everything.particles", {{"filter", "nearest"}}));
-    EXPECT_EQ(nearest->config.texture, assets.texture("images/spark.png", {.filter = graphics::Texture::Filter::Nearest, .wrap = graphics::Texture::Wrap::Repeat}));
+    EXPECT_EQ(nearest->config.texture, assets.texture("images/spark.png", {.filter = graphics::Texture::Filter::Nearest, .wrapU = graphics::Texture::Wrap::Repeat, .wrapV = graphics::Texture::Wrap::Repeat, .wrapW = graphics::Texture::Wrap::Repeat}));
 
     const auto outline = std::static_pointer_cast<Effect>(assets.load("particles", "effects/outline.particles"));
     EXPECT_EQ(outline->config.shapeImage->getPoints().size(), 16U);

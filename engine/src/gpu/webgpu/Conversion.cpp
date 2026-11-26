@@ -400,6 +400,9 @@ WGPUAddressMode Conversion::toAddressMode(Device::Wrap wrap) noexcept {
         return WGPUAddressMode_Repeat;
     case Device::Wrap::MirroredRepeat:
         return WGPUAddressMode_MirrorRepeat;
+    // WebGPU reads no border color, which its capabilities never offer.
+    case Device::Wrap::ClampToBorder:
+        return WGPUAddressMode_Undefined;
     }
 
     return WGPUAddressMode_ClampToEdge;

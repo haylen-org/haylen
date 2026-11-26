@@ -132,6 +132,20 @@ void main() {
 }
 @end
 
+// Samples with the level of detail that the derivatives of the texture coordinates give, which the sampler biases and filters anisotropically, with the coordinates scaled by w across and by y down the viewport.
+@fs implicit_fs
+@include_block sample_params
+layout(binding=0) uniform texture2D implicit_texture;
+layout(binding=0) uniform sampler implicit_sampler;
+
+in vec2 uv;
+out vec4 frag_color;
+
+void main() {
+    frag_color = texture(sampler2D(implicit_texture, implicit_sampler), vec2(uv.x * lookup.w, uv.y * lookup.y));
+}
+@end
+
 @fs array_fs
 @include_block sample_params
 layout(binding=0) uniform texture2DArray layers_texture;
@@ -227,6 +241,7 @@ void main() {
 @program plane plane_vs plane_fs
 @program depth plane_vs depth_fs
 @program textured fullscreen_vs textured_fs
+@program implicit fullscreen_vs implicit_fs
 @program array fullscreen_vs array_fs
 @program volume fullscreen_vs volume_fs
 @program cube fullscreen_vs cube_fs

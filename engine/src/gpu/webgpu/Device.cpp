@@ -9,6 +9,7 @@
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/ProgramSlots.hpp"
+#include "gpu/SamplerRules.hpp"
 #include "gpu/webgpu/Conversion.hpp"
 #include "gpu/webgpu/ImageReadback.hpp"
 #include "haylen/gpu/ContractError.hpp"
@@ -87,6 +88,7 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
     result.originTopLeft = true;
     result.independentBlend = true;
     result.gpuTiming = connection.hasFeature(WGPUFeatureName_TimestampQuery);
+    result.maxAnisotropy = 16;
 
     const bool floatBlending = connection.hasFeature(WGPUFeatureName_Float32Blendable);
     const bool floatFiltering = connection.hasFeature(WGPUFeatureName_Float32Filterable);
@@ -256,10 +258,8 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     return {images.add(std::move(record))};
 }
 
-// Anisotropic filtering exists only for linear filters, so a sampler with a nearest filter samples one texel.
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
-    const bool linear = desc.minification == Filter::Linear && desc.magnification == Filter::Linear && desc.mipmap == Filter::Linear;
-
+    SamplerRules::check(desc, capabilities);
     WGPUSamplerDescriptor descriptor = WGPU_SAMPLER_DESCRIPTOR_INIT;
     descriptor.label = Conversion::toText(desc.label);
     descriptor.addressModeU = Conversion::toAddressMode(desc.wrapU);
@@ -269,9 +269,9 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     descriptor.minFilter = Conversion::toFilter(desc.minification);
     descriptor.mipmapFilter = Conversion::toMipmapFilter(desc.mipmap);
     descriptor.lodMinClamp = desc.minLod;
-    descriptor.lodMaxClamp = std::max(desc.minLod, desc.maxLod);
+    descriptor.lodMaxClamp = desc.maxLod;
     descriptor.compare = desc.compare ? Conversion::toCompare(*desc.compare) : WGPUCompareFunction_Undefined;
-    descriptor.maxAnisotropy = static_cast<std::uint16_t>(linear ? std::clamp(desc.maxAnisotropy, 1, 16) : 1);
+    descriptor.maxAnisotropy = static_cast<std::uint16_t>(desc.maxAnisotropy);
     holdRetirements(1);
     return {samplers.add({.sampler = wgpuDeviceCreateSampler(device, &descriptor)})};
 }

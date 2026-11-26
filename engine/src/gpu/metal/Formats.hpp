@@ -30,6 +30,7 @@ class Formats final {
     [[nodiscard]] static MTLSamplerMinMagFilter toFilter(gpu::Device::Filter filter) noexcept;
     [[nodiscard]] static MTLSamplerMipFilter toMipFilter(gpu::Device::Filter filter) noexcept;
     [[nodiscard]] static MTLSamplerAddressMode toAddressMode(gpu::Device::Wrap wrap) noexcept;
+    [[nodiscard]] static MTLSamplerBorderColor toBorderColor(gpu::Device::BorderColor color) noexcept;
     [[nodiscard]] static MTLLoadAction toLoadAction(gpu::Device::Load load) noexcept;
     [[nodiscard]] static MTLClearColor toClearColor(math::Color color) noexcept;
 };

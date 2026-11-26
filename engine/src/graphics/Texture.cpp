@@ -7,7 +7,8 @@
 namespace haylen::graphics {
 
 const std::array<std::pair<std::string_view, Texture::Filter>, 2> Texture::kFilterNames{{{"nearest", Filter::Nearest}, {"linear", Filter::Linear}}};
-const std::array<std::pair<std::string_view, Texture::Wrap>, 3> Texture::kWrapNames{{{"clamp", Wrap::Clamp}, {"repeat", Wrap::Repeat}, {"mirror", Wrap::Mirror}}};
+const std::array<std::pair<std::string_view, Texture::Wrap>, 4> Texture::kWrapNames{{{"clamp", Wrap::Clamp}, {"repeat", Wrap::Repeat}, {"mirror", Wrap::Mirror}, {"border", Wrap::Border}}};
+const std::array<std::pair<std::string_view, Texture::BorderColor>, 3> Texture::kBorderColorNames{{{"transparentBlack", BorderColor::TransparentBlack}, {"opaqueBlack", BorderColor::OpaqueBlack}, {"opaqueWhite", BorderColor::OpaqueWhite}}};
 
 std::optional<Texture::Filter> Texture::filterFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kFilterNames, name, &std::pair<std::string_view, Filter>::first);
@@ -25,6 +26,15 @@ std::optional<Texture::Wrap> Texture::wrapFromName(std::string_view name) noexce
 
 std::string_view Texture::wrapName(Wrap value) noexcept {
     return std::ranges::find(kWrapNames, value, &std::pair<std::string_view, Wrap>::second)->first;
+}
+
+std::optional<Texture::BorderColor> Texture::borderColorFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kBorderColorNames, name, &std::pair<std::string_view, BorderColor>::first);
+    return found != kBorderColorNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Texture::borderColorName(BorderColor value) noexcept {
+    return std::ranges::find(kBorderColorNames, value, &std::pair<std::string_view, BorderColor>::second)->first;
 }
 
 int Texture::getWidth() const noexcept {

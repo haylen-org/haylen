@@ -28,6 +28,7 @@ class NullDevice final : public Device {
     // Every format that the device draws into takes 1, 2, 4 and 8 samples.
     static constexpr std::uint8_t kSampleCounts = 1 | 2 | 4 | 8;
     static constexpr int kMaxAnisotropy = 16;
+    static constexpr float kMaxLodBias = 16.0F;
 
     // How many objects of each kind exist at once, past which the device has no room.
     static constexpr int kImagePoolSize = 4096;

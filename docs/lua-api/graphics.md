@@ -72,6 +72,9 @@ Returns a table of what the GPU device of this app can do, as the [RHI guide](..
 | `depthRange` | string | The range of depth of clip space, as [`graphics.depthRange()`](#graphicsdepthrange) returns it. |
 | `independentBlend` | boolean | Whether each color target of a draw takes a blend of its own. |
 | `gpuTiming` | boolean | Whether the device measures the time the GPU takes for a frame, which [`debug.stats()`](debug.md#debugstats) reports. |
+| `maxAnisotropy` | integer | The most samples of anisotropic filtering that the option `anisotropy` of a texture takes, 1 on a device without anisotropic filtering. |
+| `maxLodBias` | number | The largest bias of the level of detail that the option `lodBias` takes in either direction, 0 on a device whose samplers take no bias, such as Metal, OpenGL ES, WebGL2 and WebGPU. |
+| `borderColors` | boolean | Whether textures read a border color through the wrap `'border'`. WebGL2 and WebGPU have none. |
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -133,7 +136,12 @@ Makes a `Texture` of `width` by `height` pixels from code. The table `options` i
 | `pixels` | string or data view | none | Raw RGBA bytes, four per pixel, row by row from the top, in a string or in a view of [`dataview`](https://github.com/varn-org/varn/blob/main/docs/lua-api/dataview.md). Its length must be `width * height * 4`, or the call raises `Image pixel data does not match its dimensions.`. |
 | `dynamic` | boolean | `false` | Makes a texture whose pixels change in place with [`texture:update(pixels, options)`](#textureupdatepixels-options), such as a minimap that code draws. |
 | `filter` | string | `'nearest'` | The `'nearest'` or `'linear'` sampling. |
-| `wrap` | string | `'clamp'` | The `'clamp'`, `'repeat'` or `'mirror'` addressing. |
+| `wrap` | string | `'clamp'` | The addressing of every axis, `'clamp'`, `'repeat'`, `'mirror'` or `'border'`, which reads `borderColor` outside the texture where [`graphics.capabilities()`](#graphicscapabilities) has `borderColors`. |
+| `wrapU`, `wrapV`, `wrapW` | string | `wrap` | The addressing of one axis, across, down or through the slices, which replaces `wrap` on that axis. |
+| `anisotropy` | integer | the `maxAnisotropy` of the device with the `'linear'` filter and mipmaps, and 1 otherwise | The most samples of anisotropic filtering, from 1 to the `maxAnisotropy` of the device, which a texture drawn much smaller along one side than the other takes along its longer side. More than one needs the `'linear'` filter and mipmaps. |
+| `lodBias` | number | `0` | The bias that each lookup adds to its level of detail, within the `maxLodBias` of the device, where a negative bias reads sharper levels. A device whose `maxLodBias` is 0 takes no bias. |
+| `minLod`, `maxLod` | number | `0`, `1000` | The levels of detail that lookups stay within, from 0 up, such as `maxLod = 2` for a texture that never reads its smallest levels. |
+| `borderColor` | string | `'transparentBlack'` | The color that the wrap `'border'` reads, `'transparentBlack'`, `'opaqueBlack'` or `'opaqueWhite'`, the colors that every graphics API with border colors has. |
 | `mipmaps` | boolean | `true` with the `'linear'` filter, `false` otherwise | Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, blended between them with the `'linear'` filter. A dynamic texture never has them, and one with `mipmaps = true` raises `A texture that changes in place has no mipmaps.`. |
 
 With the options `format` and `levels`, the texture takes its pixels in a pixel format of the device, such as the blocks of a compressed format that the app ships for its target, as the [texture guide](../graphics/rendering.md#compressed-textures) explains. These two options take no `fill`, `pixels` or `dynamic`, which raise `Unknown option "<key>".`:
@@ -144,6 +152,8 @@ With the options `format` and `levels`, the texture takes its pixels in a pixel 
 | `levels` | list of strings or data views | none | The bytes of each mip level, the largest level first, each holding the rows of blocks of its level tightly packed. A level smaller than a block takes one whole block. With more than one level the texture keeps mipmaps, unless `mipmaps = false` keeps only the first level. |
 
 A texture made in a format checks it before any byte reaches the GPU. A depth format raises `The format "<format>" belongs to depth attachments, so no texture is made in it.`. A format that the device does not sample raises `The graphics API "<api>" of this device samples no texture of the format "<format>". Make the texture in a format that the device samples, as its format support tells.`, and one that it samples only without filtering raises the same kind of sentence with `only without filtering`. Sides that hold no whole blocks raise `A texture of the format "<format>" has sides of whole blocks of <w> by <h> pixels, which <width> by <height> pixels are not.`. A missing list raises `A texture made in a format takes the bytes of each of its levels in the list "levels", the largest level first.`, a list of another count raises `A texture of <width> by <height> pixels brings from 1 to <count> levels, not <given>.`, a level of another size raises `The level <n> of a texture of <width> by <height> pixels of the format "<format>" holds <bytes> bytes, and it needs <expected>.`, and `mipmaps = true` with one level raises `A texture made from its levels keeps mipmaps only when it brings more than one level.`.
+
+The sampling options check against the device before the texture is made. An `anisotropy` beyond the device raises `The texture option "anisotropy" takes from 1 to <most> samples on this device, not <anisotropy>.`, and more than one without the `'linear'` filter and mipmaps raises `Anisotropic filtering takes the filter "linear" and mipmaps.`. Levels of detail out of order raise `The levels of detail of a texture run from "minLod" up to "maxLod", from 0 on.`. A bias on a device without one raises `The graphics API "<api>" of this device takes no bias of the level of detail.`, and a bias beyond the device raises `The bias of the level of detail of a texture lies within <most> on this device, not <bias>.`. The wrap `'border'` on a device without border colors raises `The graphics API "<api>" of this device reads no border color, so its textures take no wrap "border".`.
 
 A size of 0 or less raises `Texture dimensions must be positive.`, and a size above [`graphics.maxTextureSize()`](#graphicsmaxtexturesize) raises `Texture dimensions exceed the device limit.`. A filled texture checks its size before it makes any pixel. With `pixels`, the image of the pixels checks its size first: a negative size raises `Image dimensions cannot be negative.`, a side above 16384 raises `The image of <width> by <height> pixels is too large. An image has at most 16384 pixels on a side.`, and pixels of another length, an empty string among them, raise `Image pixel data does not match its dimensions.`.
 
@@ -224,7 +234,10 @@ local pixel = graphics2d.newSprite(graphics.whiteTexture(), {width = 8, height =
 | `width` | integer | read | Width in pixels. |
 | `height` | integer | read | Height in pixels. |
 | `filter` | string | read | Sampling filter, `'nearest'` or `'linear'`. |
-| `wrap` | string | read | Addressing mode, `'clamp'`, `'repeat'` or `'mirror'`. |
+| `wrapU`, `wrapV`, `wrapW` | string | read | The addressing of each axis, `'clamp'`, `'repeat'`, `'mirror'` or `'border'`. |
+| `anisotropy` | integer | read | The most samples of anisotropic filtering of the texture. |
+| `lodBias`, `minLod`, `maxLod` | number | read | The bias of the level of detail and the levels that lookups stay within. |
+| `borderColor` | string | read | The color that the wrap `'border'` reads. |
 | `mipmaps` | boolean | read | Whether the texture keeps smaller copies of its image. |
 | `format` | string | read | The pixel format of the texture on the GPU, `'rgba8'` for the textures of images and the format of a texture made from its levels. |
 
@@ -232,7 +245,7 @@ local pixel = graphics2d.newSprite(graphics.whiteTexture(), {width = 8, height =
 local assets = require('haylen.assets')
 
 local texture = assets.texture('sprites/knight/run.png', {filter = 'linear'})
-print(texture.width, texture.height, texture.filter, texture.wrap, texture.mipmaps)
+print(texture.width, texture.height, texture.filter, texture.wrapU, texture.mipmaps, texture.anisotropy)
 print(texture == assets.texture('sprites/knight/run.png', {filter = 'linear'}))
 ```
 

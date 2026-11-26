@@ -15,6 +15,7 @@
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/ProgramSlots.hpp"
+#include "gpu/SamplerRules.hpp"
 #include "gpu/vulkan/Context.hpp"
 #include "gpu/vulkan/Conversions.hpp"
 #include "gpu/vulkan/ImageLayouts.hpp"
@@ -124,6 +125,9 @@ void Device::fillCapabilities() {
     capabilities.originTopLeft = true;
     capabilities.independentBlend = context->getEnabledFeatures().independentBlend == VK_TRUE;
     capabilities.gpuTiming = context->getTimestampBits() > 0 && limits.timestampPeriod > 0.0F;
+    capabilities.maxAnisotropy = context->getEnabledFeatures().samplerAnisotropy == VK_TRUE ? static_cast<int>(limits.maxSamplerAnisotropy) : 1;
+    capabilities.maxLodBias = limits.maxSamplerLodBias;
+    capabilities.borderColors = true;
     for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const VkFormat vulkanFormat = resolveFormat(format);
@@ -1002,7 +1006,8 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no sampler.");
     }
 
-    const bool anisotropic = desc.maxAnisotropy > 1 && context->getEnabledFeatures().samplerAnisotropy == VK_TRUE;
+    SamplerRules::check(desc, capabilities);
+    const bool anisotropic = desc.maxAnisotropy > 1;
     const VkSamplerCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         .pNext = nullptr,
@@ -1013,14 +1018,14 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         .addressModeU = Conversions::toAddressMode(desc.wrapU),
         .addressModeV = Conversions::toAddressMode(desc.wrapV),
         .addressModeW = Conversions::toAddressMode(desc.wrapW),
-        .mipLodBias = 0.0F,
+        .mipLodBias = desc.lodBias,
         .anisotropyEnable = anisotropic ? VK_TRUE : VK_FALSE,
-        .maxAnisotropy = anisotropic ? std::min(static_cast<float>(desc.maxAnisotropy), context->getProperties().limits.maxSamplerAnisotropy) : 1.0F,
+        .maxAnisotropy = static_cast<float>(desc.maxAnisotropy),
         .compareEnable = desc.compare ? VK_TRUE : VK_FALSE,
         .compareOp = desc.compare ? Conversions::toCompare(*desc.compare) : VK_COMPARE_OP_ALWAYS,
         .minLod = desc.minLod,
         .maxLod = desc.maxLod,
-        .borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+        .borderColor = Conversions::toBorderColor(desc.borderColor),
         .unnormalizedCoordinates = VK_FALSE,
     };
     SamplerRecord record;

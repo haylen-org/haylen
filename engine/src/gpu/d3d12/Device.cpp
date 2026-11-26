@@ -12,6 +12,7 @@
 
 #include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
+#include "gpu/SamplerRules.hpp"
 #include "gpu/d3d12/ImageReadback.hpp"
 #include "gpu/d3d12/StateDescriptions.hpp"
 #include "gpu/direct3d/Adapter.hpp"
@@ -152,6 +153,9 @@ void Device::readCapabilities() {
     capabilities.originTopLeft = true;
     capabilities.independentBlend = true;
     capabilities.gpuTiming = true;
+    capabilities.maxAnisotropy = 16;
+    capabilities.maxLodBias = 15.99F;
+    capabilities.borderColors = true;
 
     // Images sample through the view of their format, depth images draw through the view of their depth, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
     for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
@@ -547,6 +551,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
 }
 
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
+    SamplerRules::check(desc, capabilities);
     const D3D12_SAMPLER_DESC made = StateDescriptions::makeSampler(desc);
     reserveGarbage();
     D3D12_CPU_DESCRIPTOR_HANDLE handle = samplerViews->allocate();

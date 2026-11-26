@@ -96,7 +96,7 @@ class TypeConverter final {
     static constexpr std::array<std::string_view, 8> kSpriteEffectFields{"dissolve", "dissolveEdge", "dissolveSize", "dissolveColor", "outlineWidth", "outlineColor", "glowSize", "glowColor"};
     static constexpr std::array<std::string_view, 28> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "gradient", "align", "maxWidth", "maxHeight", "minScale", "wrap", "balance", "lineSpacing", "lineHeight", "anchor", "rotation", "scale", "bold", "italic", "underline", "strike", "direction", "language", "pixelSnap", "ligatures", "code"};
     static constexpr std::array<std::string_view, 3> kTextGradientFields{"stops", "colors", "angle"};
-    static constexpr std::array<std::string_view, 3> kTextureOptionFields{"filter", "wrap", "mipmaps"};
+    static constexpr std::array<std::string_view, 11> kTextureOptionFields{"filter", "wrap", "wrapU", "wrapV", "wrapW", "mipmaps", "anisotropy", "lodBias", "minLod", "maxLod", "borderColor"};
     static constexpr std::array<std::string_view, 14> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "tilt", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 
     // Option readers accept `nil` for the defaults and reject keys outside their own fields and the extra fields the caller reads from the same table.
@@ -497,6 +497,15 @@ template <> struct EnumNames<haylen::graphics::Texture::Filter> {
     }
     static std::string_view name(haylen::graphics::Texture::Filter value) {
         return haylen::graphics::Texture::filterName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::graphics::Texture::BorderColor> {
+    static std::optional<haylen::graphics::Texture::BorderColor> fromName(std::string_view name) {
+        return haylen::graphics::Texture::borderColorFromName(name);
+    }
+    static std::string_view name(haylen::graphics::Texture::BorderColor value) {
+        return haylen::graphics::Texture::borderColorName(value);
     }
 };
 

@@ -339,9 +339,24 @@ Gl::Enum Conversions::toWrap(Device::Wrap wrap) noexcept {
         return Gl::kRepeat;
     case Device::Wrap::MirroredRepeat:
         return Gl::kMirroredRepeat;
+    case Device::Wrap::ClampToBorder:
+        return Gl::kClampToBorder;
     }
 
     return Gl::kClampToEdge;
+}
+
+std::array<float, 4> Conversions::toBorderColor(Device::BorderColor color) noexcept {
+    switch (color) {
+    case Device::BorderColor::TransparentBlack:
+        return {0.0F, 0.0F, 0.0F, 0.0F};
+    case Device::BorderColor::OpaqueBlack:
+        return {0.0F, 0.0F, 0.0F, 1.0F};
+    case Device::BorderColor::OpaqueWhite:
+        return {1.0F, 1.0F, 1.0F, 1.0F};
+    }
+
+    return {0.0F, 0.0F, 0.0F, 0.0F};
 }
 
 Gl::Enum Conversions::toTextureTarget(Device::TextureType type) noexcept {

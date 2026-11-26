@@ -22,22 +22,49 @@ class Texture final {
         Linear,
     };
 
+    // How the texture reads coordinates outside it, along each axis. `Border` reads the border color, on a device whose capabilities have border colors.
     enum class Wrap : std::uint8_t {
         Clamp,
         Repeat,
         Mirror,
+        Border,
+    };
+
+    enum class BorderColor : std::uint8_t {
+        TransparentBlack,
+        OpaqueBlack,
+        OpaqueWhite,
     };
 
     struct Options {
         Filter filter = Filter::Nearest;
-        Wrap wrap = Wrap::Clamp;
+        Wrap wrapU = Wrap::Clamp;
+        Wrap wrapV = Wrap::Clamp;
+        Wrap wrapW = Wrap::Clamp;
 
         // Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, with linear blending between them when the filter is linear. Unset, a texture made from an image keeps them when its filter is linear, so art drawn far below its size stays smooth, while pixel art with the nearest filter keeps its hard pixels. Render targets and textures that change in place never have them.
         std::optional<bool> mipmaps{};
 
+        // The most samples of anisotropic filtering, which a texture drawn much smaller along one side than the other takes along its longer side. Unset, a texture with the linear filter and mipmaps takes the most that the device has, and the others take one.
+        std::optional<int> anisotropy{};
+
+        // The bias that the sampler adds to the level of detail of each lookup, which a negative value sharpens, on a device whose capabilities take one, and the levels of detail that lookups stay within.
+        float lodBias = 0.0F;
+        float minLod = 0.0F;
+        float maxLod = 1000.0F;
+
+        BorderColor borderColor = BorderColor::TransparentBlack;
+
         // Tells whether a texture made from an image with these options keeps mipmaps.
         [[nodiscard]] constexpr bool hasMipmaps() const noexcept {
             return mipmaps.value_or(filter == Filter::Linear);
+        }
+
+        // Sets the wrap of every axis.
+        constexpr void setWrap(Wrap value) noexcept {
+            wrapU = value;
+            wrapV = value;
+            wrapW = value;
         }
 
         [[nodiscard]] constexpr bool operator==(const Options&) const noexcept = default;
@@ -51,6 +78,8 @@ class Texture final {
     [[nodiscard]] static std::string_view filterName(Filter value) noexcept;
     [[nodiscard]] static std::optional<Wrap> wrapFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view wrapName(Wrap value) noexcept;
+    [[nodiscard]] static std::optional<BorderColor> borderColorFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view borderColorName(BorderColor value) noexcept;
 
     [[nodiscard]] bool isValid() const noexcept {
         return resource != nullptr;
@@ -75,7 +104,8 @@ class Texture final {
 
   private:
     static const std::array<std::pair<std::string_view, Filter>, 2> kFilterNames;
-    static const std::array<std::pair<std::string_view, Wrap>, 3> kWrapNames;
+    static const std::array<std::pair<std::string_view, Wrap>, 4> kWrapNames;
+    static const std::array<std::pair<std::string_view, BorderColor>, 3> kBorderColorNames;
 
     std::shared_ptr<TextureResource> resource;
 };

@@ -375,9 +375,24 @@ VkSamplerAddressMode Conversions::toAddressMode(Device::Wrap wrap) noexcept {
         return VK_SAMPLER_ADDRESS_MODE_REPEAT;
     case Device::Wrap::MirroredRepeat:
         return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+    case Device::Wrap::ClampToBorder:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
     }
 
     return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+}
+
+VkBorderColor Conversions::toBorderColor(Device::BorderColor color) noexcept {
+    switch (color) {
+    case Device::BorderColor::TransparentBlack:
+        return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    case Device::BorderColor::OpaqueBlack:
+        return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+    case Device::BorderColor::OpaqueWhite:
+        return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    }
+
+    return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
 }
 
 VkShaderStageFlags Conversions::toStage(Device::Stage stage) noexcept {

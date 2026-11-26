@@ -279,10 +279,19 @@ class Device {
         Linear,
     };
 
+    // How a sampler reads coordinates outside the image, where `ClampToBorder` reads the border color of the sampler and needs `Capabilities::borderColors`.
     enum class Wrap : std::uint8_t {
         ClampToEdge,
         Repeat,
         MirroredRepeat,
+        ClampToBorder,
+    };
+
+    // The border colors that every graphics API with border colors has.
+    enum class BorderColor : std::uint8_t {
+        TransparentBlack,
+        OpaqueBlack,
+        OpaqueWhite,
     };
 
     enum class Stage : std::uint8_t {
@@ -415,6 +424,15 @@ class Device {
         // Whether the device measures the time the GPU takes for each frame.
         bool gpuTiming = false;
 
+        // The most samples of anisotropic filtering that a sampler takes, 1 on a device without it.
+        int maxAnisotropy = 1;
+
+        // The largest bias of the level of detail that a sampler adds, in either direction, 0 on a device whose samplers take no bias.
+        float maxLodBias = 0.0F;
+
+        // Whether samplers read a border color outside the image, through `Wrap::ClampToBorder`.
+        bool borderColors = false;
+
         // What the device does with each pixel format, by `PixelFormat`.
         std::array<FormatSupport, kPixelFormatCount> formats{};
 
@@ -448,6 +466,7 @@ class Device {
         std::string_view label{};
     };
 
+    // The filters, the wrap of each axis with the border color that `Wrap::ClampToBorder` reads, the levels of detail that lookups stay within with the bias they add, the most samples of anisotropic filtering and an optional compare function, within the capabilities of the device and with linear filters for anisotropy.
     struct SamplerDesc {
         Filter minification = Filter::Linear;
         Filter magnification = Filter::Linear;
@@ -457,8 +476,10 @@ class Device {
         Wrap wrapW = Wrap::ClampToEdge;
         float minLod = 0.0F;
         float maxLod = 1000.0F;
+        float lodBias = 0.0F;
         int maxAnisotropy = 1;
         std::optional<CompareFunction> compare{};
+        BorderColor borderColor = BorderColor::TransparentBlack;
         std::string_view label{};
     };
 
