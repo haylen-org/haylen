@@ -257,6 +257,7 @@
 | **[KB-339 · Medir e afinar a física 2D com várias threads contra o caso de 2500 corpos ativos](#kb-339)**<br>🟡 medium · `improvement` · 3/10 | — | — | — | — | — |
 | **[KB-343 · Os testes parametrizados têm nomes estáveis no CTest](#kb-343)**<br>🟡 medium · `bug` · 2/10 | — | — | — | — | — |
 | **[KB-344 · Os testes não deixam pastas temporárias para trás e não engolem o erro de apagá-las](#kb-344)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
+| **[KB-345 · Os builds de Linux linkam com o lld, que usa muito menos memória que o ld do GNU](#kb-345)**<br>🟡 medium · `improvement` · 4/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -8910,6 +8911,30 @@ No Windows, todo `haylen test` deixa pastas `haylen-test-*` de `test::TemporaryD
 
 - None
 
+### KB-345
+
+- **Title:** Os builds de Linux linkam com o lld, que usa muito menos memória que o ld do GNU
+- **Status:** todo
+- **Type:** improvement
+- **Priority:** medium
+- **Complexity:** 4
+- **Progress:** Ainda não começou.
+- **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
+
+#### Description
+
+As medições do pool de links mostraram que o ld do GNU gasta 12,2 GiB para linkar o `haylen-lua-tests` com o sanitizer de endereços e as linhas de debug, 18,6 GiB com o debug completo, 7,6 GiB com o sanitizer de threads e 4,3 GiB em Release com otimização no link. Com isso, uma máquina de 16 GB linka um programa por vez com os sanitizers e não consegue linkar o build de debug completo com o sanitizer de endereços. O Android já linka com o lld, em 1,3 GiB. Os builds de Linux, com GCC e com clang, passam a usar o lld onde ele existe, como os projetos grandes de C++ fazem, e o pool de links mede de novo a memória de cada tipo de link.
+
+#### Acceptance criteria
+
+- [ ] Os builds de Linux com GCC e com clang linkam com o lld, e a tooling e a CI o instalam.
+- [ ] O pool de links tem a memória medida de novo para o lld, e o `build.md` traz os números.
+- [ ] Uma máquina de 16 GB linka o build com o sanitizer de endereços e o debug completo.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8932,7 +8957,7 @@ No Windows, todo `haylen test` deixa pastas `haylen-test-*` de `test::TemporaryD
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-345. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-346. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
