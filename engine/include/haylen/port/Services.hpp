@@ -14,6 +14,7 @@
 #include "haylen/port/PlatformService.hpp"
 #include "haylen/port/ScreenService.hpp"
 #include "haylen/port/VideoService.hpp"
+#include "haylen/port/WindowSizeService.hpp"
 
 namespace haylen::port {
 
@@ -23,6 +24,7 @@ struct Services {
     std::shared_ptr<DisplayService> displays;
     std::shared_ptr<DesktopService> desktop{};
     std::shared_ptr<ScreenService> screen{};
+    std::shared_ptr<WindowSizeService> windowSize{};
     std::shared_ptr<BridgeService> bridge{};
     std::shared_ptr<NetworkService> network{};
     std::shared_ptr<LinkService> links{};

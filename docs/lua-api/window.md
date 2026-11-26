@@ -683,7 +683,7 @@ C++ code reads the fold in framebuffer pixels with `core::Engine::getFold()`. It
 
 On Windows, macOS and Linux a window can drop its title bar, float above other windows, stay out of the taskbar, refuse the focus, let clicks pass through and move with the mouse. The [desktop guide](../platform/desktop.md) shows how these fit together and what each system allows.
 
-Phones, tablets, TVs and browsers run apps in a window that fills the screen or the page. There the setters keep and report their values without changing anything, and the function `frame()` returns the screen in points.
+Phones, tablets, TVs and browsers run apps in a window that fills the screen or the page. There the setters keep and report their values without changing anything, and the function `frame()` returns the screen in points. On visionOS the window floats in the space around the person, who places it and resizes it, so `frame()` returns the window in its own points and `setFrame` asks for its size alone.
 
 Frames use desktop points, from the top left corner of the primary display, as the [desktop guide](../platform/desktop.md#desktop-points) explains.
 
@@ -828,7 +828,7 @@ print(string.format('The window is at %d, %d.', frame.x, frame.y))
 
 ### window.setFrame(x, y, width, height)
 
-Moves the content area of the window to `x`, `y` and resizes it to `width` by `height`, all in desktop points. The change reaches the app as the events `windowMoved` and `windowResized` when the window lands there. A width that is not positive raises `bad argument #3 to 'setFrame' (positive width expected)`, and a height that is not positive raises `bad argument #4 to 'setFrame' (positive height expected)`.
+Moves the content area of the window to `x`, `y` and resizes it to `width` by `height`, all in desktop points. The change reaches the app as the events `windowMoved` and `windowResized` when the window lands there. On visionOS the person places the window, so it asks the system for the size alone, which the system keeps within the sizes it allows, and the window, which is the one display of the app there, also publishes `displayChanged`. A width that is not positive raises `bad argument #3 to 'setFrame' (positive width expected)`, and a height that is not positive raises `bad argument #4 to 'setFrame' (positive height expected)`.
 
 ```lua
 local window = require('haylen.window')

@@ -197,6 +197,7 @@ Every platform, of the engine or of a port, registers the services of the capabi
 | `DisplayService` | The displays of the device, the display of the window, the displays that a browser hides until the person lets the page see every screen, the request for them and the frame of the window. | Required. |
 | `DesktopService` | A desktop of windows: the style, background, frame, passthrough and drag of the window, following it and its native handles for native libraries. | A window that fills its screen, with null native handles. |
 | `ScreenService` | The safe area, the orientation, the status bar, the gestures of the system, a fold and cutouts. | A landscape screen, safe everywhere, without a status bar, gestures, fold or cutouts. |
+| `WindowSizeService` | The size that the app asks for a window without a desktop to place it on, such as a window of visionOS in the space around the person. | A window that fills its screen and keeps its size, unless a `DesktopService` places it. |
 | `BridgeService` | The native parts of plugins in the language of the platform, their calls, their screens and the failures that stopped the app. | Calls and screens that fail with the code `noHandler`. |
 | `NetworkService` | Why the platform blocked a connection and what the project lacks for network access. | Nothing to explain. |
 | `LinkService` | The links of a platform that starts a new process of the app for every link. | No process forwards a link. |

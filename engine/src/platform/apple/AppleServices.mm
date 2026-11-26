@@ -45,6 +45,7 @@
 #import "platform/apple/AppleThermalState.hpp"
 #import "platform/apple/AppleTimeZone.hpp"
 #import "platform/apple/AppleVideoDecoder.hpp"
+#import "platform/apple/AppleWindowSize.hpp"
 #import "platform/apple/CatalystWindow.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
 
@@ -58,6 +59,9 @@ port::Services AppleServices::create() {
     registered.desktop = std::make_shared<AppleDesktopService>();
 #else
     registered.backgroundAudio = std::make_shared<AppleBackgroundAudio>();
+#endif
+#if TARGET_OS_VISION
+    registered.windowSize = std::make_shared<AppleWindowSize>();
 #endif
     return registered;
 }
@@ -269,7 +273,6 @@ float AppleServices::getStatusBarHeight() {
 #endif
 }
 
-// Apple devices have no folds, and iPadOS reports none for the windows of an iPad.
 // A foldable iPhone reports its fold from iOS 27.1 on, and every other Apple device has none.
 std::optional<Fold> AppleServices::getFold() {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST

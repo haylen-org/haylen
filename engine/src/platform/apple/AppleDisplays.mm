@@ -10,23 +10,33 @@
 
 namespace haylen::platform {
 
+Display& AppleDisplays::windowDisplay = *new Display();
+
 #if TARGET_OS_VISION
-// The window of the app is its display, in its own points, with the safe area of the window as the work area. visionOS tells no rate and no modes of what shows the window.
 std::vector<Display> AppleDisplays::getDisplays() {
-    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
-    const CGRect bounds = window != nil ? window.bounds : CGRectZero;
-    const CGRect work = window != nil ? UIEdgeInsetsInsetRect(bounds, window.safeAreaInsets) : CGRectZero;
-    const float scale = window != nil ? static_cast<float>(window.traitCollection.displayScale) : 1.0F;
-    return {{.id = "main", .bounds = {0.0F, 0.0F, static_cast<float>(bounds.size.width), static_cast<float>(bounds.size.height)}, .workArea = {static_cast<float>(work.origin.x), static_cast<float>(work.origin.y), static_cast<float>(work.size.width), static_cast<float>(work.size.height)}, .scale = scale, .primary = true}};
+    std::optional<Display> window = describeWindowDisplay();
+    return window ? std::vector<Display>{std::move(*window)} : std::vector<Display>();
 }
 
 std::string AppleDisplays::getWindowDisplayId() {
     return "main";
 }
+
+// The window of the app is its display, in its own points, with the safe area of the window as the work area. visionOS tells no rate and no modes of what shows the window.
+std::optional<Display> AppleDisplays::describeWindowDisplay() {
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
+    if (window == nil) {
+        return std::nullopt;
+    }
+
+    const CGRect bounds = window.bounds;
+    const CGRect work = UIEdgeInsetsInsetRect(bounds, window.safeAreaInsets);
+    const auto scale = static_cast<float>(window.traitCollection.displayScale);
+    return Display{.id = "main", .bounds = {0.0F, 0.0F, static_cast<float>(bounds.size.width), static_cast<float>(bounds.size.height)}, .workArea = {static_cast<float>(work.origin.x), static_cast<float>(work.origin.y), static_cast<float>(work.size.width), static_cast<float>(work.size.height)}, .scale = scale, .primary = true};
+}
 #else
 NSMapTable<UIScreen*, NSString*>* AppleDisplays::ids = [NSMapTable weakToStrongObjectsMapTable];
 NSUInteger AppleDisplays::counted = 0;
-Display& AppleDisplays::windowDisplay = *new Display();
 
 NSString* AppleDisplays::getId(UIScreen* screen) {
     if (screen == UIScreen.mainScreen) {
@@ -94,22 +104,27 @@ std::string AppleDisplays::getWindowDisplayId() {
 }
 
 // A scene often opens upright and turns to the orientation of the app right after, and UIKit reports no change of the screen when it turns.
-void AppleDisplays::followWindow() {
+std::optional<Display> AppleDisplays::describeWindowDisplay() {
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     UIScreen* screen = window.windowScene.screen;
     if (screen == nil) {
-        return;
+        return std::nullopt;
     }
 
-    Display shown = describe(screen);
-    if (shown == windowDisplay) {
-        return;
-    }
-
-    windowDisplay = std::move(shown);
-    changed();
+    return describe(screen);
 }
 #endif
+
+// UIKit reports no change of what shows the window, so every layout of the window compares the display of the window with the one before.
+void AppleDisplays::followWindow() {
+    std::optional<Display> shown = describeWindowDisplay();
+    if (!shown || *shown == windowDisplay) {
+        return;
+    }
+
+    windowDisplay = std::move(*shown);
+    changed();
+}
 
 void AppleDisplays::changed() {
     Player::postEvent({.type = Event::Type::DisplaysChanged});

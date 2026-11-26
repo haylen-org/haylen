@@ -1,4 +1,4 @@
--- Displays: every display of the device drawn where it sits, with its id, its name, its scale, its rate and its modes, the window on the display that shows it, and the buttons that move the window to another display, cover it, cover it in its lowest mode and ask a browser for every screen. The events of the displays mark the drawing as they arrive.
+-- Displays: every display of the device drawn where it sits, with its id, its name, its scale, its rate and its modes, the window on the display that shows it, and the buttons that move the window to another display, cover it, cover it in its lowest mode, resize the window and ask a browser for every screen. The events of the displays mark the drawing as they arrive, and the last one reads under the buttons.
 local display = require('haylen.display')
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
@@ -10,21 +10,23 @@ local Test = require('harness.test')
 
 local Displays = haylen.class('Displays', Test)
 
-Displays.code = "for _, shown in ipairs(display.list()) do print(shown.id, shown.bounds, shown.refreshRate) end\nwindow.place({anchor = 'center', display = other.id})\nwindow.setFullscreen(true, {display = other.id, mode = other.modes[#other.modes]})\nevents.on('displayConnected', function(info) print(info.name) end)\ndisplay.requestEveryScreen():await()  -- Every screen of a browser."
+Displays.code = "for _, shown in ipairs(display.list()) do print(shown.id, shown.bounds, shown.refreshRate) end\nwindow.place({anchor = 'center', display = other.id})\nwindow.setFullscreen(true, {display = other.id, mode = other.modes[#other.modes]})\nwindow.setFrame(0, 0, 960, 540)  -- The size alone on visionOS.\nevents.on('displayConnected', function(info) print(info.name) end)\ndisplay.requestEveryScreen():await()  -- Every screen of a browser."
 Displays.margin = 48
 
 function Displays:enter()
     self.heard = {}
     self:frame{
-        hint = 'Move the window to the next display, cover it, or cover it in its lowest mode. Connect or disconnect a display, or move the window by hand, to see the events.',
+        hint = 'Move the window to the next display, cover it, cover it in its lowest mode or resize it. Connect or disconnect a display, or move the window by hand, to see the events.',
         focus = 'next',
         controls = {
             ui.button{id = 'next', text = 'Place on the next display', variant = 'primary', onClick = function() self:place() end},
             ui.button{id = 'cover', text = 'Cover the next display', onClick = function() self:cover(false) end},
             ui.button{id = 'exclusive', text = 'Cover it in its lowest mode', onClick = function() self:cover(true) end},
             ui.button{id = 'leave', text = 'Leave fullscreen', onClick = function() window.setFullscreen(false) end},
+            ui.button{id = 'resize', text = 'Resize the window', onClick = function() self:resizeWindow() end},
             ui.button{id = 'request', text = 'Ask for every screen', onClick = function() self:request() end},
             ui.label{id = 'answer', text = '', color = 'textMuted', font = 'caption'},
+            ui.label{id = 'latest', text = 'No event of the displays yet.', color = 'textMuted', font = 'caption'},
         },
     }
     if display.unlisted() then
@@ -32,8 +34,10 @@ function Displays:enter()
     end
     for _, name in ipairs({'displayConnected', 'displayDisconnected', 'displayChanged', 'windowDisplayChanged'}) do
         events.on(name, function(info)
-            table.insert(self.heard, 1, string.format('%s %s', name, info.name or info.display))
+            local line = string.format('%s %s', name, (info.name and info.name ~= '') and info.name or info.display)
+            table.insert(self.heard, 1, line)
             self.heard[6] = nil
+            self:set('latest', {text = 'Last event: ' .. line})
         end, {owner = self})
     end
 end
@@ -85,6 +89,14 @@ function Displays:cover(exclusive)
         local _, message = answer:await()
         self:set('answer', {text = message or string.format('Fullscreen on "%s"%s.', other.name ~= '' and other.name or other.id, exclusive and lowest and string.format(' at %d by %d', lowest.width, lowest.height) or '')})
     end)
+end
+
+-- The window shrinks and grows back in turns. A desktop moves and sizes the window, visionOS sizes the window that is its one display, and a window that fills its screen keeps its size.
+function Displays:resizeWindow()
+    local frame = window.frame()
+    self.shrunk = not self.shrunk
+    local scale = self.shrunk and 0.8 or 1.25
+    window.setFrame(frame.x, frame.y, math.floor(frame.width * scale), math.floor(frame.height * scale))
 end
 
 -- A browser lists every screen once the person lets the page see them, which the request asks for.

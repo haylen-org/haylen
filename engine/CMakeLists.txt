@@ -909,6 +909,7 @@ elseif(APPLE)
     src/platform/apple/AppleTheme.mm
     src/platform/apple/AppleTimeZone.mm
     src/platform/apple/AppleVideoDecoder.mm
+    src/platform/apple/AppleWindowSize.mm
     src/platform/apple/CatalystWindow.mm
     src/platform/apple/HaylenAccessibilityElement.mm
     src/platform/apple/HaylenAccessibilityView.mm

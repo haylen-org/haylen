@@ -106,7 +106,7 @@ bool Services::hasDesktop() noexcept {
     return installed.desktop != nullptr;
 }
 
-// A window without a desktop fills its screen, so it takes no style, background, frame, passthrough or drag of its own.
+// A window without a desktop fills its screen or the place that the system gives it, so it takes no style, background, place, passthrough or drag of its own.
 void Services::setWindowStyle(const WindowStyle& value) {
     if (const auto& desktop = getInstalled().desktop) {
         desktop->setWindowStyle(value);
@@ -119,9 +119,16 @@ void Services::setWindowBackground(const math::Color& value) {
     }
 }
 
+// A window without a desktop to place it on, such as a window of visionOS in the space around the person, takes the size alone where the platform lets the app ask for one.
 void Services::setWindowFrame(const math::Rect& value) {
-    if (const auto& desktop = getInstalled().desktop) {
-        desktop->setWindowFrame(value);
+    const port::Services& services = getInstalled();
+    if (services.desktop != nullptr) {
+        services.desktop->setWindowFrame(value);
+        return;
+    }
+
+    if (services.windowSize != nullptr) {
+        services.windowSize->requestSize(value.getSize());
     }
 }
 

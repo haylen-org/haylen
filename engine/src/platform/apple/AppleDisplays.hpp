@@ -5,6 +5,7 @@
 #if !TARGET_OS_OSX
 #import <UIKit/UIKit.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,21 +22,26 @@ class AppleDisplays final {
     // Tells the running app that a screen connected, disconnected or changed, once a scene connected to it or left it.
     static void changed();
 
-#if !TARGET_OS_VISION
-    [[nodiscard]] static NSString* getId(UIScreen* screen);
-
-    // Tells the running app that the screen of the window reads differently after a layout of the window, such as when the interface turns, which turns the bounds of the screen and the safe area of the window. The view controller of the window calls it with every layout, on the main thread.
+    // Tells the running app that the display of the window reads differently after a layout of the window: the screen of the window on an iPhone or an iPad, whose bounds and work area turn with the interface, and on visionOS the window itself, whose size and safe area follow the person who resizes it. The view controller of the window calls it with every layout, on the main thread.
     static void followWindow();
 
+#if !TARGET_OS_VISION
+    [[nodiscard]] static NSString* getId(UIScreen* screen);
+#endif
+
   private:
+    // The display that shows the window, or nothing before the window is in a scene.
+    [[nodiscard]] static std::optional<Display> describeWindowDisplay();
+
+#if !TARGET_OS_VISION
     [[nodiscard]] static Display describe(UIScreen* screen);
 
     static NSMapTable<UIScreen*, NSString*>* ids;
     static NSUInteger counted;
-
-    // The screen of the window as the last layout of the window described it.
-    static Display& windowDisplay;
 #endif
+
+    // The display of the window as the last layout of the window described it.
+    static Display& windowDisplay;
 };
 
 } // namespace haylen::platform

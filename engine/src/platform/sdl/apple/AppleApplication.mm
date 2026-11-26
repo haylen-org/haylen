@@ -65,7 +65,7 @@ void AppleApplication::prepareWindow([[maybe_unused]] const core::AppConfig& con
 // The view of the app holds the overlay of the plugins and the elements of screen readers, and above them the launch screen until the splash ends, and reads the scrolls of a pointer. The view controller of SDL answers UIKit with the status bar and the orientations of the app, and the plugins hear the scene connect once the window of the app is in it.
 void AppleApplication::finishLaunching([[maybe_unused]] Runtime& runtime) {
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
-#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+#if (TARGET_OS_IOS && !TARGET_OS_MACCATALYST) || TARGET_OS_VISION
     object_setClass(window.rootViewController, HaylenRootViewController.class);
 #endif
     UIView* content = window.rootViewController.view;
