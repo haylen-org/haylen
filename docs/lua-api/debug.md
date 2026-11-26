@@ -278,7 +278,7 @@ scene.push(level)
 The statistics count the objects of every type that were created, are alive and were destroyed:
 
 - Every userdata type that is exported to Lua counts under its type name, such as `haylen.Sprite` or `haylen.Tween`, from the moment Lua creates the value until the garbage collector frees it.
-- Engine resources count under their own names: `Texture` and `RenderTarget` with the bytes of their pixels, `Font`, `FontFamily`, `RichText`, `Sound` with the bytes of its samples or its encoded file, `PhysicsBody`, `PhysicsContact`, `ParticleEmitter`, `Particle`, `Gui`, `UiCell`, `VectorImage` and `Tween`.
+- Engine resources count under their own names: `Texture` and `RenderTarget` with the bytes of their pixels, `Font`, `FontFamily`, `RichText`, `Sound` with the bytes of its samples or its encoded file, `PhysicsBody2D`, `PhysicsContact2D`, `PhysicsBody3D`, `ParticleEmitter`, `Particle`, `Gui`, `UiCell`, `VectorImage` and `Tween`.
 - A C++ project counts its own types with `haylen::debug::ObjectCounter` and `TrackedObject`.
 
 [`debug.stats`](#debugstats) returns the counts in `objects`. The events `objectCreated` and `objectDestroyed` report each object as it comes and goes, as [events](#events) describe. They cost time in an app that creates many objects every frame, so they start off.

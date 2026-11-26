@@ -2,7 +2,9 @@
 
 #include <lua.hpp>
 
+#include <span>
 #include <type_traits>
+#include <vector>
 
 #include "3d/physics/Physics3DBinding.hpp"
 #include "haylen/3d/physics/World.hpp"
@@ -16,6 +18,9 @@ namespace haylen::lua::physics3d {
 class WorldBinding final {
   public:
     static void install(lua_State* L);
+
+    // Gives the Lua world object at the index its state table, which keeps the data of its bodies.
+    static void resetState(lua_State* L, int index);
 
   private:
     // Returns the live world of the first argument, and raises an error once it was destroyed.
@@ -39,7 +44,20 @@ class WorldBinding final {
         return 1;
     }
 
+    // Drops the data of the bodies that the world saw go since the last step.
+    static void releaseDestroyedData(lua_State* L, int worldIndex);
+
+    // Reads the list of bodies at the stack index, and the float buffer after it from the position that follows it.
+    [[nodiscard]] static std::vector<haylen::physics3d::Body> readBodies(lua_State* L, int index);
+    [[nodiscard]] static std::span<float> readTransformValues(lua_State* L, int index);
+
     static int step(lua_State* L);
+    static int createBody(lua_State* L);
+    static int readTransforms(lua_State* L);
+    static int writeTransforms(lua_State* L);
+    static int isInterpolating(lua_State* L);
+    static int hasEnhancedInternalEdgeRemoval(lua_State* L);
+    static int setEnhancedInternalEdgeRemoval(lua_State* L);
     static int destroy(lua_State* L);
     static int isDestroyed(lua_State* L);
     static int stats(lua_State* L);

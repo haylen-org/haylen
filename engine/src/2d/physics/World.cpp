@@ -22,8 +22,8 @@ namespace haylen::physics2d {
 
 const World::Settings World::kDefaultSettings{};
 const float World::kRevoluteLimit = 0.99F * math::Math::kPi;
-debug::ObjectCounter& World::bodyCounter = *new debug::ObjectCounter("PhysicsBody", debug::ObjectCounter::Kind::Native);
-debug::ObjectCounter& World::contactCounter = *new debug::ObjectCounter("PhysicsContact", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& World::bodyCounter = *new debug::ObjectCounter("PhysicsBody2D", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& World::contactCounter = *new debug::ObjectCounter("PhysicsContact2D", debug::ObjectCounter::Kind::Native);
 
 // Decides in the pre-solve callback of Box2D whether a contact with a one-way platform holds, and in its pre-continuous callback whether a fast body stops on one. They may run on several threads at once, so they only read the platforms, the dropping bodies and the standing contacts, which change between steps, and the bodies, which stay still while Box2D collides.
 class World::OneWayFilter final {

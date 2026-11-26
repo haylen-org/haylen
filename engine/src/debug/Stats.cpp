@@ -82,8 +82,8 @@ void Stats::update(core::Engine& engine, const graphics2d::Renderer::Stats& last
     counts.assetsCached = engine.getAssets().getCachedCount();
     counts.assetsPending = engine.getAssets().getPendingCount();
     counts.sockets = engine.getPlugin<plugins::NetPlugin>().getOpenSocketCount();
-    counts.bodies = aliveOf("PhysicsBody");
-    counts.contacts = aliveOf("PhysicsContact");
+    counts.bodies = aliveOf("PhysicsBody2D") + aliveOf("PhysicsBody3D");
+    counts.contacts = aliveOf("PhysicsContact2D");
     counts.particles = aliveOf("Particle");
 }
 

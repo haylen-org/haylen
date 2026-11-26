@@ -1,6 +1,6 @@
 # 🪨 3D physics
 
-This guide explains how 3D physics works in Haylen: what a world is, how it steps, how it uses threads and memory, what its limits do, how a world shows that two runs match, which shapes bodies collide with, and how a plugin puts another physics engine behind the same API. The [reference of `haylen.physics3d`](../lua-api/physics3d.md) lists every function, option and property.
+This guide explains how 3D physics works in Haylen: what a world is, how it steps, how it uses threads and memory, what its limits do, how a world shows that two runs match, which shapes bodies collide with, how bodies move, how they draw smoothly, how to solve the common problems of 3D physics, and how a plugin puts another physics engine behind the same API. The [reference of `haylen.physics3d`](../lua-api/physics3d.md) lists every function, option and property.
 
 ## Worlds
 
@@ -149,6 +149,122 @@ local car = physics3d.newOffsetCenterOfMass(physics3d.newBox({1.8, 1.2, 4.2}), {
 ```
 
 A shape belongs to the backend that made it, the one that new worlds take, and only the worlds of that backend take it.
+
+## Bodies
+
+A body is an object of a world. It has a shape, a place, a rotation, and velocities when it moves. The method `world:createBody` makes one with the shape it collides with.
+
+```lua
+local crate = world:createBody({shape = physics3d.newBox({1, 1, 1}), position = {0, 4, 0}})
+```
+
+A body has one of three types:
+
+- A static body never moves, such as the ground, a wall or a building. Static bodies cost almost nothing, since the world never moves or tests them against each other.
+- A kinematic body moves only as the app moves it, by its velocity or by `moveTo`, and pushes what it touches without being pushed back, such as a moving platform, a lift or a door.
+- A dynamic body moves by gravity, forces and contacts, such as a crate, a ball or a ragdoll. It needs a shape with a volume, which gives it its mass.
+
+A body can change its type while it lives, such as a static door that falls off its hinges and becomes dynamic.
+
+### How a body moves
+
+Forces and torques act over the next step, such as an engine, wind or a magnet that pushes every step. Impulses change the velocity at once, such as a kick, a jump or an explosion. A force or an impulse at a point off the center of mass also turns the body, as a push on the corner of a box turns it.
+
+```lua
+ball:applyImpulse({0, ball.mass * 6, 0})
+boat:applyForce({0, 0, -900}, boat.worldCenter + m.vec3(0, -0.5, 0))
+```
+
+A kinematic platform moves with `moveTo`, which gives it the velocity that brings it to its target after one step, so it carries what stands on it and pushes what it meets. Writing the position teleports a body instead, which suits spawning and respawning, since a teleport moves nothing out of the way.
+
+```lua
+function scene:fixedUpdate(seconds)
+    self.lift:moveTo({0, self.liftHeight, 0}, m.quat(), seconds)
+    self.world:step(seconds)
+end
+```
+
+The position, the rotation and the velocities of a body are native properties, so a tween animates them in C++ without a call of Lua for each frame, such as a door that swings open.
+
+### Mass and how a body turns
+
+A dynamic body takes its mass and inertia from its shape and density. The options `mass`, `inertia` and `centerOfMass` set them instead, and `body:resetMass` takes them from the shape again. Setting the mass alone keeps the form of the inertia and scales it, so the body turns as a body of that shape does. A low center of mass keeps a car or a boat upright.
+
+The option `locks` keeps axes still. A body locked on `z` and around `x` and `y` moves in the plane `x`, `y` like a 2D body, and a body locked around every axis never tips over, such as a character that only slides.
+
+### Materials
+
+The friction says how much a body grips what it slides on, and the restitution how much it bounces. When two bodies touch, their frictions and their restitutions combine by a rule: the average, the minimum, the product or the maximum. Of the rules of the two bodies, the later one in that order wins, so a ball of rubber with the rule `maximum` bounces on any floor, and an ice block with the rule `minimum` slides on any floor.
+
+```lua
+world:createBody({shape = ball, restitution = 0.8, restitutionCombine = 'maximum'})
+world:createBody({shape = ice, friction = 0.02, frictionCombine = 'minimum'})
+```
+
+### Sensors and bodies that leave the world
+
+A sensor detects what enters it without pushing it, such as the zone of a checkpoint or the reach of a door that opens. A sensor that is kinematic and has `collideWithStatic` also finds static and kinematic bodies, such as a trigger that finds the walls.
+
+A body that is not enabled leaves the simulation with its state, so nothing touches it until it is enabled again, which suits an object in the inventory of a player that returns to the world later.
+
+### Compounds that change
+
+A body that takes a mutable compound gets a copy of its own, so the bodies that take one compound change their children apart. The methods `body:addChild`, `body:removeChild` and `body:setChildTransform` change the children of the copy, and the body keeps its place in the world while its center of mass moves.
+
+```lua
+local ship = world:createBody({shape = physics3d.newCompound({{shape = hull}}, {mutable = true})})
+ship:addChild(physics3d.newBox({4, 0.2, 1}), {2.5, 0, 0})
+```
+
+### Handles
+
+A body in Lua and in C++ is a handle, which stays cheap to copy. A handle knows when its body is gone, and when its world is gone, even after a new world takes the place of the old one in the engine, so code that keeps a body it should not keep fails with a clear sentence instead of moving another body.
+
+## Smooth drawing between fixed steps
+
+A world steps at the fixed rate of the app, and the screen refreshes at its own rate, so a body drawn where it is jumps a little when frames and steps do not line up. A world made with `interpolate` keeps the transforms of the last two steps of every body that moves, and `body:renderTransform` and `world:readTransforms` with `interpolated` give each body between them by how far the frame is into the next step.
+
+```lua
+local world = physics3d.newWorld({interpolate = true, owner = self})
+
+function scene:draw()
+    self.world:readTransforms(self.crates, self.transforms, 1, true)
+end
+```
+
+The method `world:readTransforms` copies the transforms of many bodies into a float buffer in one call, seven floats for each body, so thousands of models follow their bodies without a call of Lua for each body. The method `world:writeTransforms` moves many bodies the same way.
+
+## Step hooks
+
+C++ code acts on a world in every step through its step hooks, which run before the step, where forces apply, or after it, where the new positions are known. A hook may add and remove hooks and destroy the world. Hooks are how the helpers of the engine and of plugins, such as vehicles, buoyancy or wind, act on every body without a call of Lua for each one.
+
+```cpp
+const std::uint64_t wind = world.addStepHook(haylen::physics3d::World::StepPhase::Before, [&sail](float) {
+    sail.applyForce({4.0F, 0.0F, 0.0F});
+});
+```
+
+## Common problems and their solutions
+
+### Fast bodies pass through thin walls
+
+A body moves in jumps of one step, so a body faster than its own size in one step can jump over a thin wall. A body of motion quality `linearCast` sweeps its shape from where it was to where it goes and stops at the first surface, so a bullet or a fast ball never passes a wall. Give it to fast bodies alone, since a sweep costs more than a jump. A world that steps at a low rate also gains from more `collisionSteps`.
+
+```lua
+world:createBody({shape = bullet, motionQuality = 'linearCast', linearVelocity = {300, 0, 0}})
+```
+
+### Bodies bump on the edges inside a mesh
+
+A body that slides over a mesh can catch on the edges between its triangles, as if the floor had seams. The option `enhancedInternalEdgeRemoval` of a body, or of the world for every new body, removes the contacts with those edges, so the body slides smoothly. A heightfield and a mesh already leave out the edges between triangles that lie flat against each other.
+
+```lua
+local world = physics3d.newWorld({enhancedInternalEdgeRemoval = true})
+```
+
+### Piles that jitter
+
+A pile of bodies that rests should sleep. Leave sleeping on, and raise `velocitySteps` for a tall stack, so the solver pushes the bodies of the stack apart in more passes. Bodies of very different masses that rest on each other, such as a heavy safe on a light box, make the solver work harder, so keep the masses of bodies that stack within about ten times of each other.
 
 ## Backends
 

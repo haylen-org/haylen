@@ -81,6 +81,8 @@ void WorldSettings::readSection(const core::Json& section) {
     readValue(section, "maxContactConstraints", maxContactConstraints);
     readValue(section, "threads", threads);
     readValue(section, "temporaryMemory", temporaryMemory);
+    readValue(section, "interpolate", interpolate);
+    readValue(section, "enhancedInternalEdgeRemoval", enhancedInternalEdgeRemoval);
     validate("physics3d.", " in \"haylen.json\"");
 }
 

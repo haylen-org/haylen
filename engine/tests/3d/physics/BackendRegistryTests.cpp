@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <memory>
+#include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -64,7 +67,113 @@ class BackendRegistryTest : public ::testing::Test {
                 return static_cast<std::uint64_t>(record->steps);
             }
 
+            // The worlds of these tests hold no bodies, so every call about one is a defect of the world.
+            [[nodiscard]] std::optional<BodyId> createBody(const Body::Options&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            void destroyBody(BodyId) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] bool isBodyValid(BodyId) const noexcept override {
+                return false;
+            }
+            [[nodiscard]] std::size_t getBodySlot(BodyId) const noexcept override {
+                return 0;
+            }
+            [[nodiscard]] Body::Type getBodyType(BodyId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setBodyType(BodyId, Body::Type) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] Body::MotionQuality getMotionQuality(BodyId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setMotionQuality(BodyId, Body::MotionQuality) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] Body::MotionLocks getMotionLocks(BodyId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setMotionLocks(BodyId, const Body::MotionLocks&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] Body::Transform getBodyTransform(BodyId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setBodyTransform(BodyId, const Body::Transform&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            void moveBody(BodyId, const Body::Transform&, float) override {
+                throw std::logic_error(kNoBodies);
+            }
+            void readBodyTransforms(std::span<const BodyId>, std::span<float>) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void writeBodyTransforms(std::span<const BodyId>, std::span<const float>) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] math::Vec3 getBodyVector(BodyId, Body::Vector) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setBodyVector(BodyId, Body::Vector, math::Vec3) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] float getBodyValue(BodyId, Body::Value) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setBodyValue(BodyId, Body::Value, float) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] bool getBodyFlag(BodyId, Body::Flag) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setBodyFlag(BodyId, Body::Flag, bool) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] Body::CombineRule getCombineRule(BodyId, Body::Material) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setCombineRule(BodyId, Body::Material, Body::CombineRule) override {
+                throw std::logic_error(kNoBodies);
+            }
+            void resetMass(BodyId) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] math::Vec3 getVelocityAt(BodyId, math::Vec3) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void pushBody(BodyId, Body::Push, math::Vec3, std::optional<math::Vec3>) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] math::Box getBodyBounds(BodyId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] std::shared_ptr<const Shape> getBodyShape(BodyId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setBodyShape(BodyId, const std::shared_ptr<const Shape>&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            [[nodiscard]] std::size_t getChildCount(BodyId) const override {
+                throw std::logic_error(kNoBodies);
+            }
+            std::size_t addChild(BodyId, const Shape::Child&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            void removeChild(BodyId, std::size_t) override {
+                throw std::logic_error(kNoBodies);
+            }
+            void setChildTransform(BodyId, std::size_t, const Body::Transform&) override {
+                throw std::logic_error(kNoBodies);
+            }
+            void collectActiveBodies(std::vector<BodyId>& ids) const override {
+                ids.clear();
+            }
+
           private:
+            static constexpr const char* kNoBodies = "The recording backend holds no bodies.";
+
             std::shared_ptr<Record> record;
         };
 

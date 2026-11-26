@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "3d/physics/BodyBinding.hpp"
 #include "3d/physics/ShapeBinding.hpp"
 #include "3d/physics/WorldBinding.hpp"
 #include "haylen/core/Engine.hpp"
@@ -17,7 +18,7 @@
 
 namespace haylen::lua::physics3d {
 
-// Creates a world with `newWorld({gravity, collisionSteps, velocitySteps, positionSteps, sleepEnabled, timeBeforeSleep, sleepVelocity, speculativeContactDistance, penetrationSlop, restitutionThreshold, maxBodies, maxBodyPairs, maxContactConstraints, threads, temporaryMemory, owner})`, whose settings start from the `physics3d` section of `haylen.json`. The world ends with its owner.
+// Creates a world with `newWorld({gravity, collisionSteps, velocitySteps, positionSteps, sleepEnabled, timeBeforeSleep, sleepVelocity, speculativeContactDistance, penetrationSlop, restitutionThreshold, maxBodies, maxBodyPairs, maxContactConstraints, threads, temporaryMemory, interpolate, enhancedInternalEdgeRemoval, owner})`, whose settings start from the `physics3d` section of `haylen.json`. The world ends with its owner.
 int Physics3DBinding::newWorld(lua_State* L) {
     haylen::plugins::Physics3DPlugin& plugin = lua::Runtime::getEngine(L).getPlugin<haylen::plugins::Physics3DPlugin>();
     haylen::physics3d::WorldSettings settings = plugin.getDefaultSettings();
@@ -40,6 +41,8 @@ int Physics3DBinding::newWorld(lua_State* L) {
         lua::Table::readField(L, 1, "maxContactConstraints", settings.maxContactConstraints);
         lua::Table::readField(L, 1, "threads", settings.threads);
         lua::Table::readField(L, 1, "temporaryMemory", settings.temporaryMemory);
+        lua::Table::readField(L, 1, "interpolate", settings.interpolate);
+        lua::Table::readField(L, 1, "enhancedInternalEdgeRemoval", settings.enhancedInternalEdgeRemoval);
         if (lua_getfield(L, 1, "owner") == LUA_TNIL) {
             lua_pop(L, 1);
         } else {
@@ -59,7 +62,15 @@ int Physics3DBinding::newWorld(lua_State* L) {
     }
 
     lua::Userdata::emplace<haylen::physics3d::World>(L, world);
+    WorldBinding::resetState(L, -1);
     return 1;
+}
+
+void Physics3DBinding::pushBody(lua_State* L, int worldIndex, const haylen::physics3d::Body& body) {
+    const int owner = lua_absindex(L, worldIndex);
+    lua::Userdata::emplace<ScriptedBody>(L, ScriptedBody{.world = lua::Userdata::checkShared<haylen::physics3d::World>(L, owner), .body = body});
+    lua_pushvalue(L, owner);
+    lua_setiuservalue(L, -2, 1);
 }
 
 // Returns the names of the registered backends with `backends()`, in the order of their names.
@@ -82,6 +93,7 @@ int Physics3DBinding::open(lua_State* L) {
 
 void Physics3DBinding::install(lua_State* L) {
     WorldBinding::install(L);
+    BodyBinding::install(L);
     ShapeBinding::install(L);
     lua::Binding::preload(L, "haylen.physics3d", &open);
 }

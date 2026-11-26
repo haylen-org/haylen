@@ -11,7 +11,7 @@ namespace haylen::physics3d {
 
 // The settings of a 3D physics world, in meters, seconds and kilograms. The `physics3d` section of `haylen.json` gives the defaults of every world of the app, and each world may change them when it is made.
 // A step advances the world by the time it receives in `collisionSteps` equal parts. Each part solves velocities `velocitySteps` times and positions `positionSteps` times. A body sleeps once every point of it moves slower than `sleepVelocity` for `timeBeforeSleep` seconds. Contacts start within `speculativeContactDistance` of each other, the solver leaves `penetrationSlop` of overlap to keep piles steady, and a body bounces only when it hits faster than `restitutionThreshold`.
-// The limits stay for the life of the world: the bodies it holds, the pairs of bodies whose bounds touch, the contacts it solves in one step, the threads that step it and the megabytes of memory that one step works in.
+// The limits stay for the life of the world: the bodies it holds, the pairs of bodies whose bounds touch, the contacts it solves in one step, the threads that step it and the megabytes of memory that one step works in. A world that interpolates keeps the transforms of the last two steps of every body that moves, from its start on, so it draws them smoothly between fixed steps. Bodies take the enhanced removal of internal edges of the world unless they set their own, which smooths the slide of a body over the edges inside a mesh.
 struct WorldSettings {
     math::Vec3 gravity{0.0F, -math::Math::kStandardGravity, 0.0F};
     int collisionSteps = 1;
@@ -28,6 +28,8 @@ struct WorldSettings {
     int maxContactConstraints = 20480;
     int threads = 1;
     int temporaryMemory = 16;
+    bool interpolate = false;
+    bool enhancedInternalEdgeRemoval = false;
 
     // The most of each limit, far beyond what a device holds, which keeps every count within what the backends index.
     static constexpr int kMaxSteps = 64;
@@ -36,7 +38,7 @@ struct WorldSettings {
     static constexpr int kMaxTemporaryMemory = 1024;
 
     // The keys of the settings, as `haylen.json` and the options of a world name them.
-    static constexpr std::array<std::string_view, 15> kKeys{"gravity", "collisionSteps", "velocitySteps", "positionSteps", "sleepEnabled", "timeBeforeSleep", "sleepVelocity", "speculativeContactDistance", "penetrationSlop", "restitutionThreshold", "maxBodies", "maxBodyPairs", "maxContactConstraints", "threads", "temporaryMemory"};
+    static constexpr std::array<std::string_view, 17> kKeys{"gravity", "collisionSteps", "velocitySteps", "positionSteps", "sleepEnabled", "timeBeforeSleep", "sleepVelocity", "speculativeContactDistance", "penetrationSlop", "restitutionThreshold", "maxBodies", "maxBodyPairs", "maxContactConstraints", "threads", "temporaryMemory", "interpolate", "enhancedInternalEdgeRemoval"};
 
     // Reads the `physics3d` section of `haylen.json` over these settings and checks them. Throws `std::invalid_argument` with a sentence that names the key as `haylen.json` writes it, such as `physics3d.velocitySteps`.
     void readSection(const core::Json& section);

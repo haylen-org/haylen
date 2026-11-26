@@ -56,6 +56,7 @@ set(HAYLEN_LUA_SOURCES
   src/2d/tiled/MapQueryBinding.cpp
   src/2d/tiled/TiledBinding.cpp
   src/3d/gltf/GltfBinding.cpp
+  src/3d/physics/BodyBinding.cpp
   src/3d/physics/Physics3DBinding.cpp
   src/3d/physics/ShapeBinding.cpp
   src/3d/physics/WorldBinding.cpp

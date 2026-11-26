@@ -145,18 +145,18 @@ TEST_F(ObjectCounterTest, CountsEngineResources) {
     EXPECT_EQ(pool(device, "images").used, images.used);
 
     // Bodies and contacts follow the world, and particles follow their emitter.
-    const std::uint64_t bodies = counted("PhysicsBody").alive;
+    const std::uint64_t bodies = counted("PhysicsBody2D").alive;
     {
         haylen::physics2d::World world;
         haylen::physics2d::Body body = world.createBody();
         world.createBody();
-        EXPECT_EQ(counted("PhysicsBody").alive, bodies + 2);
+        EXPECT_EQ(counted("PhysicsBody2D").alive, bodies + 2);
         body.destroy();
-        EXPECT_EQ(counted("PhysicsBody").alive, bodies + 1);
-        EXPECT_EQ(counted("PhysicsBody").destroyed, counted("PhysicsBody").created - counted("PhysicsBody").alive);
+        EXPECT_EQ(counted("PhysicsBody2D").alive, bodies + 1);
+        EXPECT_EQ(counted("PhysicsBody2D").destroyed, counted("PhysicsBody2D").created - counted("PhysicsBody2D").alive);
     }
 
-    EXPECT_EQ(counted("PhysicsBody").alive, bodies);
+    EXPECT_EQ(counted("PhysicsBody2D").alive, bodies);
 
     const std::uint64_t particles = counted("Particle").alive;
     const std::uint64_t emitters = counted("ParticleEmitter").alive;

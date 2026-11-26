@@ -1,6 +1,6 @@
 # 📖 `haylen.physics3d`
 
-The module `haylen.physics3d` makes 3D physics worlds in meters, which Jolt Physics simulates unless a plugin selects another backend. This page lists the functions of the module and every member of its worlds and shapes. The [3D physics guide](../3d/physics.md) explains worlds, steps, threads, limits, shapes and backends.
+The module `haylen.physics3d` makes 3D physics worlds in meters, which Jolt Physics simulates unless a plugin selects another backend. This page lists the functions of the module and every member of its worlds, bodies and shapes. The [3D physics guide](../3d/physics.md) explains worlds, steps, threads, limits, shapes and backends.
 
 ```lua
 local physics3d = require('haylen.physics3d')
@@ -54,6 +54,8 @@ Creates an empty world and returns it. Its settings start from the `physics3d` s
 | `maxContactConstraints` | integer | `20480` | The most contacts the world solves in one step, from 1 to 8388607. |
 | `threads` | integer | The workers of the engine, up to 4 | The threads that a step runs on, from 1 to 64, while enough bodies are awake. |
 | `temporaryMemory` | integer | `16` | The megabytes that one step works in, from 1 to 1024. |
+| `interpolate` | boolean | `false` | Whether the world keeps the transforms of the last two steps of the bodies that move, so they draw smoothly between fixed steps. |
+| `enhancedInternalEdgeRemoval` | boolean | `false` | Whether new bodies slide smoothly over the edges inside meshes unless they set their own. |
 | `owner` | table or userdata | The default owner | What the world belongs to. The world ends with its owner. |
 
 ```lua
@@ -83,6 +85,27 @@ function scene:fixedUpdate(seconds)
     self.world:step(seconds)
 end
 ```
+
+### world:readTransforms(bodies, buffer, first, interpolated)
+
+Copies the position and rotation of every body of the list `bodies` into the `FloatBuffer` `buffer`, seven floats for each body in order, `x`, `y`, `z` and the `x`, `y`, `z` and `w` of its rotation, from the position `first`, 1 unless the call names another. With `interpolated` set to `true` in a world made with `interpolate`, the transforms lie between the last two steps by the interpolation of the frame clock. One call syncs thousands of models with their bodies, without a call of Lua for each body.
+
+- A body that is destroyed or belongs to another world raises `Body transforms need live bodies of this world.`.
+- A buffer without seven values for each body from `first` raises `Body transforms take seven floats for each body.`.
+- The value `interpolated` in a world without `interpolate` raises `Only a 3D physics world made with "interpolate" blends the transforms of its bodies.`.
+
+```lua
+local transforms = collections.newFloatBuffer(#crates * 7)
+
+function scene:draw()
+    self.world:readTransforms(self.crates, transforms, 1, true)
+    self.batch:setTransforms(transforms)
+end
+```
+
+### world:writeTransforms(bodies, buffer, first)
+
+Teleports every body of the list to the position and rotation that the buffer holds for it, in the layout of `world:readTransforms`. A rotation is normalized, so one that drifted from a length of one still places its body.
 
 ### world:destroy()
 
@@ -127,6 +150,8 @@ local hash = world:stateHash()
 | `maxContactConstraints` | integer | read | The option `maxContactConstraints`, which stays for the life of the world. |
 | `threads` | integer | read | The option `threads`, which stays for the life of the world. |
 | `temporaryMemory` | integer | read | The option `temporaryMemory`, which stays for the life of the world. |
+| `interpolate` | boolean | read | The option `interpolate`, which stays for the life of the world. |
+| `enhancedInternalEdgeRemoval` | boolean | read and write | The option `enhancedInternalEdgeRemoval`, which the bodies made from then on take. |
 | `backend` | string | read | The name of the backend that simulates the world. |
 | `bodyCount` | integer | read | The bodies of the world. |
 | `activeBodyCount` | integer | read | The bodies that are awake. |
@@ -138,6 +163,187 @@ A value written out of its range raises the same sentence as the option, and the
 world.gravity = {0, -3.71, 0}
 world.velocitySteps = 14
 ```
+
+## Body3D
+
+A `Body3D`, named `haylen.Body3D` in messages, is an object of a world that collides with its shape. The method [`world:createBody`](#worldcreatebodyoptions) makes one. Every member but `valid` and `destroy` raises `The 3D physics body was destroyed.` once the body is gone, and `The 3D physics world of the body was destroyed.` once its world is gone. Two values of the same body compare equal with `==`. The [guide](../3d/physics.md#bodies) explains the types of bodies and how they move.
+
+### world:createBody(options)
+
+Makes a body and returns it. The table `options` needs `shape`, and every other option is optional. An unknown key raises `Unknown option "<key>".`, and a value out of its range raises a sentence that names it, such as `The linear damping of a 3D body must be a finite number of zero or more.`.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `shape` | Shape3D | none | The shape the body collides with. |
+| `type` | string | `'dynamic'` | `'static'` never moves, `'kinematic'` moves only by its velocity and `moveTo`, and `'dynamic'` moves by forces and contacts. |
+| `position` | Vec3 or `{x, y, z}` | `{0, 0, 0}` | Where the origin of the shape lies. |
+| `rotation` | Quat or `{x, y, z, w}` | no turn | The rotation, a quaternion of length one. |
+| `linearVelocity` | Vec3 or `{x, y, z}` | `{0, 0, 0}` | The velocity in meters per second, which a static body does not take. |
+| `angularVelocity` | Vec3 or `{x, y, z}` | `{0, 0, 0}` | The spin in radians per second around each axis of the world. |
+| `motionQuality` | string | `'discrete'` | `'discrete'` moves in jumps of one step, and `'linearCast'` sweeps the shape along its path, so a fast body never passes a thin wall. |
+| `locks` | table | none | The axes the body keeps, `{x, y, z, rotationX, rotationY, rotationZ}` of booleans, such as `{z = true, rotationX = true, rotationY = true}` for a body that moves in the plane `x`, `y`. A dynamic body keeps at least one axis free. |
+| `mass` | number | from the shape | The mass in kilograms, which scales the inertia of the shape with it. |
+| `inertia` | Vec3 or `{x, y, z}` | from the shape | The inertia around the center of mass along the axes of the body, in kilograms times square meters. |
+| `centerOfMass` | Vec3 or `{x, y, z}` | from the shape | The point the body turns around, in the space of the body. |
+| `linearDamping` | number | `0.05` | How fast the body loses its speed, as the air slows it. |
+| `angularDamping` | number | `0.05` | How fast the body loses its spin. |
+| `gravityScale` | number | `1` | The share of the gravity of the world that pulls the body, `0` for none and negative to fall up. |
+| `maxLinearSpeed` | number | `500` | The highest speed in meters per second. |
+| `maxAngularSpeed` | number | `47.12` | The highest spin in radians per second, a quarter turn in each step of 60 hertz. |
+| `friction` | number | `0.2` | How much the body grips what it slides on, 0 for ice and 1 for rubber on concrete. |
+| `restitution` | number | `0` | How much the body bounces, 0 for none and 1 for a bounce that keeps its whole speed. |
+| `frictionCombine` | string | `'average'` | How the friction of two touching bodies combines: `'average'`, `'minimum'`, `'multiply'` or `'maximum'`. Of the rules of the two bodies, the one later in that list wins. |
+| `restitutionCombine` | string | `'average'` | How the restitution of two touching bodies combines, by the same rules. |
+| `sleepEnabled` | boolean | `true` | Whether the body falls asleep once it rests. |
+| `sensor` | boolean | `false` | Whether the body detects what enters it without pushing it, such as a trigger zone. |
+| `collideWithStatic` | boolean | `false` | Whether a kinematic body or a sensor also meets static and kinematic bodies, such as a trigger that finds the walls. |
+| `enhancedInternalEdgeRemoval` | boolean | the world option | Whether the body slides smoothly over the edges inside a mesh, which costs a little time. |
+| `enabled` | boolean | `true` | Whether the body takes part in the simulation. |
+
+```lua
+local physics3d = require('haylen.physics3d')
+
+local world = physics3d.newWorld({owner = self})
+world:createBody({type = 'static', shape = physics3d.newBox({100, 1, 100}), position = {0, -0.5, 0}})
+local crate = world:createBody({shape = physics3d.newBox({1, 1, 1}, {density = 600}), position = {0, 4, 0}, friction = 0.6})
+```
+
+### body:applyForce(force, point)
+
+Pushes the body with a force in newtons over the next step, at the world point `point` when the call names one, which also turns the body, and at its center of mass otherwise. Only a dynamic body takes forces, and any other raises `Only a dynamic 3D body takes forces.`.
+
+```lua
+function scene:fixedUpdate(seconds)
+    self.boat:applyForce({0, 0, -800}, self.boat.worldCenter)
+    self.world:step(seconds)
+end
+```
+
+### body:applyImpulse(impulse, point)
+
+Changes the velocity of the body at once by an impulse in newton seconds, at the world point `point` when the call names one. An impulse of the mass times a speed adds that speed, such as a kick or a jump.
+
+```lua
+ball:applyImpulse({0, ball.mass * 5, 0})
+```
+
+### body:applyTorque(torque)
+
+Turns the body with a torque in newton meters around each axis of the world over the next step.
+
+### body:applyAngularImpulse(impulse)
+
+Changes the spin of the body at once by an angular impulse.
+
+### body:setTransform(position, rotation)
+
+Teleports the body to the position, and to the rotation when the call names one, which suits spawning and respawning. A teleport skips the sweep of a linear cast and pushes out what the body lands in, so a body that should push and carry others moves with `moveTo` instead.
+
+```lua
+player:setTransform({0, 1, 0})
+```
+
+### body:moveTo(position, rotation, seconds)
+
+Gives a kinematic or dynamic body the velocities that bring it to the transform after `seconds`, normally the time of one fixed step, so a moving platform or a door pushes and carries what touches it. A static body raises an error, and a time that is not above zero raises `A 3D body moves to a transform over a time above zero seconds.`.
+
+```lua
+function scene:fixedUpdate(seconds)
+    self.time = self.time + seconds
+    self.lift:moveTo({0, 2 + math.sin(self.time) * 2, 0}, m.quat(), seconds)
+    self.world:step(seconds)
+end
+```
+
+### body:velocityAt(point)
+
+Returns the velocity of a world point that moves with the body, with its spin, such as the speed of the ground under the feet of a character.
+
+### body:resetMass()
+
+Takes the mass, inertia and center of mass from the shape and its density again, forgetting the ones that were set.
+
+### body:addChild(shape, position, rotation)
+
+Adds a child to the own copy of a mutable compound that the body took, at the position and rotation in the space of the body, and returns its index. A body whose shape is no mutable compound raises an error.
+
+```lua
+local ship = world:createBody({shape = physics3d.newCompound({{shape = hull}}, {mutable = true})})
+local wing = ship:addChild(physics3d.newBox({4, 0.2, 1}), {2.5, 0, 0})
+```
+
+### body:removeChild(index)
+
+Removes a child of the own mutable compound of the body. A dynamic body keeps at least one child, since a body without a volume has no mass.
+
+### body:setChildTransform(index, position, rotation)
+
+Moves a child of the own mutable compound of the body.
+
+### body:renderTransform()
+
+Returns the position and the rotation to draw the body at. In a world made with `interpolate`, they lie between the last two steps of the body by the interpolation of the frame clock, so the body draws smoothly when frames and fixed steps do not line up. Otherwise they are where the body is.
+
+```lua
+function scene:draw()
+    local position, rotation = self.crate:renderTransform()
+    self.model:draw(position, rotation)
+end
+```
+
+### body:destroy()
+
+Destroys the body. Destroying a destroyed body does nothing.
+
+### Body3D properties
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `valid` | boolean | read | Whether the body and its world live. |
+| `world` | PhysicsWorld3D | read | The world of the body. |
+| `type` | string | read and write | The option `type`. A dynamic body needs a shape with a volume. |
+| `position` | Vec3 | read and write | Where the body is. Writing it teleports the body, and tweens animate it in C++. |
+| `x`, `y`, `z` | number | read and write | One part of the position. |
+| `rotation` | Quat | read and write | The rotation of the body. Writing it teleports the body, and tweens animate it in C++. |
+| `linearVelocity` | Vec3 | read and write | The velocity, which tweens animate in C++. A static body raises an error on a write. |
+| `angularVelocity` | Vec3 | read and write | The spin, which tweens animate in C++. |
+| `motionQuality` | string | read and write | The option `motionQuality`. |
+| `locks` | table | read and write | The option `locks`, as a table of six booleans. |
+| `mass` | number | read and write | The mass in kilograms. |
+| `inertia` | Vec3 | read and write | The inertia around the center of mass along the axes of the body. |
+| `centerOfMass` | Vec3 | read and write | The center of mass in the space of the body. |
+| `worldCenter` | Vec3 | read | Where the center of mass is in the world. |
+| `linearDamping`, `angularDamping`, `gravityScale` | number | read and write | The options of the same names. |
+| `maxLinearSpeed`, `maxAngularSpeed` | number | read and write | The options of the same names. |
+| `friction`, `restitution` | number | read and write | The options of the same names. |
+| `frictionCombine`, `restitutionCombine` | string | read and write | The options of the same names. |
+| `sleepEnabled` | boolean | read and write | The option `sleepEnabled`. |
+| `awake` | boolean | read and write | Whether the body is awake. Writing `true` wakes it and `false` sends it to sleep. |
+| `sensor`, `collideWithStatic`, `enhancedInternalEdgeRemoval`, `enabled` | boolean | read and write | The options of the same names. |
+| `shape` | Shape3D | read and write | The shape, or the own copy of a mutable compound. A new shape gives the body its mass unless the mass was set. |
+| `bounds` | Box | read | The box that holds the body in the world. |
+| `childCount` | integer | read | The children of the own mutable compound of the body. |
+| `data` | any | read and write | A value of the app that the body keeps, such as the entity it belongs to. |
+
+```lua
+local tween = require('haylen.tween')
+
+tween.to(door, 0.8, {rotation = m.fromAxisAngle(m.up(), math.pi / 2)}, {ease = 'quadOut'})
+```
+
+### Body errors
+
+| Message | Cause |
+| --- | --- |
+| `A 3D body needs the option "shape", such as "physics3d.newBox({1, 1, 1})".` | The options of `world:createBody` hold no shape. |
+| `A dynamic 3D body needs a shape with a volume, and a mesh has none. Make the body static or kinematic, or give it a convex hull or a compound of convex shapes.` | A dynamic body with a mesh, a heightfield or a plane. |
+| `A dynamic 3D body locked on every axis never moves. Make it static, or leave one axis free.` | Locks on all six axes of a dynamic body. |
+| `A static 3D body never moves, so it takes no velocity. Make it kinematic to move it.` | A velocity given to a static body. |
+| `Only a dynamic 3D body takes forces.` and the other sentences that start with `Only a dynamic` | A push of a static or kinematic body. |
+| `The 3D physics world holds "maxBodies" bodies already.` and the rest of its sentence | A world that holds `maxBodies`. |
+| `The 3D physics body was destroyed.` | A member of a destroyed body. |
+| `The 3D physics world of the body was destroyed.` | A member of a body whose world was destroyed. |
+| `The shape of a 3D body was made by the 3D physics backend "<name>", and the world takes only shapes of its own backend "<name>".` | A shape of another backend. |
 
 ## Shape3D
 

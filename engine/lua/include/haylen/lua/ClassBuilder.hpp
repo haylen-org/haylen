@@ -81,6 +81,14 @@ template <Bound T> class ClassBuilder final {
         return property(name, &Binding::method<Getter>, &setThrough<Setter>);
     }
 
+    // Exposes a getter and setter pair of a handle to something that may go before the handle, such as a physics body, whose `isValid` turns false once it went. A tween of the property ends then, as it ends for an object that was released.
+    template <auto Getter, auto Setter> ClassBuilder& liveAccessor(const char* name) {
+        using Value = std::remove_cvref_t<typename FunctionTraits<decltype(Getter)>::Result>;
+        static_assert(NativeProperty::kindOf<Value>().has_value(), "A live accessor reads a value that tweens animate.");
+        NativeProperty::record(state, metatable, name, liveAccessorProperty<Getter, Setter>);
+        return property(name, &Binding::method<Getter>, &setThrough<Setter>);
+    }
+
     template <auto Outer, auto Inner> ClassBuilder& nestedField(const char* name) {
         using Field = typename FunctionTraits<decltype(Inner)>::Field;
         if constexpr (NativeProperty::kindOf<Field>().has_value()) {
@@ -239,6 +247,27 @@ template <Bound T> class ClassBuilder final {
         return true;
     }
 
+    template <auto Getter> static bool readLiveAccessor(void* storage, NativeProperty::Values& values) {
+        T* object = objectOf(storage);
+        if (object == nullptr || !object->isValid()) {
+            return false;
+        }
+
+        NativeProperty::pack((object->*Getter)(), values);
+        return true;
+    }
+
+    template <auto Getter, auto Setter> static bool writeLiveAccessor(void* storage, const NativeProperty::Values& values) {
+        using Value = std::remove_cvref_t<typename FunctionTraits<decltype(Getter)>::Result>;
+        T* object = objectOf(storage);
+        if (object == nullptr || !object->isValid()) {
+            return false;
+        }
+
+        (object->*Setter)(NativeProperty::unpack<Value>(values));
+        return true;
+    }
+
     // Setters receive the object, the key and the value, the way `__newindex` calls them, so the value sits at index 3.
     template <auto Setter> static int setThrough(lua_State* L) {
         using Value = std::remove_cvref_t<std::tuple_element_t<0, typename FunctionTraits<decltype(Setter)>::Arguments>>;
@@ -253,6 +282,7 @@ template <Bound T> class ClassBuilder final {
     template <auto Member> static inline NativeProperty fieldProperty{NativeProperty::kindOf<typename FunctionTraits<decltype(Member)>::Field>().value_or(NativeProperty::Kind::Number), &readField<Member>, &writeField<Member>};
     template <auto Member, auto Check> static inline NativeProperty checkedFieldProperty{NativeProperty::kindOf<typename FunctionTraits<decltype(Member)>::Field>().value_or(NativeProperty::Kind::Number), &readField<Member>, &writeCheckedField<Member, Check>};
     template <auto Outer, auto Inner> static inline NativeProperty nestedProperty{NativeProperty::kindOf<typename FunctionTraits<decltype(Inner)>::Field>().value_or(NativeProperty::Kind::Number), &readNested<Outer, Inner>, &writeNested<Outer, Inner>};
+    template <auto Getter, auto Setter> static inline NativeProperty liveAccessorProperty{NativeProperty::kindOf<std::remove_cvref_t<typename FunctionTraits<decltype(Getter)>::Result>>().value_or(NativeProperty::Kind::Number), &readLiveAccessor<Getter>, &writeLiveAccessor<Getter, Setter>};
     template <auto Getter, auto Setter> static inline NativeProperty accessorProperty{NativeProperty::kindOf<std::remove_cvref_t<typename FunctionTraits<decltype(Getter)>::Result>>().value_or(NativeProperty::Kind::Number), &readAccessor<Getter>, &writeAccessor<Getter, Setter>};
 
     // Only the collector calls it, because Lua cannot reach the protected metatable. Dropping the metatable keeps a userdata that another finalizer brings back away from the destroyed object.

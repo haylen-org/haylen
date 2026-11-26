@@ -105,7 +105,7 @@ void StatsDisplay::format(core::Engine& engine, const graphics2d::Renderer::Stat
             std::format_to(out, "Scenes {}, tweens {}, timers {}", engine.getScenes().size(), engine.getTweens().size(), engine.getTimers().size());
             break;
         case Item::Physics:
-            std::format_to(out, "Bodies {}, contacts {}", countAlive("PhysicsBody"), countAlive("PhysicsContact"));
+            std::format_to(out, "Bodies {}, contacts {}", countAlive("PhysicsBody2D") + countAlive("PhysicsBody3D"), countAlive("PhysicsContact2D"));
             break;
         case Item::Particles:
             std::format_to(out, "Particles {}", countAlive("Particle"));

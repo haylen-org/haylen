@@ -148,4 +148,143 @@ TEST(Physics3DLuaTest, RefusesShapesWithSentencesThatSayWhatTheyTake) {
     EXPECT_EQ(fixture.lua("local ok, message = pcall(physics3d.newScaled, physics3d.newSphere(1), {1, 2, 1}) return message:match('The scale.*')"), "The scale does not suit the shape it scales. Spheres and capsules take the same scale on every axis, cylinders the same scale on x and z, and the children of a compound the scales their own shapes take.");
 }
 
+TEST(Physics3DLuaTest, MakesBodiesThatFallRestAndKeepTheirData) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        physics3d = require('haylen.physics3d')
+        world = physics3d.newWorld()
+        floor = world:createBody({type = 'static', shape = physics3d.newBox({100, 1, 100}), position = {0, -0.5, 0}})
+        ball = world:createBody({shape = physics3d.newSphere(0.25), position = {0, 3, 0}, friction = 0.4, restitutionCombine = 'maximum'})
+        ball.data = {name = 'marble'}
+        for i = 1, 240 do world:step(1 / 60) end
+    )");
+    // clang-format on
+
+    EXPECT_EQ(fixture.lua("return string.format('%.1f %s %s %s %.1f', ball.y, tostring(ball.awake), ball.type, ball.restitutionCombine, ball.friction)"), "0.2 false dynamic maximum 0.4");
+    EXPECT_EQ(fixture.lua("return ball.data.name .. ' ' .. tostring(ball.world == world) .. ' ' .. tostring(ball == ball) .. ' ' .. tostring(ball == floor) .. ' ' .. ball.shape.kind .. ' ' .. world.bodyCount"), "marble true true false sphere 2");
+    EXPECT_EQ(fixture.lua("return string.format('%.1f %s %s', ball.mass, ball.motionQuality, tostring(ball.locks.y))"), "65.4 discrete false");
+}
+
+TEST(Physics3DLuaTest, PushesMovesAndTeleportsBodies) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        physics3d = require('haylen.physics3d')
+        m = require('haylen.math')
+        world = physics3d.newWorld({gravity = {0, 0, 0}})
+        crate = world:createBody({shape = physics3d.newBox({1, 1, 1}), mass = 2, linearDamping = 0, angularDamping = 0})
+        crate:applyImpulse({4, 0, 0})
+        crate:applyImpulse({0, 0, 1}, {0.5, 0, 0})
+        speed = crate.linearVelocity.x
+        spin = crate.angularVelocity.y
+        crate:setTransform({0, 9, 0}, m.fromAxisAngle({0, 1, 0}, 1))
+        turned = crate.rotation.y
+        platform = world:createBody({type = 'kinematic', shape = physics3d.newBox({4, 0.5, 4})})
+        platform:moveTo({1, 0, 0}, m.quat(), 0.5)
+        world:step(1 / 60)
+        crate.locks = {x = true, rotationY = true}
+        crate.z = 3
+    )");
+    // clang-format on
+
+    EXPECT_EQ(fixture.lua("return string.format('%.1f %s %.1f %.2f %.1f', speed, tostring(spin < 0), crate.y, turned, platform.linearVelocity.x)"), "2.0 true 9.0 0.48 2.0");
+    EXPECT_EQ(fixture.lua("return string.format('%s %s %.1f %.1f', tostring(crate.locks.x), tostring(crate.locks.rotationY), crate.position.z, crate:velocityAt(crate.worldCenter).x)"), "true true 3.0 0.0");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() platform:applyForce({1, 0, 0}) end) return message:match('Only.*')"), "Only a dynamic 3D body takes forces.");
+}
+
+TEST(Physics3DLuaTest, TweensTheTransformOfABodyNatively) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        physics3d = require('haylen.physics3d')
+        tween = require('haylen.tween')
+        m = require('haylen.math')
+        world = physics3d.newWorld({gravity = {0, 0, 0}})
+        door = world:createBody({type = 'kinematic', shape = physics3d.newBox({1, 2, 0.1})})
+        tween.to(door, 1, {position = m.vec3(4, 0, 0), rotation = m.fromAxisAngle({0, 1, 0}, math.pi / 2)})
+        gone = world:createBody({type = 'kinematic', shape = physics3d.newSphere(1)})
+        tween.to(gone, 1, {position = m.vec3(0, 5, 0)})
+        gone:destroy()
+    )");
+    // clang-format on
+
+    fixture.frames(2, 0.25);
+    EXPECT_EQ(fixture.lua("return string.format('%.1f %.3f', door.x, door.rotation:angle())"), "2.0 0.785");
+    fixture.frames(2, 0.25);
+    ASSERT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
+    EXPECT_EQ(fixture.lua("return string.format('%.1f %s', door.x, tostring(gone.valid))"), "4.0 false");
+}
+
+TEST(Physics3DLuaTest, ReadsAndWritesTheTransformsOfManyBodiesThroughABuffer) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        physics3d = require('haylen.physics3d')
+        collections = require('haylen.collections')
+        world = physics3d.newWorld({gravity = {0, 0, 0}, interpolate = true})
+        ball = physics3d.newSphere(0.5)
+        bodies = {}
+        for i = 1, 3 do bodies[i] = world:createBody({shape = ball, position = {i, 0, 0}, linearVelocity = {0, 6, 0}, linearDamping = 0}) end
+        world:step(1 / 60)
+        world:step(1 / 60)
+        buffer = collections.newFloatBuffer(22)
+        world:readTransforms(bodies, buffer, 2)
+        smooth = collections.newFloatBuffer(21)
+        world:readTransforms(bodies, smooth, 1, true)
+        buffer[16] = 9
+        world:writeTransforms(bodies, buffer, 2)
+    )");
+    // clang-format on
+
+    EXPECT_EQ(fixture.lua("return string.format('%.1f %.1f %.2f %.1f %s', buffer[2], buffer[9], buffer[10], buffer[8], tostring(smooth[2] <= buffer[3]))"), "1.0 2.0 0.20 1.0 true");
+    EXPECT_EQ(fixture.lua("return string.format('%.1f %s', bodies[3].x, tostring(world.interpolate))"), "9.0 true");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() world:readTransforms(bodies, collections.newFloatBuffer(20)) end) return message:match('Body.*')"), "Body transforms take seven floats for each body.");
+    EXPECT_EQ(fixture.lua("local x, rotation = bodies[1]:renderTransform() return string.format('%.1f %.1f', x.x, rotation.w)"), "1.0 1.0");
+}
+
+TEST(Physics3DLuaTest, ChangesTheChildrenOfTheOwnCompoundOfABody) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        physics3d = require('haylen.physics3d')
+        world = physics3d.newWorld({gravity = {0, 0, 0}})
+        crate = physics3d.newBox({1, 1, 1})
+        ship = physics3d.newCompound({{shape = crate}}, {mutable = true})
+        first = world:createBody({shape = ship})
+        second = world:createBody({shape = ship, position = {10, 0, 0}})
+        index = first:addChild(crate, {2, 0, 0})
+        first:setChildTransform(2, {0, 2, 0}, require('haylen.math').quat())
+    )");
+    // clang-format on
+
+    EXPECT_EQ(fixture.lua("return index .. ' ' .. first.childCount .. ' ' .. second.childCount .. ' ' .. string.format('%.1f', first.bounds.max.y)"), "2 2 1 2.5");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() first:removeChild(3) end) return message:match('The 3D.*')"), "The 3D body has no child 3, since its children go from 1 to 2.");
+    EXPECT_EQ(fixture.lua("first:removeChild(1) return first.childCount"), "1");
+}
+
+TEST(Physics3DLuaTest, RefusesBodiesThatTheirOptionsDoNotSuitAndHandlesThatOutliveThem) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        physics3d = require('haylen.physics3d')
+        world = physics3d.newWorld()
+        ball = physics3d.newSphere(0.5)
+        body = world:createBody({shape = ball})
+        body.data = 'kept'
+        body:destroy()
+        other = physics3d.newWorld()
+        stranger = other:createBody({shape = ball})
+        other:destroy()
+    )");
+    // clang-format on
+
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() world:createBody({}) end) return message:match('A 3D.*')"), "A 3D body needs the option \"shape\", such as \"physics3d.newBox({1, 1, 1})\".");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() world:createBody({shape = ball, spin = 1}) end) return message:match('Unknown.*')"), "Unknown option \"spin\".");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() world:createBody({shape = ball, type = 'flying'}) end) return tostring(message:find('flying') ~= nil)"), "true");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() world:createBody({shape = physics3d.newPlane({0, 1, 0}, 0)}) end) return message:match('A dynamic.*')"), "A dynamic 3D body needs a shape with a volume, and a plane has none. Make the body static or kinematic, or give it a convex hull or a compound of convex shapes.");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() return body.position end) return tostring(body.valid) .. ' ' .. message:match('The 3D.*')"), "false The 3D physics body was destroyed.");
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(function() return stranger.mass end) return message:match('The 3D.*')"), "The 3D physics world of the body was destroyed.");
+}
+
 } // namespace haylen::lua::physics3d
