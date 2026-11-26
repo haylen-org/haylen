@@ -8462,12 +8462,13 @@ O trabalho da plataforma achou cerca de 18 mensagens em `engine/src/platform/sdl
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 7
-- **Progress:** No branch `frame-pacing` (`30815560c`), em três commits:
-  1. a espera pela tela entre os quadros, em todo dispositivo de GPU;
-  2. a idade da entrada em `debug.stats().frame.inputAge`;
-  3. o ritmo da Apple com o `CAMetalDisplayLink` do dispositivo Metal, com o `HaylenFramePacer` em toda plataforma da Apple e um patch do SDL para o iOS seguir o `waitevent`.
+- **Progress:** No branch `frame-pacing` (`8ff2e2b1d`), em três commits por assunto: a espera pela tela entre os quadros em todo dispositivo de GPU, a idade da entrada em `debug.stats().frame.inputAge`, e o ritmo da Apple com o `CAMetalDisplayLink` e o `HaylenFramePacer`.
 
-A execução completa 45790248384 do branch está rodando.
+A execução 45794754657 achou dois defeitos, já corrigidos:
+  1. No Direct3D 11 e 12, a espera recusava o quadro que uma leitura de imagem abriu. Agora a espera só quebra o contrato dentro de um passo, e o teste `GpuPassTest.WaitsForTheDisplayOutsidePassesAndAfterReadbacks` prova isso.
+  2. O congelamento do app coberto, em que o display link do Metal parava depois de uma tela nativa porque os drawables não desenhados ficavam presos, é provado pelos testes de UI PLG-008, PLG-009 e StoreTests no simulador do iOS: os três falhavam sem a correção. Nenhum teste headless consegue mostrá-lo, porque o `CAMetalDisplayLink` só entrega atualizações a uma camada que está numa tela, e o host headless e os testes de GPU não têm tela.
+
+O lote do Mac roda em `8ff2e2b1d`, e a execução completa do branch começa quando ele passar.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
