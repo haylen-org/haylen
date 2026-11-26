@@ -21,6 +21,17 @@ class JsonValidatorTest : public ::testing::Test {
         return {};
     }
 
+    // Returns the sentence that refuses the text of a file read with a bound of nesting, or an empty text when it parses.
+    [[nodiscard]] static std::string refusalWithin(std::string_view text, std::size_t maxDepth) {
+        try {
+            (void)JsonValidator::parse(text, "models/ship.gltf", maxDepth);
+        } catch (const std::invalid_argument& error) {
+            return error.what();
+        }
+
+        return {};
+    }
+
     // Returns the sentence that describes the failure of reading a value, or an empty text when it reads.
     template <typename Read> [[nodiscard]] static std::string description(Read&& read) {
         try {
@@ -54,6 +65,14 @@ TEST_F(JsonValidatorTest, DescribesAMissingKeyAndAValueOfTheWrongType) {
     EXPECT_EQ(description([&map] { (void)map.at("width").get<int>(); }), "The asset \"maps/cave.json\" holds a string where a number belongs.");
     EXPECT_EQ(description([&map] { (void)map.at("layers").get<std::string>(); }), "The asset \"maps/cave.json\" holds an object where a string belongs.");
     EXPECT_EQ(description([&map] { (void)map.at("width").at(2); }), "The asset \"maps/cave.json\" holds a value that is out of range or of another kind than it needs.");
+}
+
+// A document from a file of anywhere nests at most the levels its reader names, so nothing that walks it recurses without bound, and one that nests deeper names the line and column of the bracket too deep, while brackets inside strings never count.
+TEST_F(JsonValidatorTest, RefusesADocumentThatNestsDeeperThanTheBound) {
+    EXPECT_EQ(JsonValidator::parse(R"({"a": [{"b": "[[[[\"[["}]})", "models/ship.gltf", 3).at("a").at(0).at("b"), "[[[[\"[[");
+    EXPECT_EQ(refusalWithin("{\"a\": [\n  {\"b\": [1]}]}", 3), "The file \"models/ship.gltf\" nests its objects and arrays more than 3 levels deep, more than the engine reads. Check line 2, column 9.");
+    EXPECT_EQ(refusalWithin(std::string(100000, '[') + std::string(100000, ']'), 128), "The file \"models/ship.gltf\" nests its objects and arrays more than 128 levels deep, more than the engine reads. Check line 1, column 129.");
+    EXPECT_EQ(refusalWithin("{\"a\": [1, 2", 3), "The file \"models/ship.gltf\" is not valid JSON, since it ends before its last value is complete.");
 }
 
 } // namespace haylen::core

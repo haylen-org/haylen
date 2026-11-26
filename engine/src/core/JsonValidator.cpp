@@ -41,6 +41,50 @@ Json JsonValidator::parse(std::string_view text, std::string_view file) {
     }
 }
 
+Json JsonValidator::parse(std::string_view text, std::string_view file, std::size_t maxDepth) {
+    if (const std::optional<std::size_t> deep = findTooDeep(text, maxDepth)) {
+        const auto [line, column] = locate(*deep, text);
+        throw std::invalid_argument("The file \"" + std::string(file) + "\" nests its objects and arrays more than " + std::to_string(maxDepth) + " levels deep, more than the engine reads. Check line " + std::to_string(line) + ", column " + std::to_string(column) + ".");
+    }
+
+    return parse(text, file);
+}
+
+std::optional<std::size_t> JsonValidator::findTooDeep(std::string_view text, std::size_t maxDepth) noexcept {
+    std::size_t depth = 0;
+    bool inString = false;
+    bool escaped = false;
+    for (std::size_t position = 0; position < text.size(); ++position) {
+        const char character = text[position];
+        if (inString) {
+            const bool closes = !escaped && character == '"';
+            escaped = !escaped && character == '\\';
+            inString = !closes;
+            continue;
+        }
+
+        if (character == '"') {
+            inString = true;
+        } else if (character == '[' || character == '{') {
+            if (++depth > maxDepth) {
+                return position;
+            }
+        } else if ((character == ']' || character == '}') && depth > 0) {
+            --depth;
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::pair<std::size_t, std::size_t> JsonValidator::locate(std::size_t offset, std::string_view text) noexcept {
+    const std::string_view before = text.substr(0, offset);
+    const std::size_t line = 1 + static_cast<std::size_t>(std::ranges::count(before, '\n'));
+    const std::size_t lineStart = before.rfind('\n');
+    const std::size_t column = lineStart == std::string_view::npos ? offset + 1 : offset - lineStart;
+    return {line, column};
+}
+
 std::string JsonValidator::describe(const Json::exception& failure, std::string_view text, std::string_view subject) {
     if (const auto* syntax = dynamic_cast<const Json::parse_error*>(&failure)) {
         return describeSyntax(syntax->byte, text, subject);
@@ -122,14 +166,6 @@ std::optional<std::size_t> JsonValidator::findOverflowingNumber(std::string_view
     }
 
     return std::nullopt;
-}
-
-std::pair<std::size_t, std::size_t> JsonValidator::locate(std::size_t offset, std::string_view text) noexcept {
-    const std::string_view before = text.substr(0, offset);
-    const std::size_t line = 1 + static_cast<std::size_t>(std::ranges::count(before, '\n'));
-    const std::size_t lineStart = before.rfind('\n');
-    const std::size_t column = lineStart == std::string_view::npos ? offset + 1 : offset - lineStart;
-    return {line, column};
 }
 
 std::string_view JsonValidator::between(std::string_view message, std::string_view before, std::string_view after) {
