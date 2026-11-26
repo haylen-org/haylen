@@ -425,10 +425,18 @@ TEST(JobsLuaTest, SplitsLongWorkAcrossFrames) {
     fixture.frames(1);
     EXPECT_NE(fixture.lua("return other"), "0");
 
-    for (int frame = 0; frame < 5000 && fixture.lua("return tostring(result)") == "nil"; ++frame) {
+    // The budget is time, which a loaded machine gives the jobs less of, so the jobs take as many frames as the machine needs. Each frame still moves a job on, so the jobs end within as many frames as they take steps.
+    const long long steps = 600000;
+    long long done = std::stoll(fixture.lua("return progress + other"));
+    for (long long frame = 0; frame < steps && done < steps; ++frame) {
         fixture.frames(1);
+        const long long now = std::stoll(fixture.lua("return progress + other"));
+        ASSERT_GT(now, done) << "No job moved on in the frame " << frame << ".";
+        done = now;
     }
 
+    ASSERT_EQ(done, steps);
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return tostring(result)") != "nil"; }));
     EXPECT_EQ(fixture.lua("return result"), "45000150000");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }

@@ -242,11 +242,11 @@ TEST_F(ExecutionBudgetTest, LetsTheStopOfAnAppWhoseMemoryRanOutRun) {
     EXPECT_TRUE(std::ranges::any_of(lines, [](const std::string& line) { return line.find("Unloaded with 2000 texts.") != std::string::npos; })) << ::testing::PrintToString(lines);
 }
 
-// Garbage that a full collection frees never runs the budget out, however much the app allocated in total.
+// Garbage that a full collection frees never runs the budget out, however much the app allocated in total. The app makes a million small tables while it starts, which a loaded machine under a sanitizer takes longer than the default time budget for, so the app takes the longest time budget that "haylen.json" allows and only the memory budget can stop it.
 TEST_F(ExecutionBudgetTest, CountsOnlyTheMemoryThatStaysAfterACollection) {
-    std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "lua": {"memoryBudget": 32}})"}, {"source/main.lua", "for round = 1, 20 do local scratch = {} for index = 1, 50000 do scratch[index] = {index} end end done = true"}};
+    std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "lua": {"executionBudget": 600, "memoryBudget": 32}})"}, {"source/main.lua", "for round = 1, 20 do local scratch = {} for index = 1, 50000 do scratch[index] = {index} end end done = true"}};
     fixture = std::make_unique<test::LuaFixture>(std::move(files), nullptr, test::LuaFixture::Options{.development = true});
-    EXPECT_EQ(fixture->engine().getError(), nullptr);
+    EXPECT_EQ(fixture->engine().getError(), nullptr) << fixture->engine().getError()->what();
     EXPECT_EQ(fixture->lua("return done"), "true");
 }
 
