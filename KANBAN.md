@@ -16,14 +16,14 @@
 | **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | **[KB-055 · Render targets completos em graphics::RenderTarget (hoje só cor)](#kb-055)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-190 · Estruturas espaciais em haylen::spatial3d (engine/src/3d/spatial/, Lua haylen.spatial3d)](#kb-190)**<br>🟡 medium · `feature` · 5/10 | **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 |
 | **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | **[KB-106 · Leitor de glTF 2.0 em haylen::gltf (engine/src/3d/gltf/)](#kb-106)**<br>🟡 medium · `feature` · 7/10 | — | — | **[KB-230 · Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake](#kb-230)**<br>🟡 medium · `feature` · 7/10 | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 |
 | **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | **[KB-107 · O núcleo do glTF 2.0 inteiro, sem nada para depois](#kb-107)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 |
-| **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | **[KB-183 · Malha de navegação 3D em haylen::navigation3d pela Recast e Detour](#kb-183)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
-| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | **[KB-184 · Obstáculos e ligações](#kb-184)**<br>🟡 medium · `feature` · 3/10 | — | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
-| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-048 · Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno](#kb-048)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | **[KB-169 · Corpos physics3d::Body](#kb-169)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
+| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | **[KB-170 · Formas](#kb-170)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | **[KB-171 · Camadas de colisão](#kb-171)**<br>🟡 medium · `feature` · 3/10 | — | — | — | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
+| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | **[KB-172 · Restrições](#kb-172)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | **[KB-183 · Malha de navegação 3D em haylen::navigation3d pela Recast e Detour](#kb-183)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
+| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | **[KB-184 · Obstáculos e ligações](#kb-184)**<br>🟡 medium · `feature` · 3/10 | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-048 · Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno](#kb-048)**<br>🟡 medium · `feature` · 5/10 | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
 | **[KB-049 · Barreiras e hazards](#kb-049)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 |
 | **[KB-050 · Draws indiretos](#kb-050)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 |
 | **[KB-054 · Renderização em várias camadas num pass (multiview)](#kb-054)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 |
@@ -137,10 +137,6 @@
 | **[KB-165 · Opções de animação na preparação de modelos](#kb-165)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-166 · Texturas de animação de vértices](#kb-166)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-167 · Física 3D pela Jolt Physics, como dependência fixada no CMake da engine, com o mesmo cuidado da física 2D](#kb-167)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-169 · Corpos physics3d::Body](#kb-169)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-170 · Formas](#kb-170)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-171 · Camadas de colisão](#kb-171)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
-| **[KB-172 · Restrições](#kb-172)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-173 · Personagem](#kb-173)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-174 · Veículos](#kb-174)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-175 · Corpos moles](#kb-175)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
@@ -256,6 +252,7 @@
 | **[KB-319 · Juntar famílias de métodos que descrevem um só estado num método com um enum](#kb-319)**<br>🟡 medium · `refactor` · 6/10 | — | — | — | — | — |
 | **[KB-336 · As árvores 3D móveis consultam tão rápido quanto o BVH estático](#kb-336)**<br>🟡 medium · `improvement` · 4/10 | — | — | — | — | — |
 | **[KB-337 · O `haylen engine bench` roda os benchmarks num celular de verdade](#kb-337)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-338 · O hash FNV-1a fica num lugar só da engine](#kb-338)**<br>🟡 medium · `refactor` · 2/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -4487,10 +4484,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-169
 
 - **Title:** Corpos physics3d::Body
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** Começou no trabalho da física 3D, junto com o KB-169, o KB-170, o KB-171 e o KB-172, sobre o mundo que já está no `main`.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4512,10 +4510,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-170
 
 - **Title:** Formas
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** Começou no trabalho da física 3D, junto com o KB-169, o KB-170, o KB-171 e o KB-172, sobre o mundo que já está no `main`.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4537,10 +4536,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-171
 
 - **Title:** Camadas de colisão
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 3
+- **Progress:** Começou no trabalho da física 3D, junto com o KB-169, o KB-170, o KB-171 e o KB-172, sobre o mundo que já está no `main`.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4562,10 +4562,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-172
 
 - **Title:** Restrições
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** Começou no trabalho da física 3D, junto com o KB-169, o KB-170, o KB-171 e o KB-172, sobre o mundo que já está no `main`.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -7949,7 +7950,7 @@ Hoje `haylen app run` recusa um app sem `category` no `haylen.json`, mesmo só p
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** No `main` em `c916d17dc`. Os SDKs Release compilam a engine com as linhas de cada instrução, o Windows com `/Z7`, e os binários da loja ficam com o mesmo tamanho, byte a byte. Cada build Release guarda os símbolos completos, com a engine, em `symbols/`, e o AAB leva os símbolos nativos ao Google Play. A verificação do Release resolve `haylen::core::Engine::frame` em `Engine.cpp`, linha 332, no Linux, na web, no Android e no simulador do iOS. Ela usa a `pyelftools` para o ELF e o DWARF, o `atos` no dSYM e um leitor do mapa de símbolos na web.
+- **Progress:** No `main` em `c916d17dc`. Os SDKs Release compilam a engine com as linhas de cada instrução, o Windows com `/Z7`, e os binários da loja ficam com o mesmo tamanho, byte a byte. Cada build Release guarda os símbolos completos, com a engine, em `symbols/`, e o AAB leva os símbolos nativos ao Google Play. A verificação do Release resolve `haylen::core::Engine::frame` em `Engine.cpp`, linha 332, no Linux, na web, no Android e no simulador do iOS. Ela usa a `pyelftools` para o ELF e o DWARF, o `atos` no dSYM e um leitor do mapa de símbolos na web. A física 3D notou que, no MSVC, as dependências com `cmake_minimum_required` antigo deixam a política CMP0141 em OLD, e então os objetos delas podem não levar informação de depuração no PDB do Release. A execução completa no Windows confere isso.
 
 O tamanho dos SDKs está medido em `docs/tools/build.md`:
   - Linux: de 491 MB para 817 MB;
@@ -8694,6 +8695,28 @@ O `haylen engine bench` roda só na máquina do host, então nenhum benchmark me
 
 - None
 
+### KB-338
+
+- **Title:** O hash FNV-1a fica num lugar só da engine
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 2
+- **Progress:** Ainda não começou.
+- **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
+
+#### Description
+
+O hash FNV-1a está escrito em três lugares: na física 2D, no cache de bind groups do WebGPU e no `StateHasher` da física 3D. O `AGENTS.md` diz que nenhuma lógica se repete. O hash passa a ter um dono só, numa classe de ajuda do contexto certo, e os três usos leem dali, com um teste dos valores conhecidos do FNV-1a.
+
+#### Acceptance criteria
+
+- [ ] Um só FNV-1a na engine, usado pelos três lugares, com um teste dos valores conhecidos.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8716,7 +8739,7 @@ O `haylen engine bench` roda só na máquina do host, então nenhum benchmark me
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-338. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-339. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
