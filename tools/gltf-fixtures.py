@@ -1,6 +1,6 @@
 """Writes the glTF files that the tests of the reader of the engine read, in `engine/tests/data/gltf/content/`, and checks that the files there are the ones it writes.
 
-The files are made for the project: a cube, a cylinder and an icosphere, a hierarchy with a mirrored node and instances of one mesh, a skinned character, a mesh with morph targets, cameras with a light, a grid of 7 by 7 materials and one file for each part of the core of glTF 2.0, each as a GLB file, a `.gltf` file with files beside it or a `.gltf` file with `data:` URIs, and the broken files under `invalid/` that the reader must refuse. Run it with `uv run tools/gltf-fixtures.py` to write them, and with `--check` to list the files that differ, which fails when one does.
+The files are made for the project: a cube, a cylinder and an icosphere, a hierarchy with a mirrored node and instances of one mesh, a skinned character, a mesh with morph targets, cameras with a light, a grid of 7 by 7 materials, one file for each part of the core of glTF 2.0 and a texture of the extension of WebP images, each as a GLB file, a `.gltf` file with files beside it or a `.gltf` file with `data:` URIs, and the broken files under `invalid/` that the reader must refuse. Run it with `uv run tools/gltf-fixtures.py` to write them, and with `--check` to list the files that differ, which fails when one does.
 """
 
 import base64
@@ -457,6 +457,21 @@ class GltfFixtures:
         files["samplers.gltf"] = builder.embedded()
 
     @staticmethod
+    def webp_file(files: dict) -> None:
+        """Adds a texture whose WebP image, made by the encoder of libwebp from `engine/tests/data/images/checker.png`, replaces its PNG fallback through the extension `EXT_texture_webp`."""
+        builder = GltfBuilder()
+        builder.document["extensionsUsed"] = ["EXT_texture_webp"]
+        webp = (GltfFixtures.ROOT / "engine" / "tests" / "data" / "images" / "checker-lossless.webp").read_bytes()
+        fallback = builder.image(GltfFixtures.checker(16, (220, 60, 40, 255), (40, 160, 90, 255)), "image/png")
+        image = builder.image(webp, "image/webp")
+        texture = builder.add("textures", {"source": fallback, "extensions": {"EXT_texture_webp": {"source": image}}})
+        builder.add("materials", {"pbrMetallicRoughness": {"baseColorTexture": {"index": texture}}})
+        mesh = GltfFixtures.add_mesh(builder, GltfFixtures.cube(), 0, "unsignedShort")
+        builder.add("nodes", {"mesh": mesh})
+        builder.add("scenes", {"nodes": [0]})
+        files["texture-webp.glb"] = builder.glb()
+
+    @staticmethod
     def invalid_files(files: dict) -> None:
         """Adds the broken files that the reader must refuse, each with the one mistake its name says."""
         cube = GltfFixtures.textured_cube().glb()
@@ -508,6 +523,7 @@ class GltfFixtures:
         GltfFixtures.accessor_types_file(files)
         GltfFixtures.interleaved_file(files)
         GltfFixtures.samplers_file(files)
+        GltfFixtures.webp_file(files)
         GltfFixtures.invalid_files(files)
         return files
 

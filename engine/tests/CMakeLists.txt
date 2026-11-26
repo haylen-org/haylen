@@ -117,6 +117,7 @@ set(HAYLEN_TEST_SOURCES
   graphics/MaterialTests.cpp
   graphics/MemoryTrimTests.cpp
   graphics/ShaderTests.cpp
+  graphics/WebpImageTests.cpp
   input/ActionMapTests.cpp
   input/CommandBufferTests.cpp
   input/GestureTests.cpp
@@ -292,9 +293,9 @@ target_link_libraries(haylen-tests PRIVATE Jolt)
 if(NOT WIN32)
   target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/direct3d/CompileQueue.cpp")
 endif()
-# The shader tests compile a material with `haylen app shaders`, the way apps compile theirs, running the tooling of the checkout through uv, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`, and the glTF tests read the files of `data/gltf`, which `tools/gltf-fixtures.py` writes.
+# The shader tests compile a material with `haylen app shaders`, the way apps compile theirs, running the tooling of the checkout through uv, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`, the glTF tests read the files of `data/gltf`, which `tools/gltf-fixtures.py` writes, and the WebP tests read the images of `data/images`.
 find_program(HAYLEN_UV uv REQUIRED)
-target_compile_definitions(haylen-test-support PUBLIC HAYLEN_UV="${HAYLEN_UV}" HAYLEN_TOOLING_ROOT="${HAYLEN_ENGINE_DIR}/.." HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_APP_IDENTIFIERS="${CMAKE_CURRENT_LIST_DIR}/data/app-identifiers.json" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video" HAYLEN_TEST_GLTF="${CMAKE_CURRENT_LIST_DIR}/data/gltf" HAYLEN_DOCS_DIR="${HAYLEN_ENGINE_DIR}/../docs")
+target_compile_definitions(haylen-test-support PUBLIC HAYLEN_UV="${HAYLEN_UV}" HAYLEN_TOOLING_ROOT="${HAYLEN_ENGINE_DIR}/.." HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_APP_IDENTIFIERS="${CMAKE_CURRENT_LIST_DIR}/data/app-identifiers.json" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video" HAYLEN_TEST_GLTF="${CMAKE_CURRENT_LIST_DIR}/data/gltf" HAYLEN_TEST_IMAGES="${CMAKE_CURRENT_LIST_DIR}/data/images" HAYLEN_DOCS_DIR="${HAYLEN_ENGINE_DIR}/../docs")
 # On Windows the tests also run the decoder of Media Foundation, the font fallback of DirectWrite and the reader of the accessibility settings, which need no window, on the clip made for the tests in `data/video`.
 if(WIN32)
   target_sources(haylen-tests PRIVATE platform/WindowsAccessibilityTests.cpp platform/WindowsFontsTests.cpp platform/WindowsSettingsTests.cpp platform/WindowsVideoDecoderTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityElement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityRoot.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityTree.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsFonts.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsFontText.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsSettings.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsText.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsVideoDecoder.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsPackageStream.cpp")

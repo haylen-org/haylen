@@ -396,6 +396,35 @@ haylen_disable_warnings(libzstd_static)
 # Zstandard passes an option to the assembler, which the link of GCC drops from code compiled for link-time optimization with a warning, so it builds as machine code.
 set_property(TARGET libzstd_static PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF)
 
+# The decoder of libwebp reads WebP images, lossy, lossless and with alpha, behind `graphics::Image::decode`, on every target, the web included. The engine links its decoder alone, without threads of its own, since images decode on the task pool.
+CPMAddPackage(
+  NAME libwebp
+  VERSION 1.6.0
+  URL "https://github.com/webmproject/libwebp/archive/refs/tags/v1.6.0.tar.gz"
+  URL_HASH SHA256=93a852c2b3efafee3723efd4636de855b46f9fe1efddd607e1f42f60fc8f2136
+  OPTIONS
+    "WEBP_BUILD_ANIM_UTILS OFF"
+    "WEBP_BUILD_CWEBP OFF"
+    "WEBP_BUILD_DWEBP OFF"
+    "WEBP_BUILD_GIF2WEBP OFF"
+    "WEBP_BUILD_IMG2WEBP OFF"
+    "WEBP_BUILD_VWEBP OFF"
+    "WEBP_BUILD_WEBPINFO OFF"
+    "WEBP_BUILD_LIBWEBPMUX OFF"
+    "WEBP_BUILD_WEBPMUX OFF"
+    "WEBP_BUILD_EXTRAS OFF"
+    "WEBP_USE_THREAD OFF"
+  EXCLUDE_FROM_ALL YES
+  SYSTEM YES
+)
+haylen_disable_warnings(webpdecoder webpdecode webpdspdecode webputilsdecode)
+# The decoder gives its users the root of its sources, while its headers sit under `src/` by the names they install with, such as `webp/decode.h`, so the engine adds that folder.
+target_include_directories(webpdecoder SYSTEM INTERFACE "$<BUILD_INTERFACE:${libwebp_SOURCE_DIR}/src>")
+# The decoder links the math library by name, which Apple platforms keep in libSystem, so the Apple linker would warn about the duplicate, as it does for Clipper2.
+if(APPLE)
+  set_property(TARGET webpdecoder PROPERTY INTERFACE_LINK_LIBRARIES "")
+endif()
+
 # Monocypher gives protected content its authenticated encryption (XChaCha20-Poly1305), its hashes and key derivation (BLAKE2b) and its manifest signatures (Ed25519). It is an audited C library of two files without dependencies, so it builds the same on every target, the web included, and the release pinned here fixes a timing leak of its signatures.
 CPMAddPackage(
   NAME monocypher

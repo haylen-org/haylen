@@ -130,7 +130,7 @@ The classes `PluginLoadOrder`, `WindowsPowerStatus`, `LinuxSystemReader`, `Andro
 
 ### Dependencies
 
-Every dependency is pinned with a SHA-256 hash in `engine/cmake/haylen-dependencies.cmake`. The engine declares nlohmann/json before Varn, so both share one copy. Varn brings Lua, libuv, Poco, OpenSSL, libzip and zlib, which the engine reuses. The engine adds SDL, which the SDL platform layer uses, Dear ImGui, Box2D, miniaudio, zstd, Monocypher, stb, the core of msdfgen, HarfBuzz, SheenBidi, libunibreak, the Thai model of BudouX and, for the tests, GoogleTest.
+Every dependency is pinned with a SHA-256 hash in `engine/cmake/haylen-dependencies.cmake`. The engine declares nlohmann/json before Varn, so both share one copy. Varn brings Lua, libuv, Poco, OpenSSL, libzip and zlib, which the engine reuses. The engine adds SDL, which the SDL platform layer uses, Dear ImGui, Box2D, miniaudio, zstd, libwebp, Monocypher, stb, the core of msdfgen, HarfBuzz, SheenBidi, libunibreak, the Thai model of BudouX and, for the tests, GoogleTest.
 
 ## Plugins
 

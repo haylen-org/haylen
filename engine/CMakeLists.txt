@@ -755,7 +755,7 @@ target_include_directories(haylen-engine
 
 target_link_libraries(haylen-engine
   PUBLIC nlohmann_json::nlohmann_json varn-runtime haylen-imgui
-  PRIVATE box2d::box2d Jolt Clipper2 msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static
+  PRIVATE box2d::box2d Jolt Clipper2 msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static webpdecoder
 )
 
 if(TARGET Poco::NetSSL)

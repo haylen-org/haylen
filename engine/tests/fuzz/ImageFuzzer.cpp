@@ -7,9 +7,9 @@
 
 #include "haylen/graphics/Image.hpp"
 
-// The entry point libFuzzer calls with each input it generates. The first byte picks a format, PNG, JPEG, GIF, BMP or TGA, and the bytes after it follow the signature of that format, which TGA lacks, so every decoder reads past its signature. The decoder must either make an image of at most 1024 pixels on a side, which bleeds and halves into mipmaps, or fail with the error of data that is not such an image.
+// The entry point libFuzzer calls with each input it generates. The first byte picks a format, PNG, JPEG, GIF, BMP, WebP or TGA, and the bytes after it follow the signature of that format, which TGA lacks, so every decoder reads past its signature. The decoder must either make an image of at most 1024 pixels on a side, which bleeds and halves into mipmaps, or fail with the error of data that is not such an image.
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
-    static constexpr std::array<std::string_view, 5> kSignatures = {std::string_view("\x89PNG\r\n\x1A\n", 8), "\xFF\xD8\xFF", "GIF89a", "BM", ""};
+    static constexpr std::array<std::string_view, 6> kSignatures = {std::string_view("\x89PNG\r\n\x1A\n", 8), "\xFF\xD8\xFF", "GIF89a", "BM", std::string_view("RIFF\xFF\xFF\xFF\x00WEBP", 12), ""};
 
     if (size == 0) {
         return 0;

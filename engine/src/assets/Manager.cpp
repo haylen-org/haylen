@@ -225,7 +225,7 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
     // clang-format off
     registerType({
         .name = "texture",
-        .extensions = {".png", ".jpg", ".jpeg", ".tga", ".bmp", ".gif"},
+        .extensions = {".png", ".jpg", ".jpeg", ".webp", ".tga", ".bmp", ".gif"},
         .normalize = [](const core::Json& options) { return textureOptionsToJson(textureOptionsFromJson(options)); },
         .decode = [](Request& request) -> std::shared_ptr<void> {
             return std::make_shared<graphics::Image>(graphics::Image::decodeFor(request.bytes, textureOptionsFromJson(request.options), request.path));

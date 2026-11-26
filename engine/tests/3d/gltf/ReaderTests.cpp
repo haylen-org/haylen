@@ -283,6 +283,19 @@ TEST_F(ReaderTest, ReadsSamplersImagesAndAlphaModes) {
     EXPECT_EQ(AccessorReader::readFloats(document, *document.meshes[0].primitives[0].findAttribute("TEXCOORD_1")), (std::vector<float>{0, 0, 1, 0, 0, 1}));
 }
 
+// A texture of the extension of WebP images keeps its PNG fallback as its source and names its WebP image in its extension, which decodes like any image.
+TEST_F(ReaderTest, DecodesTheWebpImageOfItsExtension) {
+    const Document document = read("texture-webp.glb");
+    EXPECT_EQ(document.extensionsUsed, (std::vector<std::string>{"EXT_texture_webp"}));
+    const Texture& texture = document.textures.at(0);
+    EXPECT_EQ(texture.source, 0U);
+    EXPECT_EQ(texture.extensions.at("EXT_texture_webp").at("source"), 1);
+    EXPECT_EQ(document.images.at(1).mimeType, "image/webp");
+    const graphics::Image image = document.decodeImage(1, 64);
+    EXPECT_EQ(image.getWidth(), 16);
+    EXPECT_EQ(image.getPixel(0, 0).toRgba8(), math::Color::fromRgba8(220, 60, 40, 255).toRgba8());
+}
+
 // A decode of an image names the image and the file, and refuses an image longer than the largest side that the caller names.
 TEST_F(ReaderTest, DecodesImagesWithinTheLargestSide) {
     const Document document = read("cube.glb");

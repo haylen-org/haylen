@@ -210,7 +210,7 @@ TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
     EXPECT_EQ(decodeError, "The asset \"data/broken.json\" is not valid JSON, since it ends before its last value is complete.");
 
     // An image that does not decode names its file, whether it loads at once or in the background.
-    const std::string brokenImage = "The image \"pictures/broken.png\" is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.";
+    const std::string brokenImage = "The image \"pictures/broken.png\" is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file.";
     try {
         (void)assets.texture("pictures/broken.png");
         ADD_FAILURE() << "An image that does not decode loads.";

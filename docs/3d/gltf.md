@@ -111,7 +111,7 @@ The reader treats every byte as hostile. It checks every offset, size and count 
 
 Extensions add to glTF. The list `extensionsUsed` of a file names every extension it uses, and `extensionsRequired` names the ones it cannot load without. The reader knows the extension `EXT_texture_webp`, whose texture names a WebP image besides its fallback. A file that requires any other extension fails with a sentence that names it, and a file that requires `EXT_texture_avif` fails with a sentence that names the AVIF image format, which Haylen does not read. An extension that a file uses without requiring it keeps its JSON in the `extensions` of each object, where an app reads it.
 
-Images are PNG and JPEG files as glTF 2.0 defines them. A WebP image of a file that uses `EXT_texture_webp` reads into the document, and its decode fails with the sentence of the image decoder, which reads PNG, JPEG, TGA, BMP and GIF files.
+Images are PNG and JPEG files as glTF 2.0 defines them. A file that uses `EXT_texture_webp` adds WebP images, which decode like the others through the image decoder of the engine.
 
 ## From C++
 

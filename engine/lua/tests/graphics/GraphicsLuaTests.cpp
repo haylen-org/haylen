@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -114,8 +115,18 @@ TEST(GraphicsLuaTest, CreatesTexturesFromTheBytesOfImageFiles) {
 
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(png) return t.width .. 'x' .. t.height .. ' ' .. t.filter"), "5x3 nearest");
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(png, {dynamic = true, filter = 'linear', wrap = 'repeat'}) t:update(string.rep('\\0', 60)) return t.filter .. ' ' .. t.wrapU"), "linear repeat");
-    EXPECT_NE(fixture.lua("graphics.newTexture('not an image')").find("The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newTexture('not an image')").find("The image is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file."), std::string::npos);
     EXPECT_NE(fixture.lua("graphics.newTexture(png, {fill = '#FF0000'})").find("fill"), std::string::npos);
+}
+
+// WebP images of the package load as textures and images like any other image, by their extension.
+TEST(GraphicsLuaTest, LoadsWebpImagesLikeAnyImage) {
+    const std::string webp = test::TestFiles::toText(test::TestFiles::read(std::filesystem::path(HAYLEN_TEST_IMAGES) / "checker-lossless.webp"));
+    test::LuaFixture fixture({{"content/images/hero.webp", webp}});
+    fixture.runLua("assets = require('haylen.assets') graphics = require('haylen.graphics')");
+    EXPECT_EQ(fixture.lua("local texture = assets.texture('images/hero.webp') return texture.width .. 'x' .. texture.height"), "16x16");
+    EXPECT_EQ(fixture.lua("return assets.load('images/hero.webp', 'image'):pixel(0, 0):toHex()"), "#FFDC3C28");
+    EXPECT_EQ(fixture.lua("return graphics.decodeImage(assets.bytes('images/hero.webp')):pixel(15, 15):toHex()"), "#A0F0C83C");
 }
 
 // A dynamic texture takes new pixels from Lua, and the frame sends only the last pixels it received.
@@ -194,7 +205,7 @@ TEST(GraphicsLuaTest, EditsImagesAndPacksThemIntoAtlases) {
 
     // Areas and places far outside the image clip to nothing instead of wrapping around onto its pixels.
     EXPECT_EQ(fixture.lua("canvas:blit(tile, 2000000000, 0, {source = {-1000000000, 0, 4, 4}}) canvas:fillGradient({colors = {'#000000'}}, {-1073741824, 0, 1073741824, 4}) return canvas:pixel(13, 1):toHex()"), "#FFFF0000");
-    EXPECT_NE(fixture.lua("graphics.decodeImage('not an image')").find("The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.decodeImage('not an image')").find("The image is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file."), std::string::npos);
     EXPECT_EQ(fixture.lua("return graphics.maxImageSize()"), "16384");
     EXPECT_EQ(fixture.lua("return graphics.decodeImage(png, {maxSize = 6}).width"), "6");
     EXPECT_NE(fixture.lua("graphics.decodeImage(png, {maxSize = 4})").find("pixels is too large to decode. The image may have at most 4 pixels on a side."), std::string::npos);

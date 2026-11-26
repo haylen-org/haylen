@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -181,6 +182,35 @@ TEST_P(GpuRendererTest, DrawsSprites) {
         renderer.draw({.texture = nearest, .position = {104.0F, 104.0F}, .size = {40.0F, 40.0F}, .order = {.layer = 1, .blend = graphics::BlendMode::Type::Additive}});
     });
     // clang-format on
+}
+
+// A texture of a lossless WebP image draws exactly as a texture of the same pixels, the four colored cells of `engine/tests/data/images/checker.png` with a translucent lower half, whose WebP file the test holds.
+TEST_P(GpuRendererTest, DrawsAWebpTextureAsTheSamePixels) {
+    static constexpr std::array<std::uint8_t, 80> kWebp{0x52, 0x49, 0x46, 0x46, 0x48, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x4C, 0x3B, 0x00, 0x00, 0x00, 0x2F, 0x0F, 0xC0, 0x03, 0x10, 0x1F, 0x20, 0x10, 0x20, 0xC6, 0x24, 0x2A, 0x52, 0x22, 0x4D, 0x48, 0x40, 0x74, 0xD9, 0x18, 0xFF, 0x77, 0x18, 0x23, 0x24, 0x20, 0x4E, 0xC8, 0xB2, 0x89, 0xE6, 0x0B, 0x04, 0x12, 0xD4, 0xD9, 0x22, 0x3D, 0xB8, 0x15, 0x67, 0x31, 0x10, 0x66, 0x1B, 0x4D, 0x72, 0x92, 0x93, 0xBC, 0xF7, 0x19, 0x44, 0xF4, 0x3F, 0xA0, 0xBE, 0x4D, 0x3F, 0x00};
+    const std::array<math::Color, 4> colors{math::Color::fromRgba8(220, 60, 40), math::Color::fromRgba8(40, 160, 90), math::Color::fromRgba8(50, 90, 210), math::Color::fromRgba8(240, 200, 60)};
+    graphics::Image pixels(16, 16);
+    for (int y = 0; y < 16; ++y) {
+        for (int x = 0; x < 16; ++x) {
+            pixels.setPixel(x, y, colors[static_cast<std::size_t>(y / 8 * 2 + x / 8)].withAlpha(y < 8 ? 1.0F : 160.0F / 255.0F));
+        }
+    }
+
+    graphics::Device& graphics = fixture->engine().getGraphics();
+    const graphics::Texture reference = graphics.createTexture(pixels, {.filter = graphics::Texture::Filter::Nearest});
+    const graphics::Texture webp = graphics.createTexture(graphics::Image::decode(kWebp), {.filter = graphics::Texture::Filter::Nearest});
+    std::optional<graphics::Image> fromPixels;
+    std::optional<graphics::Image> fromWebp;
+    for (const auto& [texture, image] : {std::pair{&reference, &fromPixels}, std::pair{&webp, &fromWebp}}) {
+        // clang-format off
+        readScene("webp", [texture](core::Engine&, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+            renderer.beginTarget(into, topLeft(), {.clear = math::Color::fromHex(0x202020FFU)});
+            renderer.draw({.texture = *texture, .position = {64.0F, 64.0F}, .size = {96.0F, 96.0F}});
+        }, *image);
+        // clang-format on
+    }
+
+    ASSERT_TRUE(fromPixels.has_value() && fromWebp.has_value());
+    EXPECT_TRUE(std::ranges::equal(fromPixels->getPixels(), fromWebp->getPixels()));
 }
 
 // A batch of eight textures in one draw call, whose last texture takes slot 31. The Metal device binds that slot at a compact index, since the Apple TV 4K of the first generation binds only the texture indices 0 to 30.

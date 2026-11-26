@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "graphics/PixelMemory.hpp"
+#include "webp/decode.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
@@ -90,12 +91,20 @@ Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide, std::str
         throw std::runtime_error(describe(file) + " of " + std::to_string(encoded.size()) + " bytes is too large to decode. An encoded image holds at most " + std::to_string(std::numeric_limits<int>::max()) + " bytes.");
     }
 
+    if (holds(encoded, 0, "RIFF") && holds(encoded, 8, "WEBP")) {
+        return decodeWebp(encoded, maxSide, file);
+    }
+
+    if (holds(encoded, 4, "ftypavif") || holds(encoded, 4, "ftypavis")) {
+        throw std::runtime_error(describe(file) + " is an AVIF image, a format that Haylen does not read. Save it as a PNG, JPEG or WebP image.");
+    }
+
     const int size = static_cast<int>(encoded.size());
     int columns = 0;
     int rows = 0;
     int channels = 0;
     if (stbi_info_from_memory(encoded.data(), size, &columns, &rows, &channels) == 0) {
-        throw std::runtime_error(describe(file) + " is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.");
+        throw std::runtime_error(describe(file) + " is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file.");
     }
 
     if (columns < 1 || rows < 1) {
@@ -113,10 +122,66 @@ Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide, std::str
     }
 
     if (decoded == nullptr) {
-        throw std::runtime_error(describe(file) + " is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.");
+        throw std::runtime_error(describe(file) + " is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file.");
     }
 
     return {columns, rows, Pixels(decoded, static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows) * 4U)};
+}
+
+// A WebP file tells its size and whether it is animated before any pixel decodes, and its pixels decode straight into the buffer that the image keeps.
+Image Image::decodeWebp(std::span<const std::uint8_t> encoded, int maxSide, std::string_view file) {
+    // A file cut short still tells the size its header declares, which is checked before the file fails as damaged.
+    WebPBitstreamFeatures features{};
+    const VP8StatusCode status = WebPGetFeatures(encoded.data(), encoded.size(), &features);
+    const bool complete = status == VP8_STATUS_OK;
+    if (!complete && (status != VP8_STATUS_NOT_ENOUGH_DATA || features.width < 1 || features.height < 1)) {
+        throw std::runtime_error(describe(file) + " is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file.");
+    }
+
+    if (features.has_animation != 0) {
+        throw std::runtime_error(describe(file) + " is an animated WebP image, while Haylen decodes still images. Save it as a still image, or play its frames as a sprite sheet.");
+    }
+
+    const int columns = features.width;
+    const int rows = features.height;
+    if (columns < 1 || rows < 1) {
+        throw std::runtime_error(describe(file) + " of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels has no pixels to decode.");
+    }
+
+    if (columns > maxSide || rows > maxSide) {
+        throw std::runtime_error(describe(file) + " of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels is too large to decode. The image may have at most " + std::to_string(maxSide) + " pixels on a side.");
+    }
+
+    if (!complete) {
+        throw std::runtime_error(describe(file) + " is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file.");
+    }
+
+    const std::size_t bytes = byteCount(columns, rows);
+    auto* buffer = static_cast<std::uint8_t*>(PixelMemory::allocate(bytes));
+    if (buffer == nullptr) {
+        throw std::bad_alloc();
+    }
+
+    Pixels pixels(buffer, bytes);
+    if (WebPDecodeRGBAInto(encoded.data(), encoded.size(), buffer, bytes, columns * 4) == nullptr) {
+        throw std::runtime_error(describe(file) + " is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file.");
+    }
+
+    return {columns, rows, std::move(pixels)};
+}
+
+bool Image::holds(std::span<const std::uint8_t> bytes, std::size_t offset, std::string_view text) noexcept {
+    if (bytes.size() < offset + text.size()) {
+        return false;
+    }
+
+    for (std::size_t index = 0; index < text.size(); ++index) {
+        if (bytes[offset + index] != static_cast<std::uint8_t>(text[index])) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 std::vector<std::uint8_t> Image::encodePng() const {

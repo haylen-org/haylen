@@ -175,7 +175,7 @@ end
 
 ### graphics.newTexture(bytes, options)
 
-Makes a `Texture` from `bytes`, a string or a data view with the contents of a PNG, JPEG, TGA, BMP or GIF file. Use it for an image that a plugin returns from native code or a file the app downloaded. The texture has the size of the image. The table `options` takes `dynamic`, `filter`, `wrap` and `mipmaps` as above. The options `fill` and `pixels` raise `Unknown option "<key>".`, since the image gives the pixels. Bytes that are not an image raise `The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.`. Raw RGBA pixels take the form with the width and the height, and images of the package load with `assets.texture`.
+Makes a `Texture` from `bytes`, a string or a data view with the contents of a PNG, JPEG, WebP, TGA, BMP or GIF file. Use it for an image that a plugin returns from native code or a file the app downloaded. The texture has the size of the image. The table `options` takes `dynamic`, `filter`, `wrap` and `mipmaps` as above. The options `fill` and `pixels` raise `Unknown option "<key>".`, since the image gives the pixels. Bytes that are not an image raise `The image is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file.`. Raw RGBA pixels take the form with the width and the height, and images of the package load with `assets.texture`.
 
 ```lua
 local async = require('async')
@@ -352,7 +352,7 @@ print(canvas.width, canvas.height)
 
 ### graphics.decodeImage(bytes, options)
 
-Decodes the bytes of a PNG, JPEG, TGA, BMP or GIF file into an `Image` on the frame thread. Bytes that are not an image raise `The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.`. The `image` asset type of [`haylen.assets`](assets.md) loads the images of the package the same way, and `assets.loadAsync(path, 'image')` does it off the frame thread.
+Decodes the bytes of a PNG, JPEG, WebP, TGA, BMP or GIF file into an `Image` on the frame thread. Bytes that are not an image raise `The image is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file.`. The `image` asset type of [`haylen.assets`](assets.md) loads the images of the package the same way, and `assets.loadAsync(path, 'image')` does it off the frame thread.
 
 The decoder reads the size in the header of the file before it allocates a pixel. The table `options` takes `maxSize`, the longest side in pixels that the image may have, from 1 to `graphics.maxImageSize()`, which is the default. A larger image raises `The image of <width> by <height> pixels is too large to decode. The image may have at most <maxSize> pixels on a side.`. Bytes from outside the app, such as a picture that a person uploads, should name the size the app expects, so a small file that declares a huge image never takes the memory of one.
 
@@ -1329,7 +1329,7 @@ These messages come from the functions and methods of the module.
 | `The pixels do not match the size of the dynamic texture.` | The pixels of `texture:update` have another length. |
 | `The region of a texture update must lie inside the dynamic texture and hold at least one pixel.` | The option `region` of `texture:update` reaches past the texture or has no width or height. |
 | `The region of "texture:update" must hold whole pixels.` | The option `region` of `texture:update` has a fraction of a pixel. |
-| `The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.` | The bytes of `graphics.newTexture`, `graphics.decodeImage` or `graphics.decodeImageAsync` are not an image. |
+| `The image is damaged, or it is not a PNG, JPEG, WebP, TGA, BMP or GIF file.` | The bytes of `graphics.newTexture`, `graphics.decodeImage` or `graphics.decodeImageAsync` are not an image. |
 | `An image needs a width and a height of one pixel or more.` | The size of `graphics.newImage` is under one pixel. |
 | `The image of <width> by <height> pixels is too large. An image has at most 16384 pixels on a side.` | A side of `graphics.newImage` is longer than `graphics.maxImageSize()`. |
 | `The image of <width> by <height> pixels is too large to decode. The image may have at most <maxSize> pixels on a side.` | The header of the bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` declares a side longer than the option `maxSize`. |
