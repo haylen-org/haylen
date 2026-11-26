@@ -72,13 +72,17 @@ Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
         throw std::runtime_error("The window system could not read the bounds of a display. " + std::string(SDL_GetError()));
     }
 
-    const float scale = SDL_GetDisplayContentScale(id);
+    const SDL_DisplayMode* desktop = SDL_GetDesktopDisplayMode(id);
+    if (desktop == nullptr) {
+        throw std::runtime_error("The window system could not read the mode of a display. " + std::string(SDL_GetError()));
+    }
+
     Display display{
         .id = getId(id),
         .name = getName(id),
         .bounds = {static_cast<float>(bounds.x), static_cast<float>(bounds.y), static_cast<float>(bounds.w), static_cast<float>(bounds.h)},
         .workArea = {static_cast<float>(usable.x), static_cast<float>(usable.y), static_cast<float>(usable.w), static_cast<float>(usable.h)},
-        .scale = scale > 0.0F ? scale : 1.0F,
+        .scale = readScale(*desktop),
         .primary = id == primary,
     };
 
@@ -112,6 +116,10 @@ std::string WaylandDisplays::getName(SDL_DisplayID id) {
 // The name of a Wayland output, such as `DP-1`, stays the same while the monitor stays on its connector, while two monitors of one model share their description, which SDL names a display by.
 std::string WaylandDisplays::getId(SDL_DisplayID id) {
     return readId(SDL_GetDisplayProperties(id));
+}
+
+float WaylandDisplays::readScale(const SDL_DisplayMode& desktop) noexcept {
+    return desktop.pixel_density;
 }
 
 std::string WaylandDisplays::readId(SDL_PropertiesID properties) {

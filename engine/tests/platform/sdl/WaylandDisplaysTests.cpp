@@ -25,6 +25,18 @@ TEST(WaylandDisplaysTest, TakesTheNameOfTheOutputAsTheIdOfADisplay) {
     SDL_DestroyProperties(right);
 }
 
+// SDL keeps the scale of a Wayland output in the pixel density of its desktop mode and gives no content scale to a display, so an output at twice the density reads a scale of 2.
+TEST(WaylandDisplaysTest, ReadsTheScaleOfAnOutputFromItsDesktopMode) {
+    SDL_DisplayMode desktop{};
+    desktop.w = 960;
+    desktop.h = 540;
+    desktop.pixel_density = 2.0F;
+    EXPECT_FLOAT_EQ(WaylandDisplays::readScale(desktop), 2.0F);
+
+    desktop.pixel_density = 1.5F;
+    EXPECT_FLOAT_EQ(WaylandDisplays::readScale(desktop), 1.5F);
+}
+
 // A compositor that names none of its outputs leaves the displays without ids that tell them apart, which the app hears as an error.
 TEST(WaylandDisplaysTest, RefusesADisplayWhoseOutputHasNoName) {
     const SDL_PropertiesID unnamed = SDL_CreateProperties();

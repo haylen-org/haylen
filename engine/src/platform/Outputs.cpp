@@ -82,7 +82,7 @@ void Outputs::refresh(std::uint32_t number) {
         return;
     }
 
-    show(*output, *report.surface, report.scale);
+    show(*output, *report.surface, report.scale, report.placed);
 }
 
 // A display leaves the list when the platform no longer shows the desktop on it, whether it was unplugged or turned off, so its output ends however the platform reported the change. The loop walks a snapshot, since each ending shortens the list and runs the listeners of the app.
@@ -98,7 +98,7 @@ void Outputs::followDisplays() {
 }
 
 // A GPU device that draws into no surface beyond the window ends the output, since nothing can show it.
-void Outputs::show(Output& output, const gpu::Surface& surface, float scale) {
+void Outputs::show(Output& output, const gpu::Surface& surface, float scale, bool placed) {
     gpu::Device& gpu = graphics.getGpu();
     const math::Vec2 size{static_cast<float>(surface.size.width), static_cast<float>(surface.size.height)};
     if (output.surface == 0) {
@@ -117,6 +117,11 @@ void Outputs::show(Output& output, const gpu::Surface& surface, float scale) {
     output.scale = scale;
     if (resized) {
         output.target = graphics.createRenderTarget(surface.size.width, surface.size.height);
+    }
+
+    // An output whose window has not reached its place draws into it, which a window system may need before it places the window, and announces nothing until the window got there, so `outputShown` carries the size and the scale of the output on its display.
+    if (!placed) {
+        return;
     }
 
     const Output::State previous = std::exchange(output.state, Output::State::Shown);

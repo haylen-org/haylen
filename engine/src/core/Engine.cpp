@@ -655,7 +655,7 @@ void Engine::render(std::size_t plugins) {
     }
 
     for (const std::shared_ptr<platform::Output>& output : current.outputs->getAll()) {
-        if (output->getState() == platform::Output::State::Shown) {
+        if (output->getSurface() != 0) {
             current.renderer->present(output->getTarget(), output->getSurface(), output->getSurfaceSize(), output->getClearColor());
         }
     }

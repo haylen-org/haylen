@@ -45,12 +45,13 @@ class Host : public Window {
     // Explains, from any thread, why the platform blocked the connection of a socket, given its descriptor, or answers an empty text when it blocked nothing or cannot tell.
     using BlockedReason = std::function<std::string(std::intptr_t socket)>;
 
-    // What the platform reports of an output that `openOutput` opened: whether it ended and why, with a sentence for an output that the platform cannot show, and while it shows, the surface that the GPU device draws into, with the size of its drawable in pixels, and the pixels in a point of its display.
+    // What the platform reports of an output that `openOutput` opened: whether it ended and why, with a sentence for an output that the platform cannot show, and while it shows, the surface that the GPU device draws into, with the size of its drawable in pixels, the pixels in a point of its display, and whether its window reached its place on its display. A window that has not reached its place yet still takes frames, since a window system such as Wayland places a window only once it showed one.
     struct OutputReport {
         std::optional<Output::Ending> ending{};
         std::string reason{};
         std::optional<gpu::Surface> surface{};
         float scale = 1.0F;
+        bool placed = true;
     };
 
     [[nodiscard]] virtual std::string_view getPlatformName() const noexcept = 0;

@@ -13,6 +13,7 @@
 #include "haylen/platform/Output.hpp"
 #include "platform/Host.hpp"
 #include "platform/sdl/GlContext.hpp"
+#include "platform/sdl/OutputPlacement.hpp"
 
 namespace haylen::platform::sdl {
 
@@ -43,6 +44,7 @@ class OutputWindows final {
         SDL_Window* window = nullptr;
         SDL_MetalView view = nullptr;
         std::unique_ptr<GlContext> gl{};
+        OutputPlacement placement{false};
         Host::OutputReport report{};
     };
 

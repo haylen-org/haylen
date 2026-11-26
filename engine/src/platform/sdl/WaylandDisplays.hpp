@@ -26,6 +26,9 @@ class WaylandDisplays final {
     // The id of a display from its properties, the name of its output, such as `DP-1`. Throws `std::runtime_error` when the compositor names no output.
     [[nodiscard]] static std::string readId(SDL_PropertiesID properties);
 
+    // The pixels in a point of an output, which SDL keeps in the pixel density of its desktop mode, since it gives a content scale only to the windows that it scales to their display.
+    [[nodiscard]] static float readScale(const SDL_DisplayMode& desktop) noexcept;
+
   private:
     [[nodiscard]] static Display describe(SDL_DisplayID id, SDL_DisplayID primary);
     [[nodiscard]] static std::string getId(SDL_DisplayID id);

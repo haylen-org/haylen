@@ -27,13 +27,17 @@ class DisplayLuaTest : public ::testing::Test {
 
     // Opens an output of the Lua global `output` on the side display and shows it on a surface of the size.
     static void showOutput(test::LuaFixture& fixture, int width, int height) {
+        openOutput(fixture);
+        report(fixture, width, height);
+    }
+
+    static void openOutput(test::LuaFixture& fixture) {
         fixture.host().setDisplays(twoDisplays());
         fixture.engine().handleEvent({.type = haylen::platform::Event::Type::DisplaysChanged});
         fixture.runLua("display = require('haylen.display') events = require('haylen.events') heard = {} "
                        "for _, name in ipairs({'outputShown', 'outputHidden', 'outputResized', 'outputClosed', 'outputInput'}) do "
                        "events.on(name, function(info) heard[#heard + 1] = name .. ' ' .. (info.width or info.ending or info.type or '') end) end "
                        "output = display.open('side-id', {fullscreen = false, width = 800, height = 600, title = 'Board', clearColor = '#FF102030'})");
-        report(fixture, width, height);
     }
 
     static void report(test::LuaFixture& fixture, int width, int height) {
@@ -164,6 +168,23 @@ TEST_F(DisplayLuaTest, GoesFullscreenOnAChosenDisplayInAChosenMode) {
     EXPECT_NE(fixture.lua("window.setFullscreen(true, {mode = {width = 0, height = 600}})").find("A fullscreen mode needs a positive \"width\" and \"height\" in pixels."), std::string::npos);
     EXPECT_NE(fixture.lua("window.setFullscreen(true, {screen = 1})").find("Unknown option \"screen\"."), std::string::npos);
     EXPECT_NE(fixture.lua("window.setFullscreen(false, {display = 'main-id'})").find("options only go with true"), std::string::npos);
+}
+
+// A window that a window system moves and sizes onto its display a moment after it opened, such as a fullscreen window of Wayland, draws the color of the output meanwhile, which Wayland needs before it places the window, and the output announces itself once the window got there, with its size and scale on that display.
+TEST_F(DisplayLuaTest, AnnouncesAnOutputOnceItsWindowReachedItsPlace) {
+    test::LuaFixture fixture;
+    openOutput(fixture);
+    fixture.host().setOutputReport(1, {.surface = haylen::gpu::Surface{.size = {.width = 2560, .height = 1440, .windowWidth = 2560, .windowHeight = 1440}}, .scale = 2.0F, .placed = false});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::OutputChanged, .output = 1});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return output.state .. ' ' .. tostring(output.shown) .. ' ' .. table.concat(heard, ', ')"), "opening false ");
+    const std::vector<haylen::gpu::NullDevice::PassRecord>& passes = fixture.host().getGpu().getLastFrame().passes;
+    EXPECT_NE(std::ranges::find_if(passes, [](const haylen::gpu::NullDevice::PassRecord& pass) { return pass.surface == 1; }), passes.end());
+
+    fixture.host().setOutputReport(1, {.surface = haylen::gpu::Surface{.size = {.width = 1920, .height = 1080, .windowWidth = 1920, .windowHeight = 1080}}, .scale = 1.0F});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::OutputChanged, .output = 1});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return output.state .. ' ' .. output.width .. 'x' .. output.height .. ' ' .. output.scale .. ' ' .. table.concat(heard, ', ')"), "shown 1920x1080 1.0 outputShown 1920");
 }
 
 TEST_F(DisplayLuaTest, ShowsAnOutputOnAnotherDisplay) {

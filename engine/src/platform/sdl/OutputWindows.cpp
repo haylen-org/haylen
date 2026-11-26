@@ -84,8 +84,9 @@ void OutputWindows::open(std::uint32_t number, const Display& display, const Out
 
     entry.report.surface->sampleCount = main.getSampleCount();
     entry.report.surface->vsync = main.isVsync();
+
+    entry.placement = OutputPlacement(options.fullscreen);
     refresh(entry);
-    Player::postEvent({.type = platform::Event::Type::OutputChanged, .output = number});
 }
 
 void OutputWindows::close(std::uint32_t number) noexcept {
@@ -144,6 +145,8 @@ void OutputWindows::refresh(Entry& entry) {
     SDL_GetWindowSizeInPixels(entry.window, &pixelWidth, &pixelHeight);
     entry.report.surface->size = {.width = pixelWidth, .height = pixelHeight, .windowWidth = pixelWidth, .windowHeight = pixelHeight};
     entry.report.scale = SDL_GetWindowDisplayScale(entry.window);
+    entry.report.placed = entry.placement.isPlaced();
+    Player::postEvent({.type = platform::Event::Type::OutputChanged, .output = entry.number});
 }
 
 // The window hides at once, and the report of the ending keeps no surface, so the output lets go of it before the window goes with the output.
@@ -183,12 +186,16 @@ bool OutputWindows::handle(const SDL_Event& event) {
 
 // A window that the person closes ends its output, and the window of the app stays.
 void OutputWindows::handleWindow(Entry& entry, const SDL_Event& event) {
+    if (entry.placement.take(event)) {
+        refresh(entry);
+        return;
+    }
+
     switch (event.type) {
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
     case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
     case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED:
         refresh(entry);
-        Player::postEvent({.type = platform::Event::Type::OutputChanged, .output = entry.number});
         return;
     case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
         end(entry, Output::Ending::Person);

@@ -52,7 +52,7 @@ class Outputs final {
 
   private:
     [[nodiscard]] Output* find(std::uint32_t number) const noexcept;
-    void show(Output& output, const gpu::Surface& surface, float scale);
+    void show(Output& output, const gpu::Surface& surface, float scale, bool placed);
     void hide(Output& output);
     void end(Output& output, Output::Ending ending, std::string_view reason);
     void releaseSurface(Output& output);
