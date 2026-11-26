@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -136,6 +137,9 @@ class NullDevice final : public Device {
 
     void commit() override;
     void waitForDisplay() override;
+
+    // The headless host plays its frames itself, so the device paces nothing.
+    [[nodiscard]] bool paceWindow(int framesPerSecond, std::function<void()> due) override;
     void trim() override;
 
     // How many times the platform waited for the display, and how many of those waits followed frames that presented.

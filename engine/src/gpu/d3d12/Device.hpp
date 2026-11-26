@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -96,6 +97,9 @@ class Device final : public gpu::Device {
 
     void commit() override;
     void waitForDisplay() override;
+
+    // DXGI paces the swapchains through their frame latency waitable objects, which the wait for the display waits on, so the platform plays the frames itself.
+    [[nodiscard]] bool paceWindow(int framesPerSecond, std::function<void()> due) override;
 
     // Releases the objects that the GPU finished with, the upload pages of the pool beyond one for every frame in flight and the blocks of buffers that hold no buffer.
     void trim() override;

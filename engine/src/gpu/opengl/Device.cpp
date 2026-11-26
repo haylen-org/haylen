@@ -1379,6 +1379,10 @@ void Device::commit() {
     frameStarted = false;
 }
 
+bool Device::paceWindow(int, std::function<void()>) {
+    return false;
+}
+
 // OpenGL tells nothing of when a display shows a frame, so the platform reads the input of the next frame once the GPU finished the frame before the last one, which keeps one frame on the GPU while the next one records. A page may not wait for the GPU, and the browser paces its frames, so the device of WebGL2 keeps no fences and waits for nothing.
 void Device::waitForDisplay() {
     if (pass.open) {

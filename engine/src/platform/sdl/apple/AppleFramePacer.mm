@@ -1,6 +1,5 @@
 #import "platform/sdl/apple/AppleFramePacer.hpp"
 
-#if TARGET_OS_OSX
 #import "platform/sdl/apple/HaylenFramePacer.h"
 
 namespace haylen::platform::sdl {
@@ -11,6 +10,10 @@ void AppleFramePacer::start(std::uint32_t wakeType) {
 
 void AppleFramePacer::pace(int rate, int hiddenRate, bool hidden) {
     [HaylenFramePacer.shared paceAtRate:rate hiddenRate:hiddenRate hidden:hidden ? YES : NO];
+}
+
+void AppleFramePacer::followDevice(gpu::Device* device) {
+    [HaylenFramePacer.shared followDevice:device];
 }
 
 void AppleFramePacer::followScreen() {
@@ -30,4 +33,3 @@ void AppleFramePacer::stop() {
 }
 
 } // namespace haylen::platform::sdl
-#endif

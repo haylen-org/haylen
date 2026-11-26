@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -96,6 +97,9 @@ class Device final : public gpu::Device {
 
     void commit() override;
     void waitForDisplay() override;
+
+    // OpenGL has no clock of the display that calls the app, so the platform plays the frames itself.
+    [[nodiscard]] bool paceWindow(int framesPerSecond, std::function<void()> due) override;
 
     // Makes the upload ring and the uniform ring as small as their last frames needed, which is all that the device keeps for later: OpenGL frees the memory of each object that the device deletes, and WebGL2 hands the writes into buffers and images to the browser without an upload ring.
     void trim() override;

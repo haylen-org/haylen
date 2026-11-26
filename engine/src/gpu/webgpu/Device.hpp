@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -92,6 +93,9 @@ class Device final : public gpu::Device {
 
     void commit() override;
     void waitForDisplay() override;
+
+    // The animation frames of the browser pace the page, which the platform plays the frames at.
+    [[nodiscard]] bool paceWindow(int framesPerSecond, std::function<void()> due) override;
 
     // Releases the chunks of the uniform ring and of the uploads that the last frame did not reach, with the bind groups of the uniform ring. The browser holds every other upload and frees each object that the device releases, so the rings are all that the device keeps for later.
     void trim() override;

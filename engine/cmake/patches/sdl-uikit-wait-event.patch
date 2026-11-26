@@ -1,0 +1,66 @@
+Makes the main callbacks of iOS, iPadOS, Mac Catalyst, tvOS and visionOS honor SDL_HINT_MAIN_CALLBACK_RATE set to "waitevent", as the main callbacks of the other platforms do: the display link of SDL pauses, and the main callbacks iterate once after events arrive, so an app that paces its frames by a display link of its own wakes them with an event.
+
+--- a/src/main/ios/SDL_sysmain_callbacks.m
++++ b/src/main/ios/SDL_sysmain_callbacks.m
+@@ -36,7 +36,44 @@
+ @end
+ 
+ static SDLIosMainCallbacksDisplayLink *globalDisplayLink;
++static SDL_AtomicInt iterationScheduled;
+ 
++// With SDL_HINT_MAIN_CALLBACK_RATE set to "waitevent", the main callbacks iterate once after events arrive, as they do on the other platforms, instead of at every refresh of the display link.
++static void ScheduleIteration(void)
++{
++    if (!SDL_CompareAndSwapAtomicInt(&iterationScheduled, 0, 1)) {
++        return;
++    }
++
++    CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopDefaultMode, ^{
++        [globalDisplayLink appIteration:nil];
++        SDL_SetAtomicInt(&iterationScheduled, 0);
++        // Events that arrived while the iteration ran schedule the next one.
++        if (SDL_HasEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST)) {
++            ScheduleIteration();
++        }
++    });
++    CFRunLoopWakeUp(CFRunLoopGetMain());
++}
++
++static bool SDLCALL IterateAfterEvent(void *userdata, SDL_Event *event)
++{
++    ScheduleIteration();
++    return true;
++}
++
++static void SDLCALL MainCallbackRateHintChanged(void *userdata, const char *name, const char *oldValue, const char *newValue)
++{
++    SDLIosMainCallbacksDisplayLink *link = (__bridge SDLIosMainCallbacksDisplayLink *)userdata;
++    const bool waitEvent = newValue && SDL_strcmp(newValue, "waitevent") == 0;
++    link.displayLink.paused = waitEvent ? YES : NO;
++    SDL_RemoveEventWatch(IterateAfterEvent, NULL);
++    if (waitEvent) {
++        SDL_AddEventWatch(IterateAfterEvent, NULL);
++        ScheduleIteration();
++    }
++}
++
+ @implementation SDLIosMainCallbacksDisplayLink
+ 
+ - (instancetype)init:(SDL_AppIterate_func)_appiter quitfunc:(SDL_AppQuit_func)_appquit;
+@@ -55,6 +92,7 @@
+             }
+         }
+         [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
++        SDL_AddHintCallback(SDL_HINT_MAIN_CALLBACK_RATE, MainCallbackRateHintChanged, (__bridge void *)self);
+     }
+     return self;
+ }
+@@ -63,6 +101,8 @@
+ {
+     const SDL_AppResult rc = SDL_IterateMainCallbacks(true);
+     if (rc != SDL_APP_CONTINUE) {
++        SDL_RemoveHintCallback(SDL_HINT_MAIN_CALLBACK_RATE, MainCallbackRateHintChanged, (__bridge void *)self);
++        SDL_RemoveEventWatch(IterateAfterEvent, NULL);
+         [self.displayLink invalidate];
+         self.displayLink = nil;
+         globalDisplayLink = nil;

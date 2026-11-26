@@ -184,6 +184,10 @@ void OffscreenSwapchain::commit() {
     device->commit();
 }
 
+bool OffscreenSwapchain::paceWindow(int, std::function<void()>) {
+    return false;
+}
+
 void OffscreenSwapchain::waitForDisplay() {
     device->waitForDisplay();
 }

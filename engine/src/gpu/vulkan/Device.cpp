@@ -495,6 +495,10 @@ void Device::commit() {
     Context::check(failure, "present the swapchain of a surface");
 }
 
+bool Device::paceWindow(int, std::function<void()>) {
+    return false;
+}
+
 // The swapchains note the moment the wait ends, when the next frame reads its input, for the age of that input.
 void Device::waitForDisplay() {
     if (pass.open) {

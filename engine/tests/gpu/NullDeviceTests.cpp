@@ -571,6 +571,20 @@ TEST_F(NullDeviceTest, WaitsForTheDisplayBetweenFramesAfterThoseThatPresented) {
     EXPECT_EQ(device.getPresentedWaits(), 1U);
 }
 
+// The headless host plays its frames itself, so the device paces no window, and the platform asks only between passes.
+TEST_F(NullDeviceTest, PacesNoWindowAndTakesTheAskOnlyBetweenPasses) {
+    NullDevice device;
+    int calls = 0;
+    EXPECT_FALSE(device.paceWindow(60, [&calls] { ++calls; }));
+    EXPECT_FALSE(device.paceWindow(0, {}));
+    device.beginPass({});
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.paceWindow(60, {}); }), gpu::ContractError::Rule::PassOrder);
+    device.endPass();
+    device.commit();
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.paceWindow(-1, {}); }), gpu::ContractError::Rule::Surface);
+    EXPECT_EQ(calls, 0);
+}
+
 // A device may present a surface once a pass into another surface leaves it, so the passes of a frame into one surface follow one another, with offscreen passes between them.
 TEST_F(NullDeviceTest, KeepsThePassesOfAFrameIntoOneSurfaceTogether) {
     NullDevice device;

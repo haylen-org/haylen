@@ -65,17 +65,21 @@ int Runtime::run(int argc, char* argv[]) {
 }
 
 // A context of OpenGL that the GPU lost takes no more commands, so the device that replaces a lost one draws through a new context.
+// The device of the last app is gone once the player asks for another one, and on Apple platforms every device that draws the window paces its frames where it can, through the display link of its layer.
 std::unique_ptr<gpu::Device> Runtime::createDevice() {
-    if (openedDevice != nullptr) {
-        return std::move(openedDevice);
-    }
-
+#if defined(__APPLE__)
+    AppleFramePacer::followDevice(nullptr);
+#endif
     if (recovering) {
         recovering = false;
         window.renewGlContext();
     }
 
-    return gpu::DeviceFactory::create(window.getApi(), window.getSurface(), getDeviceOptions());
+    std::unique_ptr<gpu::Device> device = openedDevice != nullptr ? std::move(openedDevice) : gpu::DeviceFactory::create(window.getApi(), window.getSurface(), getDeviceOptions());
+#if defined(__APPLE__)
+    AppleFramePacer::followDevice(device.get());
+#endif
+    return device;
 }
 
 bool Runtime::prepareDevice() {
@@ -212,8 +216,8 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
 #if defined(__linux__)
     waylandType = SDL_RegisterEvents(1);
 #endif
-#if defined(__APPLE__) && TARGET_OS_OSX
-    // The main callbacks wait for events in the run loop of AppKit, and the frames come from the display link of the screen as events too, so the main thread waits between the frames as the one of every native app does.
+#if defined(__APPLE__)
+    // The main callbacks wait for events in the run loop of AppKit or UIKit, and the frames come from a display link as events too, so the main thread waits between the frames as the one of every native app does.
     SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "waitevent");
     frameType = SDL_RegisterEvents(1);
     updateCallbackRate();
@@ -246,6 +250,8 @@ SDL_AppResult Runtime::start() {
     AppleApplication::finishLaunching(*this);
 #endif
 #if defined(__APPLE__) && TARGET_OS_OSX
+    // A window that stays hidden until its first complete frame shows nothing yet, so its first frames come from the timer of the pacer, as the frames of every window that shows nothing do.
+    followVisibility();
     AppleFramePacer::followScreen();
 #endif
 #if defined(__APPLE__) && TARGET_OS_TV
@@ -321,8 +327,8 @@ SDL_AppResult Runtime::iterate() {
         return SDL_APP_SUCCESS;
     }
 
-#if defined(__APPLE__) && TARGET_OS_OSX
-    // The events of the window wake the main callbacks too, and only a frame of the display link or the timer plays.
+#if defined(__APPLE__)
+    // The events of the window wake the main callbacks too, and only a frame of a display link or the timer plays.
     if (!AppleFramePacer::takeFrame()) {
         return SDL_APP_CONTINUE;
     }
@@ -395,7 +401,7 @@ void Runtime::recover() {
 
 // Controllers open as SDL connects them, also the ones connected before the app started, while the other events before the app started find no app to hear them.
 SDL_AppResult Runtime::handle(const SDL_Event& event) {
-#if defined(__APPLE__) && TARGET_OS_OSX
+#if defined(__APPLE__)
     if (event.type == frameType) {
         AppleFramePacer::receiveWake();
         return SDL_APP_CONTINUE;
@@ -475,16 +481,16 @@ void Runtime::deliver(const SDL_Event& event) {
     }
 }
 
-// A runtime that ends before its app started, such as one whose window system or graphics API could not start or that handed its link to the instance that runs, cleans up the player it made too.
+// A runtime that ends before its app started, such as one whose window system or graphics API could not start or that handed its link to the instance that runs, cleans up the player it made too. The pacer of Apple platforms stops first, while the device that may pace the window still lives.
 void Runtime::quit() noexcept {
+#if defined(__APPLE__)
+    AppleFramePacer::stop();
+#endif
     started = false;
     if (std::exchange(playerCreated, false)) {
         Player::cleanup();
     }
 
-#if defined(__APPLE__) && TARGET_OS_OSX
-    AppleFramePacer::stop();
-#endif
 #if defined(__linux__)
     waylandPacer.reset();
 #endif
@@ -544,18 +550,7 @@ void Runtime::followWindow(const SDL_Event& event) {
     case SDL_EVENT_WINDOW_SHOWN:
     case SDL_EVENT_WINDOW_OCCLUDED:
     case SDL_EVENT_WINDOW_EXPOSED: {
-        const bool nowHidden = (SDL_GetWindowFlags(window.get()) & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN | SDL_WINDOW_OCCLUDED)) != 0U;
-        if (nowHidden != hidden) {
-            hidden = nowHidden;
-            updateCallbackRate();
-        }
-
-#if defined(__linux__)
-        // SDL reports a window that the compositor suspends as occluded, and it presents nothing until it shows again.
-        if (waylandPacer != nullptr) {
-            waylandPacer->setSuspended(nowHidden);
-        }
-#endif
+        followVisibility();
 
         // A window that shows again may have lost its picture, such as one of X11 without a compositor, so an app that redraws on change draws it again.
         if (event.type == SDL_EVENT_WINDOW_EXPOSED) {
@@ -583,6 +578,21 @@ void Runtime::followWindow(const SDL_Event& event) {
     }
 }
 
+void Runtime::followVisibility() {
+    const bool nowHidden = (SDL_GetWindowFlags(window.get()) & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN | SDL_WINDOW_OCCLUDED)) != 0U;
+    if (nowHidden != hidden) {
+        hidden = nowHidden;
+        updateCallbackRate();
+    }
+
+#if defined(__linux__)
+    // SDL reports a window that the compositor suspends as occluded, and it presents nothing until it shows again.
+    if (waylandPacer != nullptr) {
+        waylandPacer->setSuspended(nowHidden);
+    }
+#endif
+}
+
 void Runtime::setMaxPixelDensity(float cap) {
     window.setMaxPixelDensity(cap);
     followDrawable();
@@ -603,11 +613,11 @@ void Runtime::setFrameRate(int framesPerSecond) {
     updateCallbackRate();
 }
 
-// The iterations follow the frame rate of the app, which SDL keeps by sleeping between them on Windows and Linux and by the rate of the display link on UIKit, and the present of each frame paces them without one. On macOS the display link of the screen of the window plays the frames at that rate. A hidden window, which no display paces, runs them at most at `kHiddenRate`, and on Windows and Linux the frames that present nothing run at the refresh of the display of the window, so input still reaches the app at once. The page keeps the animation frames of the browser, which the frame rate thins out, since the timers that would replace them fire late.
+// The iterations follow the frame rate of the app, which SDL keeps by sleeping between them on Windows and Linux, and the present of each frame paces them without one. On Apple platforms a display link plays the frames at that rate, the one of the layer of the window where the GPU device has it. A hidden window, which no display paces, runs them at most at `kHiddenRate`, and on Windows and Linux the frames that present nothing run at the refresh of the display of the window, so input still reaches the app at once. The page keeps the animation frames of the browser, which the frame rate thins out, since the timers that would replace them fire late.
 void Runtime::updateCallbackRate() {
     const int target = frameRate.getTarget();
     const int hiddenRate = target > 0 ? std::min(target, kHiddenRate) : kHiddenRate;
-#if defined(__APPLE__) && TARGET_OS_OSX
+#if defined(__APPLE__)
     AppleFramePacer::pace(target, hiddenRate, hidden);
 #else
 #if defined(__linux__)
@@ -623,7 +633,7 @@ void Runtime::updateCallbackRate() {
     if (!hidden) {
         rate = 0;
     }
-#elif !defined(__APPLE__)
+#else
     if (!hidden && !presenting && target == 0) {
         rate = getRefreshRate();
     }

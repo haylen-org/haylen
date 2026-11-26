@@ -3,6 +3,8 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
+#include <functional>
+
 #include "gpu/metal/Graveyard.hpp"
 #include "haylen/gpu/Surface.hpp"
 
@@ -38,6 +40,9 @@ class Swapchain final {
         return memoryless;
     }
 
+    // Paces the frames of the window through the display link of its layer where the system has one, from macOS 14, iOS 17 and tvOS 17 on, which hands the swapchain the drawable of each frame on the main run loop and then calls `due`, and gives whether the system has it. The frames per second ask the display link for its rate, or for every refresh with 0. An empty `due` stops the display link, and the swapchain then takes its drawables from the layer again. A layer that the swapchain attaches later takes the display link too.
+    bool pace(int framesPerSecond, std::function<void()> due);
+
     // Takes the drawable of the next frame ahead of its passes, which it keeps until a frame draws and presents it, and the size of the surface replaces one that it took at another size. A surface without a layer or without pixels takes none, and neither does a layer that gave no drawable in time.
     void prepare();
 
@@ -65,6 +70,9 @@ class Swapchain final {
     bool present(id<MTLCommandBuffer> commands);
 
   private:
+    void startLink();
+    void stopLink() noexcept;
+    void receive(id<CAMetalDrawable> offered);
     void makeAttachments(NSUInteger pixelWidth, NSUInteger pixelHeight);
     [[nodiscard]] id<MTLTexture> makeAttachment(MTLPixelFormat format, int samples, NSUInteger pixelWidth, NSUInteger pixelHeight, NSString* label);
 
@@ -75,6 +83,13 @@ class Swapchain final {
 
     // Whether a pass of the frame that records drew the drawable.
     bool drawn = false;
+
+    // The display link that paces the window, its delegate, which the display link holds weakly, and what the pacing asked for.
+    id link = nil;
+    id linkDelegate = nil;
+    std::function<void()> paced;
+    int pacedRate = 0;
+
     id<MTLTexture> multisample = nil;
     id<MTLTexture> depth = nil;
     int width = 0;

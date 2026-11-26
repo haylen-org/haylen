@@ -832,6 +832,16 @@ void NullDevice::commit() {
     ++frame;
 }
 
+bool NullDevice::paceWindow(int framesPerSecond, std::function<void()>) {
+    requireNoPass();
+
+    if (framesPerSecond < 0) {
+        throw ContractError(ContractError::Rule::Surface);
+    }
+
+    return false;
+}
+
 // The platform waits between frames, where readbacks that it started after a commit may already have opened the next frame, so only a pass that is open breaks the contract.
 void NullDevice::waitForDisplay() {
     requireNoPass();

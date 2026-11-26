@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -66,6 +67,9 @@ class OffscreenSwapchain final : public gpu::Device {
     void popDebugGroup() override;
     void commit() override;
     void waitForDisplay() override;
+
+    // The frames of a benchmark draw into a render target that no display shows, so nothing paces them.
+    [[nodiscard]] bool paceWindow(int framesPerSecond, std::function<void()> due) override;
     void trim() override;
 
     void resizeSurface(const gpu::Surface::Size& size) override;

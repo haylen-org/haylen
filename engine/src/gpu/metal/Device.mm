@@ -1634,6 +1634,24 @@ void Device::commit() {
     native->graveyard.setFrame(native->frameNumber);
 }
 
+bool Device::paceWindow(int framesPerSecond, std::function<void()> due) {
+    if (native->passOpen) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    if (!due) {
+        return native->swapchain.pace(framesPerSecond, {});
+    }
+
+    Native* const state = native.get();
+    // clang-format off
+    return native->swapchain.pace(framesPerSecond, [state, offered = std::move(due)] {
+        state->inputTime = CACurrentMediaTime();
+        offered();
+    });
+    // clang-format on
+}
+
 // A frame whose drawables wait to be shown keeps the next frame from taking a drawable until the display took the frame before, so the drawables come here, before the input of the next frame, instead of in its first swapchain pass. A layer that gives no drawable in time leaves the swapchain pass to ask again.
 void Device::waitForDisplay() {
     if (native->passOpen) {

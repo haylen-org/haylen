@@ -5,6 +5,7 @@ set(haylen_gpu_metal_sources
   "${CMAKE_CURRENT_LIST_DIR}/EncoderState.mm"
   "${CMAKE_CURRENT_LIST_DIR}/Formats.mm"
   "${CMAKE_CURRENT_LIST_DIR}/Graveyard.mm"
+  "${CMAKE_CURRENT_LIST_DIR}/HaylenDisplayLinkDelegate.mm"
   "${CMAKE_CURRENT_LIST_DIR}/ImageReadback.mm"
   "${CMAKE_CURRENT_LIST_DIR}/LibraryCache.mm"
   "${CMAKE_CURRENT_LIST_DIR}/ReadbackCopy.mm"

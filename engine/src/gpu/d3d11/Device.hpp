@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -96,6 +97,9 @@ class Device final : public gpu::Device {
 
     void commit() override;
     void waitForDisplay() override;
+
+    // DXGI paces the swapchains through their frame latency waitable objects, which the wait for the display waits on, so the platform plays the frames itself.
+    [[nodiscard]] bool paceWindow(int framesPerSecond, std::function<void()> due) override;
 
     // Asks the driver, through `IDXGIDevice3::Trim`, to give back the memory it keeps for the device, such as the copies of dynamic buffers and the memory of released objects.
     void trim() override;

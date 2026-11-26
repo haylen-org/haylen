@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 
@@ -71,6 +72,9 @@ class Device final : public gpu::Device {
 
     // Claims the slot of the next frame, once the GPU finished the frame before the last, and takes the next drawable of every surface that presented, which comes once the display took the frame before, so the next frame reads its input with a drawable at hand.
     void waitForDisplay() override;
+
+    // Paces the window through the display link of its layer where the system has one, from macOS 14, iOS 17 and tvOS 17 on, which offers the drawable of each frame once the display took the frame before, and the moment it offers one is the moment the next frame reads its input.
+    [[nodiscard]] bool paceWindow(int framesPerSecond, std::function<void()> due) override;
 
     // Releases the objects that the GPU finished with and makes the upload ring of each frame in flight as small as its last frame wrote. Metal frees the memory of every object that the device releases, so the rings are all that the device keeps for later.
     void trim() override;

@@ -1520,6 +1520,10 @@ std::optional<double> Device::getInputAge() const noexcept {
     return window->swapchain->getInputAge();
 }
 
+bool Device::paceWindow(int, std::function<void()>) {
+    return false;
+}
+
 // Every surface that presented waits on its frame latency waitable object, so the platform reads the input of the next frame only once the displays took the frames before it, and the swapchains note that moment for the age of the input.
 void Device::waitForDisplay() {
     if (passOpen) {

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -105,6 +106,9 @@ class Device final : public gpu::Device {
 
     void commit() override;
     void waitForDisplay() override;
+
+    // Vulkan has no clock of the display that calls the app, so the platform plays the frames itself and the wait for the display paces them.
+    [[nodiscard]] bool paceWindow(int framesPerSecond, std::function<void()> due) override;
 
     // Frees the memory blocks that no object uses and the chunks of the upload rings that the last frames left empty, through the Vulkan Memory Allocator.
     void trim() override;

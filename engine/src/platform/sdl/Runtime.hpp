@@ -167,6 +167,7 @@ class Runtime final {
     [[nodiscard]] bool takes(const SDL_Event& event) const noexcept;
     [[nodiscard]] Events::Context getContext() const noexcept;
     void followWindow(const SDL_Event& event);
+    void followVisibility();
     void followDrawable();
     void updateCallbackRate();
     void followPresents();
@@ -212,9 +213,9 @@ class Runtime final {
     // The presses and releases of the back button that the player took as they arrived, which reach no app.
     int takenBacks = 0;
 
-#if defined(__APPLE__) && TARGET_OS_OSX
+#if defined(__APPLE__)
 
-    // The events that wake the main callbacks for a frame of macOS.
+    // The events that wake the main callbacks for a frame of an Apple platform.
     std::uint32_t frameType = 0;
 #endif
 

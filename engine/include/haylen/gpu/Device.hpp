@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -818,6 +819,9 @@ class Device {
 
     // Waits until every surface that the frames since the last wait presented can take another frame, which the platform calls between frames, outside a pass and after the readbacks that it started for the frame it committed, before it reads the input of the next one, so that input reaches the screen as soon as the displays allow. A frame that presented nothing leaves nothing to wait for.
     virtual void waitForDisplay() = 0;
+
+    // Where the graphics API paces the window itself, such as through a display link of the layer of the window, calls `due` on the frame thread whenever the window can take another frame, at the frames per second or at every refresh for 0, and returns `true`, so the platform plays a frame at each call. Returns `false` where the platform paces the frames itself. An empty `due` stops the pacing, as for a window that shows nothing, and the platform paces the frames itself until it asks again.
+    [[nodiscard]] virtual bool paceWindow(int framesPerSecond, std::function<void()> due) = 0;
 
     // Gives back to the system the memory that the device holds for later, outside a pass. What the GPU finished with goes at once and the rest as the frames in flight finish, so a trim never waits for the GPU. While no frame is in flight or open, the objects destroyed since the last frame go at once too. A device that holds nothing for later says why in its code.
     virtual void trim() = 0;

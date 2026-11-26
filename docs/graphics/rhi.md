@@ -161,6 +161,8 @@ The input of a frame reaches the screen as soon as the display allows when the f
 | OpenGL and OpenGL ES | The fence of the frame before the last, since OpenGL tells nothing of when a display shows a frame. |
 | WebGL2 and WebGPU | Nothing. The browser paces the frames of a page by its animation frames, and a page may not wait for the GPU. |
 
+A device whose graphics API offers the frames of the window itself paces the window through `paceWindow(framesPerSecond, due)`, which calls `due` on the frame thread whenever the window can take another frame and returns `true`, so the platform plays a frame at each call. The Metal device does it with the `CAMetalDisplayLink` of the layer of the window from macOS 14, iOS 17 and tvOS 17 on, with a latency of one frame, the least it allows: the display link offers the drawable of the next frame once the display took the frame before, so the frame reads its input with its drawable at hand, and the main thread waits in the run loop instead of in the wait for a drawable. The moment it offers a drawable is then the moment the next frame reads its input. Every other device returns `false`, and the platform plays the frames at its own display links, frame callbacks or animation frames. An empty `due` stops the pacing, as for a window that shows nothing.
+
 The moment the wait ends is the moment the next frame reads its input, so a device whose graphics API reports when the display showed a frame measures the age of that input on the screen, which `getInputAge` gives for the window and [`debug.stats`](../lua-api/debug.md#debugstats) shows as `frame.inputAge`:
 
 | Device | When the display showed a frame |
