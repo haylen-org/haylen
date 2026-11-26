@@ -7908,7 +7908,7 @@ O SDL só muda o tamanho do drawable do canvas quando a página muda de tamanho 
 - **Priority:** high
 - **Complexity:** 4
 - **Finished:** 2026-11-25
-- **Progress:** A execução completa 45675552203 no `main` (`eeb113a58`) passou nos três shards do sanitizer de endereços, o shard 3 incluído, com as ligações uma por vez pelo pool `haylen-test-link`, e nenhum shard perdeu a máquina.
+- **Progress:** A execução completa 45675552203 no `main` (`eeb113a58`) passou nos três shards do sanitizer de endereços, o shard 3 incluído, e nenhum shard perdeu a máquina.
 
 #### Description
 
