@@ -753,7 +753,14 @@ A estabilização que fica depois da reestruturação do tooling, da CI e das fe
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** Começou num trabalho de conferência, que lê o código contra o `AGENTS.md` e as docs e corrige na raiz o que não bate.
+- **Progress:** A conferência terminou. A engine sem APIs de sistema e a localização batem com o código. Ficam duas correções de código, cada uma com o seu teste:
+  - C1: uma página web que só nomeia o servidor de desenvolvimento, sem `Module.haylen.development` igual a `true`, roda em desenvolvimento, e não pode.
+  - C2: depois que o orçamento de execução acaba, as corrotinas que já existiam ainda rodam até 399 instruções.
+
+Na documentação, `docs/core/lifecycle.md` ganha várias correções:
+  - as tabelas de eventos por plataforma passam a ter a simulação de dobra e da área segura, o `haylen.quit()`, as fontes que faltavam e os eventos que nenhuma tabela listava;
+  - entra uma tabela do visionOS;
+  - a regra de janela escondida dos desktops fica correta.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
