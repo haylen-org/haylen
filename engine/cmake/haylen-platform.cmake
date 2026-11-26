@@ -93,4 +93,11 @@ if(EMSCRIPTEN)
   add_link_options(-fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
 endif()
 
+# Every x64 target compiles with the SSE4.2 and POPCNT instructions of x86-64-v2, which libraries that pick their SIMD instructions when they compile use, so every object of a program holds the same code of the inline functions they share. The entry points of Windows and Linux check them before anything else runs, every Mac and the translation of Apple silicon run them and the x64 ABI of Android requires them. MSVC compiles the intrinsics of those instructions without a flag of its own.
+set(HAYLEN_X64_INSTRUCTIONS "")
+if(NOT EMSCRIPTEN AND NOT MSVC AND (CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64" OR (NOT CMAKE_OSX_ARCHITECTURES AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")))
+  set(HAYLEN_X64_INSTRUCTIONS -msse4.2 -mpopcnt)
+endif()
+add_compile_options(${HAYLEN_X64_INSTRUCTIONS})
+
 message(STATUS "Haylen platform: \"${HAYLEN_PLATFORM}\"")

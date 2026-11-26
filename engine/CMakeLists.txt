@@ -716,6 +716,10 @@ if(EMSCRIPTEN)
   target_compile_options(haylen-engine INTERFACE -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -msimd128)
   target_link_options(haylen-engine INTERFACE -fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
 endif()
+# App code compiles with the x64 instructions of the engine too, so the inline functions it shares with the engine keep one code.
+if(HAYLEN_X64_INSTRUCTIONS)
+  target_compile_options(haylen-engine INTERFACE ${HAYLEN_X64_INSTRUCTIONS})
+endif()
 target_include_directories(haylen-engine
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" "${HAYLEN_GENERATED_INCLUDE_DIR}"
   PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src"
@@ -813,6 +817,7 @@ add_library(haylen-platform STATIC
   src/platform/GraphicsApiOrder.cpp
   src/platform/KeyboardTranslator.cpp
   src/platform/PixelDensityCap.cpp
+  src/platform/ProcessorCheck.cpp
   src/platform/PluginLoadOrder.cpp
   src/platform/SharedTextInput.cpp
   src/platform/android/AndroidBatteryStatus.cpp

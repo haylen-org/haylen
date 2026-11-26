@@ -153,6 +153,7 @@ set(HAYLEN_TEST_SOURCES
   platform/SystemFontReaderTests.cpp
   platform/FrameCallbackGateTests.cpp
   platform/FrameRateGateTests.cpp
+  platform/ProcessorCheckTests.cpp
   platform/PixelDensityCapTests.cpp
   platform/AndroidGamepadStatesTests.cpp
   platform/AndroidGlesVersionTests.cpp

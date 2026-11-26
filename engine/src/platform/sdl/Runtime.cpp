@@ -24,6 +24,7 @@
 #include "haylen/core/Log.hpp"
 #include "platform/CrashGuard.hpp"
 #include "platform/Player.hpp"
+#include "platform/ProcessorCheck.hpp"
 #include "platform/Services.hpp"
 #include "platform/sdl/Hints.hpp"
 #include "platform/sdl/Host.hpp"
@@ -665,11 +666,20 @@ extern "C" int haylen_main(int argc, char* argv[]) {
 #elif defined(_WIN32)
 // Windows apps run in the windows subsystem, and SDL reads their command line as UTF-8.
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
+    if (const char* missing = haylen::platform::ProcessorCheck::describeMissing(haylen::platform::ProcessorCheck::readFeatures())) {
+        MessageBoxA(nullptr, missing, nullptr, MB_OK | MB_ICONERROR);
+        return 1;
+    }
+
     haylen::platform::Services::install(haylen::platform::WindowsServices::create());
     return haylen::platform::sdl::Runtime::run(__argc, __argv);
 }
 #elif !defined(__EMSCRIPTEN__)
 int main(int argc, char* argv[]) {
+    if (!haylen::platform::ProcessorCheck::require()) {
+        return 1;
+    }
+
     haylen::platform::Services::install(haylen::platform::LinuxServices::create());
     return haylen::platform::sdl::Runtime::run(argc, argv);
 }

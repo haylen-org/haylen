@@ -1,9 +1,14 @@
 #include <cstdio>
 #include <optional>
 
+#include "platform/ProcessorCheck.hpp"
 #include "platform/headless/HeadlessPlayer.hpp"
 
 int main(int argc, char** argv) {
+    if (!haylen::platform::ProcessorCheck::require()) {
+        return 1;
+    }
+
     const std::optional<haylen::platform::HeadlessPlayer::Options> options = haylen::platform::HeadlessPlayer::parse(argc, argv);
     if (!options) {
         std::fprintf(stderr, "Usage: \"haylen-headless <app folder or zip> [--frames <count>] [--dev] [-- <arguments of the app>]\".\n");
