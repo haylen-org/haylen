@@ -8,73 +8,73 @@
 | **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-055 · Render targets completos em graphics::RenderTarget (hoje só cor)](#kb-055)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-334 · O `haylen app verify` de um produto da Apple acha o projeto do último build](#kb-334)**<br>🟠 high · `bug` · 2/10 |
 | **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-107 · O núcleo do glTF 2.0 inteiro, sem nada para depois](#kb-107)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-333 · No Android, o campo levantado não cai e sobe de novo quando o aparelho gira com o teclado aberto](#kb-333)**<br>🟡 medium · `bug` · 4/10 |
 | **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-170 · Formas](#kb-170)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | — | — | — | **[KB-323 · Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU](#kb-323)**<br>🟠 high · `fix` · 6/10 | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 |
-| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | — | — | — | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 | **[KB-330 · No Android, o teclado fecha às vezes quando o aparelho gira com um campo editando](#kb-330)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-341 · Achar a causa da parada de 90 s do quadro na abertura de um app no simulador do iOS](#kb-341)**<br>🟠 high · `bug` · 5/10 | — | — | — | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-342 · Dois testes do Lua falham quando a máquina está carregada](#kb-342)**<br>🟠 high · `bug` · 4/10 | — | — | — | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-348 · Todo tipo de uma dimensão leva 2D ou 3D no nome, no C++ e no Lua](#kb-348)**<br>🟠 high · `refactor` · 8/10 | — | — | — | **[KB-045 · Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)](#kb-045)**<br>🟡 medium · `feature` · 5/10 | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 |
-| **[KB-349 · Os testes de UI do iOS na CI dizem por que o simulador parou, em vez de falhar ao desligá-lo](#kb-349)**<br>🟠 high · `bug` · 3/10 | — | — | — | **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | **[KB-322 · Corrigir os defeitos confirmados da revisão da RHI no Direct3D](#kb-322)**<br>🟠 high · `fix` · 6/10 |
-| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | **[KB-106 · Leitor de glTF 2.0 em haylen::gltf (engine/src/3d/gltf/)](#kb-106)**<br>🟡 medium · `feature` · 7/10 | **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 |
-| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-114 · Imagens WebP](#kb-114)**<br>🟡 medium · `feature` · 5/10 | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 |
-| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-168 · Mundo physics3d::World (engine/src/3d/physics/)](#kb-168)**<br>🟡 medium · `feature` · 7/10 | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 |
-| **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-169 · Corpos physics3d::Body](#kb-169)**<br>🟡 medium · `feature` · 5/10 | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 |
-| **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-171 · Camadas de colisão](#kb-171)**<br>🟡 medium · `feature` · 3/10 | **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-172 · Restrições](#kb-172)**<br>🟡 medium · `feature` · 5/10 | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 |
-| **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | — | — | — | **[KB-183 · Malha de navegação 3D em haylen::navigation3d pela Recast e Detour](#kb-183)**<br>🟡 medium · `feature` · 5/10 | **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 |
-| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-184 · Obstáculos e ligações](#kb-184)**<br>🟡 medium · `feature` · 3/10 | **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 |
-| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-190 · Estruturas espaciais em haylen::spatial3d (engine/src/3d/spatial/, Lua haylen.spatial3d)](#kb-190)**<br>🟡 medium · `feature` · 5/10 | **[KB-053 · Samplers completos](#kb-053)**<br>🟡 medium · `feature` · 3/10 |
-| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-230 · Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake](#kb-230)**<br>🟡 medium · `feature` · 7/10 | **[KB-052 · Formatos de pixel novos com tabelas de capacidade por API (filtrável, renderizável, mesclável e de storage)](#kb-052)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 |
-| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
-| **[KB-048 · Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno](#kb-048)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-049 · Barreiras e hazards](#kb-049)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-050 · Draws indiretos](#kb-050)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-054 · Renderização em várias camadas num pass (multiview)](#kb-054)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
-| **[KB-056 · Consultas de GPU](#kb-056)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-057 · Formatos de vértice e topologias para 3D](#kb-057)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-058 · Texturas externas para XR](#kb-058)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-059 · Cache de pipelines](#kb-059)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 |
-| **[KB-060 · Envio e memória de GPU para 3D](#kb-060)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-061 · Grafo de render em graphics::RenderGraph (engine/include/haylen/graphics/RenderGraph.hpp, comum a 2D, 3D e XR)](#kb-061)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 |
-| **[KB-062 · O renderizador 2D monta seus passes no grafo de render](#kb-062)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-063 · Composição de 2D, 3D, UI, saídas e XR no mesmo quadro](#kb-063)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-064 · Marcadores de depuração de GPU por pass e grupo em todas as APIs, com os nomes dos passes do grafo, para que…](#kb-064)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-065 · A tabela de capacidades por API e plataforma em docs/graphics/rhi.md cobre cada recurso novo e o estado de…](#kb-065)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | **[KB-293 · Modo do mouse da janela: normal, oculto, travado, preso e preso oculto](#kb-293)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-066 · Estágio de compute no haylen-shaderc](#kb-066)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-067 · Buffers e imagens de storage no compilador](#kb-067)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-068 · Reflexão 3D no compilador](#kb-068)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 |
-| **[KB-069 · Variantes de shader sem explosão](#kb-069)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-070 · Formato do pacote .shader com programas de compute, recursos de storage, variantes, recursos exigidos e…](#kb-070)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-071 · Bibliotecas Metal pré-compiladas também para os programas do renderizador 3D, para que o dispositivo Metal…](#kb-071)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
-| **[KB-072 · Biblioteca de shaders 3D em engine/shaders/include/haylen/3d/](#kb-072)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-073 · Contrato de superfície para shaders 3D de apps e plugins](#kb-073)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-074 · Grafos de material no compilador](#kb-074)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-075 · Recarga de shaders e materiais 3D no desenvolvimento](#kb-075)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-076 · Núcleo do graphics3d::Renderer em engine/src/3d/graphics/](#kb-076)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-077 · Planos de recorte e cortes de seção](#kb-077)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-078 · Câmeras graphics3d::Camera](#kb-078)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-079 · Controles de câmera prontos em graphics3d, com mouse, toque, teclado, gamepad e controle remoto de TV](#kb-079)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-080 · Malhas](#kb-080)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
-| **[KB-081 · Primitivas e geradores de geometria](#kb-081)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
-| **[KB-082 · Utilitários de malha em graphics3d::MeshTools, que trabalham sobre MeshData em jobs sem Lua, com versão…](#kb-082)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-083 · Linhas e pontos 3D](#kb-083)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
-| **[KB-084 · Instanciação e lotes](#kb-084)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-085 · Caminhos de render avançados, medidos antes de entrar](#kb-085)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
-| **[KB-086 · Traçado de caminhos progressivo no nível moderno](#kb-086)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
-| **[KB-087 · Culling](#kb-087)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-088 · Níveis de detalhe](#kb-088)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-089 · Transparência](#kb-089)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-090 · Várias visões e alvos](#kb-090)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-091 · Antisserrilhado](#kb-091)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-092 · Escala de resolução](#kb-092)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-093 · Pipeline HDR e cor](#kb-093)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
-| **[KB-094 · Saída HDR em telas HDR onde a plataforma oferece, com o pico de brilho da tela lido pela API do sistema, o…](#kb-094)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-095 · Bloom, brilho e luz](#kb-095)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-096 · Efeitos de espaço de tela](#kb-096)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-097 · Efeitos de câmera](#kb-097)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-098 · Efeitos estilizados de pós](#kb-098)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
-| **[KB-099 · Pós por visão em Lua e C++](#kb-099)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | — | — | — | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 |
+| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | — | — | — | **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | **[KB-330 · No Android, o teclado fecha às vezes quando o aparelho gira com um campo editando](#kb-330)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-341 · Achar a causa da parada de 90 s do quadro na abertura de um app no simulador do iOS](#kb-341)**<br>🟠 high · `bug` · 5/10 | — | — | — | — | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-342 · Dois testes do Lua falham quando a máquina está carregada](#kb-342)**<br>🟠 high · `bug` · 4/10 | — | — | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-348 · Todo tipo de uma dimensão leva 2D ou 3D no nome, no C++ e no Lua](#kb-348)**<br>🟠 high · `refactor` · 8/10 | — | — | — | — | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 |
+| **[KB-349 · Os testes de UI do iOS na CI dizem por que o simulador parou, em vez de falhar ao desligá-lo](#kb-349)**<br>🟠 high · `bug` · 3/10 | — | — | — | — | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 |
+| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-323 · Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU](#kb-323)**<br>🟠 high · `fix` · 6/10 |
+| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-322 · Corrigir os defeitos confirmados da revisão da RHI no Direct3D](#kb-322)**<br>🟠 high · `fix` · 6/10 |
+| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 |
+| **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 |
+| **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 |
+| **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 |
+| **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 |
+| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 |
+| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 |
+| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 |
+| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-230 · Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake](#kb-230)**<br>🟡 medium · `feature` · 7/10 |
+| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-190 · Estruturas espaciais em haylen::spatial3d (engine/src/3d/spatial/, Lua haylen.spatial3d)](#kb-190)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-048 · Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno](#kb-048)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-049 · Barreiras e hazards](#kb-049)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-184 · Obstáculos e ligações](#kb-184)**<br>🟡 medium · `feature` · 3/10 |
+| **[KB-050 · Draws indiretos](#kb-050)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-183 · Malha de navegação 3D em haylen::navigation3d pela Recast e Detour](#kb-183)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-054 · Renderização em várias camadas num pass (multiview)](#kb-054)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-172 · Restrições](#kb-172)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-056 · Consultas de GPU](#kb-056)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | **[KB-171 · Camadas de colisão](#kb-171)**<br>🟡 medium · `feature` · 3/10 |
+| **[KB-057 · Formatos de vértice e topologias para 3D](#kb-057)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-169 · Corpos physics3d::Body](#kb-169)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-058 · Texturas externas para XR](#kb-058)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-168 · Mundo physics3d::World (engine/src/3d/physics/)](#kb-168)**<br>🟡 medium · `feature` · 7/10 |
+| **[KB-059 · Cache de pipelines](#kb-059)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-114 · Imagens WebP](#kb-114)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-060 · Envio e memória de GPU para 3D](#kb-060)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-106 · Leitor de glTF 2.0 em haylen::gltf (engine/src/3d/gltf/)](#kb-106)**<br>🟡 medium · `feature` · 7/10 |
+| **[KB-061 · Grafo de render em graphics::RenderGraph (engine/include/haylen/graphics/RenderGraph.hpp, comum a 2D, 3D e XR)](#kb-061)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-053 · Samplers completos](#kb-053)**<br>🟡 medium · `feature` · 3/10 |
+| **[KB-062 · O renderizador 2D monta seus passes no grafo de render](#kb-062)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-052 · Formatos de pixel novos com tabelas de capacidade por API (filtrável, renderizável, mesclável e de storage)](#kb-052)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-063 · Composição de 2D, 3D, UI, saídas e XR no mesmo quadro](#kb-063)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-045 · Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)](#kb-045)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-064 · Marcadores de depuração de GPU por pass e grupo em todas as APIs, com os nomes dos passes do grafo, para que…](#kb-064)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 |
+| **[KB-065 · A tabela de capacidades por API e plataforma em docs/graphics/rhi.md cobre cada recurso novo e o estado de…](#kb-065)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 |
+| **[KB-066 · Estágio de compute no haylen-shaderc](#kb-066)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
+| **[KB-067 · Buffers e imagens de storage no compilador](#kb-067)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-068 · Reflexão 3D no compilador](#kb-068)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
+| **[KB-069 · Variantes de shader sem explosão](#kb-069)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-070 · Formato do pacote .shader com programas de compute, recursos de storage, variantes, recursos exigidos e…](#kb-070)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
+| **[KB-071 · Bibliotecas Metal pré-compiladas também para os programas do renderizador 3D, para que o dispositivo Metal…](#kb-071)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-072 · Biblioteca de shaders 3D em engine/shaders/include/haylen/3d/](#kb-072)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-073 · Contrato de superfície para shaders 3D de apps e plugins](#kb-073)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-074 · Grafos de material no compilador](#kb-074)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 |
+| **[KB-075 · Recarga de shaders e materiais 3D no desenvolvimento](#kb-075)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-076 · Núcleo do graphics3d::Renderer em engine/src/3d/graphics/](#kb-076)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 |
+| **[KB-077 · Planos de recorte e cortes de seção](#kb-077)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-078 · Câmeras graphics3d::Camera](#kb-078)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-079 · Controles de câmera prontos em graphics3d, com mouse, toque, teclado, gamepad e controle remoto de TV](#kb-079)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-080 · Malhas](#kb-080)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-293 · Modo do mouse da janela: normal, oculto, travado, preso e preso oculto](#kb-293)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-081 · Primitivas e geradores de geometria](#kb-081)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-082 · Utilitários de malha em graphics3d::MeshTools, que trabalham sobre MeshData em jobs sem Lua, com versão…](#kb-082)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-083 · Linhas e pontos 3D](#kb-083)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 |
+| **[KB-084 · Instanciação e lotes](#kb-084)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-085 · Caminhos de render avançados, medidos antes de entrar](#kb-085)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-086 · Traçado de caminhos progressivo no nível moderno](#kb-086)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
+| **[KB-087 · Culling](#kb-087)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-088 · Níveis de detalhe](#kb-088)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-089 · Transparência](#kb-089)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-090 · Várias visões e alvos](#kb-090)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-091 · Antisserrilhado](#kb-091)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-092 · Escala de resolução](#kb-092)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-093 · Pipeline HDR e cor](#kb-093)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-094 · Saída HDR em telas HDR onde a plataforma oferece, com o pico de brilho da tela lido pela API do sistema, o…](#kb-094)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-095 · Bloom, brilho e luz](#kb-095)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
+| **[KB-096 · Efeitos de espaço de tela](#kb-096)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
+| **[KB-097 · Efeitos de câmera](#kb-097)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-098 · Efeitos estilizados de pós](#kb-098)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
+| **[KB-099 · Pós por visão em Lua e C++](#kb-099)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
 | **[KB-100 · Visões de depuração e estatísticas do 3D](#kb-100)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-101 · Desenho de depuração 3D](#kb-101)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-102 · Billboards, sprites e texto no mundo](#kb-102)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -1035,10 +1035,11 @@ Ordem do trabalho e dependências entre as fases: primeiro a estabilização do 
 ### KB-032
 
 - **Title:** Convenções 3D fixas em toda a engine
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 8
+- **Finished:** 2026-11-26
 - **Progress:** No `main` em `80ed50923`. A gravidade padrão tem um dono só, `math::Math::kStandardGravity`, com `m.standardGravity` no Lua. Entram também o raio de picking `Ray3D::fromView`, a tabela de unidades em `docs/3d/coordinates.md` e o teste da matriz espelhada. O resto das convenções e da matemática do 3D já existia, com testes e documentação. A verificação passou na nuvem: o `haylen test` do Linux com o GCC e avisos como erros, o formato e o pytest. Os gamepads da Apple leem a constante comum desde `11e3e6ddb`. Falta a execução completa da CI.
   - `Vec3`, `Vec4`, `Mat3` e `Mat4`;
   - `Quat`, com `slerp` e `nlerp`, e `DualQuat`;
@@ -1051,6 +1052,8 @@ Nenhuma conversão de convenção fica fora do seu dono. Faltam quatro coisas:
   - a tabela de unidades em `docs/3d/coordinates.md`, com a gravidade de 9,81 m/s²;
   - um teste de que uma matriz espelhada inverte a ordem dos vértices;
   - a gravidade padrão num lugar só, porque hoje ela se repete em três lugares da engine.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -1063,8 +1066,8 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] Pronto quando nenhum módulo 3D tiver uma conversão de convenção fora do lugar dela.
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] Pronto quando nenhum módulo 3D tiver uma conversão de convenção fora do lugar dela.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -1376,11 +1379,14 @@ O estado térmico do aparelho chega ao app: `platform::ThermalState` (`unknown`,
 ### KB-045
 
 - **Title:** Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Finished:** 2026-11-26
 - **Progress:** No `main` (`1fa30caea`): os buffers ganham usos e três modos de atualização (imutável, dinâmico e stream), `copyBuffer`, `readBuffer` e uniform buffers ligados por faixa com alinhamento de 256, com as regras em `BufferRules` para todo dispositivo e o dispositivo nulo, `graphics::Buffer` e `graphics.newBuffer` em Lua. O OpenGL passou a usar blocos std140, o compilador de shaders foi para o formato 4 e todos os pacotes `.shader` foram compilados de novo. Passaram o Mac, o Linux com clang e GCC, Vulkan, OpenGL, OpenGL ES, WebGPU, WebGL2 e o emulador Android. O Direct3D 11 e 12 ainda não foram compilados num Windows, e a próxima execução completa dá essa prova.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -1393,7 +1399,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -2923,11 +2929,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-106
 
 - **Title:** Leitor de glTF 2.0 em haylen::gltf (engine/src/3d/gltf/)
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
+- **Finished:** 2026-11-26
 - **Progress:** No `main` (`6d5518e9e`): o leitor `haylen::gltf` lê arquivos glTF 2.0 em documentos de dados de CPU, com `haylen.gltf` em Lua, e recusa cada arquivo que quebra uma regra do formato com o arquivo, o objeto e a regra. Junto vieram o limite de profundidade do JSON (`f57e87685`), o JSON com número grande demais (`e222b873b`) e `assets::Manager::acquireAsync` (`c7f4a9849`). Passou com GCC e clang em árvores novas, e o fuzzer do glTF rodou 10 minutos sem falha. A próxima execução completa dá a prova de todas as plataformas.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -2940,7 +2949,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -3126,11 +3135,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-114
 
 - **Title:** Imagens WebP
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Finished:** 2026-11-26
 - **Progress:** No `main` (`185c90ec2`): as imagens WebP decodificam pelo libwebp v1.6.0, também dentro do glTF, e o teste das imagens com perda compara todo pixel com a decodificação do próprio libwebp, igual no x86 e no ARM. Passou com GCC e clang e no Vulkan. A próxima execução completa dá a prova de todas as plataformas.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -3143,7 +3155,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -4493,11 +4505,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-168
 
 - **Title:** Mundo physics3d::World (engine/src/3d/physics/)
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
+- **Finished:** 2026-11-26
 - **Progress:** No `main` em `ca351b492`. O `physics3d::World` tem a gravidade padrão de `math::Math::kStandardGravity`, os jobs da Jolt sobre o `core::JobSystem`, um alocador temporário declarado, as estatísticas e o `stateHash()`. A Jolt fica atrás do registro de backends, pelo qual um plugin põe outro motor no lugar. O Lua ganha `haylen.physics3d`, e o tipo 2D passa a se chamar `haylen.PhysicsWorld2D`. As verificações passaram no Linux: o GCC e o clang com avisos como erros, 3091 de 3091 testes cada, e os 22 testes da física 3D sob o sanitizer de threads do GCC, com a pilha paralela, depois o formato e o pytest. Falta a execução completa da CI.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4510,7 +4525,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -4519,11 +4534,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-169
 
 - **Title:** Corpos physics3d::Body
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Finished:** 2026-11-26
 - **Progress:** No `main` (`0b9139b82`): os corpos 3D com transformações, forças, massa, materiais, ganchos do passo, leitura e escrita em lote por `FloatBuffer` e interpolação. O patch do Jolt (`8df91a1d1`) faz o passo de corpos em movimento não alocar nada, e o teste `SimulationTest.StepsAPileOfMovingBoxesWithoutAllocating` falha sem ele. Passou com clang em cada commit, GCC e o sanitizer de threads no último, o build da web sem avisos e o gate do Mac. A entrada no projeto de testes espera o renderizador 3D, e a execução completa 45824669078 no `main` (`fefb03df5`) dá a prova de todas as plataformas.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4536,7 +4554,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -4571,11 +4589,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-171
 
 - **Title:** Camadas de colisão
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 3
+- **Finished:** 2026-11-26
 - **Progress:** No `main` (`503911909`): 32 categorias de colisão com máscaras de 32 bits e grupos, os filtros pertencem ao corpo, e `physics3d.categories` fica no `haylen.json`. Passou com clang em cada commit, GCC e o sanitizer de threads no último, o build da web sem avisos e o gate do Mac. A entrada no projeto de testes espera o renderizador 3D, e a execução completa 45824669078 no `main` (`fefb03df5`) dá a prova de todas as plataformas.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4588,7 +4609,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -4597,11 +4618,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-172
 
 - **Title:** Restrições
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Finished:** 2026-11-26
 - **Progress:** No `main` (`fefb03df5`): juntas 3D de todo tipo com motores, molas, limites e quebra, `onJointBreak` e os casos 3D do benchmark. Passou com clang em cada commit, GCC e o sanitizer de threads no último, o build da web sem avisos e o gate do Mac. A entrada no projeto de testes espera o renderizador 3D, e a execução completa 45824669078 no `main` (`fefb03df5`) dá a prova de todas as plataformas.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4614,7 +4638,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -4879,11 +4903,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-183
 
 - **Title:** Malha de navegação 3D em haylen::navigation3d pela Recast e Detour
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Finished:** 2026-11-26
 - **Progress:** No `main` (`5f0203813`, com o rename dos tipos 2D em `7cbd75119`): a Recast e a Detour v1.6.0 compiladas como `haylen-recast`, o bake em tiles no sistema de jobs a partir de malhas, formas, terrenos e volumes, com tipos de área, custos e filtros, e o arquivo `.navmesh` lido como dado hostil, com o `PolygonValidator` e o fuzzer. O fuzzer achou quatro defeitos do Detour, corrigidos no patch `detour-tile-cache-vertex-removal.patch` e no validador, cada um com o seu teste. Passou com GCC e clang com o sanitizer de endereços em clones novos (3307 testes), nos doze fuzzers e mais 15 minutos do fuzzer da navmesh, e no build da web. A próxima execução completa do `main` dá a prova de todas as plataformas. Ficam para depois o comando `haylen app bake navmesh` e a ferramenta `haylen-navmesh`, que esperavam o glTF.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4896,7 +4923,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -4905,11 +4932,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-184
 
 - **Title:** Obstáculos e ligações
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 3
+- **Finished:** 2026-11-26
 - **Progress:** No `main` (`5f0203813`): obstáculos de cilindro e de caixa que refazem só o tile deles, e ligações de pulo, escada e teletransporte com eventos de entrada. Passou com GCC e clang com o sanitizer de endereços em clones novos (3307 testes), nos doze fuzzers e mais 15 minutos do fuzzer da navmesh, e no build da web. A próxima execução completa do `main` dá a prova de todas as plataformas.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4922,7 +4952,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -4931,11 +4961,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-185
 
 - **Title:** Consultas e agentes
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Finished:** 2026-11-26
 - **Progress:** No `main` (`5f0203813`): consultas de caminho reto, parcial, ponto mais perto, raio, parede e ponto aleatório por área, e uma multidão com desvio e acesso em lote por `FloatBuffer`. Medido em 16 threads: bake em 116 ms, caminho em 0,07 ms, obstáculo movido em 0,65 ms e 2000 agentes em 3,9 ms no sistema de jobs contra 9,3 ms numa thread. Passou com GCC e clang com o sanitizer de endereços em clones novos (3307 testes), nos doze fuzzers e mais 15 minutos do fuzzer da navmesh, e no build da web. A próxima execução completa do `main` dá a prova de todas as plataformas. Os agentes como componentes de nó esperam o KB-143.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4948,7 +4981,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -5057,10 +5090,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-190
 
 - **Title:** Estruturas espaciais em haylen::spatial3d (engine/src/3d/spatial/, Lua haylen.spatial3d)
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Finished:** 2026-11-26
 - **Progress:** No `main` em `6a54df4b2`, com os tempos dos benchmarks no guia em `3534589f3`. As estruturas `AabbTree`, `Bvh`, `Octree`, `HashGrid`, `KdTree`, `MeshBvh` e `GridRay` têm as mesmas consultas e o lote em `FloatBuffer`, e uma consulta repetida não aloca. O Lua ganha `haylen.spatial3d`, com os tipos `HashGrid3D`, `AabbTree3D` e `KdTree3D`, e os do 2D passam a se chamar `HashGrid2D`, `AabbTree2D` e `KdTree2D`. As verificações passaram: os testes da engine e de GPU do Metal no Mac, o GCC e o clang no Linux com todos os alvos, o formato e o pytest. Falta a execução completa da CI.
   - `AabbTree`, dinâmica;
   - `Bvh`, por SAH, com `refit`;
@@ -5071,6 +5105,8 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
   - `GridRay`, o percurso de voxels.
 
 Todas têm as mesmas consultas, por caixa, esfera, ponto, frustum conservador, raio e vizinhos mais próximos, e atualizações em lote. Uma consulta repetida não aloca nada, e cada estrutura é testada contra a força bruta com entradas hostis. O Lua ganha `haylen.spatial3d`, com lotes num `FloatBuffer` e tabelas de resultado reaproveitadas.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -5083,7 +5119,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -6075,15 +6111,18 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-230
 
 - **Title:** Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake
-- **Status:** testing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
+- **Finished:** 2026-11-26
 - **Progress:** No `main` em `ca351b492`, com o requisito x86-64-v2 em `bdfb3647b`, que faz todo build x64 compilar com SSE4.2 e POPCNT e conferir o processador nos pontos de entrada. A Jolt Physics v5.7.0 entra fixada por SHA-256, sem o sistema de jobs, o perfilador e os recursos de GPU dela, e só os arquivos do backend incluem os cabeçalhos da Jolt, como um teste do repositório garante. O tamanho em cada SDK está em `docs/tools/distribution.md`. As verificações passaram no Linux: o GCC e o clang com avisos como erros, 3091 de 3091 testes cada, e os 22 testes da física 3D sob o sanitizer de threads do GCC, com a pilha paralela, depois o formato e o pytest. Falta a execução completa da CI.
 
 Decisão do dono: todo build x64 da engine passa a exigir x86-64-v2, com SSE4.2 e POPCNT, como as engines grandes. Os pontos de entrada do Windows e do Linux conferem o processador na primeira linha e param com uma frase clara. Esse requisito entra num commit próprio, antes da Jolt.
 
 Só os arquivos do backend da Jolt incluem os cabeçalhos dela, e um teste do repositório garante isso. O tipo `haylen.PhysicsWorld` do 2D passa a se chamar `haylen.PhysicsWorld2D`.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -6096,7 +6135,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -8385,16 +8424,19 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no Direct3D, que ainda 
 ### KB-323
 
 - **Title:** Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU
-- **Status:** testing
+- **Status:** done
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
+- **Finished:** 2026-11-26
 - **Progress:** Commits `0c053245c` e `a6c026e89`. O G7 faz o OpenGL desenhar a profundidade de 0 a 1 com o `glClipControl`, informa a faixa de profundidade ao Lua e repina o compilador de shaders em `79cf887`, com os 61 pacotes de teste compilados de novo. No `main` desde `a6c026e89`. A execução completa 45769060354 do branch passou em todos os jobs, com 72 testes do Direct3D 11 no WARP, que tem a fence do Direct3D 11.4. As verificações da árvore enviada também passaram: os testes da engine, do Vulkan e do OpenGL no Linux com o GCC, os de GPU da web no WebGL2 e no WebGPU, os 3061 testes da engine no Mac, os 86 do Metal e o pytest. Falta a execução completa do bloco no `main`.
   1. O compilador para de converter. O commit dele é refeito, com uma release nova e um pin novo.
   2. O `gpu::Device` ganha a faixa de profundidade: 0 a 1 no Metal, Direct3D, Vulkan e WebGPU, e no OpenGL onde existe `glClipControl`, que o dispositivo liga. Onde não existe, a faixa é -1 a 1.
   3. O Lua lê `graphics.depthRange()`, e as projeções de `haylen.math` usam essa faixa.
 
 O G3 troca o máximo de amostras pelas contagens de amostras de cada formato, lidas em todo dispositivo. O D4 acrescenta `maxVolumeSize` e `maxCubeSize`. Os dois chegam ao Lua.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -8403,8 +8445,8 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no OpenGL e WebGPU, que
 
 #### Acceptance criteria
 
-- [ ] Cada defeito da lista está corrigido com o seu teste, e cada incerto tem o seu veredito.
-- [ ] A CI completa passa nas APIs que o cartão toca.
+- [x] Cada defeito da lista está corrigido com o seu teste, e cada incerto tem o seu veredito.
+- [x] A CI completa passa nas APIs que o cartão toca.
 
 #### Attachments
 
@@ -8413,11 +8455,14 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no OpenGL e WebGPU, que
 ### KB-324
 
 - **Title:** Corrigir os defeitos confirmados da revisão da RHI no Vulkan
-- **Status:** testing
+- **Status:** done
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
+- **Finished:** 2026-11-26
 - **Progress:** Commit `0c053245c`. O ponto de injeção de falha do V1 e o seu teste estão no commit `ab109686c`. Os testes de superfície do Linux rodam sob `xvfb-run`. No `main` desde `a6c026e89`. A execução completa 45769060354 do branch passou em todos os jobs, com 72 testes do Direct3D 11 no WARP, que tem a fence do Direct3D 11.4. As verificações da árvore enviada também passaram: os testes da engine, do Vulkan e do OpenGL no Linux com o GCC, os de GPU da web no WebGL2 e no WebGPU, os 3061 testes da engine no Mac, os 86 do Metal e o pytest. Falta a execução completa do bloco no `main`.
+
+A execução completa 45888323959 no `main` (`bd32658b6`) passou nos testes do Linux, do macOS e do Windows, nos sanitizers de endereços e de threads, nos fuzzers, nos SDKs e apps de toda plataforma, no projeto de testes e nos testes de UI do Mac e do Android; o job de GPU do Android falhou só num teste do KB-051, e o de UI da Apple só pelo simulador que parou (KB-349).
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -8426,8 +8471,8 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no Vulkan, que ainda n�
 
 #### Acceptance criteria
 
-- [ ] Cada defeito da lista está corrigido com o seu teste, e cada incerto tem o seu veredito.
-- [ ] A CI completa passa nas APIs que o cartão toca.
+- [x] Cada defeito da lista está corrigido com o seu teste, e cada incerto tem o seu veredito.
+- [x] A CI completa passa nas APIs que o cartão toca.
 
 #### Attachments
 
