@@ -873,6 +873,8 @@ The cache cannot hide a failure. sccache finds an object by the hash of the comp
 
 sccache hashes the program of the compiler that it runs, so the hash of every object follows that program. On macOS, CMake finds `/usr/bin/cc` and `/usr/bin/c++`, launchers of the system that run the clang of the selected Xcode with the SDK of macOS, and those launchers change with each version of macOS. GitHub moves its runners to a newer image over days, so jobs of one run land on images of different versions of macOS with the same Xcode. So the action `build-environment` names the clang of the selected Xcode in `CC`, `CXX`, `OBJC` and `OBJCXX`, and in `SDKROOT` the SDK of macOS that the launchers pick, and an object keeps its hash on every image with that Xcode. The images of Windows can differ in the version of MSVC itself, which is a real change of the compiler, so a Windows job on an image with another MSVC compiles the objects that this MSVC never compiled.
 
+The workflow sets `SCCACHE_BASEDIRS` to the workspace of the job, so sccache hashes every path inside the checkout relative to it, the sources of the dependencies in `.cache/cpm` and the build folders included. An object therefore hashes the same wherever the checkout lies, so the machines that build the engine in other folders with the same base folder, such as the batch machines of [Hardware testing](hardware-testing.md), share the objects of continuous integration.
+
 ### The caches of dependencies and tools
 
 The bucket `haylen-ci` keeps one layer under each prefix, so each one can be listed, measured and expired on its own:
