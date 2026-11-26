@@ -48,6 +48,8 @@ abstract class HaylenUiTestCase {
         // The status of the report of the instrumentation that asks "haylen test --ui" to turn the emulator, with the key of the rotation of the display it asks for. The code differs from the codes of the test runner, which report the start and the end of each test.
         const val TURN_STATUS = 2
         const val TURN_KEY = "haylenTurn"
+        // The state of the keyboard of the system in the report of the input method service, "dumpsys input_method", which every version of Android from Android 8.1 prints in this form, once for each user from Android 16.
+        val KEYBOARD_STATE = Regex("mInputShown=(true|false)")
     }
 
     val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -352,11 +354,20 @@ abstract class HaylenUiTestCase {
         assertTrue("The app stays in front after Home.", device.wait(Until.gone(By.pkg(identifier).depth(0)), TIMEOUT))
     }
 
-    // Waits until the keyboard of the system shows, the window of the input method that the device uses, so the keys that a test types reach the field that edits instead of the controls of the app. Android shows it while a hardware keyboard is attached only with the setting "show_ime_with_hard_keyboard", which "haylen test --ui" turns on for the run.
+    // Waits until the keyboard of the system shows, so the keys that a test types reach the field that edits instead of the controls of the app. Android shows it while a hardware keyboard is attached only with the setting "show_ime_with_hard_keyboard", which "haylen test --ui" turns on for the run.
     fun waitForKeyboard() {
-        val method = device.executeShellCommand("settings get secure default_input_method").trim()
-        assertTrue("The device names no input method.", method.contains("/"))
-        waitFor(By.pkg(method.substringBefore("/")), "the keyboard of the input method \"$method\"")
+        waitUntil("The keyboard of the system does not show.") { isKeyboardShown() }
+    }
+
+    // Whether the keyboard of the system shows, as the input method service of the system records it. While the system turns the keyboard with the device, the window of the keyboard leaves the windows that accessibility services read and the tree of its nodes reads as empty for a moment, so only the service tells a keyboard that turns from a keyboard that closed.
+    fun isKeyboardShown(): Boolean {
+        val report = device.executeShellCommand("dumpsys input_method")
+        val states = KEYBOARD_STATE.findAll(report).map { state -> state.groupValues[1] }.toList()
+        if (states.isEmpty()) {
+            throw AssertionError("The input method service of API level ${Build.VERSION.SDK_INT} reports no \"mInputShown\" in \"dumpsys input_method\", so the UI tests cannot tell whether the keyboard of the system shows on this version of Android.")
+        }
+
+        return "true" in states
     }
 
     // Removes the task of the app from the recent apps, which the system does when a person swipes its card away, whatever the launcher draws, and ends the process once it holds no activity, as the system does when it needs the memory, so the next launch starts a new process. The alarms and notifications of the app stay, which a force stop would cancel.

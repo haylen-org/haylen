@@ -3,7 +3,6 @@ package com.haylen.uitests
 import android.content.Intent
 import android.text.InputType
 import androidx.test.uiautomator.By
-import androidx.test.uiautomator.Until
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -26,7 +25,7 @@ class TextInputTests : HaylenUiTestCase() {
     fun openTheAddressField() {
         waitForKeyboard()
         device.pressBack()
-        assertTrue("The keyboard stays open after the back button.", device.wait(Until.gone(keyboard()), TIMEOUT))
+        assertTrue("The keyboard stays open after the back button.", poll { !isKeyboardShown() })
         startTyping()
     }
 
@@ -59,7 +58,7 @@ class TextInputTests : HaylenUiTestCase() {
 
         // The back button hides the keyboard while the field goes on editing, and a tap on the field shows it again.
         device.pressBack()
-        assertTrue("The keyboard stays open after the back button.", device.wait(Until.gone(keyboard()), TIMEOUT))
+        assertTrue("The keyboard stays open after the back button.", poll { !isKeyboardShown() })
         startTyping()
         type("s")
         expectText("ilhas")
@@ -93,7 +92,7 @@ class TextInputTests : HaylenUiTestCase() {
         assertEquals("The address field asks the keyboard for corrections.", 0, field and InputType.TYPE_TEXT_FLAG_AUTO_CORRECT)
 
         device.pressBack()
-        assertTrue("The keyboard stays open after the back button.", device.wait(Until.gone(keyboard()), TIMEOUT))
+        assertTrue("The keyboard stays open after the back button.", poll { !isKeyboardShown() })
         waitFor(Pattern.compile(Pattern.quote(DIARY) + ".*", Pattern.DOTALL)).click()
         waitForKeyboard()
         var area = 0
@@ -135,7 +134,7 @@ class TextInputTests : HaylenUiTestCase() {
     private fun watchTheKeyboard(message: String) {
         val deadline = System.currentTimeMillis() + WATCH
         while (System.currentTimeMillis() < deadline) {
-            assertTrue(message, device.hasObject(keyboard()))
+            assertTrue(message, isKeyboardShown())
             Thread.sleep(POLL)
         }
     }
