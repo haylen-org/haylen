@@ -29,7 +29,7 @@ class MeshBvhBinding final {
     // Sets `newMeshBvh` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
-    // Reads the positions at the stack index, from a float buffer of three numbers for each vertex or a list of `Vec3` values, which the collision meshes of 3D physics read the same way.
+    // Reads the positions at the stack index, from a float buffer of three numbers for each vertex or a list of `Vec3` values, which the collision meshes of 3D physics and the geometry of navigation meshes read the same way.
     [[nodiscard]] static std::vector<float> readPositions(lua_State* L, int index);
 
     // Reads the optional list of one-based vertices at the stack index, three for each triangle, and returns them counted from zero.

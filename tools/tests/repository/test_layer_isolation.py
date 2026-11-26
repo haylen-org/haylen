@@ -4,7 +4,7 @@ from tests.support.engine_sources import EngineSources
 
 
 class LayerIsolationTest:
-    """The engine reaches SDL only through its platform layer and each graphics API only through its GPU device, so the Lua API never changes with the platform or the graphics API that draws, and 2D, 3D and the GPU layers under them stay apart, so each dimension builds on the GPU layers alone and never on the other."""
+    """The engine reaches SDL only through its platform layer and each graphics API only through its GPU device, so the Lua API never changes with the platform or the graphics API that draws, Recast and Detour stay behind the navigation of 3D, and 2D, 3D and the GPU layers under them stay apart, so each dimension builds on the GPU layers alone and never on the other."""
 
     BACKEND = re.compile(r"engine/(src|tests)/3d/physics/jolt/")
     JOLT = re.compile(r"#\s*include\s*<Jolt/")
@@ -49,6 +49,11 @@ class LayerIsolationTest:
         simulation = re.compile(r'#\s*include\s*"(?:haylen/)?3d/(?:physics|navigation)/')
         depending = sorted(name for name, text in EngineSources.read().items() if folder.match(name) and simulation.search(text))
         assert depending == [], f"These files of the 3D renderer include a header of physics or navigation: {depending}."
+
+    def test_only_the_private_parts_of_3d_navigation_reach_recast_and_detour(self):
+        library = re.compile(r'#\s*include\s*[<"](?:Recast|Detour)\w*\.h[>"]')
+        reaching = sorted(name for name, text in EngineSources.read().items() if not name.startswith("engine/src/3d/navigation/") and library.search(text))
+        assert reaching == [], f"These files outside the private parts of 3D navigation include a header of Recast or Detour: {reaching}."
 
     def test_only_the_jolt_backend_reaches_the_headers_of_jolt(self):
         """The headers of Jolt hold inline SIMD code, so only the backend of Jolt and its tests include them, and the headers of the backend that the rest of the engine includes reach nothing of Jolt."""

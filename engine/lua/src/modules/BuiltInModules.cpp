@@ -18,6 +18,7 @@
 #include "modules/LocalizationModule.hpp"
 #include "modules/NativeModule.hpp"
 #include "modules/Navigation2DModule.hpp"
+#include "modules/Navigation3DModule.hpp"
 #include "modules/NetModule.hpp"
 #include "modules/Nodes2DModule.hpp"
 #include "modules/Particles2DModule.hpp"
@@ -52,6 +53,7 @@ void BuiltInModules::registerAll(Modules& modules) {
     modules.add(std::make_unique<Spatial3DModule>());
     modules.add(std::make_unique<Procedural2DModule>());
     modules.add(std::make_unique<Navigation2DModule>());
+    modules.add(std::make_unique<Navigation3DModule>());
     modules.add(std::make_unique<LocalizationModule>());
     modules.add(std::make_unique<ConversationModule>());
     modules.add(std::make_unique<StorageModule>());

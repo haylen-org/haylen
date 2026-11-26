@@ -53,6 +53,8 @@ set(HAYLEN_TEST_SOURCES
   3d/gltf/AccessorReaderTests.cpp
   3d/gltf/ReaderRulesTests.cpp
   3d/gltf/ReaderTests.cpp
+  3d/navigation/CrowdTests.cpp
+  3d/navigation/NavMeshTests.cpp
   3d/physics/BackendRegistryTests.cpp
   3d/physics/BodyTests.cpp
   3d/physics/CollisionFilterTests.cpp
@@ -259,6 +261,7 @@ set(HAYLEN_TEST_SUPPORT_SOURCES
   support/ContentServer.cpp
   support/CountingPackage.cpp
   support/DamagedFonts.cpp
+  support/DamagedNavMeshes.cpp
   support/FontCollection.cpp
   support/EngineFixture.cpp
   support/EventLoop.cpp
@@ -358,7 +361,7 @@ gtest_discover_tests(haylen-tests
   PROPERTIES TIMEOUT 120
 )
 
-# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents, of Ogg pages, of TrueType fonts, of glTF files, of BMFont files and of the data of 3D physics shapes run their parsers on the inputs libFuzzer generates.
+# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents, of navigation meshes, of Ogg pages, of TrueType fonts, of glTF files, of BMFont files and of the data of 3D physics shapes run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen-content-fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen-content-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
@@ -396,6 +399,13 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_libraries(haylen-vector-image-fuzzer PRIVATE haylen::engine)
   target_link_options(haylen-vector-image-fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen-vector-image-fuzzer)
+
+  add_executable(haylen-navmesh-fuzzer fuzz/NavMeshFuzzer.cpp support/DamagedNavMeshes.cpp)
+  set_target_properties(haylen-navmesh-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_include_directories(haylen-navmesh-fuzzer PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
+  target_link_libraries(haylen-navmesh-fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen-navmesh-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-navmesh-fuzzer)
 
   add_executable(haylen-ogg-fuzzer fuzz/OggPageFuzzer.cpp)
   set_target_properties(haylen-ogg-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")

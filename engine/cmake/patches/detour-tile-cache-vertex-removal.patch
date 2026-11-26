@@ -1,0 +1,34 @@
+--- a/DetourTileCache/Source/DetourTileCacheBuilder.cpp
++++ b/DetourTileCache/Source/DetourTileCacheBuilder.cpp
+@@ -1444,7 +1444,7 @@
+ 		return false;
+ 	
+ 	// Find edges which share the removed vertex.
+-	unsigned short edges[MAX_REM_EDGES];
++	unsigned short edges[MAX_REM_EDGES*3];
+ 	int nedges = 0;
+ 	
+ 	for (int i = 0; i < mesh.npolys; ++i)
+@@ -1477,6 +1477,8 @@
+ 				// Add new edge.
+ 				if (!exists)
+ 				{
++					if (nedges >= MAX_REM_EDGES)
++						return false;
+ 					unsigned short* e = &edges[nedges*3];
+ 					e[0] = (unsigned short)a;
+ 					e[1] = (unsigned short)b;
+@@ -1633,8 +1635,12 @@
+ 	}
+ 	
+ 	
++	// A hole of fewer than three vertices has no area to fill.
++	if (nhole < 3)
++		return DT_SUCCESS;
++
+ 	unsigned short tris[MAX_REM_EDGES*3];
+-	unsigned char tverts[MAX_REM_EDGES*3];
++	unsigned char tverts[MAX_REM_EDGES*4];
+ 	unsigned short tpoly[MAX_REM_EDGES*3];
+ 	
+ 	// Generate temp vertex array for triangulation.

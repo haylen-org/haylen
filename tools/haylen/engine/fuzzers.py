@@ -14,6 +14,7 @@ class Fuzzers:
         "haylen-placeholder-fuzzer",
         "haylen-image-fuzzer",
         "haylen-vector-image-fuzzer",
+        "haylen-navmesh-fuzzer",
         "haylen-ogg-fuzzer",
         "haylen-font-fuzzer",
         "haylen-gltf-fuzzer",

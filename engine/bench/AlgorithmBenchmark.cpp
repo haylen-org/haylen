@@ -23,6 +23,8 @@
 #include "haylen/2d/spatial/KdTree.hpp"
 #include "haylen/2d/spatial/Neighbor.hpp"
 #include "haylen/2d/spatial/RayHit.hpp"
+#include "haylen/3d/navigation/Crowd.hpp"
+#include "haylen/3d/navigation/NavMesh.hpp"
 #include "haylen/3d/spatial/AabbTree.hpp"
 #include "haylen/3d/spatial/Bvh.hpp"
 #include "haylen/3d/spatial/HashGrid.hpp"
@@ -45,7 +47,7 @@
 
 namespace haylen::bench {
 
-// Times the path finding, crowd, spatial structures of 2D and 3D, mesh hierarchy, ray casting and batch math algorithms on the CPU and prints the average time of each run.
+// Times the path finding and crowds of 2D and 3D, the spatial structures of 2D and 3D, mesh hierarchy, ray casting and batch math algorithms on the CPU and prints the average time of each run.
 class AlgorithmBenchmark final {
   public:
     static int run() {
@@ -55,6 +57,7 @@ class AlgorithmBenchmark final {
         measureGridPaths();
         measureNavMesh();
         measureCrowd(jobs);
+        measureNavigation3D(jobs);
         measureSpatial();
         measureSpatial3D();
         measureMeshBvh();
@@ -222,6 +225,72 @@ class AlgorithmBenchmark final {
         while (building > 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
+    }
+
+    // Returns a world of 200 by 200 meters with 300 boxes of crates and walls on its floor.
+    [[nodiscard]] static navigation3d::SourceGeometry crateYard(math::Random& random) {
+        navigation3d::SourceGeometry source;
+        const std::vector<math::Vec3> corners{{-100.0F, 0.0F, -100.0F}, {-100.0F, 0.0F, 100.0F}, {100.0F, 0.0F, 100.0F}, {100.0F, 0.0F, -100.0F}};
+        const std::vector<std::uint32_t> indices{0, 1, 2, 0, 2, 3};
+        source.addMesh(corners, indices);
+        for (int crate = 0; crate < 300; ++crate) {
+            const math::Vec3 center{random.range(-95.0F, 95.0F), 1.0F, random.range(-95.0F, 95.0F)};
+            const math::Vec3 half{random.range(0.5F, 3.0F), 1.0F, random.range(0.5F, 3.0F)};
+            source.addBox({.center = center, .rotation = math::Quat::fromAxisAngle(math::Vec3::up(), random.range(0.0F, 3.0F)), .halfExtents = half});
+        }
+
+        return source;
+    }
+
+    static void measureNavigation3D(core::JobSystem& jobs) {
+        math::Random random(14);
+        const navigation3d::SourceGeometry yard = crateYard(random);
+        navigation3d::BuildSettings settings;
+        settings.agentRadius = 0.4F;
+        measureCold("3D navmesh bake 200x200 m, 300 boxes, one thread", 3, [&] { (void)navigation3d::NavMesh::build(yard, settings); });
+        const navigation3d::NavMesh mesh = navigation3d::NavMesh::build(yard, settings);
+
+        std::vector<std::pair<math::Vec3, math::Vec3>> trips;
+        while (trips.size() < 200) {
+            const std::optional<navigation3d::NavMesh::Location> start = mesh.findRandomPoint(random);
+            const std::optional<navigation3d::NavMesh::Location> goal = mesh.findRandomPoint(random);
+            if (start && goal) {
+                trips.emplace_back(start->position, goal->position);
+            }
+        }
+
+        // clang-format off
+        measure("3D navmesh path with the funnel across the yard", 1000, [&, trip = std::size_t{0}]() mutable {
+            (void)mesh.findPath(trips[trip].first, trips[trip].second);
+            trip = (trip + 1) % trips.size();
+        });
+        // clang-format on
+
+        navigation3d::Crowd crowd(mesh, {.maxAgents = 2000, .maxAgentRadius = 0.4F});
+        for (const auto& [start, goal] : trips) {
+            for (int agent = 0; agent < 10; ++agent) {
+                const navigation3d::Crowd::AgentId id = crowd.addAgent({.position = start, .radius = 0.4F});
+                crowd.setTarget(id, goal);
+            }
+        }
+        for (int step = 0; step < 30; ++step) {
+            crowd.step(1.0F / 30.0F, &jobs);
+        }
+        measure("3D crowd step, 2000 agents, one thread", 20, [&crowd] { crowd.step(1.0F / 60.0F); });
+        measure("3D crowd step, 2000 agents, job system", 20, [&crowd, &jobs] { crowd.step(1.0F / 60.0F, &jobs); });
+
+        // A crate that moves rebuilds the tiles around it from their layers.
+        settings.obstacles = true;
+        navigation3d::NavMesh carved = navigation3d::NavMesh::build(yard, settings);
+        const std::uint32_t crate = carved.addObstacle(navigation3d::Obstacle::box({0.0F, 1.0F, 0.0F}, {1.0F, 1.0F, 1.0F}));
+        carved.update(nullptr);
+        // clang-format off
+        measure("3D navmesh obstacle move, tiles rebuilt", 50, [&carved, crate, x = 0.0F]() mutable {
+            x = x > 40.0F ? -40.0F : x + 0.5F;
+            carved.setObstacle(crate, navigation3d::Obstacle::box({x, 1.0F, 0.0F}, {1.0F, 1.0F, 1.0F}));
+            carved.update(nullptr);
+        });
+        // clang-format on
     }
 
     static void measureSpatial() {

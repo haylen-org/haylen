@@ -56,6 +56,12 @@ set(HAYLEN_LUA_SOURCES
   src/2d/tiled/MapQueryBinding.cpp
   src/2d/tiled/TiledBinding.cpp
   src/3d/gltf/GltfBinding.cpp
+  src/3d/navigation/CrowdBinding.cpp
+  src/3d/navigation/GeometryBinding.cpp
+  src/3d/navigation/NavMeshBinding.cpp
+  src/3d/navigation/Navigation3DBinding.cpp
+  src/3d/navigation/NavigationOptions.cpp
+  src/3d/navigation/QueryFilterBinding.cpp
   src/3d/physics/BodyBinding.cpp
   src/3d/physics/JointBinding.cpp
   src/3d/physics/Physics3DBinding.cpp
@@ -153,6 +159,7 @@ set(HAYLEN_LUA_SOURCES
   src/modules/LocalizationModule.cpp
   src/modules/NativeModule.cpp
   src/modules/Navigation2DModule.cpp
+  src/modules/Navigation3DModule.cpp
   src/modules/NetModule.cpp
   src/modules/Nodes2DModule.cpp
   src/modules/Particles2DModule.cpp

@@ -991,6 +991,15 @@ Jolt Physics, the backend of 3D physics, joins the static library of every SDK. 
 | Web | wasm32 with SIMD | 3.3 MB |
 | Desktop | Linux x64 | 4.8 MB |
 
+### The size of 3D navigation
+
+Recast and Detour, which bake and walk the navigation meshes of `haylen.navigation3d`, join the static library of every SDK as `haylen-recast`. These are the bytes of code and data of its four libraries compiled with `-O2`, function sections and without debug information, before the link of an app drops the code that the app never reaches. Recast bakes, Detour holds the mesh and answers its queries, and the parts of crowds and of the tile cache move agents and carve obstacles. The module `haylen.navigation3d` binds every part, so a Lua app keeps all of them, while a C++ app keeps only what it calls.
+
+| Architecture | Recast | Detour | Crowds | Tile cache | In all |
+| --- | --- | --- | --- | --- | --- |
+| x86-64 | 143 KB | 66 KB | 36 KB | 34 KB | 279 KB |
+| arm64 | 121 KB | 55 KB | 27 KB | 29 KB | 232 KB |
+
 ## Templates
 
 The tooling keeps two kinds of templates:

@@ -63,6 +63,7 @@ This table names the main classes of each folder. The headers of a folder list a
 | `2d/navigation` | `Grid` with `GridSearch` and `HierarchicalPathfinder`, `Graph` with `GraphSearch`, `DijkstraMap`, `FlowField`, `NavMesh`, `SteeringAgent`, `Wanderer` and `Crowd`. |
 | `2d/spatial` | The spatial structures `HashGrid`, `QuadTree`, `AabbTree`, `KdTree` and `OverlapWorld`, `ScreenPicker`, and the grid algorithms `CellGrid`, `GridRay`, `Bresenham`, `FieldOfView`, `VisibilityPolygon`, `FloodFill`, `ConnectedComponents` and `UnionFind`. |
 | `2d/procedural` | `Scatter` over a `Region`, `CellularAutomaton`, `DrunkardWalk`, `Dungeon`, `Maze`, `WaveFunctionCollapse`, `Delaunay`, `Voronoi` and `Autotile`. |
+| `3d/navigation` | `SourceGeometry`, `BuildSettings`, `NavMesh` with its queries, obstacles, links and rebuilds of tiles, `QueryFilter`, `Obstacle`, `Link` and `Crowd`, on Recast and Detour, whose headers only the private parts of the folder include: `TileBaker`, `TileAssembler`, `TileGrid`, `TileIndex`, `NavMeshFile` of the `.navmesh` format, `LayerCodec`, `RandomPoints` and `AreaFilter`. |
 | `3d/spatial` | The spatial structures `HashGrid`, `Octree`, `AabbTree`, `Bvh` and `KdTree`, the `MeshBvh` of the triangles of a mesh, `BvhNodes`, the nodes and walks that the hierarchies share, and `GridRay`, the walk of the cells of a grid of boxes. |
 
 The Lua layer lives in `engine/lua/`. Its public toolkit of bindings, with `lua::Application`, `lua::Module` and `lua::ScriptPlugin`, lives in `engine/lua/include/haylen/lua/`, and the projects that extend the engine use it. Its folders mirror the contexts of `engine/src/`, so the binding of a module sits in the folder of its context, such as `engine/lua/src/2d/physics/Physics2DBinding.cpp`, in the namespace `haylen::lua::<context>`, such as `haylen::lua::physics2d::Physics2DBinding`. Plugins that apps construct or reference have public headers in `engine/include/haylen/plugins/`, such as `UiPlugin.hpp`. The other plugins keep their headers in `engine/src/plugins/`, such as `AudioPlugin.hpp`.
@@ -164,6 +165,7 @@ The class `plugins::BuiltInPlugins` in `engine/src/plugins/BuiltInPlugins.cpp` r
 | `audio` | Registers the asset type `sound`. |
 | `video` | Opens the videos of the app with the decoder of the platform, and keeps each one current at the start of every frame until it is released. |
 | `tiled`, `nodes2d` | Register the asset types `tiled`, `tiledWorld` and `tiledRules`, and `prefab`. |
+| `navigation3d` | Registers the asset type `navmesh`, and starts the rebuilds of the tiles of the navigation meshes that the app holds at the start of every frame. |
 | `localization` | Loads the languages of `haylen.json` on start, follows the languages of the system at the start of every frame and publishes `languageChanged`, and rebuilds the texts of a changed folder in development. |
 | `conversation` | Registers the asset type `conversation`. |
 | `storage` | Loads the preferences on start, and writes them on suspend and stop. |

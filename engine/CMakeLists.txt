@@ -220,6 +220,22 @@ set(HAYLEN_ENGINE_SOURCES
   src/3d/gltf/Node.cpp
   src/3d/gltf/Reader.cpp
   src/3d/gltf/UriResolver.cpp
+  src/3d/navigation/AreaFilter.cpp
+  src/3d/navigation/BuildSettings.cpp
+  src/3d/navigation/Crowd.cpp
+  src/3d/navigation/CrowdState.cpp
+  src/3d/navigation/LayerCodec.cpp
+  src/3d/navigation/NavMesh.cpp
+  src/3d/navigation/NavMeshFile.cpp
+  src/3d/navigation/NavMeshState.cpp
+  src/3d/navigation/PolygonValidator.cpp
+  src/3d/navigation/QueryFilter.cpp
+  src/3d/navigation/RandomPoints.cpp
+  src/3d/navigation/SourceGeometry.cpp
+  src/3d/navigation/TileAssembler.cpp
+  src/3d/navigation/TileBaker.cpp
+  src/3d/navigation/TileGrid.cpp
+  src/3d/navigation/TileIndex.cpp
   src/3d/physics/Backend.cpp
   src/3d/physics/BackendRegistry.cpp
   src/3d/physics/Body.cpp
@@ -530,6 +546,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/DebugPlugin.cpp
   src/plugins/HotReloadPlugin.cpp
   src/plugins/LocalizationPlugin.cpp
+  src/plugins/Navigation3DPlugin.cpp
   src/plugins/NetPlugin.cpp
   src/plugins/Nodes2DPlugin.cpp
   src/plugins/Particles2DPlugin.cpp
@@ -770,7 +787,7 @@ target_include_directories(haylen-engine
 
 target_link_libraries(haylen-engine
   PUBLIC nlohmann_json::nlohmann_json varn-runtime haylen-imgui
-  PRIVATE box2d::box2d Jolt Clipper2 msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static webpdecoder
+  PRIVATE box2d::box2d Jolt Clipper2 haylen-recast msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static webpdecoder
 )
 
 if(TARGET Poco::NetSSL)

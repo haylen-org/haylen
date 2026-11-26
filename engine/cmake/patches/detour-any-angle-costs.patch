@@ -1,0 +1,32 @@
+--- a/Detour/Source/DetourNavMeshQuery.cpp
++++ b/Detour/Source/DetourNavMeshQuery.cpp
+@@ -1410,21 +1410,16 @@
+ 				foundShortCut = rayHit.t >= 1.0f;
+ 			}
+ 
+-			// update move cost
+-			if (foundShortCut)
+-			{
+-				// shortcut found using raycast. Using shorter cost instead
++			// update move cost, taking the shortcut only when it costs less than the step through the best node
++			const float curCost = m_query.filter->getCost(bestNode->pos, neighbourNode->pos,
++														  parentRef, parentTile, parentPoly,
++														bestRef, bestTile, bestPoly,
++														neighbourRef, neighbourTile, neighbourPoly);
++			cost = bestNode->cost + curCost;
++			if (foundShortCut && parentNode->cost + rayHit.pathCost < cost)
+ 				cost = parentNode->cost + rayHit.pathCost;
+-			}
+ 			else
+-			{
+-				// No shortcut found.
+-				const float curCost = m_query.filter->getCost(bestNode->pos, neighbourNode->pos,
+-															  parentRef, parentTile, parentPoly,
+-															bestRef, bestTile, bestPoly,
+-															neighbourRef, neighbourTile, neighbourPoly);
+-				cost = bestNode->cost + curCost;
+-			}
++				foundShortCut = false;
+ 
+ 			// Special case for last node.
+ 			if (neighbourRef == m_query.endRef)

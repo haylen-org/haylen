@@ -375,6 +375,19 @@ if(APPLE)
   set_property(TARGET Clipper2 PROPERTY INTERFACE_LINK_LIBRARIES "")
 endif()
 
+# Recast bakes the navigation meshes of 3D from triangles, and Detour holds them with their tiles, answers their queries and gives the crowds of `navigation3d` their corridors, boundaries, avoidance and path requests. Its project asks for a version of CMake that CMake 4 no longer takes, so its four libraries compile from the sources in a library of the engine. The path search of Detour takes a straight shortcut past a polygon whenever a ray finds one clear, even through areas that cost more than the way around, so a patch takes the shortcut only when it costs less. The tile cache counts the edges around a vertex it removes in a buffer a third of their size, fills the hole of the vertex even when it has fewer than three corners, from numbers nothing wrote, and lays the corners of the hole out four numbers apart in a buffer of three for each, so a second patch gives the buffers room, gives up the removal past them and leaves a hole without area unfilled.
+set(recastnavigation_patches "${CMAKE_CURRENT_LIST_DIR}/patches/detour-any-angle-costs.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/detour-tile-cache-vertex-removal.patch")
+set(recastnavigation_hash d48ca0121962fa0639502c0f56c4e3ae72f98e55d88727225444f500775c0074)
+haylen_patched_package_key(recastnavigation_cache_key ${recastnavigation_hash} ${recastnavigation_patches})
+CPMAddPackage(
+  NAME recastnavigation
+  URL "https://github.com/recastnavigation/recastnavigation/archive/refs/tags/v1.6.0.tar.gz"
+  URL_HASH SHA256=${recastnavigation_hash}
+  PATCHES ${recastnavigation_patches}
+  CUSTOM_CACHE_KEY ${recastnavigation_cache_key}
+  DOWNLOAD_ONLY YES
+)
+
 # Zstandard decompresses the layers of Tiled maps, and it compresses every chunk of protected content on its own, which keeps random access and decodes faster than the other codecs at a similar ratio.
 CPMAddPackage(
   NAME zstd
@@ -542,7 +555,15 @@ elseif(HAYLEN_PLATFORM STREQUAL "linux")
   target_link_libraries(haylen-miniaudio PUBLIC ${CMAKE_DL_LIBS} m pthread)
 endif()
 
-haylen_check_dependency_memory(haylen-nanosvg haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-monocypher haylen-miniaudio)
+# Polygon references take 64 bits, so a world of any number of tiles keeps enough bits for its tiles and their polygons, and the query filter is virtual, so the filters of `navigation3d` pass polygons by their area. Both change the layout of the headers of Detour, so every source that includes them compiles with them.
+set(recast_dir "${recastnavigation_SOURCE_DIR}")
+file(GLOB recast_sources "${recast_dir}/Recast/Source/*.cpp" "${recast_dir}/Detour/Source/*.cpp" "${recast_dir}/DetourCrowd/Source/*.cpp" "${recast_dir}/DetourTileCache/Source/*.cpp")
+add_library(haylen-recast STATIC ${recast_sources})
+target_include_directories(haylen-recast SYSTEM PUBLIC "${recast_dir}/Recast/Include" "${recast_dir}/Detour/Include" "${recast_dir}/DetourCrowd/Include" "${recast_dir}/DetourTileCache/Include")
+target_compile_definitions(haylen-recast PUBLIC DT_POLYREF64 DT_VIRTUAL_QUERYFILTER)
+haylen_disable_warnings(haylen-recast)
+
+haylen_check_dependency_memory(haylen-nanosvg haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-monocypher haylen-miniaudio haylen-recast)
 
 # The loader of volk declares the functions of the surfaces of the windows of each platform, which the Vulkan device makes its swapchains on.
 if("vulkan" IN_LIST HAYLEN_GRAPHICS_APIS)

@@ -28,12 +28,24 @@ template <typename T> class LiveObjects final {
         return false;
     }
 
+    // Visits every object that still lives, from a snapshot that the next visit reuses, so a visit that adds objects never disturbs the walk.
+    template <typename Visit> void forEach(Visit visit) {
+        snapshot.assign(objects.begin(), objects.end());
+        for (const std::weak_ptr<T>& known : snapshot) {
+            if (const std::shared_ptr<T> object = known.lock()) {
+                visit(*object);
+            }
+        }
+    }
+
     void clear() noexcept {
         objects.clear();
+        snapshot.clear();
     }
 
   private:
     std::vector<std::weak_ptr<T>> objects;
+    std::vector<std::weak_ptr<T>> snapshot;
 };
 
 } // namespace haylen::plugins
