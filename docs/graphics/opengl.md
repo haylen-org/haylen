@@ -94,6 +94,9 @@ Every call that changes OpenGL state goes through a state cache. The cache knows
 | Origin | The first row of a render target is its bottom row, so `originTopLeft` is `false`. Viewports and scissors still take rectangles from the top left. |
 | Range of depth | The vertex stages write depth from 0 to 1 in clip space, as on every graphics API, and the device takes that range with `glClipControl`, of OpenGL 4.5, `GL_ARB_clip_control` or `GL_EXT_clip_control`, so reversed depth keeps its precision. A driver without clip control maps depth from -1 to 1, which `depthRange` reports as `NegativeOneToOne`, and the projections built for that range correct it. |
 | Validation | With validation on, `KHR_debug` sends the messages of the driver to the log, errors as errors, and names objects and debug groups for GPU debuggers. Contexts without it, such as WebGL2, report errors through `glGetError` at the end of each pass and frame. |
+| Cube arrays | OpenGL 4.3 and OpenGL ES 3.2, whose GLSL ES 3.20 the shader compiler writes for a program that samples a cube array, as the [RHI guide](rhi.md#cube-arrays-on-opengl-es) explains. WebGL2 has none. |
+| Views of images | `glTextureView` of OpenGL 4.3 over the immutable storage that every image of one sample has, and on OpenGL ES with `GL_EXT_texture_view` or `GL_OES_texture_view`. WebGL2 has none. |
+| Mip generation | `glGenerateMipmap`, for the formats that the context renders into and filters. |
 
 ## Limits
 

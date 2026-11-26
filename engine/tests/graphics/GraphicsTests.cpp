@@ -219,7 +219,7 @@ TEST(DeviceTest, MakesTexturesWithMipmaps) {
     device.replaceTexture(made, graphics::Image(4, 4));
     EXPECT_EQ(made.getWidth(), 4);
     EXPECT_EQ(device.createTexture(graphics::Image(1, 1), {.mipmaps = true}).getWidth(), 1);
-    EXPECT_THROW((void)device.createDynamicTexture(graphics::Image(4, 4), {.mipmaps = true}), std::invalid_argument);
+    EXPECT_EQ(device.createDynamicTexture(graphics::Image(4, 4), {.mipmaps = true}).getMipLevels(), 3);
     EXPECT_THROW((void)device.createRenderTarget(4, 4, {.mipmaps = true}), std::invalid_argument);
 }
 
@@ -432,7 +432,7 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
     // A dynamic texture that takes a new size keeps its handle and stays dynamic, and its new pixels wait for the next frame.
     device.replaceTexture(image, graphics::Image(3, 1, math::Color::white()));
     EXPECT_EQ(image.getSize(), math::Vec2(3.0F, 1.0F));
-    EXPECT_EQ(image.getResource()->staged.size(), 12U);
+    EXPECT_EQ(image.getResource()->staged.front().pixels.size(), 12U);
     device.updateTexture(image, std::vector<std::uint8_t>(12, 7));
     fixture.frames(1);
     EXPECT_EQ(gpu.getLastFrame().imageWrites, 1);
@@ -464,7 +464,7 @@ TEST(DeviceTest, UploadsOnlyTheRegionOfADynamicTextureThatChanged) {
 
     device.updateTexture(texture, pixels, {1, 2, 2, 1});
     const std::vector<std::uint8_t> row{36, 37, 38, 39, 40, 41, 42, 43};
-    EXPECT_EQ(texture.getResource()->staged, row);
+    EXPECT_EQ(texture.getResource()->staged.front().pixels, row);
     fixture.frames(1);
     EXPECT_EQ(gpu.getLastFrame().imageWrites, 1);
     EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 8U);
@@ -473,15 +473,15 @@ TEST(DeviceTest, UploadsOnlyTheRegionOfADynamicTextureThatChanged) {
     device.updateTexture(texture, pixels, {0, 0, 1, 1});
     pixels[60] = 200;
     device.updateTexture(texture, pixels, {3, 3, 1, 1});
-    EXPECT_EQ(texture.getResource()->stagedRegion, (graphics::Device::Region{0, 0, 4, 4}));
-    EXPECT_EQ(texture.getResource()->staged, pixels);
+    EXPECT_EQ(texture.getResource()->staged.front().region, (graphics::Device::Region{0, 0, 4, 4}));
+    EXPECT_EQ(texture.getResource()->staged.front().pixels, pixels);
     fixture.frames(1);
     EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 64U);
 
     // A texture that takes a new size while a region waits sends its new pixels whole.
     device.updateTexture(texture, pixels, {2, 2, 2, 2});
     device.replaceTexture(texture, graphics::Image(2, 1, math::Color::white()));
-    EXPECT_EQ(texture.getResource()->stagedRegion, (graphics::Device::Region{0, 0, 2, 1}));
+    EXPECT_EQ(texture.getResource()->staged.front().region, (graphics::Device::Region{0, 0, 2, 1}));
     fixture.frames(1);
     EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 8U);
 
@@ -546,7 +546,7 @@ TEST(DeviceTest, UpdatesDynamicTexturesEveryFrameWithoutAllocating) {
     const std::size_t updated = measure(true);
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().uploadedBytes, pixels.size());
     EXPECT_EQ(updated, measure(false));
-    EXPECT_EQ(texture.getResource()->staged.capacity(), 0U);
+    EXPECT_EQ(texture.getResource()->staged.front().pixels.capacity(), 0U);
 }
 
 TEST(ViewportTest, FitLetterboxesAndConvertsCoordinates) {

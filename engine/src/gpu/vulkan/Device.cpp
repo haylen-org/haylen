@@ -117,7 +117,7 @@ void Device::createFrames() {
     }
 }
 
-// A format takes the kind of image that `makeImage` makes of it only with every use that `makeImage` gives that kind: a texture is sampled and copied into, a render target is drawn into, sampled, copied into and read back, and a depth stencil image is drawn into, sampled and copied into. The sample counts of a format are the ones the GPU takes for its attachments of that use.
+// A format takes the kind of image that `makeImage` makes of it only with every use that `makeImage` gives that kind: a texture is sampled and copied into, a render target is drawn into, sampled, copied into and read back, and a depth stencil image is drawn into, sampled and copied into. The sample counts of a format are the ones the GPU takes for its attachments of that use. A format generates its mip levels where the GPU blits from and into its images and filters it linearly, since the levels come from linear blits.
 void Device::fillCapabilities() {
     const VkPhysicalDeviceLimits& limits = context->getProperties().limits;
     capabilities.maxImageSize = static_cast<int>(limits.maxImageDimension2D);
@@ -130,6 +130,10 @@ void Device::fillCapabilities() {
     capabilities.maxAnisotropy = context->getEnabledFeatures().samplerAnisotropy == VK_TRUE ? static_cast<int>(limits.maxSamplerAnisotropy) : 1;
     capabilities.maxLodBias = limits.maxSamplerLodBias;
     capabilities.borderColors = true;
+
+    // Every Vulkan device makes views of ranges of the mip levels and layers of images, and samples cube arrays on a GPU with the feature that the device turns on for them.
+    capabilities.cubeArrays = context->getEnabledFeatures().imageCubeArray == VK_TRUE;
+    capabilities.imageViews = true;
 
     // Every Vulkan device binds storage buffers and reads the arguments of indirect draws, and a uniform block reads at most the range of one uniform buffer descriptor.
     capabilities.storageBuffers = true;
@@ -148,6 +152,7 @@ void Device::fillCapabilities() {
         support.blend = !depth && !compressed && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT);
         support.filter = !depth && support.sample && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
         support.storage = !depth && !compressed && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
+        support.mipmaps = support.filter && !compressed && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT);
         support.sampleCounts = support.render ? getSampleCounts(vulkanFormat, depth) : std::uint8_t{0};
         support.render = support.sampleCounts != 0;
     }
@@ -195,6 +200,8 @@ void Device::shutdown() noexcept {
     const VkDevice device = context->getDevice();
     const VmaAllocator allocator = context->getAllocator();
     buffers.forEach([&](const BufferRecord& record) { vmaDestroyBuffer(allocator, record.buffer, record.allocation); });
+
+    // The views of every image go before the images, and a record of a view holds no image.
     // clang-format off
     images.forEach([&](const ImageRecord& record) {
         for (const AttachmentView& view : record.attachmentViews) {
@@ -204,8 +211,11 @@ void Device::shutdown() noexcept {
         if (record.sampleView != VK_NULL_HANDLE) {
             vk.vkDestroyImageView(device, record.sampleView, nullptr);
         }
-
-        vmaDestroyImage(allocator, record.image, record.allocation);
+    });
+    images.forEach([&](const ImageRecord& record) {
+        if (!record.description.isView()) {
+            vmaDestroyImage(allocator, record.image, record.allocation);
+        }
     });
     // clang-format on
     samplers.forEach([&](const SamplerRecord& record) { vk.vkDestroySampler(device, record.sampler, nullptr); });
@@ -923,7 +933,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no image.");
     }
 
-    ImageRules::check(desc, capabilities);
+    const ImageRules::Description description = ImageRules::check(desc, capabilities);
     const VkFormat format = resolveFormat(desc.format);
     const bool depth = ImageInfo::isDepth(desc.format);
     const VkSampleCountFlagBits samples = Conversions::toSampleCount(desc.sampleCount);
@@ -942,14 +952,21 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
 
+    // The blits that generate the mip levels of a dynamic image or a render target read each level as a copy source.
+    const bool generatesMipmaps = (desc.kind == ImageKind::Dynamic || desc.kind == ImageKind::RenderTarget) && desc.mipLevels > 1 && capabilities.getFormat(desc.format).mipmaps;
+    if (generatesMipmaps) {
+        usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    }
+
+    // Cubes and cube arrays are cube compatible, so cube views read them, and a volume that passes draw into is array compatible, so flat views reach its slices.
+    const bool volume = desc.type == TextureType::Volume;
     VkImageCreateFlags flags = 0;
-    if (desc.type == TextureType::Cube) {
+    if (desc.type == TextureType::Cube || desc.type == TextureType::CubeArray) {
         flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    } else if (desc.type == TextureType::Volume && attachment) {
+    } else if (volume && attachment) {
         flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
     }
 
-    const bool volume = desc.type == TextureType::Volume;
     const VkImageCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = nullptr,
@@ -974,7 +991,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
 
     checkImageLimits(desc, info, supported);
 
-    ImageRecord record{.format = format, .pixelFormat = desc.format, .kind = desc.kind, .type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .samples = samples, .aspects = Conversions::getAspects(format)};
+    ImageRecord record{.format = format, .samples = samples, .aspects = Conversions::getAspects(format), .description = description};
     if (!sampled) {
         record.restLayout = depth ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
@@ -987,13 +1004,9 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
 
     try {
         if (sampled) {
-            // A view that shaders sample reads the depth of a depth and stencil image.
-            const VkImageAspectFlags aspect = depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-            const VkImageViewCreateInfo viewInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .pNext = nullptr, .flags = 0, .image = record.image, .viewType = Conversions::toViewType(desc.type), .format = format, .components = {}, .subresourceRange = {.aspectMask = aspect, .baseMipLevel = 0, .levelCount = VK_REMAINING_MIP_LEVELS, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS}};
             ReleaseQueue::Hold viewRoom = releases.hold();
-            Context::check(vk.vkCreateImageView(context->getDevice(), &viewInfo, nullptr, &record.sampleView), "make the view of an image");
+            record.sampleView = makeSampleView(record, {.type = desc.type, .baseMipLevel = 0, .mipLevels = desc.mipLevels, .baseLayer = 0, .layers = desc.layers, .label = desc.label});
             viewRoom.keep();
-            context->setName(VK_OBJECT_TYPE_IMAGE_VIEW, record.sampleView, desc.label);
         }
 
         if (!ensureFrame()) {
@@ -1013,20 +1026,63 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     }
 }
 
+// A view samples its range of the image as an image of its own type. Array views of the faces of cubes need nothing of their image, and cube views of the cubes of a cube array need the cube compatible image that `makeImage` makes of every cube array.
+gpu::Device::Image Device::makeView(const ViewDesc& desc) {
+    if (lost) {
+        throw std::runtime_error("The Vulkan device stopped working, so it makes no view.");
+    }
+
+    ImageRecord& image = images.get(desc.image.id);
+    const ImageRules::Description description = ImageRules::checkView(image.description, desc, capabilities);
+    ImageRecord record{.format = image.format, .aspects = image.aspects, .description = description};
+    image.views.reserve(image.views.size() + 1);
+
+    ReleaseQueue::Hold room = releases.hold();
+    record.sampleView = makeSampleView(image, desc);
+    try {
+        const std::uint64_t id = images.add(std::move(record));
+        image.views.push_back(id);
+        room.keep();
+        return {id};
+    } catch (...) {
+        vk.vkDestroyImageView(context->getDevice(), record.sampleView, nullptr);
+        throw;
+    }
+}
+
+// A view that shaders sample reads the depth of a depth and stencil image, and a view of a volume reads every slice of its mip levels.
+VkImageView Device::makeSampleView(const ImageRecord& image, const ViewDesc& range) {
+    const bool volume = range.type == TextureType::Volume;
+    const VkImageAspectFlags aspect = (image.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) != 0 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+    const VkImageSubresourceRange subresources{
+        .aspectMask = aspect,
+        .baseMipLevel = static_cast<std::uint32_t>(range.baseMipLevel),
+        .levelCount = static_cast<std::uint32_t>(range.mipLevels),
+        .baseArrayLayer = volume ? 0U : static_cast<std::uint32_t>(range.baseLayer),
+        .layerCount = volume ? 1U : static_cast<std::uint32_t>(range.layers),
+    };
+    const VkImageViewCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .pNext = nullptr, .flags = 0, .image = image.image, .viewType = Conversions::toViewType(range.type), .format = image.format, .components = {}, .subresourceRange = subresources};
+    VkImageView view = VK_NULL_HANDLE;
+    Context::check(vk.vkCreateImageView(context->getDevice(), &info, nullptr, &view), "make the view of an image");
+    context->setName(VK_OBJECT_TYPE_IMAGE_VIEW, view, range.label);
+    return view;
+}
+
 // Each mip level holds every layer of its level, and a volume every slice, packed row after row.
 void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<const std::byte>> levels) {
-    if (levels.size() > static_cast<std::size_t>(record.mipLevels)) {
+    const ImageRules::Description& description = record.description;
+    if (levels.size() > static_cast<std::size_t>(description.mipLevels)) {
         throw ContractError(ContractError::Rule::Image);
     }
 
-    const bool volume = record.type == TextureType::Volume;
+    const bool volume = description.type == TextureType::Volume;
     copyRegions.clear();
     for (std::size_t level = 0; level < levels.size(); ++level) {
-        const auto width = static_cast<std::uint32_t>(std::max(record.width >> level, 1));
-        const auto height = static_cast<std::uint32_t>(std::max(record.height >> level, 1));
-        const auto depth = volume ? static_cast<std::uint32_t>(std::max(record.layers >> level, 1)) : 1U;
-        const auto layers = volume ? 1U : static_cast<std::uint32_t>(record.layers);
-        const std::size_t bytes = ImageInfo::getRegionBytes(record.pixelFormat, static_cast<int>(width), static_cast<int>(height)) * depth * layers;
+        const auto width = static_cast<std::uint32_t>(std::max(description.width >> level, 1));
+        const auto height = static_cast<std::uint32_t>(std::max(description.height >> level, 1));
+        const auto depth = volume ? static_cast<std::uint32_t>(std::max(description.layers >> level, 1)) : 1U;
+        const auto layers = volume ? 1U : static_cast<std::uint32_t>(description.layers);
+        const std::size_t bytes = ImageInfo::getRegionBytes(description.format, static_cast<int>(width), static_cast<int>(height)) * depth * layers;
         if (levels[level].size() < bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
@@ -1047,7 +1103,7 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
 
     // Mip levels without pixels start cleared.
     const VkCommandBuffer commands = frames[frameIndex].uploads;
-    if (levels.size() < static_cast<std::size_t>(record.mipLevels)) {
+    if (levels.size() < static_cast<std::size_t>(description.mipLevels)) {
         const VkClearColorValue clear{};
         const VkImageSubresourceRange rest{.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(levels.size()), .levelCount = VK_REMAINING_MIP_LEVELS, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS};
         vk.vkCmdClearColorImage(commands, record.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1, &rest);
@@ -1125,6 +1181,12 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     }
 
     ProgramSlots::check(desc);
+
+    // The SPIR-V of a program that samples a cube array needs the feature of cube arrays, which a device without them lacks.
+    const bool samplesCubeArrays = std::ranges::any_of(desc.textures, [](const TextureBinding& texture) { return texture.type == TextureType::CubeArray; });
+    if (samplesCubeArrays && !capabilities.cubeArrays) {
+        throw ContractError(ContractError::Rule::Program);
+    }
 
     for (const StageCode* stage : {&desc.vertex, &desc.fragment}) {
         if (stage->bytecode.empty() || stage->bytecode.size() % 4 != 0) {
@@ -1422,10 +1484,21 @@ void Device::destroy(Buffer buffer) noexcept {
     releases.push(ReleaseQueue::Buffer{.buffer = record->buffer, .allocation = record->allocation}, nextSerial);
 }
 
+// An image takes its views with it at the same serial, and a view leaves its image, which lives as long as the view does.
 void Device::destroy(Image image) noexcept {
     std::optional<ImageRecord> record = images.remove(image.id);
     if (!record) {
         return;
+    }
+
+    if (record->description.isView()) {
+        std::erase(images.find(record->description.viewed.id)->views, image.id);
+    }
+
+    for (const std::uint64_t view : record->views) {
+        std::optional<ImageRecord> viewRecord = images.remove(view);
+        descriptors.forgetImage(view, nextSerial);
+        releaseImage(*viewRecord, nextSerial);
     }
 
     descriptors.forgetImage(image.id, nextSerial);
@@ -1442,7 +1515,9 @@ void Device::releaseImage(ImageRecord& record, std::uint64_t serial) {
         releases.push(ReleaseQueue::ImageView{.view = record.sampleView}, serial);
     }
 
-    releases.push(ReleaseQueue::Image{.image = record.image, .allocation = record.allocation}, serial);
+    if (!record.description.isView()) {
+        releases.push(ReleaseQueue::Image{.image = record.image, .allocation = record.allocation}, serial);
+    }
 }
 
 void Device::destroy(Sampler sampler) noexcept {
@@ -1569,56 +1644,101 @@ void Device::recordBufferCopy(VkBuffer source, VkDeviceSize sourceOffset, VkBuff
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, kBufferStages, 0, 0, nullptr, 1, &barrier, 0, nullptr);
 }
 
-// The pixels of every image go into the staging ring first, and the copies wait for the frames in flight that sample the images.
+// The pixels of every write go into the staging ring first, and the copies wait for the frames in flight that sample the images. A write keeps the pixels outside its region, so the mip level and the layer it reaches leave their resting layout with their contents, and the writes into slices of one mip level of a volume share the barrier of that level.
 void Device::writeImages(std::span<const ImageWrite> writes) {
+    for (const ImageWrite& write : writes) {
+        ImageRules::checkWrite(images.get(write.image.id).description, write);
+    }
+
+    ImageRules::checkDistinctWrites(writes);
     if (writes.empty() || !ensureFrame()) {
         return;
     }
 
-    const VkCommandBuffer commands = frames[frameIndex].uploads;
-    copyRegions.clear();
+    imageCopies.clear();
     imageBarriers.clear();
-    std::vector<VkBuffer>& sourceBuffers = stagingSources;
-    sourceBuffers.clear();
     for (const ImageWrite& write : writes) {
         const ImageRecord& record = images.get(write.image.id);
-        if (record.kind != ImageKind::Dynamic) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
+        const bool volume = record.description.type == TextureType::Volume;
+        const auto mipLevel = static_cast<std::uint32_t>(write.mipLevel);
+        const std::uint32_t layer = volume ? 0U : static_cast<std::uint32_t>(write.layer);
         const Region& region = write.region;
-        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= record.width && region.y + region.height <= record.height;
-        const std::size_t bytes = ImageInfo::getRegionBytes(record.pixelFormat, region.width, region.height);
-        if (!inside || write.pixels.size() != bytes) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
+        const UploadRing::Allocation source = staging.allocate(write.pixels.size(), 16);
+        std::memcpy(source.data, write.pixels.data(), write.pixels.size());
 
-        // The copy keeps the pixels outside the region, so the image leaves its resting layout with its contents.
-        const UploadRing::Allocation source = staging.allocate(bytes, 16);
-        std::memcpy(source.data, write.pixels.data(), bytes);
-        sourceBuffers.push_back(source.buffer);
-        const VkImageSubresourceRange range{.aspectMask = record.aspects, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1};
-        copyRegions.push_back({.bufferOffset = source.offset, .bufferRowLength = 0, .bufferImageHeight = 0, .imageSubresource = {.aspectMask = record.aspects, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1}, .imageOffset = {region.x, region.y, 0}, .imageExtent = {static_cast<std::uint32_t>(region.width), static_cast<std::uint32_t>(region.height), 1U}});
-        imageBarriers.push_back(ImageLayouts::makeBarrier(record.image, range, record.restLayout, record.restLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+        const VkBufferImageCopy copy{.bufferOffset = source.offset, .bufferRowLength = 0, .bufferImageHeight = 0, .imageSubresource = {.aspectMask = record.aspects, .mipLevel = mipLevel, .baseArrayLayer = layer, .layerCount = 1}, .imageOffset = {region.x, region.y, volume ? write.layer : 0}, .imageExtent = {static_cast<std::uint32_t>(region.width), static_cast<std::uint32_t>(region.height), 1U}};
+        imageCopies.push_back({.source = source.buffer, .destination = record.image, .region = copy});
+
+        const bool shared = std::ranges::any_of(imageBarriers, [&record, mipLevel, layer](const VkImageMemoryBarrier& barrier) { return barrier.image == record.image && barrier.subresourceRange.baseMipLevel == mipLevel && barrier.subresourceRange.baseArrayLayer == layer; });
+        if (!shared) {
+            const VkImageSubresourceRange range{.aspectMask = record.aspects, .baseMipLevel = mipLevel, .levelCount = 1, .baseArrayLayer = layer, .layerCount = 1};
+            imageBarriers.push_back(ImageLayouts::makeBarrier(record.image, range, record.restLayout, record.restLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+        }
     }
 
+    const VkCommandBuffer commands = frames[frameIndex].uploads;
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
 
-    for (std::size_t index = 0; index < writes.size(); ++index) {
-        vk.vkCmdCopyBufferToImage(commands, sourceBuffers[index], imageBarriers[index].image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegions[index]);
+    for (const ImageCopy& copy : imageCopies) {
+        vk.vkCmdCopyBufferToImage(commands, copy.source, copy.destination, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy.region);
     }
 
+    // Each part goes back to the resting layout that its barrier moved it out of.
     VkPipelineStageFlags restStages = 0;
-    for (std::size_t index = 0; index < writes.size(); ++index) {
-        VkImageMemoryBarrier& barrier = imageBarriers[index];
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.newLayout = images.find(writes[index].image.id)->restLayout;
-        barrier.dstAccessMask = ImageLayouts::getAccess(barrier.newLayout);
-        restStages |= ImageLayouts::getStages(barrier.newLayout);
+    for (VkImageMemoryBarrier& barrier : imageBarriers) {
+        const VkImageLayout rest = barrier.oldLayout;
+        barrier = ImageLayouts::makeBarrier(barrier.image, barrier.subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, rest);
+        restStages |= ImageLayouts::getStages(rest);
     }
 
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, restStages, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
+}
+
+// Each smaller level is a linear blit of the whole level above it, which averages the two texels of each axis that halves, a box filter, and the sRGB formats blit through linear values. The first level leaves its resting layout with its contents as the source of the second, the smaller levels leave it without theirs, and each one becomes the source of the next once its blit wrote it. The blits run outside rendering among the passes of the frame, so they end the rendering that a swapchain pass left open.
+void Device::generateMipmaps(Image image) {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::Mipmaps);
+    }
+
+    const ImageRecord& record = images.get(image.id);
+    const ImageRules::Description& description = record.description;
+    ImageRules::checkMipmaps(description, capabilities);
+    if (!ensureFrame()) {
+        return;
+    }
+
+    endSwapchainRendering();
+    const VkCommandBuffer commands = frames[frameIndex].graphics;
+    const bool volume = description.type == TextureType::Volume;
+    const std::uint32_t layers = volume ? 1U : static_cast<std::uint32_t>(description.layers);
+    const auto levels = static_cast<std::uint32_t>(description.mipLevels);
+    const VkImageSubresourceRange first{.aspectMask = record.aspects, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = layers};
+    const VkImageSubresourceRange smaller{.aspectMask = record.aspects, .baseMipLevel = 1, .levelCount = levels - 1, .baseArrayLayer = 0, .layerCount = layers};
+    const std::array<VkImageMemoryBarrier, 2> toTransfer{
+        ImageLayouts::makeBarrier(record.image, first, record.restLayout, record.restLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+        ImageLayouts::makeBarrier(record.image, smaller, record.restLayout, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+    };
+    vk.vkCmdPipelineBarrier(commands, ImageLayouts::getStages(record.restLayout), VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(toTransfer.size()), toTransfer.data());
+
+    for (std::uint32_t level = 1; level < levels; ++level) {
+        const ImageInfo::Extent above = description.getLevelExtent(static_cast<int>(level) - 1);
+        const ImageInfo::Extent below = description.getLevelExtent(static_cast<int>(level));
+        const VkImageBlit blit{
+            .srcSubresource = {.aspectMask = record.aspects, .mipLevel = level - 1, .baseArrayLayer = 0, .layerCount = layers},
+            .srcOffsets = {{0, 0, 0}, {above.width, above.height, volume ? above.depth : 1}},
+            .dstSubresource = {.aspectMask = record.aspects, .mipLevel = level, .baseArrayLayer = 0, .layerCount = layers},
+            .dstOffsets = {{0, 0, 0}, {below.width, below.height, volume ? below.depth : 1}},
+        };
+        vk.vkCmdBlitImage(commands, record.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, record.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+
+        const VkImageSubresourceRange written{.aspectMask = record.aspects, .baseMipLevel = level, .levelCount = 1, .baseArrayLayer = 0, .layerCount = layers};
+        const VkImageMemoryBarrier toSource = ImageLayouts::makeBarrier(record.image, written, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toSource);
+    }
+
+    const VkImageSubresourceRange every{.aspectMask = record.aspects, .baseMipLevel = 0, .levelCount = levels, .baseArrayLayer = 0, .layerCount = layers};
+    const VkImageMemoryBarrier toRest = ImageLayouts::makeBarrier(record.image, every, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, record.restLayout);
+    vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, ImageLayouts::getStages(record.restLayout), 0, 0, nullptr, 0, nullptr, 1, &toRest);
 }
 
 // A swapchain pass that keeps the contents of the swapchain pass right before it goes on drawing in the same rendering, so its depth, stencil and multisampled color stay. Labels name the commands inside the rendering of their pass. The pass opens once its rendering began, so a pass that fails to begin leaves no pass open.
@@ -1730,37 +1850,30 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     PassTarget target{.colorCount = static_cast<std::uint32_t>(desc.colors.size())};
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
-        ImageRecord& record = images.get(attachment.image.id);
-        if (record.kind != ImageKind::RenderTarget) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
+        ImageRecord& record = requireAttachment(attachment.image, ImageKind::RenderTarget);
         AttachmentTarget& color = target.colors[index];
         color = {.view = getAttachmentView(record, attachment.mipLevel, attachment.layer), .format = record.format, .samples = record.samples, .load = Conversions::toLoad(attachment.load), .store = Conversions::toStore(attachment.store)};
         color.clear.color = {{attachment.clear.r, attachment.clear.g, attachment.clear.b, attachment.clear.a}};
         addTransition(record, attachment.mipLevel, attachment.layer, attachment.load == Load::Keep);
 
         if (index == 0) {
-            target.extent = {static_cast<std::uint32_t>(std::max(record.width >> attachment.mipLevel, 1)), static_cast<std::uint32_t>(std::max(record.height >> attachment.mipLevel, 1))};
+            const ImageInfo::Extent level = record.description.getLevelExtent(attachment.mipLevel);
+            target.extent = {static_cast<std::uint32_t>(level.width), static_cast<std::uint32_t>(level.height)};
         }
 
         if (attachment.resolve.isValid()) {
-            ImageRecord& resolve = images.get(attachment.resolve.id);
-            color.resolveView = getAttachmentView(resolve, 0, 0);
+            ImageRecord& resolve = requireAttachment(attachment.resolve, ImageKind::RenderTarget);
+            color.resolveView = getAttachmentView(resolve, attachment.resolveMipLevel, attachment.resolveLayer);
             color.resolveFormat = resolve.format;
-            addTransition(resolve, 0, 0, false);
+            addTransition(resolve, attachment.resolveMipLevel, attachment.resolveLayer, false);
         }
     }
 
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
-        ImageRecord& record = images.get(attachment.image.id);
-        if (record.kind != ImageKind::DepthStencil) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
+        ImageRecord& record = requireAttachment(attachment.image, ImageKind::DepthStencil);
         target.hasDepth = true;
-        target.depth = {.view = getAttachmentView(record, 0, 0), .format = record.format, .samples = record.samples, .load = Conversions::toLoad(attachment.depthLoad), .store = Conversions::toStore(attachment.depthStore), .stencilLoad = Conversions::toLoad(attachment.stencilLoad), .stencilStore = Conversions::toStore(attachment.stencilStore)};
+        target.depth = {.view = getAttachmentView(record, attachment.mipLevel, attachment.layer), .format = record.format, .samples = record.samples, .load = Conversions::toLoad(attachment.depthLoad), .store = Conversions::toStore(attachment.depthStore), .stencilLoad = Conversions::toLoad(attachment.stencilLoad), .stencilStore = Conversions::toStore(attachment.stencilStore)};
         target.depth.clear.depthStencil = {.depth = attachment.clearDepth, .stencil = attachment.clearStencil};
         if (storeKeptDepth && attachment.depthLoad == Load::Keep && !Conversions::hasStencil(record.format)) {
             target.depth.store = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1769,10 +1882,11 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         }
 
         const bool keeps = attachment.depthLoad == Load::Keep || attachment.stencilLoad == Load::Keep;
-        addTransition(record, 0, 0, keeps);
+        addTransition(record, attachment.mipLevel, attachment.layer, keeps);
 
         if (desc.colors.empty()) {
-            target.extent = {static_cast<std::uint32_t>(record.width), static_cast<std::uint32_t>(record.height)};
+            const ImageInfo::Extent level = record.description.getLevelExtent(attachment.mipLevel);
+            target.extent = {static_cast<std::uint32_t>(level.width), static_cast<std::uint32_t>(level.height)};
         }
     }
 
@@ -1791,10 +1905,20 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     beginRendering(target);
 }
 
-// An attachment whose contents the pass discards leaves its resting layout as undefined, which spares the GPU keeping them.
+// An attachment is an image of its kind and never a view, since a pass names the mip level and the layer of the image itself.
+Device::ImageRecord& Device::requireAttachment(Image image, ImageKind kind) {
+    ImageRecord& record = images.get(image.id);
+    if (record.description.isView() || record.description.kind != kind) {
+        throw ContractError(ContractError::Rule::PassAttachments);
+    }
+
+    return record;
+}
+
+// An attachment whose contents the pass discards leaves its resting layout as undefined, which spares the GPU keeping them. Only the mip level and the layer that the pass draws into leave it, or the whole mip level of a volume, so the pass samples the others where they rest.
 void Device::addTransition(const ImageRecord& record, int mipLevel, int layer, bool keeps) {
     const bool depth = (record.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) != 0;
-    const bool volume = record.type == TextureType::Volume;
+    const bool volume = record.description.type == TextureType::Volume;
     pass.transitions[pass.transitionCount++] = {
         .image = record.image,
         .range = {.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(mipLevel), .levelCount = 1, .baseArrayLayer = volume ? 0U : static_cast<std::uint32_t>(layer), .layerCount = 1},
@@ -1810,7 +1934,7 @@ VkImageView Device::getAttachmentView(ImageRecord& record, int mipLevel, int lay
         return found->view;
     }
 
-    if (mipLevel < 0 || mipLevel >= record.mipLevels || layer < 0 || layer >= record.layers) {
+    if (mipLevel < 0 || mipLevel >= record.description.mipLevels || layer < 0 || layer >= record.description.getLevelExtent(mipLevel).depth) {
         throw ContractError(ContractError::Rule::PassAttachments);
     }
 
@@ -2327,15 +2451,16 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     }
 
     const ImageRecord& record = images.get(image.id);
-    if (record.kind != ImageKind::RenderTarget || record.samples != VK_SAMPLE_COUNT_1_BIT) {
+    const ImageRules::Description& description = record.description;
+    if (description.isView() || description.kind != ImageKind::RenderTarget || record.samples != VK_SAMPLE_COUNT_1_BIT) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    if (width < 1 || height < 1 || width > record.width || height > record.height) {
+    if (width < 1 || height < 1 || width > description.width || height > description.height) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    return std::make_unique<CopyReadback>(readbacks.start(ReadbackQueue::ImageSource{.image = record.image, .layout = record.restLayout, .width = width, .height = height, .format = record.pixelFormat}));
+    return std::make_unique<CopyReadback>(readbacks.start(ReadbackQueue::ImageSource{.image = record.image, .layout = record.restLayout, .width = width, .height = height, .format = description.format}));
 }
 
 // The copy goes to the queue after the frames that the device committed, so it reads what they left in the buffer.

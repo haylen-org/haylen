@@ -16,10 +16,12 @@
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageInfo.hpp"
+#include "gpu/ImageRules.hpp"
 #include "gpu/opengl/Context.hpp"
 #include "gpu/opengl/Conversions.hpp"
 #include "gpu/opengl/DebugOutput.hpp"
 #include "gpu/opengl/DrawnClear.hpp"
+#include "gpu/opengl/DrawnResolve.hpp"
 #include "gpu/opengl/FramebufferCache.hpp"
 #include "gpu/opengl/GpuTimer.hpp"
 #include "gpu/opengl/ScaledDrawable.hpp"
@@ -34,7 +36,7 @@
 
 namespace haylen::gpu::opengl {
 
-// The device of OpenGL 4.3 core on Windows and Linux, OpenGL ES 3.0 on Android and WebGL2 on the web, one class that knows its flavour. It draws through the context the platform created with the window, which stays current on the frame thread, and keeps every object as long as that context lives. The surfaces beyond the window are other drawables of that same context, which the device makes current for the swapchain passes that draw into them and presents as a pass leaves them, so every object serves every surface. The first row of its render targets is their bottom row. Each uniform block reads the range of a buffer bound to the binding point of its slot: a uniform buffer of the bindings, or the uniform ring of the frame, which holds the bytes that `applyUniforms` gives. OpenGL orders the writes into a buffer and the copies between buffers with the draws around them, so a dynamic or a stream buffer is one buffer whose writes and copies take their place among the draws of the frame, and a readback of a buffer copies its range into a buffer that the CPU reads behind a fence. OpenGL keeps an object that a queued command still uses until the GPU finished the command, so `destroy` deletes objects at once.
+// The device of OpenGL 4.3 core on Windows and Linux, OpenGL ES 3.0 on Android and WebGL2 on the web, one class that knows its flavour. It draws through the context the platform created with the window, which stays current on the frame thread, and keeps every object as long as that context lives. The surfaces beyond the window are other drawables of that same context, which the device makes current for the swapchain passes that draw into them and presents as a pass leaves them, so every object serves every surface. The first row of its render targets is their bottom row. Each uniform block reads the range of a buffer bound to the binding point of its slot: a uniform buffer of the bindings, or the uniform ring of the frame, which holds the bytes that `applyUniforms` gives. OpenGL orders the writes into a buffer and the copies between buffers with the draws around them, so a dynamic or a stream buffer is one buffer whose writes and copies take their place among the draws of the frame, and a readback of a buffer copies its range into a buffer that the CPU reads behind a fence. Every image that is no multisampled renderbuffer is a texture of immutable storage, whose mip levels and layers take the writes of dynamic images through the pixel unpack buffer, whose levels `glGenerateMipmap` fills in their place among the draws, and whose views are textures of `glTextureView` that share its storage. OpenGL keeps an object that a queued command still uses until the GPU finished the command, so `destroy` deletes objects at once.
 class Device final : public gpu::Device {
   public:
     static constexpr std::size_t kFramesInFlight = 3;
@@ -64,6 +66,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] Sampler makeSampler(const SamplerDesc& desc) override;
     [[nodiscard]] Program makeProgram(const ProgramDesc& desc) override;
     [[nodiscard]] Pipeline makePipeline(const PipelineDesc& desc) override;
+    [[nodiscard]] Image makeView(const ViewDesc& desc) override;
     void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) override;
 
     void destroy(Buffer buffer) noexcept override;
@@ -75,6 +78,7 @@ class Device final : public gpu::Device {
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
     void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
+    void generateMipmaps(Image image) override;
 
     void beginPass(const PassDesc& desc) override;
 
@@ -128,19 +132,13 @@ class Device final : public gpu::Device {
         BufferRules::Description description{};
     };
 
-    // A multisampled image is a renderbuffer, whose target is `Gl::kRenderbuffer`, and the others are textures.
+    // A multisampled image is a renderbuffer, whose target is `Gl::kRenderbuffer`, and the others are textures, with the format they are stored in. An image keeps the ids of its views, which go with it.
     struct ImageRecord {
         Gl::Uint name = 0;
         Gl::Enum target = Gl::kTexture2d;
-        TextureType type = TextureType::Flat;
-        PixelFormat format = PixelFormat::Rgba8;
         Conversions::Pixel pixel;
-        int width = 0;
-        int height = 0;
-        int layers = 1;
-        int mipLevels = 1;
-        int sampleCount = 1;
-        ImageKind kind = ImageKind::Texture;
+        ImageRules::Description description;
+        std::vector<std::uint64_t> views{};
     };
 
     struct PipelineRecord {
@@ -185,7 +183,6 @@ class Device final : public gpu::Device {
     [[nodiscard]] static std::uintptr_t toAddress(const void* pointer) noexcept;
     [[nodiscard]] static std::size_t readUniformAlignment(const Gl& functions);
     static void copyPixels(std::byte* destination, std::span<const std::byte> source, bool swapsRedBlue) noexcept;
-    [[nodiscard]] static int getLevelSize(int size, int level) noexcept;
     [[nodiscard]] StateCache::Rectangle toWindow(const math::Rect& pixels) const noexcept;
 
     void applyDriverIssues();
@@ -203,10 +200,10 @@ class Device final : public gpu::Device {
     void uploadImagesThroughRing(std::span<const ImageWrite> writes, std::size_t total);
     void uploadLevel(const ImageRecord& record, int level, std::uintptr_t source);
     void uploadLayers(const ImageRecord& record, Gl::Enum target, int level, const ImageInfo::Extent& extent, std::uintptr_t source);
-    void uploadRegion(const ImageRecord& record, const Region& region, std::uintptr_t source);
-    [[nodiscard]] std::size_t getLevelBytes(const ImageRecord& record, int level) const noexcept;
+    void uploadRegion(const ImageRecord& record, const ImageWrite& write, std::uintptr_t source);
+    void deleteImage(const ImageRecord& record) noexcept;
     [[nodiscard]] FramebufferCache::Attachment toAttachment(Image image, int mipLevel, int layer);
-    [[nodiscard]] Gl::Uint getSingleFramebuffer(Image image, std::string_view label);
+    [[nodiscard]] Gl::Uint getSingleFramebuffer(Image image, int mipLevel, int layer, std::string_view label);
     [[nodiscard]] StateCache::Raster toRaster(const PipelineDesc& desc) const;
 
     void beginFrame();
@@ -227,6 +224,8 @@ class Device final : public gpu::Device {
     void loadAttachments();
     void clearByDrawing();
     [[nodiscard]] bool isClearedByDrawing(const ColorAttachment& color);
+    [[nodiscard]] bool isDepthStencilClearedByDrawing();
+    [[nodiscard]] bool isLayerDrawnInto(Gl::Enum target, int layer) const noexcept;
     void resolveAttachments();
     void discardAttachments();
     void checkLost();
@@ -260,12 +259,14 @@ class Device final : public gpu::Device {
     std::unique_ptr<UploadRing> ring;
     UniformRing uniformRing;
     FramebufferCache framebuffers;
-    // Whether a pass clears its attachments at a later layer of an array or a volume by drawing, which the driver issues ask of a driver whose clears reach only the first layer.
-    bool layersClearedByDrawing = false;
+    // Whether a pass clears its attachments at a later layer of an array, a cube array or a volume and resolves into such a layer by drawing, which the driver issues ask of a driver whose clears and blits reach only the first layer.
+    bool laterLayersByDrawing = false;
     // Whether a pass clears its multisampled attachments by drawing, which the driver issues ask of a driver whose clears reach only one sample.
     bool samplesClearedByDrawing = false;
     // The clear by drawing, which the device makes only for a driver whose issues ask for it.
     std::unique_ptr<DrawnClear> drawnClear;
+    // The resolve by drawing into a later layer, which the device makes only for a driver whose issues ask for it.
+    std::unique_ptr<DrawnResolve> drawnResolve;
     Gl::Uint uploadVertexArray = 0;
 
     HandleTable<BufferRecord> buffers{"buffer"};

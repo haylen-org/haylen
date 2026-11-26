@@ -68,6 +68,8 @@ Returns a table of what the GPU device of this app can do, as the [RHI guide](..
 | `maxArrayLayers` | integer | The most layers of an array texture. |
 | `maxVolumeSize` | integer | The largest side in pixels of a volume texture, along its width, its height and its slices, which the 3D renderer reads for volumes such as the grids of fog and light. |
 | `maxCubeSize` | integer | The largest side in pixels of the square faces of a cube texture, such as the faces of an environment map. |
+| `cubeArrays` | boolean | Whether textures of the kind `'cubeArray'` exist and shaders sample them. OpenGL ES before 3.2 and WebGL2 have none. |
+| `imageViews` | boolean | Whether [`texture:view`](#textureviewoptions) makes views of textures. OpenGL ES without a texture view extension and WebGL2 have none. |
 | `originTopLeft` | boolean | Whether the first row of a render target is its top row. It is `false` on OpenGL, OpenGL ES and WebGL2. |
 | `depthRange` | string | The range of depth of clip space, as [`graphics.depthRange()`](#graphicsdepthrange) returns it. |
 | `independentBlend` | boolean | Whether each color target of a draw takes a blend of its own. |
@@ -100,6 +102,7 @@ Returns a table of what the GPU device does with a pixel format, so an app picks
 | `render` | boolean | Whether render targets, or depth attachments for the depth formats, of the format exist. Block compressed formats never render. |
 | `blend` | boolean | Whether draws blend into render targets of the format. |
 | `storage` | boolean | Whether shaders write the format as a storage image. |
+| `mipmaps` | boolean | Whether the GPU generates the mipmaps of a texture of the format from its first level, as the option `mipmaps` of a texture made from pixels or from one level asks. Depth and block compressed formats never do. |
 | `sampleCounts` | list of integers | The sample counts that render targets and depth attachments of the format take, from one sample up, such as `{1, 4}`, or an empty list for a format that the device does not draw into. A color format that takes more samples than one also resolves into a texture of one sample. |
 
 ```lua
@@ -136,8 +139,11 @@ Makes a `Texture` of `width` by `height` pixels from code. The table `options` i
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
+| `kind` | string | `'flat'` | The kind of the texture: `'flat'`, `'array'` of layers, `'cube'` of six faces, `'cubeArray'` of cubes or `'volume'` of slices, which the [kinds of textures](#kinds-of-textures) explain. |
+| `layers` | integer | 6 for `'cube'` and `'cubeArray'`, 1 otherwise | The layers of an array, or the faces of the cubes of a cube array, six for each cube. |
+| `depth` | integer | 1 | The slices of a volume. |
 | `fill` | Color | `'#FFFFFFFF'` | The color of every pixel when `pixels` is absent. |
-| `pixels` | string or data view | none | Raw RGBA bytes, four per pixel, row by row from the top, in a string or in a view of [`dataview`](https://github.com/varn-org/varn/blob/main/docs/lua-api/dataview.md). Its length must be `width * height * 4`, or the call raises `Image pixel data does not match its dimensions.`. |
+| `pixels` | string or data view | none | Raw RGBA bytes, four per pixel, row by row from the top, in a string or in a view of [`dataview`](https://github.com/varn-org/varn/blob/main/docs/lua-api/dataview.md). Its length must be `width * height * 4`, or the call raises `Image pixel data does not match its dimensions.`. A texture of another kind takes every layer or slice one after another, the first one first. |
 | `dynamic` | boolean | `false` | Makes a texture whose pixels change in place with [`texture:update(pixels, options)`](#textureupdatepixels-options), such as a minimap that code draws. |
 | `filter` | string | `'nearest'` | The `'nearest'` or `'linear'` sampling. |
 | `wrap` | string | `'clamp'` | The addressing of every axis, `'clamp'`, `'repeat'`, `'mirror'` or `'border'`, which reads `borderColor` outside the texture where [`graphics.capabilities()`](#graphicscapabilities) has `borderColors`. |
@@ -146,16 +152,18 @@ Makes a `Texture` of `width` by `height` pixels from code. The table `options` i
 | `lodBias` | number | `0` | The bias that each lookup adds to its level of detail, within the `maxLodBias` of the device, where a negative bias reads sharper levels. A device whose `maxLodBias` is 0 takes no bias. |
 | `minLod`, `maxLod` | number | `0`, `1000` | The levels of detail that lookups stay within, from 0 up, such as `maxLod = 2` for a texture that never reads its smallest levels. |
 | `borderColor` | string | `'transparentBlack'` | The color that the wrap `'border'` reads, `'transparentBlack'`, `'opaqueBlack'` or `'opaqueWhite'`, the colors that every graphics API with border colors has. |
-| `mipmaps` | boolean | `true` with the `'linear'` filter, `false` otherwise | Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, blended between them with the `'linear'` filter. A dynamic texture never has them, and one with `mipmaps = true` raises `A texture that changes in place has no mipmaps.`. |
+| `mipmaps` | boolean | `true` with the `'linear'` filter, `false` for a dynamic texture and otherwise | Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, blended between them with the `'linear'` filter. A flat texture makes them on the CPU as it is made. A texture of another kind and a dynamic texture with `mipmaps = true` have the GPU generate them from the first level, the dynamic one after each update, in a format whose [`graphics.formatSupport`](#graphicsformatsupportformat) has `mipmaps`. |
 
 With the options `format` and `levels`, the texture takes its pixels in a pixel format of the device, such as the blocks of a compressed format that the app ships for its target, as the [texture guide](../graphics/rendering.md#compressed-textures) explains. These two options take no `fill`, `pixels` or `dynamic`, which raise `Unknown option "<key>".`:
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `format` | string | `'rgba8'` | A format of [`graphics.formatSupport`](#graphicsformatsupportformat) that the device samples and filters, such as `'bc7'` or `'astc6x6'`. |
-| `levels` | list of strings or data views | none | The bytes of each mip level, the largest level first, each holding the rows of blocks of its level tightly packed. A level smaller than a block takes one whole block. With more than one level the texture keeps mipmaps, unless `mipmaps = false` keeps only the first level. |
+| `levels` | list of strings or data views | none | The bytes of each mip level, the largest level first, each holding the rows of blocks of every layer or slice of its level tightly packed, the first layer first. A level smaller than a block takes one whole block. With more than one level the texture keeps mipmaps, unless `mipmaps = false` keeps only the first level. With one level and `mipmaps = true`, the GPU generates the others in a format whose `formatSupport` has `mipmaps`. |
 
-A texture made in a format checks it before any byte reaches the GPU. A depth format raises `The format "<format>" belongs to depth attachments, so no texture is made in it.`. A format that the device does not sample raises `The graphics API "<api>" of this device samples no texture of the format "<format>". Make the texture in a format that the device samples, as its format support tells.`, and one that it samples only without filtering raises the same kind of sentence with `only without filtering`. Sides that hold no whole blocks raise `A texture of the format "<format>" has sides of whole blocks of <w> by <h> pixels, which <width> by <height> pixels are not.`. A missing list raises `A texture made in a format takes the bytes of each of its levels in the list "levels", the largest level first.`, a list of another count raises `A texture of <width> by <height> pixels brings from 1 to <count> levels, not <given>.`, a level of another size raises `The level <n> of a texture of <width> by <height> pixels of the format "<format>" holds <bytes> bytes, and it needs <expected>.`, and `mipmaps = true` with one level raises `A texture made from its levels keeps mipmaps only when it brings more than one level.`.
+These options also take `kind`, `layers` and `depth`, and a texture of the kind `'volume'` takes no block compressed format.
+
+A texture made in a format checks it before any byte reaches the GPU. A depth format raises `The format "<format>" belongs to depth attachments, so no texture is made in it.`. A format that the device does not sample raises `The graphics API "<api>" of this device samples no texture of the format "<format>". Make the texture in a format that the device samples, as its format support tells.`, and one that it samples only without filtering raises the same kind of sentence with `only without filtering`. Sides that hold no whole blocks raise `A texture of the format "<format>" has sides of whole blocks of <w> by <h> pixels, which <width> by <height> pixels are not.`. A missing list raises `A texture made in a format takes the bytes of each of its levels in the list "levels", the largest level first.`, a list of another count raises `A texture of <width> by <height> pixels brings from 1 to <count> levels, not <given>.`, a level of another size raises `The level <n> of a texture of <width> by <height> pixels of the format "<format>" holds <bytes> bytes, and it needs <expected>.`, and `mipmaps = true` with one level of a format whose mipmaps the GPU does not generate raises `The graphics API "<api>" of this device generates no mipmaps of the format "<format>", so a texture of it brings each of its levels.`.
 
 The sampling options check against the device before the texture is made. An `anisotropy` beyond the device raises `The texture option "anisotropy" takes from 1 to <most> samples on this device, not <anisotropy>.`, and more than one without the `'linear'` filter and mipmaps raises `Anisotropic filtering takes the filter "linear" and mipmaps.`. Levels of detail out of order raise `The levels of detail of a texture run from "minLod" up to "maxLod", from 0 on.`. A bias on a device without one raises `The graphics API "<api>" of this device takes no bias of the level of detail.`, and a bias beyond the device raises `The bias of the level of detail of a texture lies within <most> on this device, not <bias>.`. The wrap `'border'` on a device without border colors raises `The graphics API "<api>" of this device reads no border color, so its textures take no wrap "border".`.
 
@@ -174,6 +182,26 @@ print(red.width, checker.height)
 if graphics.formatSupport('bc7').sample then
     local blocks = graphics.newTexture(4, 4, {format = 'bc7', levels = {string.rep('\0', 16)}, filter = 'linear'})
     print(blocks.format)
+end
+```
+
+### Kinds of textures
+
+A texture of the kind `'flat'` is an image that every draw shows. The other kinds hold several images that a [material](graphics2d.md#material) samples through a shader that declares a texture of that kind, as the [shader guide](../graphics/shaders.md) explains: an `'array'` holds layers of one size, such as the cascades of a shadow map or the frames of a flip book, a `'cube'` holds six square faces in the order +X, -X, +Y, -Y, +Z and -Z, such as an environment map, a `'cubeArray'` holds six faces for each of its cubes, such as the probes of a scene, and a `'volume'` holds slices, such as a grid of fog or a lookup of colors. A draw of `haylen.graphics2d` takes flat textures alone and raises `A texture of the kind "<kind>" is no image that a draw shows. Give it to a material whose shader samples a texture of that kind.` for another kind, and a material raises `The texture "<name>" of the shader "<shader>" takes a texture of the kind "<kind>", not "<other>".` for a texture of another kind than its shader declares.
+
+The shape checks against the device before any pixel exists. A cube or a cube array of faces that are not square raises `A texture of the kind "<kind>" has square faces, which <w> by <h> pixels are not.`, a cube of other than 6 layers raises `A texture of the kind "cube" has 6 layers, one for each face, not <n>.`, and a cube array whose layers are no multiple of 6 or exceed `maxArrayLayers` raises `A texture of the kind "cubeArray" has 6 layers for each of its cubes, up to <most> on this device, not <n>.`. An array raises `A texture of the kind "array" has from 1 to <most> layers on this device, not <n>.` and a volume raises `A texture of the kind "volume" has from 1 to <most> slices on this device, not <n>.` beyond [`graphics.capabilities()`](#graphicscapabilities). A flat texture or a volume with layers raises `A texture of the kind "<kind>" has 1 layer, not <n>.`, and a depth on another kind than a volume raises `Only a texture of the kind "volume" has a depth, and one of the kind "<kind>" has none.`. A cube array on a device without them raises `The graphics API "<api>" of this device has no textures of the kind "cubeArray". Check "cubeArrays" of "graphics.capabilities()" before making one.`, and a shader that samples a cube array raises the same kind of sentence when it first draws there.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local sky = graphics.newTexture(64, 64, {kind = 'cube', fill = '#FF87CEEB', filter = 'linear'})
+local cascades = graphics.newTexture(512, 512, {kind = 'array', layers = 4})
+local fog = graphics.newTexture(32, 32, {kind = 'volume', depth = 32, filter = 'linear'})
+print(sky.layers, sky.mipLevels, cascades.layers, fog.depth)
+
+if graphics.capabilities().cubeArrays then
+    local probes = graphics.newTexture(32, 32, {kind = 'cubeArray', layers = 6 * 8})
+    print(probes.layers)
 end
 ```
 
@@ -244,6 +272,10 @@ local pixel = graphics2d.newSprite(graphics.whiteTexture(), {width = 8, height =
 | `borderColor` | string | read | The color that the wrap `'border'` reads. |
 | `mipmaps` | boolean | read | Whether the texture keeps smaller copies of its image. |
 | `format` | string | read | The pixel format of the texture on the GPU, `'rgba8'` for the textures of images and the format of a texture made from its levels. |
+| `kind` | string | read | The [kind](#kinds-of-textures) of the texture, `'flat'`, `'array'`, `'cube'`, `'cubeArray'` or `'volume'`. |
+| `layers` | integer | read | The layers of an array, the faces of a cube and of the cubes of a cube array, and 1 for the other kinds. |
+| `depth` | integer | read | The slices of a volume, and 1 for the other kinds. |
+| `mipLevels` | integer | read | The mip levels of the texture, 1 without mipmaps. |
 
 ```lua
 local assets = require('haylen.assets')
@@ -260,8 +292,9 @@ Replaces the pixels of a texture made with `dynamic = true`. The value `pixels` 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `region` | rectangle | the whole texture | The part of the texture that changed since its last update, as `{x, y, width, height}` or a table with those fields, in whole pixels from the top left corner. Only the pixels of the region go to the GPU, so a sprite that a paint app adds to a big canvas sends only its own pixels. |
+| `layer` | integer | `0` | The layer of an array, the face of a cube or a cube array, or the slice of a volume, from 0, whose pixels `pixels` holds, every pixel of that layer. A layer that the texture lacks raises `The dynamic texture has <n> layers from 0, so it has no layer <layer>.`. |
 
-A texture that changes several times in one frame sends once, before the frame draws, the smallest region that holds every change, taken from its last pixels, which `graphics2d.stats().uploadedBytes` counts. A texture that is not dynamic raises `Only a dynamic texture changes its pixels in place.`, and pixels of another length raise `The pixels do not match the size of the dynamic texture.`. A region outside the texture or without a pixel raises `The region of a texture update must lie inside the dynamic texture and hold at least one pixel.`, and a region of fractions of a pixel raises `The region of "texture:update" must hold whole pixels.`.
+A dynamic texture with `mipmaps = true` has the GPU generate its smaller levels from the new pixels before the frame draws. A texture that changes several times in one frame sends once, before the frame draws, the smallest region of each layer that holds every change, taken from its last pixels, which `graphics2d.stats().uploadedBytes` counts. A texture that is not dynamic raises `Only a dynamic texture changes its pixels in place.`, and pixels of another length raise `The pixels do not match the size of the dynamic texture.`. A region outside the texture or without a pixel raises `The region of a texture update must lie inside the dynamic texture and hold at least one pixel.`, and a region of fractions of a pixel raises `The region of "texture:update" must hold whole pixels.`.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -304,6 +337,31 @@ local function paintRow(y, from, to)
 end
 
 paintRow(64, 32, 96)
+```
+
+### texture:view(options)
+
+Returns a `Texture` that shows a range of the mip levels and layers of the texture, which a material samples as a texture of the kind of the view, such as one face of a cube through an array, or the levels of a texture from a smaller one while a pass draws into a larger one. The view takes the sampling options of its texture, the size of its first mip level, and keeps its texture alive. The table `options` is optional:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `kind` | string | the kind of the texture | The kind of the view: the kind of the texture, or `'array'` for faces of a cube or a cube array. |
+| `mipLevel` | integer | `0` | The first mip level of the view. |
+| `mipLevels` | integer | every level from `mipLevel` | The mip levels of the view. |
+| `layer` | integer | `0` | The first layer of an array view, or the first face of a cube array view, a multiple of 6. |
+| `layers` | integer | every layer from `layer`, 6 for a cube, 1 for a flat texture and a volume | The layers of the view. A cube view takes the 6 faces, a cube array view whole cubes, and a flat view and a volume view the whole texture. |
+
+A device without views raises `The graphics API "<api>" of this device makes no views of textures. Check "imageViews" of "graphics.capabilities()" before making one.`. Another kind raises `A texture of the kind "<kind>" has no view of the kind "<view>".`, mip levels outside the texture raise `The mip levels of a view lie within the <n> mip levels of its texture, which <count> levels from the level <first> do not.`, layers outside it raise `The layers of a view lie within the <n> layers of its texture, which <count> layers from the layer <first> do not.`, a cube view of other faces raises `A view of the kind "cube" shows the 6 faces of its cube, from the layer 0.`, a cube array view of part of a cube raises `A view of the kind "cubeArray" shows whole cubes, 6 layers for each, from a layer that is a multiple of 6.`, a flat or volume view of a part raises `A view of the kind "<kind>" shows the whole texture, so its layer is 0 and it has 1 layer.`, and a view of a view raises `A view shows a range of a texture, not of another view.`.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local sky = graphics.newTexture(64, 64, {kind = 'cube', filter = 'linear'})
+if graphics.capabilities().imageViews then
+    local side = sky:view({kind = 'array', layer = 2, layers = 1})
+    local small = sky:view({mipLevel = 2})
+    print(side.kind, side.layers, small.width, small.mipLevels)
+end
 ```
 
 ## Buffer

@@ -7,6 +7,7 @@ target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/Device.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/FrameTimer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ImageReadback.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/MipmapGenerator.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/PassTimeline.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ReadbackBuffer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ScaledDrawable.cpp"

@@ -39,6 +39,7 @@ class OffscreenSwapchain final : public gpu::Device {
     [[nodiscard]] Sampler makeSampler(const SamplerDesc& desc) override;
     [[nodiscard]] Program makeProgram(const ProgramDesc& desc) override;
     [[nodiscard]] Pipeline makePipeline(const PipelineDesc& desc) override;
+    [[nodiscard]] Image makeView(const ViewDesc& desc) override;
     void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) override;
 
     void destroy(Buffer buffer) noexcept override;
@@ -50,6 +51,7 @@ class OffscreenSwapchain final : public gpu::Device {
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
     void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
+    void generateMipmaps(Image image) override;
 
     void beginPass(const PassDesc& desc) override;
     [[nodiscard]] int getPassTurns() const noexcept override;

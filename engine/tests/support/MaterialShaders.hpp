@@ -59,6 +59,23 @@ void main() {
 @program glow haylen_vs glow_fs
 )";
 
+    // A material that samples a cube texture of its own in the direction of its texture coordinates.
+    static constexpr const char* kSkySource = R"(@include haylen/material.glsl
+
+@fs sky_fs
+@include_block haylen_fragment
+layout(binding=1) uniform textureCube sky_texture;
+layout(binding=1) uniform sampler sky_sampler;
+
+void main() {
+    vec3 direction = vec3(uv * 2.0 - 1.0, 1.0);
+    haylen_output(texture(samplerCube(sky_texture, sky_sampler), direction) * color);
+}
+@end
+
+@program sky haylen_vs sky_fs
+)";
+
     [[nodiscard]] static std::vector<std::uint8_t> compile(const std::string& name, const char* source);
     [[nodiscard]] static const std::vector<std::uint8_t>& tint();
 };

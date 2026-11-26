@@ -300,12 +300,22 @@ class Device {
         Fragment,
     };
 
+    // The types of images: a flat image, an array of flat layers, a volume of slices, a cube of six square faces, and an array of cubes, whose layers hold six faces for each cube and which needs `Capabilities::cubeArrays`.
     enum class TextureType : std::uint8_t {
         Flat,
         Array,
         Volume,
         Cube,
+        CubeArray,
     };
+
+    static constexpr std::array<std::pair<std::string_view, TextureType>, 5> kTextureTypeNames{{
+        {"flat", TextureType::Flat},
+        {"array", TextureType::Array},
+        {"volume", TextureType::Volume},
+        {"cube", TextureType::Cube},
+        {"cubeArray", TextureType::CubeArray},
+    }};
 
     enum class SampleType : std::uint8_t {
         Float,
@@ -347,7 +357,7 @@ class Device {
         friend bool operator==(const BufferUsage&, const BufferUsage&) = default;
     };
 
-    // A texture keeps the pixels it was made with, a dynamic image is flat with one mip level and takes new pixels for regions of it through `writeImages`, a render target is a color attachment of offscreen passes that draws sample later, and a depth stencil image is the depth and stencil attachment of offscreen passes.
+    // A texture keeps the pixels it was made with, a dynamic image of any type takes new pixels for regions of a mip level and a layer of it through `writeImages`, a render target is a color attachment of offscreen passes that draws sample later, and a depth stencil image is the depth and stencil attachment of offscreen passes. Dynamic images and render targets of a format whose `FormatSupport::mipmaps` holds fill their smaller mip levels from their first one through `generateMipmaps`.
     enum class ImageKind : std::uint8_t {
         Texture,
         Dynamic,
@@ -418,23 +428,30 @@ class Device {
     // The offsets of the uniform buffers that blocks read are multiples of this many bytes, the strictest alignment of the graphics APIs.
     static constexpr std::size_t kUniformBufferAlignment = 256;
 
-    // What a device does with one pixel format. A texture of the format is made and sampled with `sample`, filtered linearly through texture slots of the type `SampleType::Float` with `filter`, while the others are sampled only through slots of `SampleType::UnfilterableFloat` with samplers of `SamplerType::NonFiltering`, drawn into as a render target or a depth stencil image with `render`, blended into with `blend`, and written by shaders as a storage image with `storage`. The sample counts that its attachments take are bits whose values are the counts, so 5 holds one sample and four, and a multisampled color format also resolves into an image of one sample, while a format that the device does not draw into takes none.
+    // What a device does with one pixel format. A texture of the format is made and sampled with `sample`, filtered linearly through texture slots of the type `SampleType::Float` with `filter`, while the others are sampled only through slots of `SampleType::UnfilterableFloat` with samplers of `SamplerType::NonFiltering`, drawn into as a render target or a depth stencil image with `render`, blended into with `blend`, written by shaders as a storage image with `storage`, and its dynamic images and render targets fill their smaller mip levels on the GPU through `generateMipmaps` with `mipmaps`. The sample counts that its attachments take are bits whose values are the counts, so 5 holds one sample and four, and a multisampled color format also resolves into an image of one sample, while a format that the device does not draw into takes none.
     struct FormatSupport {
         bool sample = false;
         bool filter = false;
         bool render = false;
         bool blend = false;
         bool storage = false;
+        bool mipmaps = false;
         std::uint8_t sampleCounts = 0;
     };
 
     // What the device and its graphics API can do, which the renderers read instead of the API. A capability that a device lacks is never used by the engine.
     struct Capabilities {
-        // The largest side of a flat image and of the layers of an array, the most layers of an array, the largest side and the most slices of a volume, and the largest side of the faces of a cube, in pixels.
+        // The largest side of a flat image and of the layers of an array, the most layers of an array and of a cube array, the largest side and the most slices of a volume, and the largest side of the faces of a cube and of a cube array, in pixels.
         int maxImageSize = 0;
         int maxArrayLayers = 0;
         int maxVolumeSize = 0;
         int maxCubeSize = 0;
+
+        // Whether images take the type `TextureType::CubeArray` and programs sample them, which OpenGL ES before 3.2 and WebGL2 lack.
+        bool cubeArrays = false;
+
+        // Whether `makeView` makes views of ranges of the mip levels and layers of images, which OpenGL ES without a texture view extension and WebGL2 lack.
+        bool imageViews = false;
 
         // Whether the first row of a render target is its top row, as on Metal, Direct3D, Vulkan and WebGPU, rather than its bottom row, as on OpenGL.
         bool originTopLeft = true;
@@ -484,7 +501,7 @@ class Device {
         std::string_view label{};
     };
 
-    // The pixels of a texture come with the image, one span per mip level from the largest, each holding every layer of its level, and the other kinds start without pixels. The layers count the slices of a volume, the layers of an array and the six faces of a cube.
+    // The pixels of a texture come with the image, one span per mip level from the largest, each holding every layer of its level, and the other kinds start without pixels. The layers count the slices of a volume, the layers of an array, the six faces of a cube and six faces for each cube of a cube array, in the order +X, -X, +Y, -Y, +Z and -Z.
     struct ImageDesc {
         TextureType type = TextureType::Flat;
         int width = 0;
@@ -495,6 +512,17 @@ class Device {
         PixelFormat format = PixelFormat::Rgba8;
         ImageKind kind = ImageKind::Texture;
         std::span<const std::span<const std::byte>> levels{};
+        std::string_view label{};
+    };
+
+    // A view of a range of the mip levels and layers of an image that is no view, which draws sample as a texture of the type of the view, while attachments name the mip level and the layer of the image itself. A view takes the type of its image, or `TextureType::Array` for faces of a cube or a cube array. The layers count faces as the image does, so a cube view takes six of them and a cube array view whole cubes from a layer that is a multiple of six. A volume view takes every slice, so `baseLayer` is 0 and `layers` the slices of the volume. A multisampled image has no views. Views need `Capabilities::imageViews`.
+    struct ViewDesc {
+        Image image{};
+        TextureType type = TextureType::Flat;
+        int baseMipLevel = 0;
+        int mipLevels = 1;
+        int baseLayer = 0;
+        int layers = 1;
         std::string_view label{};
     };
 
@@ -644,7 +672,7 @@ class Device {
         std::string_view label{};
     };
 
-    // A color attachment of an offscreen pass, at a mip level and a layer of its image, with the image of one sample that resolves a multisampled attachment into its first mip level and layer when the pass ends.
+    // A color attachment of an offscreen pass, at a mip level and a layer of its image, with the image of one sample that resolves a multisampled attachment into a mip level and a layer of its own when the pass ends. The layer of a volume is its slice at that mip level.
     struct ColorAttachment {
         Image image{};
         int mipLevel = 0;
@@ -653,10 +681,15 @@ class Device {
         Store store = Store::Store;
         math::Color clear = math::Color::transparent();
         Image resolve{};
+        int resolveMipLevel = 0;
+        int resolveLayer = 0;
     };
 
+    // The depth and stencil attachment of an offscreen pass, at a mip level and a layer of its image, such as one cascade of an array of shadow maps or one face of a cube of shadows.
     struct DepthStencilAttachment {
         Image image{};
+        int mipLevel = 0;
+        int layer = 0;
         Load depthLoad = Load::Clear;
         Store depthStore = Store::Discard;
         float clearDepth = 1.0F;
@@ -717,9 +750,11 @@ class Device {
         friend bool operator==(Region, Region) = default;
     };
 
-    // New pixels for a region of a dynamic image, which replace the pixels of that region and keep the others. The pixels hold the rows of the region one after another, `region.width` pixels each with no gap between rows.
+    // New pixels for a region of a mip level and a layer of a dynamic image, which replace the pixels of that region and keep the others. The layer of a volume is its slice at that mip level. The pixels hold the rows of the region one after another, `region.width` pixels each with no gap between rows.
     struct ImageWrite {
         Image image{};
+        int mipLevel = 0;
+        int layer = 0;
         Region region{};
         std::span<const std::byte> pixels{};
     };
@@ -777,6 +812,9 @@ class Device {
     [[nodiscard]] virtual Program makeProgram(const ProgramDesc& desc) = 0;
     [[nodiscard]] virtual Pipeline makePipeline(const PipelineDesc& desc) = 0;
 
+    // Makes a view of a range of the mip levels and layers of an image, which bindings take in the place of an image. Destroying the image destroys its views with it, and destroying a view leaves its image as it was.
+    [[nodiscard]] virtual Image makeView(const ViewDesc& desc) = 0;
+
     // Starts compiling the stages of a program on the I/O pool where the API compiles them when the program is made, so making it later waits less. It may run on any thread, and copies what it needs from the description.
     virtual void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) = 0;
 
@@ -793,8 +831,11 @@ class Device {
     // Copies bytes from a buffer that is a copy source into another one that is a copy destination outside a pass, at offsets and of a size that are multiples of 4, which the passes and copies after it read.
     virtual void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) = 0;
 
-    // Replaces the pixels of regions of dynamic images, every image of a frame in one call before its first pass, so a device stages them all before it copies any of them. Each image takes at most one write in the call, whose region lies inside the image, so a device copies only the pixels that changed and no copy of the call waits for another.
+    // Replaces the pixels of regions of mip levels and layers of dynamic images, every image of a frame in one call before its first pass and its first `generateMipmaps`, so a device stages them all before it copies any of them. Each mip level and layer of an image takes at most one write in the call, whose region lies inside it, so a device copies only the pixels that changed and no copy of the call waits for another.
     virtual void writeImages(std::span<const ImageWrite> writes) = 0;
+
+    // Fills every smaller mip level of every layer of a dynamic image or a render target from its first level, each level a box filter of the level above it, outside a pass, which the passes after it read. The format of the image takes `FormatSupport::mipmaps`, and the image has more than one mip level and one sample.
+    virtual void generateMipmaps(Image image) = 0;
 
     virtual void beginPass(const PassDesc& desc) = 0;
 

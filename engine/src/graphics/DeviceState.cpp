@@ -108,7 +108,7 @@ Texture::Options DeviceState::settle(Texture::Options options) const {
 }
 
 // Mipmaps an image brings from its decoding are taken as they are, and the others are made here.
-gpu::Device::Image DeviceState::createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes) {
+gpu::Device::Image DeviceState::createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes, int& mipLevels) {
     bytes = getImageBytes(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8);
     Image levels;
     std::span<const Image> made;
@@ -129,35 +129,66 @@ gpu::Device::Image DeviceState::createTextureImage(const Image& image, bool mipm
         bytes += level.getPixels().size();
     }
 
-    return gpu->makeImage({.width = image.getWidth(), .height = image.getHeight(), .mipLevels = static_cast<int>(pixels.size()), .format = gpu::Device::PixelFormat::Rgba8, .kind = gpu::Device::ImageKind::Texture, .levels = pixels, .label = "haylen-texture"});
+    mipLevels = static_cast<int>(pixels.size());
+    return gpu->makeImage({.width = image.getWidth(), .height = image.getHeight(), .mipLevels = mipLevels, .format = gpu::Device::PixelFormat::Rgba8, .kind = gpu::Device::ImageKind::Texture, .levels = pixels, .label = "haylen-texture"});
 }
 
-gpu::Device::Image DeviceState::createDynamicImage(int width, int height, gpu::Device::PixelFormat format) {
-    return gpu->makeImage({.width = width, .height = height, .format = format, .kind = gpu::Device::ImageKind::Dynamic, .label = "haylen-dynamic-texture"});
+int DeviceState::getLayers(const Device::TextureData& data) noexcept {
+    return data.type == gpu::Device::TextureType::Volume ? data.depth : data.layers;
 }
 
-Texture DeviceState::createDynamicTexture(int width, int height, gpu::Device::PixelFormat format, std::span<const std::uint8_t> pixels, Texture::Options options) {
-    options.mipmaps = false;
+gpu::Device::Image DeviceState::createStagedImage(const Device::TextureData& data, bool mipmaps, int& mipLevels) {
+    const gpu::Device::ImageDesc shape{.type = data.type, .width = data.width, .height = data.height, .layers = getLayers(data), .format = data.format};
+    mipLevels = mipmaps ? gpu::ImageInfo::getMaxMipLevels(shape) : 1;
+    return gpu->makeImage({.type = data.type, .width = data.width, .height = data.height, .layers = shape.layers, .mipLevels = mipLevels, .format = data.format, .kind = gpu::Device::ImageKind::Dynamic, .label = "haylen-dynamic-texture"});
+}
+
+// The pixels of each layer of the first level reach the image with the next upload, the way the changes of a dynamic texture do.
+Texture DeviceState::createStagedTexture(const Device::TextureData& data, Texture::Options options, bool dynamic) {
+    const bool mipmaps = options.mipmaps.value_or(false);
+    options.mipmaps = mipmaps;
     options = settle(options);
+    const int layers = getLayers(data);
     auto resource = std::make_shared<TextureResource>();
-    resource->image = createDynamicImage(width, height, format);
-    resource->tracked.setBytes(getImageBytes(width, height, format));
+    resource->image = createStagedImage(data, mipmaps, resource->mipLevels);
+    const gpu::Device::ImageDesc shape{.type = data.type, .width = data.width, .height = data.height, .layers = layers, .format = data.format};
+    std::size_t bytes = 0;
+    for (int level = 0; level < resource->mipLevels; ++level) {
+        bytes += gpu::ImageInfo::getLevelBytes(shape, level);
+    }
+
+    resource->tracked.setBytes(bytes);
     resource->sampler = getSampler(options);
-    resource->width = width;
-    resource->height = height;
+    resource->width = data.width;
+    resource->height = data.height;
     resource->id = nextTextureId++;
     resource->options = options;
-    resource->format = format;
-    resource->dynamic = true;
+    resource->format = data.format;
+    resource->type = data.type;
+    resource->layers = layers;
+    resource->dynamic = dynamic;
+    resource->generatesMipmaps = mipmaps;
     resource->graveyard = graveyard;
-    stagePixels(resource, pixels, {0, 0, width, height});
+    resource->staged.resize(static_cast<std::size_t>(layers));
+
+    const std::size_t layerBytes = getImageBytes(data.width, data.height, data.format);
+    const auto* first = reinterpret_cast<const std::uint8_t*>(data.levels.front().data());
+    for (int layer = 0; layer < layers; ++layer) {
+        const std::span<const std::uint8_t> pixels(first + (static_cast<std::size_t>(layer) * layerBytes), layerBytes);
+        stagePixels(resource, layer, pixels, {0, 0, data.width, data.height});
+    }
+
     return Texture(std::move(resource));
 }
 
-void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels, gpu::Device::Region changed) {
-    if (resource->pending) {
-        changed = changed.merged(resource->stagedRegion);
-    } else {
+void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, int layer, std::span<const std::uint8_t> pixels, gpu::Device::Region changed) {
+    TextureResource::StagedLayer& staged = resource->staged[static_cast<std::size_t>(layer)];
+    if (staged.pending) {
+        changed = changed.merged(staged.region);
+    }
+
+    staged.pending = true;
+    if (!resource->pending) {
         resource->pending = true;
         changedTextures.push_back(resource);
     }
@@ -165,11 +196,11 @@ void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, 
     const std::size_t pixelBytes = gpu::ImageInfo::getRowBytes(resource->format, 1);
     const std::size_t imageRow = gpu::ImageInfo::getRowBytes(resource->format, resource->width);
     const std::size_t regionRow = gpu::ImageInfo::getRowBytes(resource->format, changed.width);
-    resource->stagedRegion = changed;
-    resource->staged.resize(regionRow * static_cast<std::size_t>(changed.height));
+    staged.region = changed;
+    staged.pixels.resize(regionRow * static_cast<std::size_t>(changed.height));
     for (int row = 0; row < changed.height; ++row) {
         const std::size_t from = static_cast<std::size_t>(changed.y + row) * imageRow + static_cast<std::size_t>(changed.x) * pixelBytes;
-        std::copy_n(pixels.begin() + static_cast<std::ptrdiff_t>(from), regionRow, resource->staged.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(row) * regionRow));
+        std::copy_n(pixels.begin() + static_cast<std::ptrdiff_t>(from), regionRow, staged.pixels.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(row) * regionRow));
     }
 }
 

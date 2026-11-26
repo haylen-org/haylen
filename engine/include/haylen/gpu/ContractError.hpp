@@ -12,6 +12,8 @@ class ContractError final : public std::logic_error {
         MissingObject,
         Buffer,
         Image,
+        View,
+        Mipmaps,
         Sampler,
         Program,
         Pipeline,

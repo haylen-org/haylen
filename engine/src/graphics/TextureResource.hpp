@@ -27,18 +27,33 @@ struct TextureResource {
     gpu::Device::PixelFormat format = gpu::Device::PixelFormat::Rgba8;
     bool flipped = false;
 
+    // The type of the image, its layers, which count the faces of cubes and the slices of a volume as the GPU device does, and its mip levels.
+    gpu::Device::TextureType type = gpu::Device::TextureType::Flat;
+    int layers = 1;
+    int mipLevels = 1;
+
+    // The texture that a view shows a range of, which lives as long as its views.
+    std::shared_ptr<TextureResource> viewed;
+
     // The path of a texture the assets loaded from the package, which debug drawings name it by.
     std::string label;
 
     // The submission of the 2D renderer that last kept the texture alive until it ends, which keeps it once however many draws use it.
     std::uint64_t retainEpoch = 0;
 
-    // A dynamic texture changes in place, and keeps the pixels of the region that changed since the last upload until the device sends them, row after row. The staging memory stays while the texture changes every frame, such as a video, and goes after a frame without a change.
+    // The pixels of the region of the first mip level of one layer that changed since the last upload, row after row, while the layer waits for it.
+    struct StagedLayer {
+        gpu::Device::Region region{};
+        std::vector<std::uint8_t> pixels;
+        bool pending = false;
+    };
+
+    // A dynamic texture changes in place, and keeps the pixels that changed in each layer since the last upload until the device sends them. The staging memory stays while the texture changes every frame, such as a video, and goes after a frame without a change. A texture whose image the GPU fills with its smaller mip levels generates them after each upload of its first level, and a texture of layers made from pixels goes through the same upload once.
     bool dynamic = false;
+    bool generatesMipmaps = false;
     bool pending = false;
     std::uint64_t uploadedAt = 0;
-    gpu::Device::Region stagedRegion{};
-    std::vector<std::uint8_t> staged;
+    std::vector<StagedLayer> staged;
     std::weak_ptr<ResourceGraveyard> graveyard;
     debug::TrackedObject tracked;
 

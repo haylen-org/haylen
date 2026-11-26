@@ -57,6 +57,9 @@ Uniform blocks take the buffer indices from 0 of each stage, and vertex buffers 
 | Separate blend for each color target | Yes. |
 | GPU time of a frame | Yes, from the start and end times of the command buffer of the frame. |
 | First row of a render target | The top row. |
+| Cube arrays | Every Mac GPU and the Apple GPUs of the A11 and later, the families Apple4 and Mac2, which have cube texture arrays. The A8 to A10X of the families Apple2 and Apple3 have none. |
+| Views of images | Texture views of the same pixel format, which change the type without a usage of their own, counting the faces of cubes as slices. |
+| Mip generation | `generateMipmapsForTexture:` of a blit encoder of the command buffer of the frame, for every color format that the GPU renders and filters. |
 
 ## Debugging
 

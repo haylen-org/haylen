@@ -10,6 +10,8 @@
 #include <string_view>
 #include <vector>
 
+#include "haylen/gpu/Device.hpp"
+
 namespace haylen::graphics {
 
 struct ShaderResource;
@@ -45,9 +47,11 @@ class Shader final {
         std::uint32_t size = 0;
     };
 
+    // A texture that the materials of the shader set by its name, of the type that its declaration in the shader gives it.
     struct TextureSlot {
         std::string name;
         int slot = 0;
+        gpu::Device::TextureType type = gpu::Device::TextureType::Flat;
     };
 
     Shader() = default;

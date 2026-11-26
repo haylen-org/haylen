@@ -140,12 +140,16 @@ void Device::readCapabilities() {
     capabilities.maxLodBias = 15.99F;
     capabilities.borderColors = true;
 
+    // Feature level 10_1 brings cube arrays, and a view of a range of the mip levels and layers of an image is a shader resource view.
+    capabilities.cubeArrays = true;
+    capabilities.imageViews = true;
+
     // Feature level 11_0 brings storage buffers and the arguments of indirect draws, and a constant buffer binds at most 4096 constants of 16 bytes to one block.
     capabilities.storageBuffers = true;
     capabilities.indirectBuffers = true;
     capabilities.maxUniformBlockSize = kMaxBlockSize;
 
-    // Images sample through the view of their format, depth images draw through the view of their depth, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
+    // Images sample through the view of their format, depth images draw through the view of their depth, the driver generates the mip levels of the color formats that it marks for it, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
     for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const bool depth = ImageInfo::isDepth(format);
@@ -163,6 +167,7 @@ void Device::readCapabilities() {
         capabilities.formats[index].blend = !depth && capabilities.formats[index].render && (target & static_cast<UINT>(D3D11_FORMAT_SUPPORT_BLENDABLE)) != 0;
         capabilities.formats[index].filter = !depth && (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_SHADER_SAMPLE)) != 0;
         capabilities.formats[index].storage = !depth && (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW)) != 0;
+        capabilities.formats[index].mipmaps = !depth && (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_MIP_AUTOGEN)) != 0;
         capabilities.formats[index].sampleCounts = capabilities.formats[index].render ? std::uint8_t{1} : std::uint8_t{0};
 
         const UINT multisampled = static_cast<UINT>(depth ? D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET : D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET | D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE);
@@ -288,58 +293,71 @@ std::vector<D3D11_SUBRESOURCE_DATA> Device::describeLevels(const ImageDesc& desc
     return data;
 }
 
-ComPtr<ID3D11ShaderResourceView> Device::makeTextureView(ID3D11Resource& resource, const ImageDesc& desc) {
+// A view reads the mip levels and layers of its description from the first ones it names, which are the first of the image for an image itself, and a cube array reads whole cubes from its first face.
+ComPtr<ID3D11ShaderResourceView> Device::makeTextureView(ID3D11Resource& resource, const ImageRules::Description& description, std::string_view label) {
     D3D11_SHADER_RESOURCE_VIEW_DESC view{};
-    view.Format = Formats::getViewFormat(desc.format);
-    const auto mips = static_cast<UINT>(desc.mipLevels);
-    const auto layers = static_cast<UINT>(desc.layers);
-    const bool multisampled = desc.sampleCount > 1;
+    view.Format = Formats::getViewFormat(description.format);
+    const auto firstMip = static_cast<UINT>(description.baseMipLevel);
+    const auto mips = static_cast<UINT>(description.mipLevels);
+    const auto firstLayer = static_cast<UINT>(description.baseLayer);
+    const auto layers = static_cast<UINT>(description.layers);
+    const bool multisampled = description.sampleCount > 1;
 
-    switch (desc.type) {
+    switch (description.type) {
     case TextureType::Flat:
         view.ViewDimension = multisampled ? D3D11_SRV_DIMENSION_TEXTURE2DMS : D3D11_SRV_DIMENSION_TEXTURE2D;
-        view.Texture2D = {.MostDetailedMip = 0, .MipLevels = mips};
+        view.Texture2D = {.MostDetailedMip = firstMip, .MipLevels = mips};
         break;
     case TextureType::Array:
         view.ViewDimension = multisampled ? D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY : D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
         if (multisampled) {
-            view.Texture2DMSArray = {.FirstArraySlice = 0, .ArraySize = layers};
+            view.Texture2DMSArray = {.FirstArraySlice = firstLayer, .ArraySize = layers};
         } else {
-            view.Texture2DArray = {.MostDetailedMip = 0, .MipLevels = mips, .FirstArraySlice = 0, .ArraySize = layers};
+            view.Texture2DArray = {.MostDetailedMip = firstMip, .MipLevels = mips, .FirstArraySlice = firstLayer, .ArraySize = layers};
         }
 
         break;
     case TextureType::Cube:
-        view.ViewDimension = layers > 6 ? D3D11_SRV_DIMENSION_TEXTURECUBEARRAY : D3D11_SRV_DIMENSION_TEXTURECUBE;
-        if (layers > 6) {
-            view.TextureCubeArray = {.MostDetailedMip = 0, .MipLevels = mips, .First2DArrayFace = 0, .NumCubes = layers / 6};
-        } else {
-            view.TextureCube = {.MostDetailedMip = 0, .MipLevels = mips};
-        }
-
+        view.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+        view.TextureCube = {.MostDetailedMip = firstMip, .MipLevels = mips};
+        break;
+    case TextureType::CubeArray:
+        view.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBEARRAY;
+        view.TextureCubeArray = {.MostDetailedMip = firstMip, .MipLevels = mips, .First2DArrayFace = firstLayer, .NumCubes = layers / 6};
         break;
     case TextureType::Volume:
         view.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
-        view.Texture3D = {.MostDetailedMip = 0, .MipLevels = mips};
+        view.Texture3D = {.MostDetailedMip = firstMip, .MipLevels = mips};
         break;
     }
 
     ComPtr<ID3D11ShaderResourceView> made;
-    HResult::check(device->CreateShaderResourceView(&resource, &view, made.GetAddressOf()), std::format("create the view of the image \"{}\"", desc.label));
+    HResult::check(device->CreateShaderResourceView(&resource, &view, made.GetAddressOf()), std::format("create the view of the image \"{}\"", label));
+    setName(*made.Get(), label);
     return made;
 }
 
+// Direct3D 11 counts the subresources of a texture by layer and then by mip level, and those of a volume by mip level alone, whose slices a box reaches.
+UINT Device::getSubresource(const ImageRules::Description& description, int mipLevel, int layer) noexcept {
+    const int slice = description.type == TextureType::Volume ? 0 : layer;
+    return static_cast<UINT>(mipLevel) + (static_cast<UINT>(slice) * static_cast<UINT>(description.mipLevels));
+}
+
+// A dynamic image or a render target of more than one mip level, of a format whose mip levels the driver generates, takes the binds that `GenerateMips` draws through. Cubes and cube arrays are arrays of faces that views read as cubes, and depth images are typeless resources that depth stencil views write and shader resource views sample.
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
-    ImageRules::check(desc, capabilities);
+    const ImageRules::Description description = ImageRules::check(desc, capabilities);
+    const bool generates = (desc.kind == ImageKind::Dynamic || desc.kind == ImageKind::RenderTarget) && desc.mipLevels > 1 && capabilities.getFormat(desc.format).mipmaps;
 
     UINT bind = D3D11_BIND_SHADER_RESOURCE;
-    bind |= desc.kind == ImageKind::RenderTarget ? static_cast<UINT>(D3D11_BIND_RENDER_TARGET) : 0U;
+    bind |= desc.kind == ImageKind::RenderTarget || generates ? static_cast<UINT>(D3D11_BIND_RENDER_TARGET) : 0U;
     bind |= desc.kind == ImageKind::DepthStencil ? static_cast<UINT>(D3D11_BIND_DEPTH_STENCIL) : 0U;
+    UINT misc = generates ? static_cast<UINT>(D3D11_RESOURCE_MISC_GENERATE_MIPS) : 0U;
+    misc |= desc.type == TextureType::Cube || desc.type == TextureType::CubeArray ? static_cast<UINT>(D3D11_RESOURCE_MISC_TEXTURECUBE) : 0U;
     const D3D11_USAGE usage = desc.kind == ImageKind::Texture ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DEFAULT;
     const std::vector<D3D11_SUBRESOURCE_DATA> data = desc.kind == ImageKind::Texture ? describeLevels(desc) : std::vector<D3D11_SUBRESOURCE_DATA>{};
     const D3D11_SUBRESOURCE_DATA* initial = data.empty() ? nullptr : data.data();
 
-    ImageRecord record{.type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .format = desc.format, .kind = desc.kind};
+    ImageRecord record{.description = description};
     if (desc.type == TextureType::Volume) {
         D3D11_TEXTURE3D_DESC made{};
         made.Width = static_cast<UINT>(desc.width);
@@ -349,6 +367,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         made.Format = Formats::getResourceFormat(desc.format);
         made.Usage = usage;
         made.BindFlags = bind;
+        made.MiscFlags = misc;
         ComPtr<ID3D11Texture3D> texture;
         HResult::check(device->CreateTexture3D(&made, initial, texture.GetAddressOf()), std::format("create the {}x{}x{} volume \"{}\"", desc.width, desc.height, desc.layers, desc.label));
         record.resource = texture;
@@ -362,7 +381,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         made.SampleDesc.Count = static_cast<UINT>(desc.sampleCount);
         made.Usage = usage;
         made.BindFlags = bind;
-        made.MiscFlags = desc.type == TextureType::Cube ? static_cast<UINT>(D3D11_RESOURCE_MISC_TEXTURECUBE) : 0U;
+        made.MiscFlags = misc;
         ComPtr<ID3D11Texture2D> texture;
         HResult::check(device->CreateTexture2D(&made, initial, texture.GetAddressOf()), std::format("create the {}x{} image \"{}\"", desc.width, desc.height, desc.label));
         record.resource = texture;
@@ -371,8 +390,21 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     ComPtr<ID3D11DeviceChild> child;
     record.resource.As(&child);
     setName(*child.Get(), desc.label);
-    record.view = makeTextureView(*record.resource.Get(), desc);
+    record.view = makeTextureView(*record.resource.Get(), description, desc.label);
     return {images.add(std::move(record))};
+}
+
+// The view shares the resource of its image, which keeps the id of the view, so destroying the image destroys the view with it. The image takes room for the id before the view exists, so a view that the table holds always joins its image.
+gpu::Device::Image Device::makeView(const ViewDesc& desc) {
+    ImageRecord& image = images.get(desc.image.id);
+    const ImageRules::Description description = ImageRules::checkView(image.description, desc, capabilities);
+    image.views.reserve(image.views.size() + 1);
+
+    ImageRecord view{.resource = image.resource, .description = description};
+    view.view = makeTextureView(*image.resource.Get(), description, desc.label);
+    const std::uint64_t id = images.add(std::move(view));
+    image.views.push_back(id);
+    return {id};
 }
 
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
@@ -477,8 +509,25 @@ void Device::destroy(Buffer buffer) noexcept {
     buffers.remove(buffer.id);
 }
 
+// An image destroys its views with it, and a view leaves its image, which forgets the id of the view.
 void Device::destroy(Image image) noexcept {
-    images.remove(image.id);
+    const std::optional<ImageRecord> record = images.remove(image.id);
+    if (!record) {
+        return;
+    }
+
+    if (record->description.isView()) {
+        ImageRecord* viewed = images.find(record->description.viewed.id);
+        if (viewed != nullptr) {
+            std::erase(viewed->views, image.id);
+        }
+
+        return;
+    }
+
+    for (const std::uint64_t view : record->views) {
+        images.remove(view);
+    }
 }
 
 void Device::destroy(Sampler sampler) noexcept {
@@ -564,28 +613,40 @@ void Device::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destinat
     context->CopySubresourceRegion(to.buffer.Get(), 0, static_cast<UINT>(destinationOffset), 0, 0, from.buffer.Get(), 0, &box);
 }
 
-// Direct3D 11 copies no buffer into a texture, so the driver stages the pixels of the box, and a write of the whole image lets it hand the GPU a fresh copy instead of waiting for the frames that read the old one.
+// Direct3D 11 copies no buffer into a texture, so the driver stages the pixels of the box in the subresource of the mip level and layer, or in the slice of a volume, and a write of the whole of an image of one subresource lets it hand the GPU a fresh copy instead of waiting for the frames that read the old one.
 void Device::writeImages(std::span<const ImageWrite> writes) {
+    for (const ImageWrite& write : writes) {
+        ImageRules::checkWrite(images.get(write.image.id).description, write);
+    }
+
+    ImageRules::checkDistinctWrites(writes);
     openFrame();
 
     for (const ImageWrite& write : writes) {
         const ImageRecord& image = images.get(write.image.id);
-        if (image.kind != ImageKind::Dynamic) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
+        const ImageRules::Description& description = image.description;
+        const ImageInfo::Extent level = description.getLevelExtent(write.mipLevel);
         const Region& region = write.region;
-        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
-        const std::size_t row = ImageInfo::getRowBytes(image.format, region.width);
-        const std::size_t bytes = row * static_cast<std::size_t>(region.height);
-        if (!inside || write.pixels.size() != bytes) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
+        const auto front = static_cast<UINT>(description.type == TextureType::Volume ? write.layer : 0);
+        const D3D11_BOX box{.left = static_cast<UINT>(region.x), .top = static_cast<UINT>(region.y), .front = front, .right = static_cast<UINT>(region.x + region.width), .bottom = static_cast<UINT>(region.y + region.height), .back = front + 1};
 
-        const bool whole = region.width == image.width && region.height == image.height;
-        const D3D11_BOX box{.left = static_cast<UINT>(region.x), .top = static_cast<UINT>(region.y), .front = 0, .right = static_cast<UINT>(region.x + region.width), .bottom = static_cast<UINT>(region.y + region.height), .back = 1};
-        context->UpdateSubresource1(image.resource.Get(), 0, &box, write.pixels.data(), static_cast<UINT>(row), static_cast<UINT>(bytes), whole ? static_cast<UINT>(D3D11_COPY_DISCARD) : 0U);
+        const auto row = static_cast<UINT>(ImageInfo::getRowBytes(description.format, region.width));
+        const bool whole = description.mipLevels == 1 && level.depth == 1 && region.width == level.width && region.height == level.height;
+        const UINT flags = whole ? static_cast<UINT>(D3D11_COPY_DISCARD) : 0U;
+        context->UpdateSubresource1(image.resource.Get(), getSubresource(description, write.mipLevel, write.layer), &box, write.pixels.data(), row, static_cast<UINT>(write.pixels.size()), flags);
     }
+}
+
+// The driver fills the smaller mip levels from the first one through the view of the whole image, at this point of the commands of the context.
+void Device::generateMipmaps(Image image) {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::Mipmaps);
+    }
+
+    const ImageRecord& record = images.get(image.id);
+    ImageRules::checkMipmaps(record.description, capabilities);
+    openFrame();
+    context->GenerateMips(record.view.Get());
 }
 
 // The frame waits for the GPU to finish the frame that used the same slot, so the GPU runs at most `kFramesInFlight` frames behind. The signal of that frame may still wait in the commands that the driver holds, which the context hands over before the CPU sleeps. A removed device passes every fence value at once, so no wait outlives it.
@@ -785,15 +846,16 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& color = desc.colors[index];
         ImageRecord& image = images.get(color.image.id);
-        if (image.kind != ImageKind::RenderTarget) {
+        if (image.description.isView() || image.description.kind != ImageKind::RenderTarget) {
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 
         ID3D11RenderTargetView* view = getAttachment(image, color.mipLevel, color.layer).color.Get();
         pass.colors[index] = view;
         pass.discardColors[index] = color.store == Store::Discard;
-        width = std::max(1, image.width >> color.mipLevel);
-        height = std::max(1, image.height >> color.mipLevel);
+        const ImageInfo::Extent extent = image.description.getLevelExtent(color.mipLevel);
+        width = extent.width;
+        height = extent.height;
 
         if (color.load == Load::Clear) {
             const std::array<float, 4> clear{color.clear.r, color.clear.g, color.clear.b, color.clear.a};
@@ -804,7 +866,9 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
 
         if (color.resolve.isValid()) {
             const ImageRecord& resolve = images.get(color.resolve.id);
-            pass.resolves[index] = {.source = image.resource.Get(), .sourceSubresource = static_cast<UINT>(color.layer), .destination = resolve.resource.Get(), .format = Formats::getViewFormat(image.format)};
+            const UINT source = getSubresource(image.description, color.mipLevel, color.layer);
+            const UINT destination = getSubresource(resolve.description, color.resolveMipLevel, color.resolveLayer);
+            pass.resolves[index] = {.source = image.resource.Get(), .sourceSubresource = source, .destination = resolve.resource.Get(), .destinationSubresource = destination, .format = Formats::getViewFormat(image.description.format)};
         }
     }
 
@@ -813,15 +877,16 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& image = images.get(attachment.image.id);
-        if (image.kind != ImageKind::DepthStencil) {
+        if (image.description.isView() || image.description.kind != ImageKind::DepthStencil) {
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 
-        pass.depthStencil = getAttachment(image, 0, 0).depth.Get();
-        const bool stencil = ImageInfo::hasStencil(image.format);
+        pass.depthStencil = getAttachment(image, attachment.mipLevel, attachment.layer).depth.Get();
+        const bool stencil = ImageInfo::hasStencil(image.description.format);
         pass.discardDepthStencil = attachment.depthStore == Store::Discard && (!stencil || attachment.stencilStore == Store::Discard);
-        width = width > 0 ? width : image.width;
-        height = height > 0 ? height : image.height;
+        const ImageInfo::Extent extent = image.description.getLevelExtent(attachment.mipLevel);
+        width = width > 0 ? width : extent.width;
+        height = height > 0 ? height : extent.height;
 
         UINT clear = attachment.depthLoad == Load::Clear ? static_cast<UINT>(D3D11_CLEAR_DEPTH) : 0U;
         clear |= stencil && attachment.stencilLoad == Load::Clear ? static_cast<UINT>(D3D11_CLEAR_STENCIL) : 0U;
@@ -847,12 +912,14 @@ Device::Attachment& Device::getAttachment(ImageRecord& image, int mipLevel, int 
     Attachment attachment{.mipLevel = mipLevel, .layer = layer};
     const auto mip = static_cast<UINT>(mipLevel);
     const auto slice = static_cast<UINT>(layer);
-    const bool multisampled = image.sampleCount > 1;
+    const ImageRules::Description& description = image.description;
+    const bool multisampled = description.sampleCount > 1;
 
-    if (image.kind == ImageKind::DepthStencil) {
+    // A depth stencil view of an array, a cube or a cube array writes one of its layers or faces at a mip level.
+    if (description.kind == ImageKind::DepthStencil) {
         D3D11_DEPTH_STENCIL_VIEW_DESC view{};
-        view.Format = Formats::getDepthFormat(image.format);
-        if (image.type == TextureType::Flat) {
+        view.Format = Formats::getDepthFormat(description.format);
+        if (description.type == TextureType::Flat) {
             view.ViewDimension = multisampled ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
             view.Texture2D.MipSlice = mip;
         } else {
@@ -869,14 +936,15 @@ Device::Attachment& Device::getAttachment(ImageRecord& image, int mipLevel, int 
     }
 
     D3D11_RENDER_TARGET_VIEW_DESC view{};
-    view.Format = Formats::getViewFormat(image.format);
-    switch (image.type) {
+    view.Format = Formats::getViewFormat(description.format);
+    switch (description.type) {
     case TextureType::Flat:
         view.ViewDimension = multisampled ? D3D11_RTV_DIMENSION_TEXTURE2DMS : D3D11_RTV_DIMENSION_TEXTURE2D;
         view.Texture2D.MipSlice = mip;
         break;
     case TextureType::Array:
     case TextureType::Cube:
+    case TextureType::CubeArray:
         view.ViewDimension = multisampled ? D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY : D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
         if (multisampled) {
             view.Texture2DMSArray = {.FirstArraySlice = slice, .ArraySize = 1};
@@ -1164,7 +1232,7 @@ void Device::endPass() {
         for (UINT index = 0; index < pass.colorCount; ++index) {
             const PassState::Resolve& resolve = pass.resolves[index];
             if (resolve.source != nullptr) {
-                context->ResolveSubresource(resolve.destination, 0, resolve.source, resolve.sourceSubresource, resolve.format);
+                context->ResolveSubresource(resolve.destination, resolve.destinationSubresource, resolve.source, resolve.sourceSubresource, resolve.format);
             }
 
             if (pass.discardColors[index]) {
@@ -1348,11 +1416,12 @@ void Device::attachSurface(const Surface& target) {
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
-    if (record.kind != ImageKind::RenderTarget || record.sampleCount > 1 || record.type == TextureType::Volume) {
+    const ImageRules::Description& description = record.description;
+    if (description.isView() || description.kind != ImageKind::RenderTarget || description.sampleCount > 1 || description.type == TextureType::Volume) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
+    if (width <= 0 || height <= 0 || width > description.width || height > description.height) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
@@ -1363,7 +1432,7 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     desc.Height = static_cast<UINT>(height);
     desc.MipLevels = 1;
     desc.ArraySize = 1;
-    desc.Format = Formats::getViewFormat(record.format);
+    desc.Format = Formats::getViewFormat(description.format);
     desc.SampleDesc.Count = 1;
     desc.Usage = D3D11_USAGE_STAGING;
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
@@ -1372,7 +1441,7 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
 
     const D3D11_BOX box{.left = 0, .top = 0, .front = 0, .right = static_cast<UINT>(width), .bottom = static_cast<UINT>(height), .back = 1};
     context->CopySubresourceRegion(staging.Get(), 0, 0, 0, 0, record.resource.Get(), 0, &box);
-    return std::make_unique<ImageReadback>(StagingCopy(*device.Get(), context, std::move(staging)), record.format, width, height);
+    return std::make_unique<ImageReadback>(StagingCopy(*device.Get(), context, std::move(staging)), description.format, width, height);
 }
 
 // The copy follows the commands that the context holds, which hold the frames committed before it.

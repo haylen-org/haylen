@@ -19,6 +19,7 @@
 #include "gpu/BufferRules.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
+#include "gpu/ImageRules.hpp"
 #include "gpu/renderdoc/Capturer.hpp"
 #include "gpu/vulkan/DescriptorCache.hpp"
 #include "gpu/vulkan/LayoutCache.hpp"
@@ -35,7 +36,7 @@ class Context;
 class Instance;
 class PreparedModules;
 
-// The device of Vulkan 1.1 on Windows, Linux and Android. It records each frame into a command buffer of uploads and one of passes, with dynamic rendering where the GPU has it and render passes otherwise, and keeps a fixed number of frames in flight behind fences, releasing what `destroy` lets go of once those frames finished. Uniform blocks take dynamic offsets into a ring that stays mapped or into the uniform buffers of the bindings, stream buffers rotate through a copy for each frame in flight, the writes into dynamic buffers and the copies between buffers are copies among the passes of the frame, and the descriptor sets of textures and samplers are made once for each choice of them. Its viewport flips the vertical axis, so clip space and the rows of render targets match Metal and Direct3D.
+// The device of Vulkan 1.1 on Windows, Linux and Android. It records each frame into a command buffer of uploads and one of passes, with dynamic rendering where the GPU has it and render passes otherwise, and keeps a fixed number of frames in flight behind fences, releasing what `destroy` lets go of once those frames finished. Uniform blocks take dynamic offsets into a ring that stays mapped or into the uniform buffers of the bindings, stream buffers rotate through a copy for each frame in flight, the writes into dynamic buffers and the copies between buffers are copies among the passes of the frame, the mip levels of images generate through chains of linear blits among those passes, views of ranges of mip levels and layers are image views that bindings take like images, and the descriptor sets of textures and samplers are made once for each choice of them. Its viewport flips the vertical axis, so clip space and the rows of render targets match Metal and Direct3D.
 class Device final : public gpu::Device {
   public:
     static constexpr int kFramesInFlight = 2;
@@ -73,6 +74,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] Sampler makeSampler(const SamplerDesc& desc) override;
     [[nodiscard]] Program makeProgram(const ProgramDesc& desc) override;
     [[nodiscard]] Pipeline makePipeline(const PipelineDesc& desc) override;
+    [[nodiscard]] Image makeView(const ViewDesc& desc) override;
     void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) override;
 
     void destroy(Buffer buffer) noexcept override;
@@ -84,6 +86,7 @@ class Device final : public gpu::Device {
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
     void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
+    void generateMipmaps(Image image) override;
 
     void beginPass(const PassDesc& desc) override;
 
@@ -182,23 +185,25 @@ class Device final : public gpu::Device {
         VkImageView view = VK_NULL_HANDLE;
     };
 
-    // An image, which rests in one layout between the passes and copies that move it out of it.
+    // An image or a view of one. Every mip level and layer of an image rests in one layout between the passes, copies and mip generations that move some of them out of it and back, so a pass that draws into some mip levels and layers samples the others in that layout. An image lists the ids of its views, which go with it, while a view holds no image and owns only the view that draws sample.
     struct ImageRecord {
         VkImage image = VK_NULL_HANDLE;
         VmaAllocation allocation = VK_NULL_HANDLE;
         VkImageView sampleView = VK_NULL_HANDLE;
         VkFormat format = VK_FORMAT_UNDEFINED;
-        PixelFormat pixelFormat = PixelFormat::Rgba8;
-        ImageKind kind = ImageKind::Texture;
-        TextureType type = TextureType::Flat;
-        int width = 0;
-        int height = 0;
-        int layers = 1;
-        int mipLevels = 1;
         VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
         VkImageLayout restLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkImageAspectFlags aspects = VK_IMAGE_ASPECT_COLOR_BIT;
+        ImageRules::Description description{};
         std::vector<AttachmentView> attachmentViews{};
+        std::vector<std::uint64_t> views{};
+    };
+
+    // Staged pixels that a copy moves into a part of an image.
+    struct ImageCopy {
+        VkBuffer source = VK_NULL_HANDLE;
+        VkImage destination = VK_NULL_HANDLE;
+        VkBufferImageCopy region{};
     };
 
     struct SamplerRecord {
@@ -363,6 +368,8 @@ class Device final : public gpu::Device {
 
     static void checkImageLimits(const ImageDesc& desc, const VkImageCreateInfo& info, const VkImageFormatProperties& supported);
     [[nodiscard]] VkFormat resolveFormat(PixelFormat format) const noexcept;
+    [[nodiscard]] VkImageView makeSampleView(const ImageRecord& image, const ViewDesc& range);
+    [[nodiscard]] ImageRecord& requireAttachment(Image image, ImageKind kind);
     [[nodiscard]] VkImageView getAttachmentView(ImageRecord& record, int mipLevel, int layer);
     [[nodiscard]] math::Rect getPassPixels(const math::Rect& window) const noexcept;
     void uploadLevels(const ImageRecord& record, std::span<const std::span<const std::byte>> levels);
@@ -451,7 +458,7 @@ class Device final : public gpu::Device {
     std::string labelText;
     std::vector<VkImageMemoryBarrier> imageBarriers;
     std::vector<VkBufferImageCopy> copyRegions;
-    std::vector<VkBuffer> stagingSources;
+    std::vector<ImageCopy> imageCopies;
     std::vector<VkWriteDescriptorSet> descriptorWrites;
     std::vector<VkDescriptorImageInfo> descriptorImages;
 

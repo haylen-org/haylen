@@ -21,9 +21,11 @@
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
 #include "gpu/ImageInfo.hpp"
+#include "gpu/ImageRules.hpp"
 #include "gpu/webgpu/BindGroupCache.hpp"
 #include "gpu/webgpu/Connection.hpp"
 #include "gpu/webgpu/FrameTimer.hpp"
+#include "gpu/webgpu/MipmapGenerator.hpp"
 #include "gpu/webgpu/Swapchain.hpp"
 #include "gpu/webgpu/UploadRing.hpp"
 #include "haylen/gpu/ContractError.hpp"
@@ -32,7 +34,7 @@
 
 namespace haylen::gpu::webgpu {
 
-// The device of WebGPU, which draws through the WebGPU C API of the browser into the canvas of the page. The uniform blocks of a program live in bind group 0 with dynamic offsets into the uniform ring or into the uniform buffers that the bindings name, and its textures and samplers in bind group 1, whose groups the device keeps by what they hold. Queue writes carry images and the contents of stream buffers to the GPU in the order of the frames, the writes into dynamic buffers and the copies between buffers are copies of the command encoder of the frame between its passes, and WebGPU frees a destroyed object only once the GPU finished the frames that use it, so the device hands what is destroyed to WebGPU once the frame that may still record it is submitted.
+// The device of WebGPU, which draws through the WebGPU C API of the browser into the canvas of the page. The uniform blocks of a program live in bind group 0 with dynamic offsets into the uniform ring or into the uniform buffers that the bindings name, and its textures and samplers in bind group 1, whose groups the device keeps by what they hold. Queue writes carry images and the contents of stream buffers to the GPU in the order of the frames, the writes into dynamic buffers and the copies between buffers are copies of the command encoder of the frame between its passes, and WebGPU frees a destroyed object only once the GPU finished the frames that use it, so the device hands what is destroyed to WebGPU once the frame that may still record it is submitted. The views of images are texture views of WebGPU, which WebGPU tracks by subresource, so a pass samples mip levels and layers of an image that it does not draw into, and the device generates mip levels with the draws of `MipmapGenerator`, since WebGPU has no generation of its own.
 class Device final : public gpu::Device {
   public:
     // Creates the device on the connection that `DeviceFactory::prepare` made ready, drawing into the canvas of the surface, or offscreen when there is none. Throws `std::runtime_error` with the reason when WebGPU cannot start, so the platform tries the next graphics API. The adapter followed the options when `DeviceFactory::prepare` requested it, and WebGPU validates every call and the device labels every object in every build.
@@ -60,6 +62,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] Sampler makeSampler(const SamplerDesc& desc) override;
     [[nodiscard]] Program makeProgram(const ProgramDesc& desc) override;
     [[nodiscard]] Pipeline makePipeline(const PipelineDesc& desc) override;
+    [[nodiscard]] Image makeView(const ViewDesc& desc) override;
     void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) override;
 
     void destroy(Buffer buffer) noexcept override;
@@ -71,6 +74,7 @@ class Device final : public gpu::Device {
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
     void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
+    void generateMipmaps(Image image) override;
 
     void beginPass(const PassDesc& desc) override;
 
@@ -124,18 +128,14 @@ class Device final : public gpu::Device {
         BufferRules::Description description{};
     };
 
-    // The texture of an image, the view that draws sample it through and the views that passes draw into it through, by mip level and layer.
+    // The texture of an image, the view that draws sample it through, the views that passes draw into it through, by mip level and layer, the views made of it, which go with it, and the sources of its smaller mip levels once it generated them. A view has no texture of its own and samples through its view alone.
     struct ImageRecord {
         WGPUTexture texture = nullptr;
         WGPUTextureView sampled = nullptr;
         std::vector<std::pair<std::uint32_t, WGPUTextureView>> attachments{};
-        TextureType type = TextureType::Flat;
-        int width = 0;
-        int height = 0;
-        int layers = 1;
-        int sampleCount = 1;
-        PixelFormat format = PixelFormat::Rgba8;
-        ImageKind kind = ImageKind::Texture;
+        std::vector<std::uint64_t> views{};
+        std::vector<MipmapGenerator::Source> mipmapSources{};
+        ImageRules::Description description{};
     };
 
     struct SamplerRecord {
@@ -291,6 +291,7 @@ class Device final : public gpu::Device {
     UploadRing uploads;
     std::unique_ptr<FrameTimer> timer;
     BindGroupCache imageGroups;
+    MipmapGenerator mipmaps;
 
     HandleTable<BufferRecord> buffers{"buffer"};
     HandleTable<ImageRecord> images{"image"};

@@ -202,8 +202,9 @@ void Context::createDevice() {
         extensions.push_back(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
     }
 
-    // The block compressed formats of each family sample only on a device made with its feature.
+    // The block compressed formats of each family sample only on a device made with its feature, and so do cube arrays.
     enabledFeatures.samplerAnisotropy = supported.features.samplerAnisotropy;
+    enabledFeatures.imageCubeArray = supported.features.imageCubeArray;
     enabledFeatures.independentBlend = supported.features.independentBlend;
     enabledFeatures.textureCompressionBC = supported.features.textureCompressionBC;
     enabledFeatures.textureCompressionETC2 = supported.features.textureCompressionETC2;

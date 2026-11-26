@@ -83,6 +83,9 @@ Compiling a shader takes time, so the engine asks the device to prepare programs
 | Separate blend for each color target | Yes. | Yes. |
 | GPU time of a frame | Timestamp queries inside a disjoint query. | Timestamp queries from the start of the transfer list, which runs first, to the end of the passes, which the fence of the frame hands over. |
 | First row of a render target | The top row. | The top row. |
+| Cube arrays | Yes, `TextureCubeArray` of feature level 10.1 and later. | The same. |
+| Views of images | Shader resource views of the range of mip levels and layers, whose conflicts with render target views the runtime tracks by subresource. | Shader resource views of the range, and the device moves the states of exactly the subresources that a use reaches, so a pass samples a view of the levels it does not draw into. |
+| Mip generation | `GenerateMips`, for the formats with `D3D11_FORMAT_SUPPORT_MIP_AUTOGEN`, on images with the bind of render targets and `D3D11_RESOURCE_MISC_GENERATE_MIPS`. | `d3d12::MipmapGenerator` draws each level of each layer or slice from a view of the level above with a linear filter, since Direct3D 12 has no command for it, for the formats with render target, linear sample and mip support. |
 
 ## Debugging
 

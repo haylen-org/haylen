@@ -23,6 +23,8 @@ std::optional<std::vector<std::uint8_t>> NullDevice::NullReadback::poll() {
 
 Device::Capabilities NullDevice::getDefaultCapabilities() noexcept {
     Capabilities capabilities{.maxImageSize = kMaxImageSize, .maxArrayLayers = kMaxArrayLayers, .maxVolumeSize = kMaxVolumeSize, .maxCubeSize = kMaxImageSize, .originTopLeft = true, .independentBlend = false, .gpuTiming = false, .maxAnisotropy = kMaxAnisotropy, .maxLodBias = kMaxLodBias, .borderColors = true, .storageBuffers = true, .indirectBuffers = true, .maxUniformBlockSize = kMaxUniformBlockSize};
+    capabilities.cubeArrays = true;
+    capabilities.imageViews = true;
     for (std::size_t format = 0; format < capabilities.formats.size(); ++format) {
         const auto pixelFormat = static_cast<PixelFormat>(format);
         const bool wide = pixelFormat == PixelFormat::R32Float || pixelFormat == PixelFormat::Rg32Float || pixelFormat == PixelFormat::Rgba32Float;
@@ -35,6 +37,7 @@ Device::Capabilities NullDevice::getDefaultCapabilities() noexcept {
         support.render = !compressed;
         support.blend = color && !wide;
         support.storage = color && pixelFormat != PixelFormat::Rgba8Srgb && pixelFormat != PixelFormat::Bgra8;
+        support.mipmaps = color && support.filter;
         support.sampleCounts = compressed ? std::uint8_t{0} : kSampleCounts;
     }
 
@@ -90,13 +93,18 @@ Device::Buffer NullDevice::makeBuffer(const BufferDesc& desc) {
 }
 
 Device::Image NullDevice::makeImage(const ImageDesc& desc) {
-    ImageRules::check(desc, features);
+    const ImageRules::Description description = ImageRules::check(desc, features);
     requireRoom(images.size(), kImagePoolSize, "The graphics device has no room for another texture. At most {} textures and render targets can exist at once.");
     const std::uint64_t id = nextId++;
-    ImageDesc kept = desc;
-    kept.levels = {};
-    kept.label = {};
-    images.emplace(id, kept);
+    images.emplace(id, description);
+    return {id};
+}
+
+Device::Image NullDevice::makeView(const ViewDesc& desc) {
+    const ImageRules::Description description = ImageRules::checkView(getImage(desc.image), desc, features);
+    requireRoom(images.size(), kImagePoolSize, "The graphics device has no room for another texture. At most {} textures and render targets can exist at once.");
+    const std::uint64_t id = nextId++;
+    images.emplace(id, description);
     return {id};
 }
 
@@ -253,13 +261,20 @@ void NullDevice::destroy(Buffer buffer) noexcept {
     }
 }
 
+// Destroying an image destroys its views with it, while a view holds no memory of its own.
 void NullDevice::destroy(Image image) noexcept {
     const auto found = images.find(image.id);
-    if (found != images.end()) {
-        const ImageDesc& desc = found->second;
-        spare += ImageInfo::getRegionBytes(desc.format, desc.width, desc.height) * static_cast<std::size_t>(desc.layers);
-        images.erase(found);
+    if (found == images.end()) {
+        return;
     }
+
+    const ImageRules::Description& desc = found->second;
+    if (!desc.isView()) {
+        spare += ImageInfo::getRegionBytes(desc.format, desc.width, desc.height) * static_cast<std::size_t>(desc.layers);
+        std::erase_if(images, [image](const auto& entry) { return entry.second.viewed == image; });
+    }
+
+    images.erase(image.id);
 }
 
 void NullDevice::destroy(Sampler sampler) noexcept {
@@ -292,7 +307,7 @@ const NullDevice::BufferState& NullDevice::getBuffer(Buffer buffer) const {
     return found->second;
 }
 
-const Device::ImageDesc& NullDevice::getImage(Image image) const {
+const ImageRules::Description& NullDevice::getImage(Image image) const {
     const auto found = images.find(image.id);
     if (found == images.end()) {
         throw ContractError(ContractError::Rule::MissingObject);
@@ -365,46 +380,33 @@ void NullDevice::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer dest
 }
 
 void NullDevice::writeImages(std::span<const ImageWrite> writes) {
-    if (pass || recordedPasses > 0) {
-        throw ContractError(ContractError::Rule::ImageWrite);
-    }
-
-    if (imagesWritten) {
+    if (pass || recordedPasses > 0 || mipmapsGenerated || imagesWritten) {
         throw ContractError(ContractError::Rule::ImageWrite);
     }
 
     imagesWritten = true;
 
-    for (auto write = writes.begin(); write != writes.end(); ++write) {
-        const ImageDesc& image = getImage(write->image);
-        if (image.kind != ImageKind::Dynamic) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
-        const Region& region = write->region;
-        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
-        if (!inside) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
-        const std::size_t bytes = ImageInfo::getRegionBytes(image.format, region.width, region.height);
-        if (write->pixels.size() != bytes) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
-        if (std::any_of(writes.begin(), write, [image = write->image](const ImageWrite& earlier) { return earlier.image == image; })) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
+    for (const ImageWrite& write : writes) {
+        ImageRules::checkWrite(getImage(write.image), write);
         ++currentFrame.imageWrites;
-        currentFrame.imageWriteBytes += write->pixels.size();
+        currentFrame.imageWriteBytes += write.pixels.size();
     }
+
+    ImageRules::checkDistinctWrites(writes);
 }
 
-// Every attachment of a pass has the size of the first one at its mip level and its sample count, and a multisampled color resolves into a render target of one sample of the same size and format.
+void NullDevice::generateMipmaps(Image image) {
+    requireNoPass(ContractError::Rule::Mipmaps);
+    ImageRules::checkMipmaps(getImage(image), features);
+    mipmapsGenerated = true;
+    interruptedSincePass = true;
+    ++currentFrame.mipmapGenerations;
+}
+
+// Every attachment of a pass has the size of the first one at its mip level and its sample count, and a multisampled color resolves into a mip level and a layer of a render target of one sample that is no volume, of the same size and format there.
 void NullDevice::checkColorAttachment(const ColorAttachment& color, ImageInfo::Extent& extent, int& sampleCount) const {
-    const ImageDesc& image = getImage(color.image);
-    if (image.kind != ImageKind::RenderTarget) {
+    const ImageRules::Description& image = getImage(color.image);
+    if (image.isView() || image.kind != ImageKind::RenderTarget) {
         throw ContractError(ContractError::Rule::PassAttachments);
     }
 
@@ -412,7 +414,7 @@ void NullDevice::checkColorAttachment(const ColorAttachment& color, ImageInfo::E
         throw ContractError(ContractError::Rule::PassAttachments);
     }
 
-    const ImageInfo::Extent level = ImageInfo::getLevelExtent(image, color.mipLevel);
+    const ImageInfo::Extent level = image.getLevelExtent(color.mipLevel);
     if (color.layer < 0 || color.layer >= level.depth) {
         throw ContractError(ContractError::Rule::PassAttachments);
     }
@@ -430,13 +432,38 @@ void NullDevice::checkColorAttachment(const ColorAttachment& color, ImageInfo::E
         return;
     }
 
-    const ImageDesc& resolve = getImage(color.resolve);
-
-    if (image.sampleCount == 1) {
+    const ImageRules::Description& resolve = getImage(color.resolve);
+    if (image.sampleCount == 1 || resolve.isView() || resolve.kind != ImageKind::RenderTarget || resolve.type == TextureType::Volume || resolve.sampleCount != 1 || resolve.format != image.format) {
         throw ContractError(ContractError::Rule::PassAttachments);
     }
 
-    if (resolve.kind != ImageKind::RenderTarget || resolve.sampleCount != 1 || resolve.format != image.format || resolve.width != level.width || resolve.height != level.height) {
+    if (color.resolveMipLevel < 0 || color.resolveMipLevel >= resolve.mipLevels) {
+        throw ContractError(ContractError::Rule::PassAttachments);
+    }
+
+    const ImageInfo::Extent resolved = resolve.getLevelExtent(color.resolveMipLevel);
+    if (color.resolveLayer < 0 || color.resolveLayer >= resolved.depth || resolved.width != level.width || resolved.height != level.height) {
+        throw ContractError(ContractError::Rule::PassAttachments);
+    }
+}
+
+void NullDevice::checkDepthStencilAttachment(const DepthStencilAttachment& depthStencil, ImageInfo::Extent& extent, int& sampleCount) const {
+    const ImageRules::Description& depth = getImage(depthStencil.image);
+    if (depth.isView() || depth.kind != ImageKind::DepthStencil || depthStencil.mipLevel < 0 || depthStencil.mipLevel >= depth.mipLevels) {
+        throw ContractError(ContractError::Rule::PassAttachments);
+    }
+
+    const ImageInfo::Extent level = depth.getLevelExtent(depthStencil.mipLevel);
+    if (depthStencil.layer < 0 || depthStencil.layer >= level.depth) {
+        throw ContractError(ContractError::Rule::PassAttachments);
+    }
+
+    if (extent.width == 0) {
+        extent = level;
+        sampleCount = depth.sampleCount;
+    }
+
+    if (level.width != extent.width || level.height != extent.height || depth.sampleCount != sampleCount) {
         throw ContractError(ContractError::Rule::PassAttachments);
     }
 }
@@ -452,30 +479,21 @@ NullDevice::Targets NullDevice::describeOffscreenPass(const PassDesc& desc, Open
     std::size_t drawn = 0;
     for (const ColorAttachment& color : desc.colors) {
         checkColorAttachment(color, extent, sampleCount);
-        opened.images[drawn++] = color.image.id;
-        opened.images[drawn++] = color.resolve.id;
+        opened.drawn[drawn++] = {.image = color.image, .mipLevel = color.mipLevel, .layer = color.layer};
+        if (color.resolve.isValid()) {
+            opened.drawn[drawn++] = {.image = color.resolve, .mipLevel = color.resolveMipLevel, .layer = color.resolveLayer};
+        }
+
         targets.colors[targets.colorCount++] = getImage(color.image).format;
     }
 
     if (desc.depthStencil) {
-        const ImageDesc& depth = getImage(desc.depthStencil->image);
-        if (depth.kind != ImageKind::DepthStencil) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
-        if (extent.width == 0) {
-            extent = ImageInfo::getLevelExtent(depth, 0);
-            sampleCount = depth.sampleCount;
-        }
-
-        if (depth.width != extent.width || depth.height != extent.height || depth.sampleCount != sampleCount) {
-            throw ContractError(ContractError::Rule::PassAttachments);
-        }
-
-        opened.images[drawn] = desc.depthStencil->image.id;
-        targets.depthStencil = depth.format;
+        checkDepthStencilAttachment(*desc.depthStencil, extent, sampleCount);
+        opened.drawn[drawn++] = {.image = desc.depthStencil->image, .mipLevel = desc.depthStencil->mipLevel, .layer = desc.depthStencil->layer};
+        targets.depthStencil = getImage(desc.depthStencil->image).format;
     }
 
+    opened.drawnCount = drawn;
     targets.sampleCount = sampleCount;
     return targets;
 }
@@ -607,8 +625,9 @@ void NullDevice::applyPipeline(Pipeline pipeline) {
     currentFrame.passes[recordedPasses - 1].masks.push_back(found->second.firstMask);
 }
 
+// A texture slot takes an image or a view of its type that the pass does not draw or resolve into at any mip level and layer the slot reads.
 void NullDevice::checkTexture(const TextureBinding& binding, Image image) const {
-    const ImageDesc& desc = getImage(image);
+    const ImageRules::Description& desc = getImage(image);
     if (desc.type != binding.type || (desc.sampleCount > 1) != binding.multisampled) {
         throw ContractError(ContractError::Rule::Bindings);
     }
@@ -621,8 +640,11 @@ void NullDevice::checkTexture(const TextureBinding& binding, Image image) const 
         throw ContractError(ContractError::Rule::Bindings);
     }
 
-    if (std::ranges::find(pass->images, image.id) != pass->images.end()) {
-        throw ContractError(ContractError::Rule::Bindings);
+    for (std::size_t index = 0; index < pass->drawnCount; ++index) {
+        const Subresource& drawn = pass->drawn[index];
+        if (ImageRules::reaches(image, desc, drawn.image, drawn.mipLevel, drawn.layer)) {
+            throw ContractError(ContractError::Rule::Bindings);
+        }
     }
 }
 
@@ -827,8 +849,10 @@ void NullDevice::commit() {
     lastFrame.imageWriteBytes = std::exchange(currentFrame.imageWriteBytes, 0);
     lastFrame.bufferWrites = std::exchange(currentFrame.bufferWrites, 0);
     lastFrame.bufferCopies = std::exchange(currentFrame.bufferCopies, 0);
+    lastFrame.mipmapGenerations = std::exchange(currentFrame.mipmapGenerations, 0);
     recordedPasses = 0;
     imagesWritten = false;
+    mipmapsGenerated = false;
     ++frame;
 }
 
@@ -926,8 +950,8 @@ void NullDevice::removeSurface(int surface) {
 
 std::unique_ptr<Device::Readback> NullDevice::readImage(Image image, int width, int height) {
     requireNoPass();
-    const ImageDesc& desc = getImage(image);
-    if (desc.kind != ImageKind::RenderTarget || desc.sampleCount != 1) {
+    const ImageRules::Description& desc = getImage(image);
+    if (desc.isView() || desc.kind != ImageKind::RenderTarget || desc.sampleCount != 1) {
         throw ContractError(ContractError::Rule::Readback);
     }
 

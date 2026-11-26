@@ -3,7 +3,11 @@
 #include <array>
 #include <string_view>
 
+#include <optional>
+
 #include "haylen/graphics/Buffer.hpp"
+#include "haylen/graphics/Device.hpp"
+#include "haylen/math/Color.hpp"
 
 struct lua_State;
 
@@ -15,10 +19,11 @@ class GraphicsBinding final {
     static void install(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 3> kTextureContentFields{"fill", "pixels", "dynamic"};
+    static constexpr std::array<std::string_view, 6> kTextureContentFields{"fill", "pixels", "dynamic", "kind", "layers", "depth"};
     static constexpr std::array<std::string_view, 1> kImageTextureFields{"dynamic"};
-    static constexpr std::array<std::string_view, 2> kTextureDataFields{"format", "levels"};
-    static constexpr std::array<std::string_view, 1> kUpdateFields{"region"};
+    static constexpr std::array<std::string_view, 5> kTextureDataFields{"format", "levels", "kind", "layers", "depth"};
+    static constexpr std::array<std::string_view, 2> kUpdateFields{"region", "layer"};
+    static constexpr std::array<std::string_view, 5> kViewFields{"kind", "mipLevel", "mipLevels", "layer", "layers"};
     static constexpr std::array<std::string_view, 4> kBufferFields{"data", "usage", "update", "label"};
     static constexpr std::array<std::string_view, 3> kCopyFields{"sourceOffset", "offset", "size"};
 
@@ -35,6 +40,13 @@ class GraphicsBinding final {
     static int newRenderTarget(lua_State* L);
     static int newTexture(lua_State* L);
     static void pushDataTexture(lua_State* L, int width, int height);
+
+    // Reads the kind, the layers and the depth of a texture of the size from the options at index 3, with the six faces of a cube and of one cube by default.
+    [[nodiscard]] static haylen::graphics::Device::TextureData readShape(lua_State* L, int width, int height);
+
+    // Pushes a texture of a kind other than flat from its RGBA pixels or its fill color.
+    static void pushLayeredTexture(lua_State* L, const haylen::graphics::Device::TextureData& shape, std::optional<std::string_view> pixels, haylen::math::Color fill, bool dynamic);
+    static int viewTexture(lua_State* L);
     [[nodiscard]] static bool hasField(lua_State* L, int index, const char* name);
 
     // Pushes the texture of the image file whose bytes lie at index 1, with the options at index 2.
@@ -63,6 +75,10 @@ class GraphicsBinding final {
     static int textureBorderColor(lua_State* L);
     static int textureMipmaps(lua_State* L);
     static int textureFormat(lua_State* L);
+    static int textureKind(lua_State* L);
+    static int textureLayers(lua_State* L);
+    static int textureDepth(lua_State* L);
+    static int textureMipLevels(lua_State* L);
 
     static int targetTexture(lua_State* L);
     static int targetWidth(lua_State* L);

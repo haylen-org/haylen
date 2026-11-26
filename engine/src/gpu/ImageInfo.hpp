@@ -257,9 +257,13 @@ class ImageInfo final {
         return std::bit_width(static_cast<unsigned>(largest));
     }
 
+    [[nodiscard]] static constexpr Extent getLevelExtent(Device::TextureType type, int width, int height, int layers, int level) noexcept {
+        const int depth = type == Device::TextureType::Volume ? std::max(1, layers >> level) : layers;
+        return {.width = std::max(1, width >> level), .height = std::max(1, height >> level), .depth = depth};
+    }
+
     [[nodiscard]] static constexpr Extent getLevelExtent(const Device::ImageDesc& desc, int level) noexcept {
-        const int depth = desc.type == Device::TextureType::Volume ? std::max(1, desc.layers >> level) : desc.layers;
-        return {.width = std::max(1, desc.width >> level), .height = std::max(1, desc.height >> level), .depth = depth};
+        return getLevelExtent(desc.type, desc.width, desc.height, desc.layers, level);
     }
 
     // The bytes that one mip level holds with every layer or slice of it, tightly packed in rows of blocks.

@@ -20,6 +20,7 @@
 #include "gpu/BufferRules.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
+#include "gpu/ImageRules.hpp"
 #include "gpu/d3d11/DynamicRing.hpp"
 #include "gpu/d3d11/FrameTimer.hpp"
 #include "gpu/direct3d/DebugMessages.hpp"
@@ -34,7 +35,7 @@ class Swapchain;
 
 namespace haylen::gpu::d3d11 {
 
-// The device of Direct3D 11, on GPUs of feature level 11_0 and later with the runtime of Direct3D 11.4 and a driver that has its fences, which binds parts of constant buffers to each draw. Uniforms go through a ring of one dynamic buffer and stream buffers take their data straight from the CPU, both mapped without waiting, while dynamic buffers keep their contents in GPU memory and take new bytes through copies from a ring of uploads, which the context orders with the passes, as it does the copies between buffers. Images take their pixels through the staging of the driver, readbacks copy into staging resources, and the context state it keeps skips every binding that would change nothing. The GPU runs at most `kFramesInFlight` frames behind the CPU, which a fence enforces, whose event the CPU sleeps on while it waits. Validation turns on the debug layer and moves its messages into the log.
+// The device of Direct3D 11, on GPUs of feature level 11_0 and later with the runtime of Direct3D 11.4 and a driver that has its fences, which binds parts of constant buffers to each draw. Uniforms go through a ring of one dynamic buffer and stream buffers take their data straight from the CPU, both mapped without waiting, while dynamic buffers keep their contents in GPU memory and take new bytes through copies from a ring of uploads, which the context orders with the passes, as it does the copies between buffers. Images take their pixels through the staging of the driver, views of images are shader resource views of ranges of their subresources, the driver generates mip levels through `GenerateMips`, readbacks copy into staging resources, and the context state it keeps skips every binding that would change nothing. The GPU runs at most `kFramesInFlight` frames behind the CPU, which a fence enforces, whose event the CPU sleeps on while it waits. Validation turns on the debug layer and moves its messages into the log.
 class Device final : public gpu::Device {
   public:
     static constexpr std::size_t kFramesInFlight = 2;
@@ -64,6 +65,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] Sampler makeSampler(const SamplerDesc& desc) override;
     [[nodiscard]] Program makeProgram(const ProgramDesc& desc) override;
     [[nodiscard]] Pipeline makePipeline(const PipelineDesc& desc) override;
+    [[nodiscard]] Image makeView(const ViewDesc& desc) override;
     void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) override;
 
     void destroy(Buffer buffer) noexcept override;
@@ -75,6 +77,7 @@ class Device final : public gpu::Device {
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
     void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
+    void generateMipmaps(Image image) override;
 
     void beginPass(const PassDesc& desc) override;
 
@@ -140,18 +143,13 @@ class Device final : public gpu::Device {
         Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depth{};
     };
 
+    // An image or a view of one, which shares the resource of its image and samples its range through a view of its own. An image keeps the ids of its views, which go with it.
     struct ImageRecord {
         Microsoft::WRL::ComPtr<ID3D11Resource> resource{};
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> view{};
         std::vector<Attachment> attachments{};
-        TextureType type = TextureType::Flat;
-        int width = 0;
-        int height = 0;
-        int layers = 1;
-        int mipLevels = 1;
-        int sampleCount = 1;
-        PixelFormat format = PixelFormat::Rgba8;
-        ImageKind kind = ImageKind::Texture;
+        ImageRules::Description description{};
+        std::vector<std::uint64_t> views{};
     };
 
     // Where a uniform block, a texture or a sampler of a program binds: its stage and its register.
@@ -216,6 +214,7 @@ class Device final : public gpu::Device {
             ID3D11Resource* source = nullptr;
             UINT sourceSubresource = 0;
             ID3D11Resource* destination = nullptr;
+            UINT destinationSubresource = 0;
             DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
         };
 
@@ -255,7 +254,8 @@ class Device final : public gpu::Device {
     void beginSwapchainPass(const PassDesc& desc);
     void beginOffscreenPass(const PassDesc& desc);
     [[nodiscard]] Attachment& getAttachment(ImageRecord& image, int mipLevel, int layer);
-    [[nodiscard]] Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> makeTextureView(ID3D11Resource& resource, const ImageDesc& desc);
+    [[nodiscard]] Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> makeTextureView(ID3D11Resource& resource, const ImageRules::Description& description, std::string_view label);
+    [[nodiscard]] static UINT getSubresource(const ImageRules::Description& description, int mipLevel, int layer) noexcept;
     [[nodiscard]] static std::vector<D3D11_SUBRESOURCE_DATA> describeLevels(const ImageDesc& desc);
     [[nodiscard]] static std::vector<Register> readRegisters(std::span<const TextureBinding> textures);
     [[nodiscard]] static std::vector<Register> readRegisters(std::span<const SamplerBinding> samplersOfProgram);

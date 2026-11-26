@@ -1,6 +1,7 @@
 #include "haylen/graphics/Device.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <format>
 #include <memory>
@@ -201,7 +202,7 @@ Texture Device::createTexture(const Image& image, Texture::Options options) {
 
     auto resource = std::make_shared<TextureResource>();
     std::size_t bytes = 0;
-    resource->image = state->createTextureImage(image, *options.mipmaps, bytes);
+    resource->image = state->createTextureImage(image, *options.mipmaps, bytes, resource->mipLevels);
     resource->tracked.setBytes(bytes);
     resource->sampler = state->getSampler(options);
     resource->width = image.getWidth();
@@ -212,9 +213,13 @@ Texture Device::createTexture(const Image& image, Texture::Options options) {
     return Texture(std::move(resource));
 }
 
-// A texture takes the levels of its data from the largest down, and keeps only the first one when it keeps no mipmaps.
+// A texture takes the levels of its data from the largest down, and keeps only the first one when it keeps no mipmaps. A texture that brings its first level alone and keeps mipmaps takes them from the GPU, which generates them from that level once it reached the image.
 Texture Device::createTexture(const TextureData& data, Texture::Options options) {
     validateData(data, options);
+    if (options.mipmaps.value_or(false) && data.levels.size() == 1) {
+        return state->createStagedTexture(data, options, false);
+    }
+
     options.mipmaps = options.mipmaps.value_or(data.levels.size() > 1);
     options = state->settle(options);
     const std::span<const std::span<const std::byte>> levels = *options.mipmaps ? data.levels : data.levels.first(1);
@@ -225,7 +230,8 @@ Texture Device::createTexture(const TextureData& data, Texture::Options options)
     }
 
     auto resource = std::make_shared<TextureResource>();
-    resource->image = state->gpu->makeImage({.width = data.width, .height = data.height, .mipLevels = static_cast<int>(levels.size()), .format = data.format, .kind = gpu::Device::ImageKind::Texture, .levels = levels, .label = "haylen-texture"});
+    const int layers = DeviceState::getLayers(data);
+    resource->image = state->gpu->makeImage({.type = data.type, .width = data.width, .height = data.height, .layers = layers, .mipLevels = static_cast<int>(levels.size()), .format = data.format, .kind = gpu::Device::ImageKind::Texture, .levels = levels, .label = "haylen-texture"});
     resource->tracked.setBytes(bytes);
     resource->sampler = state->getSampler(options);
     resource->width = data.width;
@@ -233,13 +239,134 @@ Texture Device::createTexture(const TextureData& data, Texture::Options options)
     resource->id = state->nextTextureId++;
     resource->options = options;
     resource->format = data.format;
+    resource->type = data.type;
+    resource->layers = layers;
+    resource->mipLevels = static_cast<int>(levels.size());
     resource->graveyard = state->graveyard;
     return Texture(std::move(resource));
 }
 
-// The data of a texture fits the device before any of it reaches the GPU: a color format that the device samples and filters, sides of whole blocks within the largest texture, and a level of the right size for each mip level it brings.
+Texture Device::createTexture(const TextureData& shape, math::Color fill, Texture::Options options) {
+    validateShape(shape);
+    const std::vector<std::uint8_t> pixels = fillLayers(shape, fill);
+    const std::array<std::span<const std::byte>, 1> levels{std::as_bytes(std::span(pixels))};
+    TextureData data = shape;
+    data.levels = levels;
+    options.mipmaps = options.hasMipmaps();
+    return createTexture(data, options);
+}
+
+Texture Device::createDynamicTexture(const TextureData& shape, math::Color fill, Texture::Options options) {
+    validateShape(shape);
+    const std::vector<std::uint8_t> pixels = fillLayers(shape, fill);
+    const std::array<std::span<const std::byte>, 1> levels{std::as_bytes(std::span(pixels))};
+    TextureData data = shape;
+    data.levels = levels;
+    return createDynamicTexture(data, options);
+}
+
+// Every pixel of every layer of the first level takes the color in RGBA8.
+std::vector<std::uint8_t> Device::fillLayers(const TextureData& shape, math::Color fill) {
+    const Image layer(shape.width, shape.height, fill);
+    const std::span<const std::uint8_t> one = layer.getPixels();
+    const auto layers = static_cast<std::size_t>(DeviceState::getLayers(shape));
+    std::vector<std::uint8_t> pixels;
+    pixels.reserve(one.size() * layers);
+    for (std::size_t index = 0; index < layers; ++index) {
+        pixels.insert(pixels.end(), one.begin(), one.end());
+    }
+
+    return pixels;
+}
+
+Texture Device::createDynamicTexture(const TextureData& data, Texture::Options options) {
+    validateData(data, options);
+    if (data.levels.size() != 1) {
+        throw std::invalid_argument("A dynamic texture takes the pixels of its first level alone, and the GPU generates the others when it keeps mipmaps.");
+    }
+
+    if (gpu::ImageInfo::isCompressed(data.format)) {
+        throw std::invalid_argument(std::format("A dynamic texture changes its pixels, which the blocks of the format \"{}\" do not.", getFormatName(data.format)));
+    }
+
+    return state->createStagedTexture(data, options, true);
+}
+
+// A view shows its range of the image of its texture with the sampler of that texture, at the size of its first mip level.
+Texture Device::createView(const Texture& texture, const TextureView& view) {
+    validateView(texture, view);
+    const std::shared_ptr<TextureResource>& viewed = texture.getResource();
+    const bool volume = view.type == gpu::Device::TextureType::Volume;
+    auto resource = std::make_shared<TextureResource>();
+    resource->image = state->gpu->makeView({.image = viewed->image, .type = view.type, .baseMipLevel = view.mipLevel, .mipLevels = view.mipLevels, .baseLayer = view.layer, .layers = volume ? viewed->layers : view.layers, .label = "haylen-texture-view"});
+    resource->sampler = viewed->sampler;
+    resource->width = std::max(1, viewed->width >> view.mipLevel);
+    resource->height = std::max(1, viewed->height >> view.mipLevel);
+    resource->id = state->nextTextureId++;
+    resource->options = viewed->options;
+    resource->format = viewed->format;
+    resource->flipped = viewed->flipped;
+    resource->type = view.type;
+    resource->layers = volume ? std::max(1, viewed->layers >> view.mipLevel) : view.layers;
+    resource->mipLevels = view.mipLevels;
+    resource->label = viewed->label;
+    resource->viewed = viewed;
+    resource->graveyard = state->graveyard;
+    return Texture(std::move(resource));
+}
+
+// A view keeps the type of its texture, or shows faces of a cube or a cube array as an array, within the mip levels and layers that the texture holds.
+void Device::validateView(const Texture& texture, const TextureView& view) const {
+    if (!state->gpu->getCapabilities().imageViews) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device makes no views of textures. Check \"imageViews\" of \"graphics.capabilities()\" before making one.", getApiName()));
+    }
+
+    const std::shared_ptr<TextureResource>& viewed = texture.getResource();
+    if (viewed == nullptr || viewed->viewed != nullptr) {
+        throw std::invalid_argument("A view shows a range of a texture, not of another view.");
+    }
+
+    const gpu::Device::TextureType type = viewed->type;
+    const bool faces = view.type == gpu::Device::TextureType::Array && (type == gpu::Device::TextureType::Cube || type == gpu::Device::TextureType::CubeArray);
+    if (view.type != type && !faces) {
+        throw std::invalid_argument(std::format("A texture of the kind \"{}\" has no view of the kind \"{}\".", Texture::typeName(type), Texture::typeName(view.type)));
+    }
+
+    if (view.mipLevel < 0 || view.mipLevels < 1 || view.mipLevel + view.mipLevels > viewed->mipLevels) {
+        throw std::invalid_argument(std::format("The mip levels of a view lie within the {} mip levels of its texture, which {} levels from the level {} do not.", viewed->mipLevels, view.mipLevels, view.mipLevel));
+    }
+
+    switch (view.type) {
+    case gpu::Device::TextureType::Flat:
+    case gpu::Device::TextureType::Volume:
+        if (view.layer != 0 || view.layers != 1) {
+            throw std::invalid_argument(std::format("A view of the kind \"{}\" shows the whole texture, so its layer is 0 and it has 1 layer.", Texture::typeName(view.type)));
+        }
+
+        break;
+    case gpu::Device::TextureType::Cube:
+        if (view.layer != 0 || view.layers != 6) {
+            throw std::invalid_argument("A view of the kind \"cube\" shows the 6 faces of its cube, from the layer 0.");
+        }
+
+        break;
+    case gpu::Device::TextureType::Array:
+    case gpu::Device::TextureType::CubeArray:
+        if (view.layer < 0 || view.layers < 1 || view.layer + view.layers > viewed->layers) {
+            throw std::invalid_argument(std::format("The layers of a view lie within the {} layers of its texture, which {} layers from the layer {} do not.", viewed->layers, view.layers, view.layer));
+        }
+
+        if (view.type == gpu::Device::TextureType::CubeArray && (view.layer % 6 != 0 || view.layers % 6 != 0)) {
+            throw std::invalid_argument("A view of the kind \"cubeArray\" shows whole cubes, 6 layers for each, from a layer that is a multiple of 6.");
+        }
+
+        break;
+    }
+}
+
+// The data of a texture fits the device before any of it reaches the GPU: a type and a size that the device takes, a color format that the device samples and filters, sides of whole blocks, no compressed volume, a level of the right size for each mip level it brings, and a format whose mipmaps the GPU generates when it brings its first level alone and keeps mipmaps.
 void Device::validateData(const TextureData& data, Texture::Options options) const {
-    validateSize(data.width, data.height, getMaxTextureSize());
+    validateShape(data);
     const std::string_view format = getFormatName(data.format);
     if (gpu::ImageInfo::isDepth(data.format)) {
         throw std::invalid_argument(std::format("The format \"{}\" belongs to depth attachments, so no texture is made in it.", format));
@@ -259,14 +386,18 @@ void Device::validateData(const TextureData& data, Texture::Options options) con
         throw std::invalid_argument(std::format("A texture of the format \"{}\" has sides of whole blocks of {} by {} pixels, which {} by {} pixels are not.", format, block.width, block.height, data.width, data.height));
     }
 
-    const gpu::Device::ImageDesc shape{.width = data.width, .height = data.height, .format = data.format};
+    if (data.type == gpu::Device::TextureType::Volume && gpu::ImageInfo::isCompressed(data.format)) {
+        throw std::invalid_argument(std::format("A texture of the kind \"volume\" holds no blocks of the format \"{}\", since compressed formats hold flat blocks.", format));
+    }
+
+    const gpu::Device::ImageDesc shape{.type = data.type, .width = data.width, .height = data.height, .layers = DeviceState::getLayers(data), .format = data.format};
     const int most = gpu::ImageInfo::getMaxMipLevels(shape);
     if (data.levels.empty() || static_cast<int>(data.levels.size()) > most) {
         throw std::invalid_argument(std::format("A texture of {} by {} pixels brings from 1 to {} levels, not {}.", data.width, data.height, most, data.levels.size()));
     }
 
-    if (options.mipmaps.value_or(false) && data.levels.size() == 1) {
-        throw std::invalid_argument("A texture made from its levels keeps mipmaps only when it brings more than one level.");
+    if (options.mipmaps.value_or(false) && data.levels.size() == 1 && !support.mipmaps) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device generates no mipmaps of the format \"{}\", so a texture of it brings each of its levels.", getApiName(), format));
     }
 
     for (std::size_t level = 0; level < data.levels.size(); ++level) {
@@ -274,6 +405,63 @@ void Device::validateData(const TextureData& data, Texture::Options options) con
         if (data.levels[level].size() != expected) {
             throw std::invalid_argument(std::format("The level {} of a texture of {} by {} pixels of the format \"{}\" holds {} bytes, and it needs {}.", level + 1, data.width, data.height, format, data.levels[level].size(), expected));
         }
+    }
+}
+
+// A texture has the sides, the layers and the slices that its type takes within the limits of the device.
+void Device::validateShape(const TextureData& data) const {
+    const gpu::Device::Capabilities& capabilities = state->gpu->getCapabilities();
+    const std::string_view kind = Texture::typeName(data.type);
+    if (data.type != gpu::Device::TextureType::Volume && data.depth != 1) {
+        throw std::invalid_argument(std::format("Only a texture of the kind \"volume\" has a depth, and one of the kind \"{}\" has none.", kind));
+    }
+
+    const bool single = data.type == gpu::Device::TextureType::Flat || data.type == gpu::Device::TextureType::Volume;
+    if (single && data.layers != 1) {
+        throw std::invalid_argument(std::format("A texture of the kind \"{}\" has 1 layer, not {}.", kind, data.layers));
+    }
+
+    const bool cube = data.type == gpu::Device::TextureType::Cube || data.type == gpu::Device::TextureType::CubeArray;
+    if (cube && data.width != data.height) {
+        throw std::invalid_argument(std::format("A texture of the kind \"{}\" has square faces, which {} by {} pixels are not.", kind, data.width, data.height));
+    }
+
+    switch (data.type) {
+    case gpu::Device::TextureType::Flat:
+        validateSize(data.width, data.height, capabilities.maxImageSize);
+        break;
+    case gpu::Device::TextureType::Array:
+        validateSize(data.width, data.height, capabilities.maxImageSize);
+        if (data.layers < 1 || data.layers > capabilities.maxArrayLayers) {
+            throw std::invalid_argument(std::format("A texture of the kind \"array\" has from 1 to {} layers on this device, not {}.", capabilities.maxArrayLayers, data.layers));
+        }
+
+        break;
+    case gpu::Device::TextureType::Volume:
+        validateSize(data.width, data.height, capabilities.maxVolumeSize);
+        if (data.depth < 1 || data.depth > capabilities.maxVolumeSize) {
+            throw std::invalid_argument(std::format("A texture of the kind \"volume\" has from 1 to {} slices on this device, not {}.", capabilities.maxVolumeSize, data.depth));
+        }
+
+        break;
+    case gpu::Device::TextureType::Cube:
+        validateSize(data.width, data.height, capabilities.maxCubeSize);
+        if (data.layers != 6) {
+            throw std::invalid_argument(std::format("A texture of the kind \"cube\" has 6 layers, one for each face, not {}.", data.layers));
+        }
+
+        break;
+    case gpu::Device::TextureType::CubeArray:
+        if (!capabilities.cubeArrays) {
+            throw std::invalid_argument(std::format("The graphics API \"{}\" of this device has no textures of the kind \"cubeArray\". Check \"cubeArrays\" of \"graphics.capabilities()\" before making one.", getApiName()));
+        }
+
+        validateSize(data.width, data.height, capabilities.maxCubeSize);
+        if (data.layers < 6 || data.layers % 6 != 0 || data.layers > capabilities.maxArrayLayers) {
+            throw std::invalid_argument(std::format("A texture of the kind \"cubeArray\" has 6 layers for each of its cubes, up to {} on this device, not {}.", capabilities.maxArrayLayers, data.layers));
+        }
+
+        break;
     }
 }
 
@@ -291,6 +479,20 @@ const Texture& Device::getWhiteTexture() const noexcept {
     return state->white;
 }
 
+const Texture& Device::getWhiteTexture(gpu::Device::TextureType type) {
+    if (type == gpu::Device::TextureType::Flat) {
+        return state->white;
+    }
+
+    Texture& white = state->whites[static_cast<std::size_t>(type)];
+    if (!white.isValid()) {
+        const bool cube = type == gpu::Device::TextureType::Cube || type == gpu::Device::TextureType::CubeArray;
+        white = createTexture(TextureData{.type = type, .width = 1, .height = 1, .layers = cube ? 6 : 1}, math::Color::white());
+    }
+
+    return white;
+}
+
 RenderTarget Device::createRenderTarget(int width, int height, Texture::Options options) {
     validateSize(width, height, getMaxTextureSize());
 
@@ -304,21 +506,27 @@ RenderTarget Device::createRenderTarget(int width, int height, Texture::Options 
 void Device::replaceTexture(const Texture& texture, const Image& image) {
     validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
     const std::shared_ptr<TextureResource>& resource = texture.getResource();
+    if (resource->type != gpu::Device::TextureType::Flat || resource->viewed != nullptr) {
+        throw std::invalid_argument("Only a flat texture that is no view takes the pixels of an image in place of its own.");
+    }
 
     // The old image is released only once the new one exists, so a failed creation leaves the texture intact. A dynamic texture stays dynamic, and its new pixels reach the GPU with the next upload.
     std::size_t bytes = DeviceState::getImageBytes(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8);
-    const gpu::Device::Image created = resource->dynamic ? state->createDynamicImage(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8) : state->createTextureImage(image, resource->options.hasMipmaps(), bytes);
+    int mipLevels = 1;
+    const TextureData shape{.width = image.getWidth(), .height = image.getHeight()};
+    const gpu::Device::Image created = resource->dynamic ? state->createStagedImage(shape, resource->generatesMipmaps, mipLevels) : state->createTextureImage(image, resource->options.hasMipmaps(), bytes, mipLevels);
     state->graveyard->bury(resource->image);
     resource->image = created;
     resource->format = gpu::Device::PixelFormat::Rgba8;
     resource->width = image.getWidth();
     resource->height = image.getHeight();
+    resource->mipLevels = mipLevels;
     resource->tracked.setBytes(bytes);
 
     // The region that waited for an upload belongs to the old image, so the new pixels go whole.
     if (resource->dynamic) {
-        resource->stagedRegion = {0, 0, image.getWidth(), image.getHeight()};
-        state->stagePixels(resource, image.getPixels(), resource->stagedRegion);
+        resource->staged.front().pending = false;
+        state->stagePixels(resource, 0, image.getPixels(), {0, 0, image.getWidth(), image.getHeight()});
     }
 }
 
@@ -454,13 +662,8 @@ void Device::cancelCapture() noexcept {
 }
 
 Texture Device::createDynamicTexture(const Image& image, Texture::Options options) {
-    validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
-
-    if (options.mipmaps.value_or(false)) {
-        throw std::invalid_argument("A texture that changes in place has no mipmaps.");
-    }
-
-    return state->createDynamicTexture(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8, image.getPixels(), options);
+    const std::array<std::span<const std::byte>, 1> levels{std::as_bytes(image.getPixels())};
+    return createDynamicTexture(TextureData{.width = image.getWidth(), .height = image.getHeight(), .levels = levels}, options);
 }
 
 Texture Device::createDynamicTexture(int width, int height, math::Color fill, Texture::Options options) {
@@ -471,8 +674,8 @@ Texture Device::createDynamicTexture(int width, int height, math::Color fill, Te
 // The texture takes the bytes of the halves as they lie in memory, which is how the GPU reads them.
 Texture Device::createDynamicDistanceTexture(int width, int height, std::span<const std::uint16_t> distances, Texture::Options options) {
     validateDistances(width, height, distances, getMaxTextureSize());
-    const std::span bytes(reinterpret_cast<const std::uint8_t*>(distances.data()), distances.size_bytes());
-    return state->createDynamicTexture(width, height, gpu::Device::PixelFormat::R16Float, bytes, options);
+    const std::array<std::span<const std::byte>, 1> levels{std::as_bytes(distances)};
+    return createDynamicTexture(TextureData{.width = width, .height = height, .format = gpu::Device::PixelFormat::R16Float, .levels = levels}, options);
 }
 
 void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels) {
@@ -480,9 +683,17 @@ void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t>
 }
 
 void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels, Region changed) {
+    updateTexture(texture, 0, pixels, changed);
+}
+
+void Device::updateTexture(const Texture& texture, int layer, std::span<const std::uint8_t> pixels, Region changed) {
     const std::shared_ptr<TextureResource>& resource = texture.getResource();
     if (!resource || !resource->dynamic) {
         throw std::logic_error("Only a dynamic texture changes its pixels in place.");
+    }
+
+    if (layer < 0 || layer >= resource->layers) {
+        throw std::invalid_argument(std::format("The dynamic texture has {} layers from 0, so it has no layer {}.", resource->layers, layer));
     }
 
     if (pixels.size() != DeviceState::getImageBytes(resource->width, resource->height, resource->format)) {
@@ -494,7 +705,7 @@ void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t>
         throw std::invalid_argument("The region of a texture update must lie inside the dynamic texture and hold at least one pixel.");
     }
 
-    state->stagePixels(resource, pixels, changed);
+    state->stagePixels(resource, layer, pixels, changed);
 }
 
 // Every texture uploads the region that changed since the last upload, from the last pixels it received, all of them in one hand-over to the GPU device before the passes of the frame.
@@ -506,8 +717,17 @@ std::size_t Device::uploadTextures(std::span<const gpu::Device::ImageWrite> fram
     std::size_t bytes = 0;
     for (const std::weak_ptr<TextureResource>& changed : state->uploadingTextures) {
         if (std::shared_ptr<TextureResource> resource = changed.lock()) {
-            state->writes.push_back({.image = resource->image, .region = resource->stagedRegion, .pixels = std::as_bytes(std::span(resource->staged))});
-            bytes += resource->staged.size();
+            for (std::size_t layer = 0; layer < resource->staged.size(); ++layer) {
+                TextureResource::StagedLayer& staged = resource->staged[layer];
+                if (!staged.pending) {
+                    continue;
+                }
+
+                state->writes.push_back({.image = resource->image, .layer = static_cast<int>(layer), .region = staged.region, .pixels = std::as_bytes(std::span(staged.pixels))});
+                bytes += staged.pixels.size();
+                staged.pending = false;
+            }
+
             resource->pending = false;
             resource->uploadedAt = state->uploads;
             state->uploading.push_back(std::move(resource));
@@ -520,6 +740,12 @@ std::size_t Device::uploadTextures(std::span<const gpu::Device::ImageWrite> fram
         state->gpu->writeImages(state->writes);
     }
 
+    for (const std::shared_ptr<TextureResource>& resource : state->uploading) {
+        if (resource->generatesMipmaps) {
+            state->gpu->generateMipmaps(resource->image);
+        }
+    }
+
     state->writes.clear();
     state->uploading.clear();
 
@@ -527,7 +753,9 @@ std::size_t Device::uploadTextures(std::span<const gpu::Device::ImageWrite> fram
     for (const std::weak_ptr<TextureResource>& uploaded : state->uploadedTextures) {
         const std::shared_ptr<TextureResource> resource = uploaded.lock();
         if (resource && !resource->pending && resource->uploadedAt != state->uploads) {
-            resource->staged = std::vector<std::uint8_t>();
+            for (TextureResource::StagedLayer& staged : resource->staged) {
+                staged.pixels = std::vector<std::uint8_t>();
+            }
         }
     }
 

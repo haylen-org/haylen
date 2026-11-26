@@ -202,6 +202,24 @@ MTLPixelFormat Formats::toBcPixelFormat(gpu::Device::PixelFormat format) noexcep
     }
 }
 
+MTLTextureType Formats::toTextureType(gpu::Device::TextureType type, bool multisampled) noexcept {
+    using TextureType = gpu::Device::TextureType;
+    switch (type) {
+    case TextureType::Flat:
+        return multisampled ? MTLTextureType2DMultisample : MTLTextureType2D;
+    case TextureType::Array:
+        return multisampled ? MTLTextureType2DMultisampleArray : MTLTextureType2DArray;
+    case TextureType::Volume:
+        return MTLTextureType3D;
+    case TextureType::Cube:
+        return MTLTextureTypeCube;
+    case TextureType::CubeArray:
+        return MTLTextureTypeCubeArray;
+    }
+
+    return MTLTextureType2D;
+}
+
 MTLVertexFormat Formats::toVertexFormat(gpu::Device::VertexFormat format) noexcept {
     using VertexFormat = gpu::Device::VertexFormat;
     switch (format) {

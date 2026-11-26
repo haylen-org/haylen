@@ -30,7 +30,7 @@ namespace haylen::graphics {
 class ShaderTest : public ::testing::Test {
   protected:
     // A small shader package with a block, a texture and one program for the desktop GLSL and Metal, which the malformed cases change field by field.
-    static constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 4, "name": "small", "sources": ["void main() {}"],
+    static constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 5, "name": "small", "sources": ["void main() {}"],
     "programs": {"sprite": {
         "attributes": [{"location": 0, "name": "corner", "type": "vec2"}],
         "blocks": [{"name": "params", "stage": "fragment", "slot": 1, "size": 16, "members": [{"name": "tint", "type": "vec4", "count": 1, "offset": 0}]}],
@@ -140,9 +140,9 @@ TEST_F(ShaderTest, RejectsFilesThatAreNotShaders) {
     // clang-format on
     EXPECT_EQ(problem("not json"), Problem::Structure);
     EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 1, "name": "x", "sources": [], "programs": {"p": {}}})"), Problem::Version);
-    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 4, "name": "x", "sources": [], "programs": {}, "extra": 1})"), Problem::Structure);
-    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 4, "name": "x", "sources": [], "programs": {}})"), Problem::NoPrograms);
-    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 4, "name": "x", "sources": [], "programs": []})"), Problem::NoPrograms);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 5, "name": "x", "sources": [], "programs": {}, "extra": 1})"), Problem::Structure);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 5, "name": "x", "sources": [], "programs": {}})"), Problem::NoPrograms);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 5, "name": "x", "sources": [], "programs": []})"), Problem::NoPrograms);
 
     const graphics::Shader empty;
     EXPECT_FALSE(empty.isValid());

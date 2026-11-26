@@ -34,6 +34,7 @@ void FramebufferCache::attach(Gl::Enum point, const Attachment& attachment) {
         return;
     case Gl::kTexture2dArray:
     case Gl::kTexture3d:
+    case Gl::kTextureCubeMapArray:
         gl.framebufferTextureLayer(Gl::kDrawFramebuffer, point, attachment.name, attachment.mipLevel, attachment.layer);
         return;
     default:

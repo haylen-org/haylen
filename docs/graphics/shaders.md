@@ -206,8 +206,9 @@ A material fills the uniform blocks and textures that the fragment shader declar
 - Uniform blocks take the bindings 1 to 5. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, binding 6 holds the edges of the [fade](rendering.md#fades) of the draw, which `haylen_output` applies, and binding 7 holds the lighting of lit canvases. The renderer fills them with the layout of the shader library it was built with. So a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen app shaders".` when a draw first uses it.
 - Members are `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`, and arrays of any of them. The std140 rules give every element of an array a whole vector of 16 bytes, so an array of `float` takes 16 bytes an element. The engine places the numbers that a material sets for an array at those strides.
 - Textures take the bindings from 1 to 24, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or with `sprite_sampler`. The bindings 25 to 31 hold the textures of a batch after its first, in the `batch` programs.
+- A texture is a `texture2D`, a `texture2DArray`, a `textureCube`, a `textureCubeArray` or a `texture3D`, and a material takes for it a texture of the [kind](../lua-api/graphics.md#kinds-of-textures) `'flat'`, `'array'`, `'cube'`, `'cubeArray'` or `'volume'`. A shader that samples a `textureCubeArray` draws only on a device whose `graphics.capabilities()` has `cubeArrays`.
 - The sampler of a texture binding is the one the texture was created with, so a texture loaded with `filter = 'linear'` samples smoothly.
-- A texture that a material leaves unset draws as white.
+- A texture that a material leaves unset draws as white, through a white texture of the kind that the shader declares.
 - A sampler that the shader declares but never pairs with a texture, such as `sprite_sampler` in a shader that only computes its colors, takes the sampler of the texture at its own binding, so a material that never samples draws like any other.
 
 The method `material:set(name, value)` takes the value that fits the type, as the [`Material` reference](../lua-api/graphics2d.md#materialsetname-value) lists. A draw copies the values of its material when it is made. The properties `shader.uniforms` and `shader.textures` list what a shader offers.
@@ -335,7 +336,7 @@ local glow = graphics2d.newMaterial(assets.shader('shaders/inner-glow.shader'), 
 
 ## The .shader file
 
-A `.shader` file is a Haylen shader package: compact JSON that `haylen-shaderc` writes and nothing else edits, in version 4 of the [package format](https://github.com/haylen-org/haylen-shader-compiler/blob/main/docs/format.md).
+A `.shader` file is a Haylen shader package: compact JSON that `haylen-shaderc` writes and nothing else edits, in version 5 of the [package format](https://github.com/haylen-org/haylen-shader-compiler/blob/main/docs/format.md).
 
 | Key | Meaning |
 | --- | --- |
@@ -350,7 +351,7 @@ The shaders of the engine are packages of the same format. The engine compiles t
 
 Reading the file also checks it, so a damaged or hand-edited file fails at once instead of when a draw uses it. The file must follow these rules:
 
-- It is a version 4 package.
+- It is a version 5 package.
 - Every attribute, uniform block, texture and sampler fits the binding slots of every GPU device, and no two uniform blocks, textures or samplers of a program share a slot. Every binding number is in range.
 - Every uniform block takes a multiple of 16 bytes, and every uniform of a block fits inside it.
 - Every stage names a source of the file, and every pair names a texture and a sampler that its program declares.

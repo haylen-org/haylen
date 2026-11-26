@@ -10,7 +10,7 @@
 
 namespace haylen::gpu::metal {
 
-// The device of Metal on macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS. It records each frame into one command buffer that holds no references, keeps up to `kFramesInFlight` frames on the GPU behind a semaphore, one that the GPU runs while the next one records, and releases destroyed objects once the frames that may use them finished. Uniforms, the pixels of dynamic images and the writes into dynamic buffers pass through an upload ring of each frame in shared memory, stream buffers keep a region for each frame in flight, dynamic buffers live in the memory of the GPU and take their writes and copies as blits between the passes of the frame, readbacks copy on command buffers of their own, and the encoder of a pass receives only the state that changes. Swapchain passes draw into the drawables of the `CAMetalLayer` of the surface, with their multisampled color and their depth and stencil in tile memory on Apple GPUs. Its Metal objects live in the source file, so the device factory includes this header from C++.
+// The device of Metal on macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS. It records each frame into one command buffer that holds no references, keeps up to `kFramesInFlight` frames on the GPU behind a semaphore, one that the GPU runs while the next one records, and releases destroyed objects once the frames that may use them finished. Uniforms, the pixels of dynamic images and the writes into dynamic buffers pass through an upload ring of each frame in shared memory, views of images are texture views of Metal, images generate their mip levels through blits between the passes of the frame, stream buffers keep a region for each frame in flight, dynamic buffers live in the memory of the GPU and take their writes and copies as blits between the passes of the frame, readbacks copy on command buffers of their own, and the encoder of a pass receives only the state that changes. Swapchain passes draw into the drawables of the `CAMetalLayer` of the surface, with their multisampled color and their depth and stencil in tile memory on Apple GPUs. Its Metal objects live in the source file, so the device factory includes this header from C++.
 class Device final : public gpu::Device {
   public:
     static constexpr int kFramesInFlight = 2;
@@ -37,6 +37,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] Sampler makeSampler(const SamplerDesc& desc) override;
     [[nodiscard]] Program makeProgram(const ProgramDesc& desc) override;
     [[nodiscard]] Pipeline makePipeline(const PipelineDesc& desc) override;
+    [[nodiscard]] Image makeView(const ViewDesc& desc) override;
     void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) override;
 
     void destroy(Buffer buffer) noexcept override;
@@ -48,6 +49,7 @@ class Device final : public gpu::Device {
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
     void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
+    void generateMipmaps(Image image) override;
 
     void beginPass(const PassDesc& desc) override;
 

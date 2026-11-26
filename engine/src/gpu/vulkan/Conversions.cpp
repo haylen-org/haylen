@@ -409,6 +409,8 @@ VkImageViewType Conversions::toViewType(Device::TextureType type) noexcept {
         return VK_IMAGE_VIEW_TYPE_3D;
     case Device::TextureType::Cube:
         return VK_IMAGE_VIEW_TYPE_CUBE;
+    case Device::TextureType::CubeArray:
+        return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
     }
 
     return VK_IMAGE_VIEW_TYPE_2D;

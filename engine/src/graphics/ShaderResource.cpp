@@ -90,6 +90,10 @@ gpu::Device::TextureType ShaderResource::readTextureType(const core::Json& value
         return gpu::Device::TextureType::Cube;
     }
 
+    if (type == "cube_array") {
+        return gpu::Device::TextureType::CubeArray;
+    }
+
     throw ShaderPackageError(ShaderPackageError::Problem::TextureType);
 }
 
@@ -323,7 +327,7 @@ void ShaderResource::readMaterialBindings(const ProgramInfo& program) {
 
     for (const TextureInfo& texture : program.textures) {
         if (std::ranges::find(kEngineTextures, texture.name) == kEngineTextures.end() && std::ranges::find(textures, texture.name, &Shader::TextureSlot::name) == textures.end()) {
-            textures.push_back({.name = texture.name, .slot = texture.slot});
+            textures.push_back({.name = texture.name, .slot = texture.slot, .type = texture.type});
         }
     }
 }
@@ -331,7 +335,7 @@ void ShaderResource::readMaterialBindings(const ProgramInfo& program) {
 void ShaderResource::read(const core::Json& document) {
     core::JsonValidator::requireKnownKeys(document, {"format", "version", "name", "sources", "programs"}, "a shader file");
 
-    if (document.at("format") != "haylen-shader" || document.at("version") != 4) {
+    if (document.at("format") != "haylen-shader" || document.at("version") != 5) {
         throw ShaderPackageError(ShaderPackageError::Problem::Version);
     }
 
@@ -462,6 +466,12 @@ const ShaderResource::Compiled& ShaderResource::getProgram(gpu::Device& device, 
     }
 
     const ProgramInfo& info = getInfo(program);
+    const bool samplesCubeArrays = std::ranges::find(info.textures, gpu::Device::TextureType::CubeArray, &TextureInfo::type) != info.textures.end();
+    if (samplesCubeArrays && !device.getCapabilities().cubeArrays) {
+        const std::string_view api = std::ranges::find(gpu::Device::kApiNames, device.getApi(), &std::pair<std::string_view, gpu::Device::Api>::second)->first;
+        throw std::runtime_error(std::format("The shader \"{}\" samples a texture of the kind \"cubeArray\", which the graphics API \"{}\" of this device lacks. Check \"cubeArrays\" of \"graphics.capabilities()\" before drawing with it.", name, api));
+    }
+
     const std::string label = std::format("{}/{}", name, program);
     Described described;
     describe(info, device.getLanguage(), label, described);

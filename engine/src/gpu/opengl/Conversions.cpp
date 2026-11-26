@@ -383,6 +383,8 @@ Gl::Enum Conversions::toTextureTarget(Device::TextureType type) noexcept {
         return Gl::kTexture3d;
     case Device::TextureType::Cube:
         return Gl::kTextureCubeMap;
+    case Device::TextureType::CubeArray:
+        return Gl::kTextureCubeMapArray;
     }
 
     return Gl::kTexture2d;

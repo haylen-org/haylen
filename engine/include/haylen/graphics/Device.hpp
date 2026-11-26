@@ -47,12 +47,24 @@ class Device final {
     // A rectangle of the pixels of a texture in whole pixels, from its top row and its left column.
     using Region = gpu::Device::Region;
 
-    // The pixels of a texture in a pixel format of the GPU device, such as the blocks of a compressed format that an app ships for its target, with one span for each mip level from the largest, each holding the rows of blocks of its level tightly packed.
+    // The pixels of a texture of a type in a pixel format of the GPU device, such as the blocks of a compressed format that an app ships for its target, with one span for each mip level from the largest, each holding the rows of blocks of every layer or slice of its level tightly packed, the first layer first. The layers count the layers of an array, the six faces of a cube and six faces for each cube of a cube array, in the order +X, -X, +Y, -Y, +Z and -Z, and the depth counts the slices of a volume.
     struct TextureData {
+        gpu::Device::TextureType type = gpu::Device::TextureType::Flat;
         int width = 0;
         int height = 0;
+        int layers = 1;
+        int depth = 1;
         gpu::Device::PixelFormat format = gpu::Device::PixelFormat::Rgba8;
         std::span<const std::span<const std::byte>> levels{};
+    };
+
+    // A range of the mip levels and layers of a texture that a view shows as a texture of the type, from its first mip level and layer: a flat view of a flat texture, an array view of an array or of faces of a cube or a cube array, a cube view of a cube, a cube array view of whole cubes and a volume view of every slice of a volume.
+    struct TextureView {
+        gpu::Device::TextureType type = gpu::Device::TextureType::Flat;
+        int mipLevel = 0;
+        int mipLevels = 1;
+        int layer = 0;
+        int layers = 1;
     };
 
     explicit Device(std::unique_ptr<gpu::Device> device);
@@ -63,7 +75,7 @@ class Device final {
 
     [[nodiscard]] Texture createTexture(const Image& image, Texture::Options options = {});
 
-    // Creates a texture from its levels in their format, which keeps mipmaps when it brings more than one level and `mipmaps` is not `false`. Throws `std::invalid_argument` for a format that is no format of textures, sides that hold no whole blocks, levels of another count or size, or a format that the device does not sample or filter, with a sentence that names the format and the graphics API.
+    // Creates a texture of its type from its levels in their format, which keeps mipmaps when it brings more than one level and `mipmaps` is not `false`. A texture that brings its first level alone with `mipmaps` set to `true` keeps the smaller levels that the GPU generates from it, in a format whose mipmaps the device generates. Throws `std::invalid_argument` for a format that is no format of textures, a type or a size that the device lacks, sides that hold no whole blocks, levels of another count or size, or a format that the device does not sample, filter or generate mipmaps of, with a sentence that names what is wrong and the graphics API.
     [[nodiscard]] Texture createTexture(const TextureData& data, Texture::Options options = {});
     [[nodiscard]] RenderTarget createRenderTarget(int width, int height, Texture::Options options = {});
 
@@ -86,12 +98,25 @@ class Device final {
     // Returns the shared 1 by 1 white texture that untextured draws use.
     [[nodiscard]] const Texture& getWhiteTexture() const noexcept;
 
+    // Returns the white texture of one pixel of the kind, with the six faces of a cube and of one cube of a cube array, which the texture slots of that kind of a material sample when the material leaves them unset. It is made the first time it is asked for.
+    [[nodiscard]] const Texture& getWhiteTexture(gpu::Device::TextureType type);
+
     // Replaces the pixels and size of an existing texture. Every handle to it sees the new contents from the next draw, and a dynamic texture stays dynamic.
     void replaceTexture(const Texture& texture, const Image& image);
 
     // Creates a texture whose pixels change in place with `updateTexture`, such as an image an app paints each frame. Its pixels reach the GPU with the next upload.
     [[nodiscard]] Texture createDynamicTexture(const Image& image, Texture::Options options = {});
     [[nodiscard]] Texture createDynamicTexture(int width, int height, math::Color fill, Texture::Options options = {});
+
+    // Creates a texture of the type and the size of the data, which brings no levels, with every pixel of every layer of one color, checking the shape against the device before any pixel exists. A texture keeps mipmaps as a texture of an image does, and a dynamic one when `mipmaps` is `true`, which the GPU generates.
+    [[nodiscard]] Texture createTexture(const TextureData& shape, math::Color fill, Texture::Options options = {});
+    [[nodiscard]] Texture createDynamicTexture(const TextureData& shape, math::Color fill, Texture::Options options = {});
+
+    // Creates a dynamic texture of any type from the pixels of its first level in an uncompressed format, whose layers change in place with `updateTexture`. With `mipmaps` set to `true` the GPU generates its smaller levels after each upload. Throws `std::invalid_argument` as `createTexture` does, and for data of more than one level.
+    [[nodiscard]] Texture createDynamicTexture(const TextureData& data, Texture::Options options = {});
+
+    // Creates a view of a range of the mip levels and layers of a texture, which samples as a texture of the type of the view, with the sampling of its texture, and keeps its texture alive. Throws `std::invalid_argument` on a device without views, for a type that the texture has no view of, a range that the texture does not hold, or a texture that is a view or a render target of several samples.
+    [[nodiscard]] Texture createView(const Texture& texture, const TextureView& view);
 
     // Creates a dynamic texture of one channel of half floats, such as the signed distance field of a glyph atlas, which every GPU filters without the steps of a byte. Its `updateTexture` takes the bytes of the halves.
     [[nodiscard]] Texture createDynamicDistanceTexture(int width, int height, std::span<const std::uint16_t> distances, Texture::Options options = {});
@@ -102,7 +127,10 @@ class Device final {
     // Takes every pixel of a dynamic texture, of which only the region changed since its last update, such as the place of a glyph that an atlas added. The device keeps the pixels of the region, and a texture that changes several times before the next upload sends once the smallest region that holds every change, from the pixels of its last update, so the GPU receives only the pixels that changed.
     void updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels, Region changed);
 
-    // Sends the regions of the dynamic textures that changed since the last upload and returns how many bytes they took, together with the images that the frame fills itself, such as the shadow atlas of the lights, since the GPU device takes the images of a frame in one call. The renderer calls it once per frame, before its passes.
+    // Takes every pixel of one layer of a dynamic texture, a layer of an array, a face of a cube or a slice of a volume, of which only the region changed, the way the other forms take the pixels of a flat texture.
+    void updateTexture(const Texture& texture, int layer, std::span<const std::uint8_t> pixels, Region changed);
+
+    // Sends the regions of the dynamic textures that changed since the last upload and returns how many bytes they took, together with the images that the frame fills itself, such as the shadow atlas of the lights, since the GPU device takes the images of a frame in one call, and then generates the mip levels of the textures whose GPU makes them. The renderer calls it once per frame, before its passes.
     std::size_t uploadTextures(std::span<const gpu::Device::ImageWrite> frameImages = {});
 
     // The name of the graphics API the device draws through, from `gpu::Device::kApiNames`: `metal`, `direct3D12`, `direct3D11`, `vulkan`, `openGl`, `openGlEs`, `webGl2`, `webGpu`, `port` for the device of a port, or `none` where nothing draws, such as the headless host of tests.
@@ -174,6 +202,9 @@ class Device final {
     void processBufferReads();
     static void validateDistances(int width, int height, std::span<const std::uint16_t> distances, int limit);
     void validateData(const TextureData& data, Texture::Options options) const;
+    void validateShape(const TextureData& data) const;
+    [[nodiscard]] static std::vector<std::uint8_t> fillLayers(const TextureData& shape, math::Color fill);
+    void validateView(const Texture& texture, const TextureView& view) const;
     [[nodiscard]] static std::string_view getFormatName(gpu::Device::PixelFormat format) noexcept;
 
     std::unique_ptr<DeviceState> state;

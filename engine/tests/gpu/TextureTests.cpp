@@ -10,6 +10,7 @@
 #include <span>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "gpu/ImageInfo.hpp"
@@ -191,7 +192,113 @@ class GpuTextureTest : public test::GpuFixture {
         return bytes;
     }
 
+    // A color of its own for each layer, from the six primaries and secondaries and then their halves.
+    [[nodiscard]] static std::vector<math::Color> makeLayerColors(int count) {
+        const std::array<math::Color, 6> bright{{{1.0F, 0.0F, 0.0F, 1.0F}, {0.0F, 1.0F, 0.0F, 1.0F}, {0.0F, 0.0F, 1.0F, 1.0F}, {1.0F, 1.0F, 0.0F, 1.0F}, {0.0F, 1.0F, 1.0F, 1.0F}, {1.0F, 0.0F, 1.0F, 1.0F}}};
+        std::vector<math::Color> colors;
+        for (int layer = 0; layer < count; ++layer) {
+            const math::Color color = bright[static_cast<std::size_t>(layer % 6)];
+            const float scale = layer < 6 ? 1.0F : 0.5F;
+            colors.push_back({color.r * scale, color.g * scale, color.b * scale, 1.0F});
+        }
+
+        return colors;
+    }
+
+    // The RGBA8 texels of a pattern that differs in every texel, channel and layer, so a box filter of it tells each texel of the level below apart.
+    [[nodiscard]] static std::vector<std::byte> makePattern(int width, int height, int layer) {
+        std::vector<std::byte> bytes;
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                for (int channel = 0; channel < 4; ++channel) {
+                    const int value = ((x * 37) + (y * 91) + (layer * 53) + (channel * 71)) % 256;
+                    bytes.push_back(static_cast<std::byte>(value));
+                }
+            }
+        }
+
+        return bytes;
+    }
+
+    // Makes a view that the test destroys when it ends, before the images it views.
+    [[nodiscard]] Device::Image makeView(const Device::ViewDesc& desc) {
+        const Device::Image view = device().makeView(desc);
+        views.push_back(view);
+        return view;
+    }
+
+    // Reads every texel of one layer or slice of a mip level of an image.
+    [[nodiscard]] Pixels readLevel(Device::Image image, Device::TextureType type, Device::Sampler sampler, int level, int layer, int depth) {
+        const int side = 8 >> level;
+        if (type == Device::TextureType::Volume) {
+            return sample("volume", image, sampler, {static_cast<float>(level), (static_cast<float>(layer) + 0.5F) / static_cast<float>(depth), 0.0F, 1.0F}, side, side);
+        }
+
+        const std::string_view name = type == Device::TextureType::Flat ? "textured" : "array";
+        return sample(name, image, sampler, {static_cast<float>(level), static_cast<float>(layer), 0.0F, 1.0F}, side, side);
+    }
+
+    // Checks that a mip level of an image of 8 by 8 pixels averages the texels of the level above it, the 2 by 2 texels of each layer of an array and the 2 by 2 by 2 texels of a volume. A cube, whose texels a draw reaches only through directions, checks that its last level holds the mean of each face.
+    void expectBoxFiltered(Device::Image image, Device::TextureType type, Device::Sampler sampler, int level, int layers) {
+        if (type == Device::TextureType::Cube) {
+            if (level != 3) {
+                return;
+            }
+
+            for (int face = 0; face < 6; ++face) {
+                const std::vector<std::byte> pattern = makePattern(8, 8, face);
+                std::array<float, 4> mean{};
+                for (std::size_t index = 0; index < pattern.size(); ++index) {
+                    mean[index % 4] += static_cast<float>(std::to_integer<int>(pattern[index])) / (255.0F * 64.0F);
+                }
+
+                const math::Color expected{mean[0], mean[1], mean[2], mean[3]};
+                EXPECT_TRUE(isNear(sample("cube", image, sampler, {static_cast<float>(level), static_cast<float>(face), 0.0F, 1.0F}).at(0, 0), expected, 3)) << "Face " << face;
+            }
+
+            return;
+        }
+
+        const bool volume = type == Device::TextureType::Volume;
+        const int aboveDepth = volume ? std::max(1, layers >> (level - 1)) : 1;
+        const int depth = volume ? std::max(1, layers >> level) : 1;
+        const int count = volume ? depth : layers;
+        const int side = 8 >> level;
+        for (int layer = 0; layer < count; ++layer) {
+            const Pixels below = readLevel(image, type, sampler, level, layer, depth);
+            std::vector<Pixels> above;
+            const int sources = volume ? std::min(2, aboveDepth) : 1;
+            for (int source = 0; source < sources; ++source) {
+                const int aboveLayer = volume ? (layer * 2) + source : layer;
+                above.push_back(readLevel(image, type, sampler, level - 1, aboveLayer, aboveDepth));
+            }
+
+            for (int y = 0; y < side; ++y) {
+                for (int x = 0; x < side; ++x) {
+                    std::array<float, 4> sum{};
+                    for (const Pixels& source : above) {
+                        for (const auto& [dx, dy] : {std::pair{0, 0}, std::pair{1, 0}, std::pair{0, 1}, std::pair{1, 1}}) {
+                            const math::Color texel = source.at((x * 2) + dx, (y * 2) + dy);
+                            sum[0] += texel.r;
+                            sum[1] += texel.g;
+                            sum[2] += texel.b;
+                            sum[3] += texel.a;
+                        }
+                    }
+
+                    const auto texels = static_cast<float>(above.size() * 4);
+                    const math::Color expected{sum[0] / texels, sum[1] / texels, sum[2] / texels, sum[3] / texels};
+                    EXPECT_TRUE(isNear(below.at(x, y), expected)) << "Type " << static_cast<int>(type) << ", level " << level << ", layer " << layer << ", texel " << x << ", " << y;
+                }
+            }
+        }
+    }
+
     void TearDown() override {
+        for (const Device::Image view : views) {
+            device().destroy(view);
+        }
+
         for (const Device::Sampler sampler : samplers) {
             device().destroy(sampler);
         }
@@ -202,6 +309,7 @@ class GpuTextureTest : public test::GpuFixture {
     static constexpr Device::SamplerDesc kNearest{.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest};
 
     std::vector<Device::Sampler> samplers;
+    std::vector<Device::Image> views;
 };
 
 // Every color format that the device samples reads back the color its texels hold, with the channels it lacks at their defaults.
@@ -614,6 +722,229 @@ TEST_P(GpuTextureTest, SamplesEveryFormatThatDynamicImagesWrite) {
         const Pixels pixels = sample(samplingProgram(format), texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
         EXPECT_TRUE(isNear(pixels.at(0, 0), expected, 3)) << static_cast<int>(format);
     }
+}
+
+// Each cube of a cube array reads the face that a draw asks for, on a device with cube arrays, and a device without them refuses one.
+TEST_P(GpuTextureTest, SamplesTheFacesOfEachCubeOfACubeArray) {
+    if (!capabilities().cubeArrays) {
+        EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.type = Device::TextureType::CubeArray, .width = 2, .height = 2, .layers = 6, .kind = Device::ImageKind::RenderTarget}); }), gpu::ContractError::Rule::Image);
+        GTEST_SKIP() << "The device has no cube arrays, which OpenGL ES before 3.2 and WebGL2 lack.";
+    }
+
+    const std::vector<math::Color> colors = makeLayerColors(12);
+    const std::vector<std::byte> texels = fill(colors, 4);
+    const std::array<std::span<const std::byte>, 1> levels{texels};
+    const Device::Image cubes = makeTexture(2, 2, levels, Device::PixelFormat::Rgba8, Device::TextureType::CubeArray, 12);
+    const Device::Sampler sampler = makeSampler(kNearest);
+    for (int layer = 0; layer < 12; ++layer) {
+        const std::array<float, 4> lookup{0.0F, static_cast<float>(layer % 6), static_cast<float>(layer / 6), 1.0F};
+        EXPECT_TRUE(isNear(sample("cube_array", cubes, sampler, lookup).at(0, 0), colors[static_cast<std::size_t>(layer)])) << "Layer " << layer;
+    }
+}
+
+// A view samples only its range of mip levels and layers, as an image of its own type: the levels of a flat image from its first one, faces of a cube as the layers of an array, and the slices of a volume from a smaller level.
+TEST_P(GpuTextureTest, SamplesTheMipLevelsAndLayersOfAView) {
+    if (!capabilities().imageViews) {
+        GTEST_SKIP() << "The device has no views of images, which OpenGL ES without a texture view extension and WebGL2 lack.";
+    }
+
+    const Device::Sampler sampler = makeSampler(kNearest);
+    const Device::Image levels = makeLevelTexture();
+    const Device::Image smaller = makeView({.image = levels, .baseMipLevel = 2, .mipLevels = 3});
+    for (int level = 0; level < 3; ++level) {
+        const math::Color expected{static_cast<float>((level + 2) * 32) / 255.0F, 0.0F, 0.0F, 1.0F};
+        EXPECT_TRUE(isNear(sample("textured", smaller, sampler, {static_cast<float>(level), 0.0F, 0.0F, 1.0F}).at(0, 0), expected)) << "Level " << level;
+    }
+
+    const std::vector<math::Color> colors = makeLayerColors(6);
+    const std::vector<std::byte> faceTexels = fill(colors, 4);
+    const std::array<std::span<const std::byte>, 1> faceLevels{faceTexels};
+    const Device::Image cube = makeTexture(2, 2, faceLevels, Device::PixelFormat::Rgba8, Device::TextureType::Cube, 6);
+    const Device::Image faces = makeView({.image = cube, .type = Device::TextureType::Array, .baseLayer = 2, .layers = 3});
+    for (int layer = 0; layer < 3; ++layer) {
+        EXPECT_TRUE(isNear(sample("array", faces, sampler, {0.0F, static_cast<float>(layer), 0.0F, 1.0F}).at(0, 0), colors[static_cast<std::size_t>(layer + 2)])) << "Layer " << layer;
+    }
+
+    const std::vector<std::byte> firstSlices = fill(std::span(colors).first(4), 4);
+    const std::vector<std::byte> secondSlices = fill(std::span(colors).subspan(4, 2), 1);
+    const std::array<std::span<const std::byte>, 2> sliceLevels{firstSlices, secondSlices};
+    const Device::Image volume = makeTexture(2, 2, sliceLevels, Device::PixelFormat::Rgba8, Device::TextureType::Volume, 4);
+    const Device::Image smallVolume = makeView({.image = volume, .type = Device::TextureType::Volume, .baseMipLevel = 1, .layers = 4});
+    for (int slice = 0; slice < 2; ++slice) {
+        const std::array<float, 4> lookup{0.0F, (static_cast<float>(slice) + 0.5F) / 2.0F, 0.0F, 1.0F};
+        EXPECT_TRUE(isNear(sample("volume", smallVolume, sampler, lookup).at(0, 0), colors[static_cast<std::size_t>(slice + 4)])) << "Slice " << slice;
+    }
+
+    if (!capabilities().cubeArrays) {
+        return;
+    }
+
+    const std::vector<math::Color> cubeColors = makeLayerColors(12);
+    const std::vector<std::byte> cubeTexels = fill(cubeColors, 4);
+    const std::array<std::span<const std::byte>, 1> cubeLevels{cubeTexels};
+    const Device::Image cubes = makeTexture(2, 2, cubeLevels, Device::PixelFormat::Rgba8, Device::TextureType::CubeArray, 12);
+    const Device::Image second = makeView({.image = cubes, .type = Device::TextureType::CubeArray, .baseLayer = 6, .layers = 6});
+    for (int face = 0; face < 6; ++face) {
+        EXPECT_TRUE(isNear(sample("cube_array", second, sampler, {0.0F, static_cast<float>(face), 0.0F, 1.0F}).at(0, 0), cubeColors[static_cast<std::size_t>(face + 6)])) << "Face " << face;
+    }
+}
+
+// A dynamic image takes new pixels for each mip level and layer, which a draw reads at that level and layer, and each slice of each level of a volume.
+TEST_P(GpuTextureTest, WritesEveryMipLevelAndLayerOfADynamicImage) {
+    const Device::Sampler sampler = makeSampler(kNearest);
+    const std::vector<math::Color> colors = makeLayerColors(6);
+    const Device::Image layers = makeImage({.type = Device::TextureType::Array, .width = 4, .height = 4, .layers = 2, .mipLevels = 3, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-dynamic-layers"});
+    std::vector<std::vector<std::byte>> texels;
+    std::vector<Device::ImageWrite> writes;
+    for (int level = 0; level < 3; ++level) {
+        for (int layer = 0; layer < 2; ++layer) {
+            const int side = 4 >> level;
+            texels.push_back(fill(std::span(colors).subspan(static_cast<std::size_t>((level * 2) + layer), 1), side * side));
+        }
+    }
+
+    for (int level = 0; level < 3; ++level) {
+        for (int layer = 0; layer < 2; ++layer) {
+            const int side = 4 >> level;
+            writes.push_back({.image = layers, .mipLevel = level, .layer = layer, .region = {0, 0, side, side}, .pixels = texels[static_cast<std::size_t>((level * 2) + layer)]});
+        }
+    }
+
+    device().writeImages(writes);
+    for (int level = 0; level < 3; ++level) {
+        for (int layer = 0; layer < 2; ++layer) {
+            const std::array<float, 4> lookup{static_cast<float>(level), static_cast<float>(layer), 0.0F, 1.0F};
+            EXPECT_TRUE(isNear(sample("array", layers, sampler, lookup).at(0, 0), colors[static_cast<std::size_t>((level * 2) + layer)])) << "Level " << level << ", layer " << layer;
+        }
+    }
+
+    const Device::Image volume = makeImage({.type = Device::TextureType::Volume, .width = 2, .height = 2, .layers = 2, .mipLevels = 2, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-dynamic-volume"});
+    const std::vector<std::byte> first = fill(std::span(colors).first(1), 4);
+    const std::vector<std::byte> second = fill(std::span(colors).subspan(1, 1), 4);
+    const std::vector<std::byte> top = fill(std::span(colors).subspan(2, 1), 1);
+    const std::array<Device::ImageWrite, 3> slices{{
+        {.image = volume, .layer = 0, .region = {0, 0, 2, 2}, .pixels = first},
+        {.image = volume, .layer = 1, .region = {0, 0, 2, 2}, .pixels = second},
+        {.image = volume, .mipLevel = 1, .region = {0, 0, 1, 1}, .pixels = top},
+    }};
+    device().writeImages(slices);
+    EXPECT_TRUE(isNear(sample("volume", volume, sampler, {0.0F, 0.25F, 0.0F, 1.0F}).at(0, 0), colors[0]));
+    EXPECT_TRUE(isNear(sample("volume", volume, sampler, {0.0F, 0.75F, 0.0F, 1.0F}).at(0, 0), colors[1]));
+    EXPECT_TRUE(isNear(sample("volume", volume, sampler, {1.0F, 0.5F, 0.0F, 1.0F}).at(0, 0), colors[2]));
+}
+
+// Every smaller mip level that the GPU generates is the box filter of the level above it, within the rounding of its texels, for each layer of an array, each face of a cube and the slices of a volume.
+TEST_P(GpuTextureTest, GeneratesEveryMipLevelAsTheBoxFilterOfTheLevelAboveIt) {
+    ASSERT_TRUE(capabilities().getFormat(Device::PixelFormat::Rgba8).mipmaps);
+    const Device::Sampler sampler = makeSampler(kNearest);
+    for (const Device::TextureType type : {Device::TextureType::Flat, Device::TextureType::Array, Device::TextureType::Cube, Device::TextureType::Volume}) {
+        const int layers = type == Device::TextureType::Flat ? 1 : (type == Device::TextureType::Array ? 2 : (type == Device::TextureType::Cube ? 6 : 4));
+        const Device::Image image = makeImage({.type = type, .width = 8, .height = 8, .layers = layers, .mipLevels = 4, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-mipmaps"});
+        std::vector<std::vector<std::byte>> texels;
+        for (int layer = 0; layer < layers; ++layer) {
+            texels.push_back(makePattern(8, 8, layer));
+        }
+
+        std::vector<Device::ImageWrite> writes;
+        for (int layer = 0; layer < layers; ++layer) {
+            writes.push_back({.image = image, .layer = layer, .region = {0, 0, 8, 8}, .pixels = texels[static_cast<std::size_t>(layer)]});
+        }
+
+        device().writeImages(writes);
+        device().generateMipmaps(image);
+        for (int level = 1; level < 4; ++level) {
+            expectBoxFiltered(image, type, sampler, level, layers);
+        }
+    }
+}
+
+// A render target generates its mip levels from what a pass drew into its first level, which the passes after it sample.
+TEST_P(GpuTextureTest, GeneratesTheMipLevelsOfARenderTarget) {
+    const math::Color color{0.2F, 0.6F, 0.8F, 1.0F};
+    const Device::Image target = makeImage({.width = 8, .height = 8, .mipLevels = 4, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-mipmapped-target"});
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = target, .clear = color}}};
+    device().beginPass({.colors = colors});
+    device().endPass();
+    device().generateMipmaps(target);
+    const Device::Sampler sampler = makeSampler(kNearest);
+    EXPECT_TRUE(isNear(sample("textured", target, sampler, {3.0F, 0.0F, 0.0F, 1.0F}).at(0, 0), color));
+    EXPECT_EQ(test::ContractRule::of([&] { device().generateMipmaps(makeLevelTexture()); }), gpu::ContractError::Rule::Mipmaps);
+}
+
+// A pass draws depth into one layer of an array of depths, as one cascade of a shadow map, and the other layers keep their own depth.
+TEST_P(GpuTextureTest, DrawsDepthIntoOneLayerOfAnArray) {
+    const Device::PixelFormat format = Device::PixelFormat::Depth32Float;
+    if (!capabilities().getFormat(format).sample) {
+        GTEST_SKIP() << "The device samples no image of 32-bit float depth.";
+    }
+
+    const Device::Image cascades = makeImage({.type = Device::TextureType::Array, .width = 8, .height = 8, .layers = 3, .format = format, .kind = Device::ImageKind::DepthStencil, .label = "haylen-test-cascades"});
+    const Device::Pipeline writing = device().makePipeline({.program = program("depth"), .depthStencil = {.format = format, .depthCompare = Device::CompareFunction::Always, .depthWrite = true}, .label = "haylen-test-depth-only"});
+    for (int layer = 0; layer < 3; ++layer) {
+        device().beginPass({.depthStencil = Device::DepthStencilAttachment{.image = cascades, .layer = layer, .depthStore = Device::Store::Store, .clearDepth = 1.0F}});
+        if (layer == 1) {
+            device().applyPipeline(writing);
+            drawPlane(math::Color::white(), 0.0F);
+        }
+
+        device().endPass();
+    }
+
+    // The plane lies at the depth 0 or 0.5 of the API, in front of the reference, and the cleared layers stay behind it.
+    const Device::Sampler sampler = makeSampler({.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest, .compare = Device::CompareFunction::LessEqual});
+    for (int layer = 0; layer < 3; ++layer) {
+        const math::Color expected = layer == 1 ? math::Color::black() : math::Color::white();
+        EXPECT_TRUE(isNear(sample("shadow_layers", cascades, sampler, {0.0F, static_cast<float>(layer), 0.75F, 1.0F}).at(0, 0), expected)) << "Layer " << layer;
+    }
+
+    device().destroy(writing);
+}
+
+// A multisampled pass resolves into a mip level and a layer of an array, which a draw then reads there.
+TEST_P(GpuTextureTest, ResolvesIntoAMipLevelAndALayer) {
+    if ((capabilities().getFormat(Device::PixelFormat::Rgba8).sampleCounts & 4U) == 0) {
+        GTEST_SKIP() << "The device draws no image of four samples.";
+    }
+
+    const math::Color color{0.8F, 0.2F, 0.4F, 1.0F};
+    const Device::Image samples = makeTarget(4, 4, Device::PixelFormat::Rgba8, 4);
+    const Device::Image layers = makeImage({.type = Device::TextureType::Array, .width = 8, .height = 8, .layers = 2, .mipLevels = 2, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-resolved-layers"});
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = samples, .store = Device::Store::Discard, .clear = color, .resolve = layers, .resolveMipLevel = 1, .resolveLayer = 1}}};
+    device().beginPass({.colors = colors});
+    device().endPass();
+    const Device::Sampler sampler = makeSampler(kNearest);
+    EXPECT_TRUE(isNear(sample("array", layers, sampler, {1.0F, 1.0F, 0.0F, 1.0F}).at(0, 0), color));
+}
+
+// A pass draws into one mip level of an image while its draws sample a view of the level above it, as a chain of bloom or a pyramid of depth needs.
+TEST_P(GpuTextureTest, SamplesTheLevelAboveTheLevelThatAPassDrawsInto) {
+    if (!capabilities().imageViews) {
+        GTEST_SKIP() << "The device has no views of images, which OpenGL ES without a texture view extension and WebGL2 lack.";
+    }
+
+    const math::Color color{0.4F, 0.8F, 0.2F, 1.0F};
+    const Device::Image chain = makeImage({.width = 4, .height = 4, .mipLevels = 2, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-chain"});
+    const std::array<Device::ColorAttachment, 1> first{{{.image = chain, .clear = color}}};
+    device().beginPass({.colors = first});
+    device().endPass();
+
+    const Device::Image above = makeView({.image = chain});
+    const Device::Sampler sampler = makeSampler(kNearest);
+    const std::array<Device::ColorTarget, 1> formats{};
+    const Device::Pipeline pipeline = device().makePipeline({.program = program("textured"), .colors = formats, .label = "haylen-test-chain"});
+    const std::array<Device::ColorAttachment, 1> second{{{.image = chain, .mipLevel = 1, .clear = math::Color::black()}}};
+    const std::array<float, 4> lookup{0.0F, 0.0F, 0.0F, 1.0F};
+    device().beginPass({.colors = second});
+    device().applyPipeline(pipeline);
+    Device::Bindings bindings;
+    bindings.textures[0] = above;
+    bindings.samplers[0] = sampler;
+    device().applyBindings(bindings);
+    device().applyUniforms(0, std::as_bytes(std::span(lookup)));
+    device().draw(0, 3, 1);
+    device().endPass();
+    device().destroy(pipeline);
+    EXPECT_TRUE(isNear(sample("textured", chain, sampler, {1.0F, 0.0F, 0.0F, 1.0F}).at(0, 0), color));
 }
 
 INSTANTIATE_TEST_SUITE_P(Devices, GpuTextureTest, ::testing::ValuesIn(test::GpuFixture::getTestedApis()), test::GpuFixture::nameApi);

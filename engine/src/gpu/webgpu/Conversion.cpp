@@ -438,6 +438,8 @@ WGPUTextureViewDimension Conversion::toViewDimension(Device::TextureType type) n
         return WGPUTextureViewDimension_3D;
     case Device::TextureType::Cube:
         return WGPUTextureViewDimension_Cube;
+    case Device::TextureType::CubeArray:
+        return WGPUTextureViewDimension_CubeArray;
     }
 
     return WGPUTextureViewDimension_2D;

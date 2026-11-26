@@ -78,15 +78,7 @@ Device::~Device() {
 
     buffers.forEach([&](const BufferRecord& record) { gl.deleteBuffers(1, &record.name); });
     samplers.forEach([&](const Gl::Uint& sampler) { gl.deleteSamplers(1, &sampler); });
-    // clang-format off
-    images.forEach([&](const ImageRecord& record) {
-        if (record.target == Gl::kRenderbuffer) {
-            gl.deleteRenderbuffers(1, &record.name);
-        } else {
-            gl.deleteTextures(1, &record.name);
-        }
-    });
-    // clang-format on
+    images.forEach([&](const ImageRecord& record) { deleteImage(record); });
     gl.deleteVertexArrays(1, &uploadVertexArray);
 }
 
@@ -102,10 +94,6 @@ std::size_t Device::readUniformAlignment(const Gl& functions) {
     Gl::Int value = 0;
     functions.getIntegerv(Gl::kUniformBufferOffsetAlignment, &value);
     return static_cast<std::size_t>(value);
-}
-
-int Device::getLevelSize(int size, int level) noexcept {
-    return std::max(1, size >> level);
 }
 
 void Device::copyPixels(std::byte* destination, std::span<const std::byte> source, bool swapsRedBlue) noexcept {
@@ -145,7 +133,7 @@ void Device::applyDriverIssues() {
     anisotropic = !noAnisotropy.has_value();
     flushEachPass = passFlushes.has_value();
     floatDepthWithStencil = depthWithStencil.has_value();
-    layersClearedByDrawing = layerClears.has_value();
+    laterLayersByDrawing = layerClears.has_value();
     samplesClearedByDrawing = sampleClears.has_value();
 
     if (noGpuDisjoint) {
@@ -156,8 +144,12 @@ void Device::applyDriverIssues() {
         gl.maxShaderCompilerThreads(0);
     }
 
-    if (layersClearedByDrawing || samplesClearedByDrawing) {
+    if (laterLayersByDrawing || samplesClearedByDrawing) {
         drawnClear = std::make_unique<DrawnClear>(gl, state);
+    }
+
+    if (laterLayersByDrawing) {
+        drawnResolve = std::make_unique<DrawnResolve>(gl, state);
     }
 }
 
@@ -172,12 +164,14 @@ void Device::readCapabilities() {
     capabilities.maxVolumeSize = value;
     gl.getIntegerv(Gl::kMaxCubeMapTextureSize, &value);
     capabilities.maxCubeSize = value;
+    capabilities.cubeArrays = features.cubeArrays;
+    capabilities.imageViews = features.textureView;
     capabilities.originTopLeft = false;
     capabilities.depthRange = features.clipControl ? math::Mat4::DepthRange::ZeroToOne : math::Mat4::DepthRange::NegativeOneToOne;
     capabilities.independentBlend = features.drawBuffersIndexed;
     capabilities.gpuTiming = timer.isAvailable();
 
-    // Every flavour makes and samples images of every uncompressed format and of the compressed families its version or extensions hold, and OpenGL ES and WebGL2 draw into float formats and filter 32-bit floats only with their extensions.
+    // Every flavour makes and samples images of every uncompressed format and of the compressed families its version or extensions hold, and OpenGL ES and WebGL2 draw into float formats and filter 32-bit floats only with their extensions. The levels that `glGenerateMipmap` fills take a color format that the context both draws into and filters, which OpenGL ES and WebGL2 ask for.
     for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const Conversions::Pixel pixel = Conversions::getPixel(format, gl.isDesktop());
@@ -188,6 +182,7 @@ void Device::readCapabilities() {
         support.blend = !pixel.depth && renderable && (!pixel.floating || features.floatBlend);
         support.filter = !pixel.depth && support.sample && (!pixel.floating || (features.textureFloatLinear && !noFloatFiltering));
         support.storage = isStorage(format);
+        support.mipmaps = support.render && support.filter;
         support.sampleCounts = renderable ? getSampleCounts(pixel) : std::uint8_t{0};
     }
 
@@ -385,35 +380,28 @@ Gl::Uint Device::makeTexture(const ImageDesc& desc, const Conversions::Pixel& pi
     return name;
 }
 
-std::size_t Device::getLevelBytes(const ImageRecord& record, int level) const noexcept {
-    const int layers = record.type == TextureType::Volume ? getLevelSize(record.layers, level) : record.layers;
-    return ImageInfo::getRegionBytes(record.format, getLevelSize(record.width, level), getLevelSize(record.height, level)) * static_cast<std::size_t>(layers);
-}
-
 // The source is the address of the pixels, or their offset in the pixel unpack buffer while one is bound, and the faces of a cube follow one another in it.
 void Device::uploadLevel(const ImageRecord& record, int level, std::uintptr_t source) {
-    const int width = getLevelSize(record.width, level);
-    const int height = getLevelSize(record.height, level);
+    const ImageInfo::Extent extent = record.description.getLevelExtent(level);
     state.bindTexture(0, record.target, record.name);
 
-    switch (record.type) {
+    switch (record.description.type) {
     case TextureType::Flat:
-        uploadLayers(record, Gl::kTexture2d, level, {width, height, 1}, source);
+        uploadLayers(record, Gl::kTexture2d, level, extent, source);
         return;
     case TextureType::Cube: {
-        const std::size_t face = getLevelBytes(record, level) / 6;
+        const std::size_t face = ImageInfo::getRegionBytes(record.description.format, extent.width, extent.height);
         for (Gl::Enum index = 0; index < 6; ++index) {
-            uploadLayers(record, Gl::kTextureCubeMapPositiveX + index, level, {width, height, 1}, source + face * index);
+            uploadLayers(record, Gl::kTextureCubeMapPositiveX + index, level, {extent.width, extent.height, 1}, source + face * index);
         }
 
         return;
     }
     case TextureType::Array:
-    case TextureType::Volume: {
-        const int layers = record.type == TextureType::Volume ? getLevelSize(record.layers, level) : record.layers;
-        uploadLayers(record, record.target, level, {width, height, layers}, source);
+    case TextureType::Volume:
+    case TextureType::CubeArray:
+        uploadLayers(record, record.target, level, extent, source);
         return;
-    }
     }
 }
 
@@ -421,9 +409,9 @@ void Device::uploadLevel(const ImageRecord& record, int level, std::uintptr_t so
 void Device::uploadLayers(const ImageRecord& record, Gl::Enum target, int level, const ImageInfo::Extent& extent, std::uintptr_t source) {
     const Conversions::Pixel& pixel = record.pixel;
     const auto* data = reinterpret_cast<const void*>(source);
-    const bool flat = target != Gl::kTexture2dArray && target != Gl::kTexture3d;
+    const bool flat = target != Gl::kTexture2dArray && target != Gl::kTexture3d && target != Gl::kTextureCubeMapArray;
     if (pixel.compressed) {
-        const auto size = static_cast<Gl::Sizei>(ImageInfo::getRegionBytes(record.format, extent.width, extent.height) * static_cast<std::size_t>(extent.depth));
+        const auto size = static_cast<Gl::Sizei>(ImageInfo::getRegionBytes(record.description.format, extent.width, extent.height) * static_cast<std::size_t>(extent.depth));
         if (flat) {
             gl.compressedTexSubImage2D(target, level, 0, 0, extent.width, extent.height, pixel.internalFormat, size, data);
             return;
@@ -441,11 +429,26 @@ void Device::uploadLayers(const ImageRecord& record, Gl::Enum target, int level,
     gl.texSubImage3D(target, level, 0, 0, 0, extent.width, extent.height, extent.depth, pixel.format, pixel.type, data);
 }
 
-// A dynamic image is flat with one mip level, whose region takes the pixels at the address or the offset into the pixel unpack buffer.
-void Device::uploadRegion(const ImageRecord& record, const Region& region, std::uintptr_t source) {
+// The region of a write takes the pixels at the address or the offset into the pixel unpack buffer, at the mip level of the write and in its layer: a face of a cube, a layer of an array, a face of a cube of a cube array, or a slice of a volume.
+void Device::uploadRegion(const ImageRecord& record, const ImageWrite& write, std::uintptr_t source) {
     const Conversions::Pixel& pixel = record.pixel;
+    const Region& region = write.region;
+    const auto* data = reinterpret_cast<const void*>(source);
     state.bindTexture(0, record.target, record.name);
-    gl.texSubImage2D(Gl::kTexture2d, 0, region.x, region.y, region.width, region.height, pixel.format, pixel.type, reinterpret_cast<const void*>(source));
+
+    switch (record.description.type) {
+    case TextureType::Flat:
+        gl.texSubImage2D(Gl::kTexture2d, write.mipLevel, region.x, region.y, region.width, region.height, pixel.format, pixel.type, data);
+        return;
+    case TextureType::Cube:
+        gl.texSubImage2D(Gl::kTextureCubeMapPositiveX + static_cast<Gl::Enum>(write.layer), write.mipLevel, region.x, region.y, region.width, region.height, pixel.format, pixel.type, data);
+        return;
+    case TextureType::Array:
+    case TextureType::Volume:
+    case TextureType::CubeArray:
+        gl.texSubImage3D(record.target, write.mipLevel, region.x, region.y, write.layer, region.width, region.height, 1, pixel.format, pixel.type, data);
+        return;
+    }
 }
 
 void Device::uploadTexture(const ImageDesc& desc, const ImageRecord& record) {
@@ -463,30 +466,51 @@ void Device::uploadTexture(const ImageDesc& desc, const ImageRecord& record) {
     }
 }
 
+// Every image of one sample is a texture of immutable storage, which views of it need, and a texture of 32-bit float depth on a driver that needs it takes a stencil plane, which no pass attaches or clears, since its depth still attaches alone.
 Device::Image Device::makeImage(const ImageDesc& desc) {
+    const ImageRules::Description description = ImageRules::check(desc, capabilities);
     const Conversions::Pixel pixel = Conversions::getPixel(desc.format, gl.isDesktop());
-    ImageRules::check(desc, capabilities);
 
-    ImageRecord record{.target = desc.sampleCount > 1 ? Gl::kRenderbuffer : Conversions::toTextureTarget(desc.type), .type = desc.type, .format = desc.format, .pixel = pixel, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .kind = desc.kind};
+    ImageRecord record{.target = desc.sampleCount > 1 ? Gl::kRenderbuffer : Conversions::toTextureTarget(desc.type), .pixel = pixel, .description = description};
     if (record.target == Gl::kRenderbuffer) {
         record.name = makeRenderbuffer(desc, pixel);
         debug.label(Gl::kRenderbuffer, record.name, desc.label);
         return {images.add(std::move(record))};
     }
 
-    // A texture of 32-bit float depth on a driver that needs it takes a stencil plane, which no pass attaches or clears, since its depth still attaches alone.
-    Conversions::Pixel stored = pixel;
     if (floatDepthWithStencil && desc.format == PixelFormat::Depth32Float) {
-        stored.internalFormat = Gl::kDepth32fStencil8;
+        record.pixel.internalFormat = Gl::kDepth32fStencil8;
     }
 
-    record.name = makeTexture(desc, stored, record.target);
+    record.name = makeTexture(desc, record.pixel, record.target);
     if (desc.kind == ImageKind::Texture) {
         uploadTexture(desc, record);
     }
 
     debug.label(Gl::kTexture, record.name, desc.label);
     return {images.add(std::move(record))};
+}
+
+// A view is a texture of its own that shares the immutable storage of its image over the range of the view, in the format the image is stored in. The layers of a view of a volume are its one layer of slices, and those of a cube or a cube array count faces.
+Device::Image Device::makeView(const ViewDesc& desc) {
+    ImageRecord& image = images.get(desc.image.id);
+    const ImageRules::Description description = ImageRules::checkView(image.description, desc, capabilities);
+    image.views.reserve(image.views.size() + 1);
+
+    const Gl::Enum target = Conversions::toTextureTarget(desc.type);
+    const int layers = desc.type == TextureType::Volume ? 1 : desc.layers;
+    Gl::Uint name = 0;
+    gl.genTextures(1, &name);
+    gl.textureView(name, target, image.name, image.pixel.internalFormat, static_cast<Gl::Uint>(desc.baseMipLevel), static_cast<Gl::Uint>(desc.mipLevels), static_cast<Gl::Uint>(desc.baseLayer), static_cast<Gl::Uint>(layers));
+
+    // The view names its last level itself, as the textures of the device do.
+    state.bindTexture(0, target, name);
+    gl.texParameteri(target, Gl::kTextureMaxLevel, desc.mipLevels - 1);
+    debug.label(Gl::kTexture, name, desc.label);
+
+    const std::uint64_t id = images.add(ImageRecord{.name = name, .target = target, .pixel = image.pixel, .description = description});
+    image.views.push_back(id);
+    return {id};
 }
 
 Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
@@ -526,6 +550,11 @@ Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
 Device::Program Device::makeProgram(const ProgramDesc& desc) {
     ProgramSlots::check(desc);
     if (std::ranges::any_of(desc.blocks, [this](const BlockBinding& block) { return block.size > capabilities.maxUniformBlockSize; })) {
+        throw ContractError(ContractError::Rule::Program);
+    }
+
+    const bool samplesCubeArrays = std::ranges::any_of(desc.textures, [](const TextureBinding& texture) { return texture.type == TextureType::CubeArray; });
+    if (samplesCubeArrays && !capabilities.cubeArrays) {
         throw ContractError(ContractError::Rule::Program);
     }
 
@@ -596,21 +625,40 @@ void Device::destroy(Buffer buffer) noexcept {
     pipelines.forEach([&](PipelineRecord& pipeline) { pipeline.vertexArray->forgetBuffer(record->name); });
 }
 
+// An image deletes its views with it, and a view leaves the views of its image, whose storage stays.
 void Device::destroy(Image image) noexcept {
     const std::optional<ImageRecord> record = images.remove(image.id);
     if (!record) {
         return;
     }
 
-    framebuffers.forgetImage(image.id);
+    if (record->description.isView()) {
+        if (ImageRecord* viewed = images.find(record->description.viewed.id)) {
+            std::erase(viewed->views, image.id);
+        }
 
-    if (record->target == Gl::kRenderbuffer) {
-        gl.deleteRenderbuffers(1, &record->name);
+        deleteImage(*record);
         return;
     }
 
-    gl.deleteTextures(1, &record->name);
-    state.forgetTexture(record->name);
+    for (const std::uint64_t view : record->views) {
+        if (const std::optional<ImageRecord> removed = images.remove(view)) {
+            deleteImage(*removed);
+        }
+    }
+
+    framebuffers.forgetImage(image.id);
+    deleteImage(*record);
+}
+
+void Device::deleteImage(const ImageRecord& record) noexcept {
+    if (record.target == Gl::kRenderbuffer) {
+        gl.deleteRenderbuffers(1, &record.name);
+        return;
+    }
+
+    gl.deleteTextures(1, &record.name);
+    state.forgetTexture(record.name);
 }
 
 void Device::destroy(Sampler sampler) noexcept {
@@ -724,21 +772,11 @@ void Device::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destinat
 std::size_t Device::checkImageWrites(std::span<const ImageWrite> writes) {
     std::size_t total = 0;
     for (const ImageWrite& write : writes) {
-        const ImageRecord& record = images.get(write.image.id);
-        if (record.kind != ImageKind::Dynamic) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
-        const Region& region = write.region;
-        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= record.width && region.y + region.height <= record.height;
-        const std::size_t bytes = ImageInfo::getRegionBytes(record.format, region.width, region.height);
-        if (!inside || write.pixels.size() != bytes) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
+        ImageRules::checkWrite(images.get(write.image.id).description, write);
         total += UploadRing::align(write.pixels.size());
     }
 
+    ImageRules::checkDistinctWrites(writes);
     return total;
 }
 
@@ -754,7 +792,7 @@ void Device::uploadImagesFromMemory(std::span<const ImageWrite> writes) {
             pixels = staging;
         }
 
-        uploadRegion(record, write.region, toAddress(pixels.data()));
+        uploadRegion(record, write, toAddress(pixels.data()));
     }
 }
 
@@ -771,14 +809,14 @@ void Device::uploadImagesThroughRing(std::span<const ImageWrite> writes, std::si
     state.bindBuffer(Gl::kPixelUnpackBuffer, ring->getBuffer());
     cursor = slice.offset;
     for (const ImageWrite& write : writes) {
-        uploadRegion(images.get(write.image.id), write.region, cursor);
+        uploadRegion(images.get(write.image.id), write, cursor);
         cursor += UploadRing::align(write.pixels.size());
     }
 
     state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
 }
 
-// The pixels of every image go into the upload ring in one mapping, and the textures copy them from it as a pixel unpack buffer. WebGL2 takes them from memory, which the browser stages itself.
+// The pixels of every image go into the upload ring in one mapping, and the mip levels and layers of the textures copy them from it as a pixel unpack buffer. WebGL2 takes them from memory, which the browser stages itself.
 void Device::writeImages(std::span<const ImageWrite> writes) {
     if (pass.open) {
         throw ContractError(ContractError::Rule::ImageWrite);
@@ -798,6 +836,18 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     }
 }
 
+// OpenGL fills every smaller level of every layer of the texture from its first level, and of a volume the slices too, in its place among the draws, copies and writes of the frame.
+void Device::generateMipmaps(Image image) {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::Mipmaps);
+    }
+
+    const ImageRecord& record = images.get(image.id);
+    ImageRules::checkMipmaps(record.description, capabilities);
+    state.bindTexture(0, record.target, record.name);
+    gl.generateMipmap(record.target);
+}
+
 void Device::requirePass() const {
     if (!pass.open) {
         throw ContractError(ContractError::Rule::PassOrder);
@@ -809,9 +859,9 @@ FramebufferCache::Attachment Device::toAttachment(Image image, int mipLevel, int
     return {.image = image.id, .name = record.name, .target = record.target, .mipLevel = mipLevel, .layer = layer};
 }
 
-Gl::Uint Device::getSingleFramebuffer(Image image, std::string_view label) {
+Gl::Uint Device::getSingleFramebuffer(Image image, int mipLevel, int layer, std::string_view label) {
     FramebufferCache::Key key{.colorCount = 1};
-    key.colors[0] = toAttachment(image, 0, 0);
+    key.colors[0] = toAttachment(image, mipLevel, layer);
     return framebuffers.get(key, label);
 }
 
@@ -916,12 +966,16 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& color = desc.colors[index];
         const ImageRecord& record = images.get(color.image.id);
-        if (record.kind != ImageKind::RenderTarget) {
+        const ImageRules::Description& image = record.description;
+        if (image.isView() || image.kind != ImageKind::RenderTarget) {
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 
-        if (color.resolve.isValid() && (record.sampleCount == 1 || images.get(color.resolve.id).sampleCount != 1)) {
-            throw ContractError(ContractError::Rule::PassAttachments);
+        if (color.resolve.isValid()) {
+            const ImageRules::Description& resolve = images.get(color.resolve.id).description;
+            if (image.sampleCount == 1 || resolve.isView() || resolve.sampleCount != 1) {
+                throw ContractError(ContractError::Rule::PassAttachments);
+            }
         }
 
         key.colors[index] = toAttachment(color.image, color.mipLevel, color.layer);
@@ -929,26 +983,29 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         srgb = srgb || record.pixel.srgb;
 
         if (index == 0) {
-            pass.width = getLevelSize(record.width, color.mipLevel);
-            pass.height = getLevelSize(record.height, color.mipLevel);
+            const ImageInfo::Extent level = image.getLevelExtent(color.mipLevel);
+            pass.width = level.width;
+            pass.height = level.height;
         }
     }
 
     pass.colorCount = desc.colors.size();
 
     if (desc.depthStencil) {
-        const ImageRecord& record = images.get(desc.depthStencil->image.id);
-        if (record.kind != ImageKind::DepthStencil) {
+        const DepthStencilAttachment& depthStencil = *desc.depthStencil;
+        const ImageRecord& record = images.get(depthStencil.image.id);
+        if (record.description.isView() || record.description.kind != ImageKind::DepthStencil) {
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 
-        key.depthStencil = toAttachment(desc.depthStencil->image, 0, 0);
+        key.depthStencil = toAttachment(depthStencil.image, depthStencil.mipLevel, depthStencil.layer);
         key.stencil = record.pixel.stencil;
-        pass.depthStencil = desc.depthStencil;
+        pass.depthStencil = depthStencil;
         pass.stencil = record.pixel.stencil;
         if (desc.colors.empty()) {
-            pass.width = record.width;
-            pass.height = record.height;
+            const ImageInfo::Extent level = record.description.getLevelExtent(depthStencil.mipLevel);
+            pass.width = level.width;
+            pass.height = level.height;
         }
     }
 
@@ -1005,7 +1062,7 @@ void Device::loadAttachments() {
         }
     }
 
-    if (!pass.depthStencil) {
+    if (!pass.depthStencil || isDepthStencilClearedByDrawing()) {
         return;
     }
 
@@ -1026,6 +1083,7 @@ void Device::loadAttachments() {
     }
 }
 
+// A depth that the pass clears by drawing reaches the attachment through the depth of clip space that the depth range of the device maps onto it.
 void Device::clearByDrawing() {
     for (std::size_t index = 0; index < pass.colorCount; ++index) {
         const ColorAttachment& color = pass.colors[index];
@@ -1033,16 +1091,45 @@ void Device::clearByDrawing() {
             drawnClear->clear(index, pass.colorCount, color.clear, pass.width, pass.height);
         }
     }
+
+    if (!pass.depthStencil || !isDepthStencilClearedByDrawing()) {
+        return;
+    }
+
+    const DepthStencilAttachment& depth = *pass.depthStencil;
+    std::optional<float> clipDepth;
+    if (depth.depthLoad == Load::Clear) {
+        const bool zeroToOne = capabilities.depthRange == math::Mat4::DepthRange::ZeroToOne;
+        clipDepth = zeroToOne ? depth.clearDepth : (depth.clearDepth * 2.0F) - 1.0F;
+    }
+
+    std::optional<std::uint8_t> stencil;
+    if (pass.stencil && depth.stencilLoad == Load::Clear) {
+        stencil = depth.clearStencil;
+    }
+
+    if (clipDepth || stencil) {
+        drawnClear->clearDepthStencil(clipDepth, stencil, pass.colorCount, pass.width, pass.height);
+    }
 }
 
 bool Device::isClearedByDrawing(const ColorAttachment& color) {
     const ImageRecord& record = images.get(color.image.id);
-    if (samplesClearedByDrawing && record.sampleCount > 1) {
+    if (samplesClearedByDrawing && record.description.sampleCount > 1) {
         return true;
     }
 
-    const bool layered = record.target == Gl::kTexture2dArray || record.target == Gl::kTexture3d;
-    return layersClearedByDrawing && layered && color.layer > 0;
+    return isLayerDrawnInto(record.target, color.layer);
+}
+
+bool Device::isDepthStencilClearedByDrawing() {
+    return isLayerDrawnInto(images.get(pass.depthStencil->image.id).target, pass.depthStencil->layer);
+}
+
+// Whether a pass reaches the layer of an attachment that `glFramebufferTextureLayer` attaches only by drawing, on a driver whose clears and blits reach the first layer whatever layer the framebuffer attaches, while the faces of a cube attach as targets of their own.
+bool Device::isLayerDrawnInto(Gl::Enum target, int layer) const noexcept {
+    const bool layered = target == Gl::kTexture2dArray || target == Gl::kTexture3d || target == Gl::kTextureCubeMapArray;
+    return laterLayersByDrawing && layered && layer > 0;
 }
 
 StateCache::Rectangle Device::toWindow(const math::Rect& pixels) const noexcept {
@@ -1235,7 +1322,7 @@ void Device::draw(int first, int count, int instances) {
     gl.drawElementsInstanced(applied->primitive, count, applied->indexType, reinterpret_cast<const void*>(start), instances);
 }
 
-// A multisampled attachment resolves into its image by a blit, which the scissor and the write masks would limit.
+// A multisampled attachment resolves into the mip level and the layer of its image by a blit, which the scissor and the write masks would limit, or by a blit and a draw on a driver whose blits miss that layer.
 void Device::resolveAttachments() {
     bool resolved = false;
     for (std::size_t index = 0; index < pass.colorCount; ++index) {
@@ -1244,13 +1331,19 @@ void Device::resolveAttachments() {
             continue;
         }
 
-        const Gl::Uint target = getSingleFramebuffer(color.resolve, "haylen-resolve");
+        const ImageRecord& record = images.get(color.resolve.id);
+        const Gl::Uint target = getSingleFramebuffer(color.resolve, color.resolveMipLevel, color.resolveLayer, "haylen-resolve");
+        resolved = true;
+        if (isLayerDrawnInto(record.target, color.resolveLayer)) {
+            drawnResolve->resolve(pass.framebuffer, index, target, record.pixel.internalFormat, pass.width, pass.height);
+            continue;
+        }
+
         state.prepareClear();
         state.bindReadFramebuffer(pass.framebuffer);
         gl.readBuffer(Gl::kColorAttachment0 + static_cast<Gl::Enum>(index));
         state.bindDrawFramebuffer(target);
         gl.blitFramebuffer(0, 0, pass.width, pass.height, 0, 0, pass.width, pass.height, Gl::kColorBufferBit, Gl::kNearest);
-        resolved = true;
     }
 
     if (resolved) {
@@ -1443,15 +1536,16 @@ void Device::attachSurface(const Surface& surface) {
 
 std::unique_ptr<Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
-    if (record.kind != ImageKind::RenderTarget || record.sampleCount != 1) {
+    const ImageRules::Description& description = record.description;
+    if (description.isView() || description.kind != ImageKind::RenderTarget || description.sampleCount != 1) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
+    if (width <= 0 || height <= 0 || width > description.width || height > description.height) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    const Gl::Uint framebuffer = getSingleFramebuffer(image, "haylen-readback");
+    const Gl::Uint framebuffer = getSingleFramebuffer(image, 0, 0, "haylen-readback");
     return std::make_unique<PixelReadback>(context, framebuffer, width, height, record.pixel.floating || record.pixel.halfFloating || record.pixel.packedFloating);
 }
 

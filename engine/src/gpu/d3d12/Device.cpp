@@ -84,6 +84,7 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
     uploads = std::make_unique<UploadAllocator>(*device.Get(), kFramesInFlight);
     bufferArena = std::make_unique<BufferArena>(*device.Get());
     rootSignatures = std::make_unique<RootSignatures>(*device.Get());
+    mipmaps = std::make_unique<MipmapGenerator>(*device.Get(), *compiler);
     timer = std::make_unique<FrameTimer>(*device.Get(), *queue.Get(), kFramesInFlight);
     chains.push_back(makeChain(target));
     pipelineSampleCount = getSwapchainSampleCount();
@@ -159,12 +160,16 @@ void Device::readCapabilities() {
     capabilities.maxLodBias = 15.99F;
     capabilities.borderColors = true;
 
+    // Feature level 10_1 brings cube arrays, and a view of a range of the mip levels and layers of an image is a shader resource view.
+    capabilities.cubeArrays = true;
+    capabilities.imageViews = true;
+
     // Feature level 11_0 brings storage buffers and the arguments of indirect draws, and a constant buffer view reads at most 4096 constants of 16 bytes.
     capabilities.storageBuffers = true;
     capabilities.indirectBuffers = true;
     capabilities.maxUniformBlockSize = static_cast<std::size_t>(D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT) * 16;
 
-    // Images sample through the view of their format, depth images draw through the view of their depth, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
+    // Images sample through the view of their format, depth images draw through the view of their depth, the draws of `MipmapGenerator` generate the mip levels of a color format that the GPU draws into and filters, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
     for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const bool depth = ImageInfo::isDepth(format);
@@ -182,6 +187,7 @@ void Device::readCapabilities() {
         capabilities.formats[index].blend = !depth && capabilities.formats[index].render && (target.Support1 & D3D12_FORMAT_SUPPORT1_BLENDABLE) != 0;
         capabilities.formats[index].filter = !depth && (view.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
         capabilities.formats[index].storage = !depth && (view.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) != 0;
+        capabilities.formats[index].mipmaps = capabilities.formats[index].filter && capabilities.formats[index].render && (view.Support1 & D3D12_FORMAT_SUPPORT1_MIP) != 0;
         capabilities.formats[index].sampleCounts = capabilities.formats[index].render ? std::uint8_t{1} : std::uint8_t{0};
 
         const D3D12_FORMAT_SUPPORT1 multisampled = depth ? D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RENDERTARGET : D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RENDERTARGET | D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RESOLVE;
@@ -320,6 +326,10 @@ void Device::release(std::uint64_t completedValue) {
     for (auto entry = garbage.begin(); entry != finished; ++entry) {
         if (entry->heap != nullptr) {
             entry->heap->free(entry->handle);
+        }
+
+        for (const D3D12_CPU_DESCRIPTOR_HANDLE view : entry->levelViews) {
+            entry->heap->free(view);
         }
 
         for (const Attachment& attachment : entry->attachments) {
@@ -490,58 +500,71 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     return {buffers.add(std::move(record))};
 }
 
-void Device::makeTextureView(ImageRecord& image) {
+// A view reads the mip levels and layers of its description from the first ones it names, which are the first of the image for an image itself, and a cube array reads whole cubes from its first face.
+D3D12_CPU_DESCRIPTOR_HANDLE Device::makeTextureView(ID3D12Resource& resource, const ImageRules::Description& description) {
     D3D12_SHADER_RESOURCE_VIEW_DESC view{};
-    view.Format = Formats::getViewFormat(image.format);
+    view.Format = Formats::getViewFormat(description.format);
     view.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    const auto mips = static_cast<UINT>(image.mipLevels);
-    const auto layers = static_cast<UINT>(image.layers);
-    const bool multisampled = image.sampleCount > 1;
+    const auto firstMip = static_cast<UINT>(description.baseMipLevel);
+    const auto mips = static_cast<UINT>(description.mipLevels);
+    const auto firstLayer = static_cast<UINT>(description.baseLayer);
+    const auto layers = static_cast<UINT>(description.layers);
+    const bool multisampled = description.sampleCount > 1;
 
-    switch (image.type) {
+    switch (description.type) {
     case TextureType::Flat:
         view.ViewDimension = multisampled ? D3D12_SRV_DIMENSION_TEXTURE2DMS : D3D12_SRV_DIMENSION_TEXTURE2D;
-        view.Texture2D = {.MostDetailedMip = 0, .MipLevels = mips, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0F};
+        view.Texture2D = {.MostDetailedMip = firstMip, .MipLevels = mips, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0F};
         break;
     case TextureType::Array:
         view.ViewDimension = multisampled ? D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
         if (multisampled) {
-            view.Texture2DMSArray = {.FirstArraySlice = 0, .ArraySize = layers};
+            view.Texture2DMSArray = {.FirstArraySlice = firstLayer, .ArraySize = layers};
         } else {
-            view.Texture2DArray = {.MostDetailedMip = 0, .MipLevels = mips, .FirstArraySlice = 0, .ArraySize = layers, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0F};
+            view.Texture2DArray = {.MostDetailedMip = firstMip, .MipLevels = mips, .FirstArraySlice = firstLayer, .ArraySize = layers, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0F};
         }
 
         break;
     case TextureType::Cube:
-        view.ViewDimension = layers > 6 ? D3D12_SRV_DIMENSION_TEXTURECUBEARRAY : D3D12_SRV_DIMENSION_TEXTURECUBE;
-        if (layers > 6) {
-            view.TextureCubeArray = {.MostDetailedMip = 0, .MipLevels = mips, .First2DArrayFace = 0, .NumCubes = layers / 6, .ResourceMinLODClamp = 0.0F};
-        } else {
-            view.TextureCube = {.MostDetailedMip = 0, .MipLevels = mips, .ResourceMinLODClamp = 0.0F};
-        }
-
+        view.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+        view.TextureCube = {.MostDetailedMip = firstMip, .MipLevels = mips, .ResourceMinLODClamp = 0.0F};
+        break;
+    case TextureType::CubeArray:
+        view.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+        view.TextureCubeArray = {.MostDetailedMip = firstMip, .MipLevels = mips, .First2DArrayFace = firstLayer, .NumCubes = layers / 6, .ResourceMinLODClamp = 0.0F};
         break;
     case TextureType::Volume:
         view.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-        view.Texture3D = {.MostDetailedMip = 0, .MipLevels = mips, .ResourceMinLODClamp = 0.0F};
+        view.Texture3D = {.MostDetailedMip = firstMip, .MipLevels = mips, .ResourceMinLODClamp = 0.0F};
         break;
     }
 
-    image.view = textureViews->allocate();
-    device->CreateShaderResourceView(image.resource.Get(), &view, image.view);
+    const D3D12_CPU_DESCRIPTOR_HANDLE handle = textureViews->allocate();
+    device->CreateShaderResourceView(&resource, &view, handle);
+    return handle;
+}
+
+// Direct3D 12 counts the subresources of a texture by mip level within each layer and then by plane, and those of a volume by mip level alone, whose slices a copy or a view reaches.
+UINT Device::getSubresource(const ImageRules::Description& description, int mipLevel, int layer, UINT plane) noexcept {
+    const bool volume = description.type == TextureType::Volume;
+    const auto slice = static_cast<UINT>(volume ? 0 : layer);
+    const auto layers = static_cast<UINT>(volume ? 1 : description.layers);
+    const auto levels = static_cast<UINT>(description.mipLevels);
+    return static_cast<UINT>(mipLevel) + (slice * levels) + (plane * levels * layers);
 }
 
 // The pixels go into upload memory at the footprints that Direct3D 12 lays out for each subresource, and the transfer list copies them into the image, which it moves out of its state and back. Each span holds every layer of its mip level, and subresources count layers apart by the mip levels of the image.
 void Device::stagePixels(const ImageRecord& image, std::span<const std::span<const std::byte>> levels) {
     const D3D12_RESOURCE_DESC desc = image.resource->GetDesc();
-    const bool volume = image.type == TextureType::Volume;
-    const auto layers = static_cast<UINT>(volume ? 1 : image.layers);
+    const ImageRules::Description& description = image.description;
+    const bool volume = description.type == TextureType::Volume;
+    const auto layers = static_cast<UINT>(volume ? 1 : description.layers);
     const auto count = static_cast<UINT>(levels.size());
 
     footprints.resize(static_cast<std::size_t>(count) * layers);
     UINT64 total = 0;
     for (UINT layer = 0; layer < layers; ++layer) {
-        const UINT first = layer * static_cast<UINT>(image.mipLevels);
+        const UINT first = getSubresource(description, 0, static_cast<int>(layer));
         UINT64 bytes = 0;
         device->GetCopyableFootprints(&desc, first, count, total, footprints.data() + static_cast<std::size_t>(layer) * count, nullptr, nullptr, &bytes);
         total += (bytes + D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1) / D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT * D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
@@ -554,7 +577,7 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
 
     for (UINT layer = 0; layer < layers; ++layer) {
         for (UINT index = 0; index < count; ++index) {
-            const direct3d::MipLevels::Level level = direct3d::MipLevels::describe(image.type, image.width, image.height, image.layers, image.format, static_cast<int>(index));
+            const direct3d::MipLevels::Level level = direct3d::MipLevels::describe(description.type, description.width, description.height, description.layers, description.format, static_cast<int>(index));
             D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = footprints[static_cast<std::size_t>(layer) * count + index];
             const std::byte* source = levels[index].data() + (volume ? 0 : layer * level.sliceBytes);
             const std::size_t slices = volume ? level.layers : 1;
@@ -566,7 +589,7 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
             }
 
             footprint.Offset += staged.offset;
-            const D3D12_TEXTURE_COPY_LOCATION destination{.pResource = image.resource.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = layer * static_cast<UINT>(image.mipLevels) + index};
+            const D3D12_TEXTURE_COPY_LOCATION destination{.pResource = image.resource.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = getSubresource(description, static_cast<int>(index), static_cast<int>(layer))};
             const D3D12_TEXTURE_COPY_LOCATION from{.pResource = staged.resource, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = footprint};
             list.CopyTextureRegion(&destination, 0, 0, 0, &from, nullptr);
         }
@@ -576,9 +599,11 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
     list.ResourceBarrier(1, &toHome);
 }
 
+// A dynamic image of more than one mip level of a format whose mip levels the device generates takes the render target flag, since `MipmapGenerator` draws its smaller levels. Cubes and cube arrays are arrays of faces that views read as cubes, and depth images are typeless resources that depth stencil views write and shader resource views sample.
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
-    ImageRules::check(desc, capabilities);
+    const ImageRules::Description description = ImageRules::check(desc, capabilities);
     const bool depth = ImageInfo::isDepth(desc.format);
+    const bool generates = desc.kind == ImageKind::Dynamic && desc.mipLevels > 1 && capabilities.getFormat(desc.format).mipmaps;
 
     reserveGarbage();
     D3D12_RESOURCE_DESC made{};
@@ -590,20 +615,34 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     made.Format = Formats::getResourceFormat(desc.format);
     made.SampleDesc.Count = static_cast<UINT>(desc.sampleCount);
     made.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    made.Flags = desc.kind == ImageKind::RenderTarget ? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : (depth ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAG_NONE);
+    made.Flags = desc.kind == ImageKind::RenderTarget || generates ? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : (depth ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAG_NONE);
 
-    ImageRecord record{.type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .format = desc.format, .kind = desc.kind};
+    ImageRecord record{.description = description};
     record.home = depth ? D3D12_RESOURCE_STATE_DEPTH_READ | kShaderResource : kShaderResource;
     const D3D12_HEAP_PROPERTIES heap = StateDescriptions::makeHeap(D3D12_HEAP_TYPE_DEFAULT);
     HResult::check(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &made, record.home, nullptr, IID_PPV_ARGS(record.resource.GetAddressOf())), std::format("create the {}x{} image \"{}\"", desc.width, desc.height, desc.label));
     setName(*record.resource.Get(), desc.label);
-    makeTextureView(record);
+    record.view = makeTextureView(*record.resource.Get(), description);
 
     if (desc.kind == ImageKind::Texture) {
         stagePixels(record, desc.levels);
     }
 
     return {images.add(std::move(record))};
+}
+
+// The view shares the resource of its image and rests in its state, and the image keeps the id of the view, so destroying the image destroys the view with it. The image takes room for the id before the view exists, so a view that the table holds always joins its image.
+gpu::Device::Image Device::makeView(const ViewDesc& desc) {
+    ImageRecord& image = images.get(desc.image.id);
+    const ImageRules::Description description = ImageRules::checkView(image.description, desc, capabilities);
+    reserveGarbage();
+    image.views.reserve(image.views.size() + 1);
+
+    ImageRecord view{.resource = image.resource, .description = description, .home = image.home};
+    view.view = makeTextureView(*image.resource.Get(), description);
+    const std::uint64_t id = images.add(std::move(view));
+    image.views.push_back(id);
+    return {id};
 }
 
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
@@ -728,14 +767,32 @@ void Device::destroy(Buffer buffer) noexcept {
     }
 }
 
+// An image destroys its views with it, at the same fence, and a view leaves its image, which forgets the id of the view.
 void Device::destroy(Image image) noexcept {
     std::optional<ImageRecord> record = images.remove(image.id);
     if (!record) {
         return;
     }
 
-    DescriptorHeap* attachmentHeap = record->kind == ImageKind::DepthStencil ? depthViews.get() : targetViews.get();
-    discard({.fence = fenceValue + 1, .object = std::move(record->resource), .heap = textureViews.get(), .handle = record->view, .attachmentHeap = attachmentHeap, .attachments = std::move(record->attachments)});
+    if (record->description.isView()) {
+        ImageRecord* viewed = images.find(record->description.viewed.id);
+        if (viewed != nullptr) {
+            std::erase(viewed->views, image.id);
+        }
+
+        discard({.fence = fenceValue + 1, .object = std::move(record->resource), .heap = textureViews.get(), .handle = record->view});
+        return;
+    }
+
+    for (const std::uint64_t id : record->views) {
+        std::optional<ImageRecord> view = images.remove(id);
+        if (view) {
+            discard({.fence = fenceValue + 1, .object = std::move(view->resource), .heap = textureViews.get(), .handle = view->view});
+        }
+    }
+
+    DescriptorHeap* attachmentHeap = record->description.kind == ImageKind::DepthStencil ? depthViews.get() : targetViews.get();
+    discard({.fence = fenceValue + 1, .object = std::move(record->resource), .heap = textureViews.get(), .handle = record->view, .levelViews = std::move(record->levelViews), .attachmentHeap = attachmentHeap, .attachments = std::move(record->attachments)});
 }
 
 void Device::destroy(Sampler sampler) noexcept {
@@ -810,24 +867,20 @@ void Device::copyIntoBuffer(BufferRecord& record, std::size_t offset, ID3D12Reso
 
 void Device::writeImages(std::span<const ImageWrite> writes) {
     for (const ImageWrite& write : writes) {
-        const ImageRecord& image = images.get(write.image.id);
-        if (image.kind != ImageKind::Dynamic) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
+        ImageRules::checkWrite(images.get(write.image.id).description, write);
+    }
 
-        const Region& region = write.region;
-        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
-        const std::size_t bytes = ImageInfo::getRegionBytes(image.format, region.width, region.height);
-        if (!inside || write.pixels.size() != bytes) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
+    ImageRules::checkDistinctWrites(writes);
 
-        stageRegion(image, region, write.pixels);
+    for (const ImageWrite& write : writes) {
+        stageRegion(images.get(write.image.id), write);
     }
 }
 
-// The pixels of a region go into upload memory at the footprint that Direct3D 12 lays out for a subresource of its size, and the transfer list copies them into the region of the first mip level of the image, which it moves out of its state and back.
-void Device::stageRegion(const ImageRecord& image, const Region& region, std::span<const std::byte> pixels) {
+// The pixels of a region go into upload memory at the footprint that Direct3D 12 lays out for a subresource of its size, and the transfer list copies them into the region of the subresource of the mip level and layer, or of the slice of a volume at its depth, which alone it moves out of its state and back.
+void Device::stageRegion(const ImageRecord& image, const ImageWrite& write) {
+    const ImageRules::Description& description = image.description;
+    const Region& region = write.region;
     D3D12_RESOURCE_DESC desc = image.resource->GetDesc();
     desc.Width = static_cast<UINT64>(region.width);
     desc.Height = static_cast<UINT>(region.height);
@@ -837,23 +890,105 @@ void Device::stageRegion(const ImageRecord& image, const Region& region, std::sp
     UINT64 total = 0;
     device->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total);
 
-    const std::size_t rowBytes = ImageInfo::getRowBytes(image.format, region.width);
+    const std::size_t rowBytes = ImageInfo::getRowBytes(description.format, region.width);
+    const int rows = ImageInfo::getRowCount(description.format, region.height);
     const UploadAllocator::Allocation staged = uploads->allocate(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-    for (int row = 0; row < region.height; ++row) {
-        std::memcpy(staged.data + static_cast<std::size_t>(row) * footprint.Footprint.RowPitch, pixels.data() + static_cast<std::size_t>(row) * rowBytes, rowBytes);
+    for (int row = 0; row < rows; ++row) {
+        std::memcpy(staged.data + static_cast<std::size_t>(row) * footprint.Footprint.RowPitch, write.pixels.data() + static_cast<std::size_t>(row) * rowBytes, rowBytes);
     }
 
+    const UINT subresource = getSubresource(description, write.mipLevel, write.layer);
     ID3D12GraphicsCommandList4& list = getTransferList();
-    const D3D12_RESOURCE_BARRIER toCopy = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_COPY_DEST);
+    const D3D12_RESOURCE_BARRIER toCopy = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_COPY_DEST, subresource);
     list.ResourceBarrier(1, &toCopy);
 
     footprint.Offset = staged.offset;
-    const D3D12_TEXTURE_COPY_LOCATION destination{.pResource = image.resource.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
+    const auto depth = static_cast<UINT>(description.type == TextureType::Volume ? write.layer : 0);
+    const D3D12_TEXTURE_COPY_LOCATION destination{.pResource = image.resource.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = subresource};
     const D3D12_TEXTURE_COPY_LOCATION from{.pResource = staged.resource, .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = footprint};
-    list.CopyTextureRegion(&destination, static_cast<UINT>(region.x), static_cast<UINT>(region.y), 0, &from, nullptr);
+    list.CopyTextureRegion(&destination, static_cast<UINT>(region.x), static_cast<UINT>(region.y), depth, &from, nullptr);
 
-    const D3D12_RESOURCE_BARRIER toHome = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, image.home);
+    const D3D12_RESOURCE_BARRIER toHome = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, image.home, subresource);
     list.ResourceBarrier(1, &toHome);
+}
+
+// The views of single mip levels that the draws of the level below each one sample, as an array of every layer for flat images, arrays and cubes, and as a volume for a volume. The first generation makes them, and they go with the image in its entry of the garbage.
+void Device::makeLevelViews(ImageRecord& image) {
+    if (!image.levelViews.empty()) {
+        return;
+    }
+
+    const ImageRules::Description& description = image.description;
+    const bool volume = description.type == TextureType::Volume;
+    image.levelViews.reserve(static_cast<std::size_t>(description.mipLevels - 1));
+    for (int level = 0; level + 1 < description.mipLevels; ++level) {
+        ImageRules::Description single = description;
+        single.type = volume ? TextureType::Volume : TextureType::Array;
+        single.baseMipLevel = level;
+        single.mipLevels = 1;
+        image.levelViews.push_back(makeTextureView(*image.resource.Get(), single));
+    }
+}
+
+// Moves every layer of a mip level, or the one subresource of a level of a volume, in one batch of barriers.
+void Device::moveLevel(const ImageRecord& image, int mipLevel, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
+    const ImageRules::Description& description = image.description;
+    const int layers = description.type == TextureType::Volume ? 1 : description.layers;
+    levelBarriers.clear();
+    for (int layer = 0; layer < layers; ++layer) {
+        levelBarriers.push_back(makeTransition(image.resource.Get(), before, after, getSubresource(description, mipLevel, layer)));
+    }
+
+    commands->ResourceBarrier(static_cast<UINT>(levelBarriers.size()), levelBarriers.data());
+}
+
+// A heap that runs out of room is replaced, and a new heap always has room for a table of one view.
+D3D12_GPU_DESCRIPTOR_HANDLE Device::writeTextureTable(D3D12_CPU_DESCRIPTOR_HANDLE view) {
+    const std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 1> sources{view};
+    std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> written = textureTables->write(sources);
+    while (!written) {
+        retire(textureTables->grow());
+        setHeaps();
+        written = textureTables->write(sources);
+    }
+
+    return *written;
+}
+
+// Each smaller level moves alone into the state of a render target while the level above it rests in the state that shaders read, and returns once its draws end, so the next level reads what they wrote. The draws set their own pipeline, root signature and tables, which the next draws of the frame set again.
+void Device::generateMipmaps(Image image) {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::Mipmaps);
+    }
+
+    ImageRecord& record = images.get(image.id);
+    const ImageRules::Description& description = record.description;
+    ImageRules::checkMipmaps(description, capabilities);
+    openFrame();
+    makeLevelViews(record);
+
+    const bool volume = description.type == TextureType::Volume;
+    mipmaps->begin(*commands.Get(), Formats::getViewFormat(description.format), volume);
+    for (int level = 1; level < description.mipLevels; ++level) {
+        const ImageInfo::Extent extent = description.getLevelExtent(level);
+        const D3D12_GPU_DESCRIPTOR_HANDLE source = writeTextureTable(record.levelViews[static_cast<std::size_t>(level - 1)]);
+        moveLevel(record, level, record.home, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+        for (int layer = 0; layer < extent.depth; ++layer) {
+            const float sampled = volume ? (static_cast<float>(layer) + 0.5F) / static_cast<float>(extent.depth) : static_cast<float>(layer);
+            const MipmapGenerator::Target target{.view = getAttachment(record, level, layer), .source = source, .width = static_cast<UINT>(extent.width), .height = static_cast<UINT>(extent.height), .layer = sampled};
+            mipmaps->draw(*commands.Get(), target);
+        }
+
+        moveLevel(record, level, D3D12_RESOURCE_STATE_RENDER_TARGET, record.home);
+    }
+
+    bound.pipeline = 0;
+    bound.state = nullptr;
+    bound.signature = nullptr;
+    bound.topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    bound.tablesSet = {};
+    bound.tableCounts = {};
 }
 
 std::unique_ptr<Device::SurfaceChain> Device::makeChain(const std::optional<Surface>& target) {
@@ -1025,13 +1160,13 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     setViewportAndScissor(chain.swapchain->getSize().width, chain.swapchain->getSize().height);
 }
 
-// The attachments leave the state that shaders read for the pass, and the barriers that bring them back wait for its end. A multisampled attachment resolves as its render pass ends, which tile GPUs do without writing the samples back to memory.
+// The subresources that the pass draws and resolves into leave the state that shaders read for the pass, the two planes of a depth stencil image with a stencil each, and the barriers that bring them back wait for its end, so its draws sample the other mip levels and layers of the same images. A multisampled attachment resolves as its render pass ends, which tile GPUs do without writing the samples back to memory.
 void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets) {
         throw ContractError(ContractError::Rule::PassAttachments);
     }
 
-    std::array<D3D12_RESOURCE_BARRIER, kMaxColorTargets * 2 + 1> barriers{};
+    std::array<D3D12_RESOURCE_BARRIER, kMaxPassBarriers> barriers{};
     UINT barrierCount = 0;
     std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, kMaxColorTargets> colors{};
     int width = 0;
@@ -1040,20 +1175,22 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
         ImageRecord& image = images.get(attachment.image.id);
-        if (image.kind != ImageKind::RenderTarget) {
+        const ImageRules::Description& target = image.description;
+        if (target.isView() || target.kind != ImageKind::RenderTarget) {
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 
-        const UINT subresource = image.type == TextureType::Volume ? static_cast<UINT>(attachment.mipLevel) : static_cast<UINT>(attachment.mipLevel + attachment.layer * image.mipLevels);
+        const UINT subresource = getSubresource(target, attachment.mipLevel, attachment.layer);
         barriers[barrierCount++] = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_RENDER_TARGET, subresource);
         pass.endBarriers[pass.endBarrierCount++] = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, image.home, subresource);
-        width = std::max(1, image.width >> attachment.mipLevel);
-        height = std::max(1, image.height >> attachment.mipLevel);
+        const ImageInfo::Extent extent = target.getLevelExtent(attachment.mipLevel);
+        width = extent.width;
+        height = extent.height;
 
         D3D12_RENDER_PASS_RENDER_TARGET_DESC& color = colors[index];
         color.cpuDescriptor = getAttachment(image, attachment.mipLevel, attachment.layer);
         color.BeginningAccess.Type = attachment.load == Load::Clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : (attachment.load == Load::Keep ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD);
-        color.BeginningAccess.Clear.ClearValue = {.Format = Formats::getViewFormat(image.format), .Color = {attachment.clear.r, attachment.clear.g, attachment.clear.b, attachment.clear.a}};
+        color.BeginningAccess.Clear.ClearValue = {.Format = Formats::getViewFormat(target.format), .Color = {attachment.clear.r, attachment.clear.g, attachment.clear.b, attachment.clear.a}};
         color.EndingAccess.Type = attachment.store == Store::Store ? D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
 
         if (!attachment.resolve.isValid()) {
@@ -1061,32 +1198,39 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         }
 
         const ImageRecord& resolve = images.get(attachment.resolve.id);
-        barriers[barrierCount++] = makeTransition(resolve.resource.Get(), resolve.home, D3D12_RESOURCE_STATE_RESOLVE_DEST, 0);
-        pass.endBarriers[pass.endBarrierCount++] = makeTransition(resolve.resource.Get(), D3D12_RESOURCE_STATE_RESOLVE_DEST, resolve.home, 0);
+        const UINT resolved = getSubresource(resolve.description, attachment.resolveMipLevel, attachment.resolveLayer);
+        barriers[barrierCount++] = makeTransition(resolve.resource.Get(), resolve.home, D3D12_RESOURCE_STATE_RESOLVE_DEST, resolved);
+        pass.endBarriers[pass.endBarrierCount++] = makeTransition(resolve.resource.Get(), D3D12_RESOURCE_STATE_RESOLVE_DEST, resolve.home, resolved);
         // An empty source rectangle resolves the whole subresource, the only resolve that GPUs without programmable sample positions take.
-        pass.resolves[index] = {.SrcSubresource = subresource, .DstSubresource = 0, .DstX = 0, .DstY = 0, .SrcRect = {.left = 0, .top = 0, .right = 0, .bottom = 0}};
+        pass.resolves[index] = {.SrcSubresource = subresource, .DstSubresource = resolved, .DstX = 0, .DstY = 0, .SrcRect = {.left = 0, .top = 0, .right = 0, .bottom = 0}};
         color.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE;
-        color.EndingAccess.Resolve = {.pSrcResource = image.resource.Get(), .pDstResource = resolve.resource.Get(), .SubresourceCount = 1, .pSubresourceParameters = &pass.resolves[index], .Format = Formats::getViewFormat(image.format), .ResolveMode = D3D12_RESOLVE_MODE_AVERAGE, .PreserveResolveSource = attachment.store == Store::Store ? TRUE : FALSE};
+        color.EndingAccess.Resolve = {.pSrcResource = image.resource.Get(), .pDstResource = resolve.resource.Get(), .SubresourceCount = 1, .pSubresourceParameters = &pass.resolves[index], .Format = Formats::getViewFormat(target.format), .ResolveMode = D3D12_RESOLVE_MODE_AVERAGE, .PreserveResolveSource = attachment.store == Store::Store ? TRUE : FALSE};
     }
 
     D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depth{};
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& image = images.get(attachment.image.id);
-        if (image.kind != ImageKind::DepthStencil) {
+        const ImageRules::Description& target = image.description;
+        if (target.isView() || target.kind != ImageKind::DepthStencil) {
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 
-        barriers[barrierCount++] = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-        pass.endBarriers[pass.endBarrierCount++] = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, image.home);
-        width = width > 0 ? width : image.width;
-        height = height > 0 ? height : image.height;
+        const bool stencil = ImageInfo::hasStencil(target.format);
+        for (UINT plane = 0; plane < (stencil ? 2U : 1U); ++plane) {
+            const UINT subresource = getSubresource(target, attachment.mipLevel, attachment.layer, plane);
+            barriers[barrierCount++] = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_DEPTH_WRITE, subresource);
+            pass.endBarriers[pass.endBarrierCount++] = makeTransition(image.resource.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, image.home, subresource);
+        }
+
+        const ImageInfo::Extent extent = target.getLevelExtent(attachment.mipLevel);
+        width = width > 0 ? width : extent.width;
+        height = height > 0 ? height : extent.height;
 
         const auto access = [](Load load) { return load == Load::Clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : (load == Load::Keep ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD); };
         const auto ending = [](Store store) { return store == Store::Store ? D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD; };
-        const bool stencil = ImageInfo::hasStencil(image.format);
-        const D3D12_CLEAR_VALUE clear{.Format = Formats::getDepthFormat(image.format), .DepthStencil = {.Depth = attachment.clearDepth, .Stencil = attachment.clearStencil}};
-        depth.cpuDescriptor = getAttachment(image, 0, 0);
+        const D3D12_CLEAR_VALUE clear{.Format = Formats::getDepthFormat(target.format), .DepthStencil = {.Depth = attachment.clearDepth, .Stencil = attachment.clearStencil}};
+        depth.cpuDescriptor = getAttachment(image, attachment.mipLevel, attachment.layer);
         depth.DepthBeginningAccess.Type = access(attachment.depthLoad);
         depth.DepthBeginningAccess.Clear.ClearValue = clear;
         depth.DepthEndingAccess.Type = ending(attachment.depthStore);
@@ -1109,11 +1253,14 @@ D3D12_CPU_DESCRIPTOR_HANDLE Device::getAttachment(ImageRecord& image, int mipLev
 
     const auto mip = static_cast<UINT>(mipLevel);
     const auto slice = static_cast<UINT>(layer);
-    const bool multisampled = image.sampleCount > 1;
-    if (image.kind == ImageKind::DepthStencil) {
+    const ImageRules::Description& description = image.description;
+    const bool multisampled = description.sampleCount > 1;
+
+    // A depth stencil view of an array, a cube or a cube array writes one of its layers or faces at a mip level.
+    if (description.kind == ImageKind::DepthStencil) {
         D3D12_DEPTH_STENCIL_VIEW_DESC view{};
-        view.Format = Formats::getDepthFormat(image.format);
-        if (image.type == TextureType::Flat) {
+        view.Format = Formats::getDepthFormat(description.format);
+        if (description.type == TextureType::Flat) {
             view.ViewDimension = multisampled ? D3D12_DSV_DIMENSION_TEXTURE2DMS : D3D12_DSV_DIMENSION_TEXTURE2D;
             view.Texture2D.MipSlice = mip;
         } else {
@@ -1131,14 +1278,15 @@ D3D12_CPU_DESCRIPTOR_HANDLE Device::getAttachment(ImageRecord& image, int mipLev
     }
 
     D3D12_RENDER_TARGET_VIEW_DESC view{};
-    view.Format = Formats::getViewFormat(image.format);
-    switch (image.type) {
+    view.Format = Formats::getViewFormat(description.format);
+    switch (description.type) {
     case TextureType::Flat:
         view.ViewDimension = multisampled ? D3D12_RTV_DIMENSION_TEXTURE2DMS : D3D12_RTV_DIMENSION_TEXTURE2D;
         view.Texture2D.MipSlice = mip;
         break;
     case TextureType::Array:
     case TextureType::Cube:
+    case TextureType::CubeArray:
         view.ViewDimension = multisampled ? D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY : D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
         if (multisampled) {
             view.Texture2DMSArray = {.FirstArraySlice = slice, .ArraySize = 1};
@@ -1610,22 +1758,23 @@ void Device::attachSurface(const Surface& target) {
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
-    if (record.kind != ImageKind::RenderTarget || record.sampleCount > 1 || record.type == TextureType::Volume) {
+    const ImageRules::Description& description = record.description;
+    if (description.isView() || description.kind != ImageKind::RenderTarget || description.sampleCount > 1 || description.type == TextureType::Volume) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
+    if (width <= 0 || height <= 0 || width > description.width || height > description.height) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    const auto rowBytes = static_cast<UINT>(ImageInfo::getRowBytes(record.format, width));
+    const auto rowBytes = static_cast<UINT>(ImageInfo::getRowBytes(description.format, width));
     const UINT pitch = (rowBytes + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1) / D3D12_TEXTURE_DATA_PITCH_ALIGNMENT * D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     ComPtr<ID3D12Resource> buffer = makeBufferResource(D3D12_HEAP_TYPE_READBACK, static_cast<UINT64>(pitch) * static_cast<UINT64>(height), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, "haylen-readback");
 
     ID3D12GraphicsCommandList4& list = getTransferList();
     const D3D12_RESOURCE_BARRIER toCopy = makeTransition(record.resource.Get(), record.home, D3D12_RESOURCE_STATE_COPY_SOURCE, 0);
     list.ResourceBarrier(1, &toCopy);
-    const D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{.Offset = 0, .Footprint = {.Format = Formats::getViewFormat(record.format), .Width = static_cast<UINT>(width), .Height = static_cast<UINT>(height), .Depth = 1, .RowPitch = pitch}};
+    const D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{.Offset = 0, .Footprint = {.Format = Formats::getViewFormat(description.format), .Width = static_cast<UINT>(width), .Height = static_cast<UINT>(height), .Depth = 1, .RowPitch = pitch}};
     const D3D12_TEXTURE_COPY_LOCATION destination{.pResource = buffer.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, .PlacedFootprint = footprint};
     const D3D12_TEXTURE_COPY_LOCATION source{.pResource = record.resource.Get(), .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, .SubresourceIndex = 0};
     const D3D12_BOX box{.left = 0, .top = 0, .front = 0, .right = static_cast<UINT>(width), .bottom = static_cast<UINT>(height), .back = 1};
@@ -1634,7 +1783,7 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     list.ResourceBarrier(1, &toHome);
 
     // The copy runs with the frame that the next commit submits, which signals the next fence value.
-    return std::make_unique<ImageReadback>(ReadbackCopy(std::move(buffer), fence, fenceValue + 1), pitch, record.format, width, height);
+    return std::make_unique<ImageReadback>(ReadbackCopy(std::move(buffer), fence, fenceValue + 1), pitch, description.format, width, height);
 }
 
 // The copy runs in the transfer list of the frame that the next commit submits, before its passes, so it reads what the committed frames left in the buffer.

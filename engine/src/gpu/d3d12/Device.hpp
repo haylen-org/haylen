@@ -20,10 +20,12 @@
 #include "gpu/BufferRules.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
+#include "gpu/ImageRules.hpp"
 #include "gpu/d3d12/BufferArena.hpp"
 #include "gpu/d3d12/DescriptorHeap.hpp"
 #include "gpu/d3d12/DescriptorRing.hpp"
 #include "gpu/d3d12/FrameTimer.hpp"
+#include "gpu/d3d12/MipmapGenerator.hpp"
 #include "gpu/d3d12/PixCapturer.hpp"
 #include "gpu/d3d12/RootSignatures.hpp"
 #include "gpu/d3d12/UploadAllocator.hpp"
@@ -38,7 +40,7 @@ class ShaderCompiler;
 
 namespace haylen::gpu::d3d12 {
 
-// The device of Direct3D 12, on GPUs of feature level 11_0 and later. Each frame records a transfer list, which takes the data of new buffers and images, the writes of stream buffers and images and the copies out of render targets and buffers, and the list of its passes, which also takes the writes into dynamic buffers and the copies between buffers at their places between the passes, and the two lists run in that order. The GPU runs at most `kFramesInFlight` frames behind the CPU, and a fence tells when the memory, descriptors and objects of a frame can be used again or released. Uniforms are root constant buffer views into upload memory that stays mapped or into the uniform buffers of the bindings, textures and samplers are descriptor tables copied into rings of shader visible heaps, and passes are render passes. Images rest in the state that shaders read, and passes move only their attachments out of it and back. Validation turns on the debug layer and the breadcrumbs that say what the GPU ran when it was removed.
+// The device of Direct3D 12, on GPUs of feature level 11_0 and later. Each frame records a transfer list, which takes the data of new buffers and images, the writes of stream buffers and images and the copies out of render targets and buffers, and the list of its passes, which also takes the writes into dynamic buffers and the copies between buffers at their places between the passes, and the two lists run in that order. The GPU runs at most `kFramesInFlight` frames behind the CPU, and a fence tells when the memory, descriptors and objects of a frame can be used again or released. Uniforms are root constant buffer views into upload memory that stays mapped or into the uniform buffers of the bindings, textures and samplers are descriptor tables copied into rings of shader visible heaps, views of images are shader resource views of ranges of their subresources, and passes are render passes. Images rest in the state that shaders read, and passes, copies and the generation of mip levels move only the subresources they use out of it and back, so a pass samples the mip levels and layers of an image that it does not draw into. Validation turns on the debug layer and the breadcrumbs that say what the GPU ran when it was removed.
 class Device final : public gpu::Device {
   public:
     static constexpr std::size_t kFramesInFlight = 2;
@@ -64,6 +66,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] Sampler makeSampler(const SamplerDesc& desc) override;
     [[nodiscard]] Program makeProgram(const ProgramDesc& desc) override;
     [[nodiscard]] Pipeline makePipeline(const PipelineDesc& desc) override;
+    [[nodiscard]] Image makeView(const ViewDesc& desc) override;
     void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) override;
 
     void destroy(Buffer buffer) noexcept override;
@@ -75,6 +78,7 @@ class Device final : public gpu::Device {
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
     void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
+    void generateMipmaps(Image image) override;
 
     void beginPass(const PassDesc& desc) override;
 
@@ -124,6 +128,8 @@ class Device final : public gpu::Device {
     static constexpr UINT kUniformAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
     static constexpr D3D12_RESOURCE_STATES kShaderResource = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     static constexpr std::size_t kTables = 4;
+    // A pass moves each color attachment and the image it resolves into, and both planes of a depth stencil image.
+    static constexpr std::size_t kMaxPassBarriers = (kMaxColorTargets * 2) + 2;
 
     // Buffers rest in the common state, from which each list promotes them to what it does with them, and to which they return when the list ends. A buffer holds a range of a block of the arena at the offset of the range, or a resource of its own when it is large, takes part in copies, is storage or is dynamic. A buffer that the list of the passes writes, a dynamic buffer or the destination of copies, goes from the state that list gave it to the copy and on to the read states of its usages around each write, so the list keeps the state of the buffer for the frame that `stateFrame` numbers.
     struct BufferRecord {
@@ -148,19 +154,15 @@ class Device final : public gpu::Device {
         D3D12_CPU_DESCRIPTOR_HANDLE handle{};
     };
 
+    // An image or a view of one, which shares the resource of its image and samples its range through a view of its own. An image keeps the ids of its views, which go with it, and the views of single mip levels that the generation of its mip levels samples, made the first time it generates them.
     struct ImageRecord {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource{};
         D3D12_CPU_DESCRIPTOR_HANDLE view{};
         std::vector<Attachment> attachments{};
-        TextureType type = TextureType::Flat;
-        int width = 0;
-        int height = 0;
-        int layers = 1;
-        int mipLevels = 1;
-        int sampleCount = 1;
-        PixelFormat format = PixelFormat::Rgba8;
-        ImageKind kind = ImageKind::Texture;
-        // The state the image rests in between the passes and copies that use it.
+        ImageRules::Description description{};
+        std::vector<std::uint64_t> views{};
+        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> levelViews{};
+        // The state that every subresource of the image rests in between the passes, copies and generations of mip levels that use it.
         D3D12_RESOURCE_STATES home = kShaderResource;
     };
 
@@ -191,12 +193,13 @@ class Device final : public gpu::Device {
         std::uint64_t fence = 0;
     };
 
-    // An object, a descriptor of a heap, the views of the attachments of an image or a range of the buffer arena, that the GPU may use until the fence passes the value. A destroyed object leaves exactly one entry, whose place the device holds from the moment the object was made.
+    // An object, a descriptor of a heap with the views of single mip levels of an image in the same heap, the views of the attachments of an image or a range of the buffer arena, that the GPU may use until the fence passes the value. A destroyed object leaves exactly one entry, whose place the device holds from the moment the object was made.
     struct Garbage {
         std::uint64_t fence = 0;
         Microsoft::WRL::ComPtr<IUnknown> object{};
         DescriptorHeap* heap = nullptr;
         D3D12_CPU_DESCRIPTOR_HANDLE handle{};
+        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> levelViews{};
         DescriptorHeap* attachmentHeap = nullptr;
         std::vector<Attachment> attachments{};
         BufferArena::Range range{};
@@ -223,7 +226,7 @@ class Device final : public gpu::Device {
 
     // What the open pass does when it ends: the barriers that return its attachments to their states, and the storage that its render pass reads for the resolves.
     struct PassState {
-        std::array<D3D12_RESOURCE_BARRIER, kMaxColorTargets * 2 + 1> endBarriers{};
+        std::array<D3D12_RESOURCE_BARRIER, kMaxPassBarriers> endBarriers{};
         UINT endBarrierCount = 0;
         std::array<D3D12_RENDER_PASS_ENDING_ACCESS_RESOLVE_SUBRESOURCE_PARAMETERS, kMaxColorTargets> resolves{};
         bool labeled = false;
@@ -273,9 +276,13 @@ class Device final : public gpu::Device {
     void beginOffscreenPass(const PassDesc& desc);
     void setViewportAndScissor(int width, int height);
     [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getAttachment(ImageRecord& image, int mipLevel, int layer);
-    void makeTextureView(ImageRecord& image);
+    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE makeTextureView(ID3D12Resource& resource, const ImageRules::Description& description);
+    [[nodiscard]] static UINT getSubresource(const ImageRules::Description& description, int mipLevel, int layer, UINT plane = 0) noexcept;
     void stagePixels(const ImageRecord& image, std::span<const std::span<const std::byte>> levels);
-    void stageRegion(const ImageRecord& image, const Region& region, std::span<const std::byte> pixels);
+    void stageRegion(const ImageRecord& image, const ImageWrite& write);
+    void makeLevelViews(ImageRecord& image);
+    void moveLevel(const ImageRecord& image, int mipLevel, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE writeTextureTable(D3D12_CPU_DESCRIPTOR_HANDLE view);
     [[nodiscard]] Microsoft::WRL::ComPtr<ID3D12Resource> makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 size, D3D12_RESOURCE_STATES state, D3D12_RESOURCE_FLAGS flags, std::string_view label);
     [[nodiscard]] UploadAllocator::Allocation stageBytes(std::span<const std::byte> data);
     [[nodiscard]] static bool isWrittenBetweenPasses(const BufferRules::Description& description) noexcept;
@@ -321,6 +328,7 @@ class Device final : public gpu::Device {
     std::unique_ptr<UploadAllocator> uploads;
     std::unique_ptr<BufferArena> bufferArena;
     std::unique_ptr<RootSignatures> rootSignatures;
+    std::unique_ptr<MipmapGenerator> mipmaps;
     std::unique_ptr<FrameTimer> timer;
 
     HandleTable<BufferRecord> buffers{"buffer"};
@@ -355,8 +363,9 @@ class Device final : public gpu::Device {
     std::array<float, 4> blendColor{};
     UINT stencilReference = 0;
     std::string markerText;
-    // The footprints of the pixels that a copy stages, which keep their storage, so writing the same images every frame allocates nothing.
+    // The footprints of the pixels that a copy stages and the barriers of the layers of a mip level that a generation draws into, which keep their storage, so writing the same images and generating their mip levels every frame allocates nothing.
     std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints;
+    std::vector<D3D12_RESOURCE_BARRIER> levelBarriers;
 };
 
 } // namespace haylen::gpu::d3d12

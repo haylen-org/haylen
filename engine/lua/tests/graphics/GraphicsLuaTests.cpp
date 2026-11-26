@@ -82,7 +82,7 @@ TEST(GraphicsLuaTest, CreatesTexturesFromTheLevelsOfAFormat) {
     EXPECT_EQ(fixture.lua("return graphics.whiteTexture().format"), "rgba8");
     EXPECT_NE(fixture.lua("return graphics.newTexture(6, 4, {format = 'bc1', levels = {block}})").find("A texture of the format \"bc1\" has sides of whole blocks of 4 by 4 pixels, which 6 by 4 pixels are not."), std::string::npos);
     EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc1', levels = {block}})").find("The level 1 of a texture of 4 by 4 pixels of the format \"bc1\" holds 16 bytes, and it needs 8."), std::string::npos);
-    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc7', levels = {block}, mipmaps = true})").find("A texture made from its levels keeps mipmaps only when it brings more than one level."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc7', levels = {block}, mipmaps = true})").find("The graphics API \"none\" of this device generates no mipmaps of the format \"bc7\", so a texture of it brings each of its levels."), std::string::npos);
     EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'depth16', levels = {block}})").find("The format \"depth16\" belongs to depth attachments, so no texture is made in it."), std::string::npos);
     EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc7'})").find("A texture made in a format takes the bytes of each of its levels in the list \"levels\", the largest level first."), std::string::npos);
     EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc7', levels = {}})").find("A texture of 4 by 4 pixels brings from 1 to 3 levels, not 0."), std::string::npos);
@@ -153,6 +153,67 @@ TEST(GraphicsLuaTest, UpdatesDynamicTextures) {
     EXPECT_NE(fixture.lua("minimap:update(string.rep('\\0', 8), {region = {1, 0, 2, 1}})").find("The region of a texture update must lie inside the dynamic texture and hold at least one pixel."), std::string::npos);
     EXPECT_NE(fixture.lua("minimap:update(string.rep('\\0', 8), {region = {0.5, 0, 1, 1}})").find("The region of \"texture:update\" must hold whole pixels."), std::string::npos);
     EXPECT_NE(fixture.lua("minimap:update(string.rep('\\0', 8), {area = {0, 0, 1, 1}})").find("Unknown option \"area\"."), std::string::npos);
+}
+
+// A texture takes a kind with its layers or slices, arrays, cubes, cube arrays and volumes keep the mipmaps that the GPU generates from their pixels, and the shape checks against the device before any pixel exists.
+TEST(GraphicsLuaTest, CreatesTexturesOfEveryKind) {
+    test::LuaFixture fixture;
+    fixture.runLua("graphics = require('haylen.graphics')");
+
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4) return t.kind .. ' ' .. t.layers .. ' ' .. t.depth .. ' ' .. t.mipLevels"), "flat 1 1 1");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4, {kind = 'array', layers = 3}) return t.kind .. ' ' .. t.layers .. ' ' .. t.depth .. ' ' .. t.mipLevels"), "array 3 1 1");
+    EXPECT_EQ(fixture.lua("keptCube = graphics.newTexture(8, 8, {kind = 'cube', filter = 'linear'}) local t = keptCube return t.kind .. ' ' .. t.layers .. ' ' .. t.mipLevels .. ' ' .. tostring(t.mipmaps)"), "cube 6 4 true");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4, {kind = 'cubeArray', layers = 12}) return t.kind .. ' ' .. t.layers"), "cubeArray 12");
+    EXPECT_EQ(fixture.lua("keptVolume = graphics.newTexture(4, 4, {kind = 'volume', depth = 8, filter = 'linear'}) local t = keptVolume return t.kind .. ' ' .. t.layers .. ' ' .. t.depth .. ' ' .. t.mipLevels"), "volume 1 8 4");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(2, 2, {kind = 'array', layers = 2, pixels = string.rep(string.char(9, 8, 7, 255), 8)}) return t.layers"), "2");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().mipmapGenerations, 2);
+
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {kind = 'cube', layers = 5})").find("A texture of the kind \"cube\" has 6 layers, one for each face, not 5."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 2, {kind = 'cube'})").find("A texture of the kind \"cube\" has square faces, which 4 by 2 pixels are not."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {kind = 'cubeArray', layers = 8})").find("A texture of the kind \"cubeArray\" has 6 layers for each of its cubes, up to 2048 on this device, not 8."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {kind = 'array', layers = 4096})").find("A texture of the kind \"array\" has from 1 to 2048 layers on this device, not 4096."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {kind = 'volume', depth = 4096})").find("A texture of the kind \"volume\" has from 1 to 2048 slices on this device, not 4096."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {layers = 2})").find("A texture of the kind \"flat\" has 1 layer, not 2."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {kind = 'array', depth = 2})").find("Only a texture of the kind \"volume\" has a depth, and one of the kind \"array\" has none."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(2, 2, {kind = 'array', layers = 2, pixels = string.rep('\\0', 16)})").find("The level 1 of a texture of 2 by 2 pixels of the format \"rgba8\" holds 16 bytes, and it needs 32."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {kind = 'volume', depth = 2, format = 'bc7', levels = {string.rep('\\0', 32)}})").find("A texture of the kind \"volume\" holds no blocks of the format \"bc7\", since compressed formats hold flat blocks."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {kind = 'sphere'})").find("sphere"), std::string::npos);
+    EXPECT_EQ(fixture.lua("local c = graphics.capabilities() return tostring(c.cubeArrays) .. ' ' .. tostring(c.imageViews) .. ' ' .. tostring(graphics.formatSupport('rgba8').mipmaps) .. ' ' .. tostring(graphics.formatSupport('bc7').mipmaps)"), "true true true false");
+}
+
+// A view shows a range of the mip levels and layers of a texture as a texture of its own kind, from the whole texture by default, and refuses a range or a kind that the texture does not have.
+TEST(GraphicsLuaTest, MakesViewsOfTheMipLevelsAndLayersOfTextures) {
+    test::LuaFixture fixture;
+    fixture.runLua("graphics = require('haylen.graphics') cube = graphics.newTexture(8, 8, {kind = 'cube', filter = 'linear'})");
+
+    EXPECT_EQ(fixture.lua("local v = cube:view() return v.kind .. ' ' .. v.layers .. ' ' .. v.mipLevels .. ' ' .. v.width"), "cube 6 4 8");
+    EXPECT_EQ(fixture.lua("local v = cube:view({kind = 'array', layer = 2, layers = 3, mipLevel = 1}) return v.kind .. ' ' .. v.layers .. ' ' .. v.mipLevels .. ' ' .. v.width"), "array 3 3 4");
+    EXPECT_EQ(fixture.lua("local v = graphics.newTexture(8, 8, {kind = 'volume', depth = 8, filter = 'linear'}):view({mipLevel = 2}) return v.kind .. ' ' .. v.depth .. ' ' .. v.width"), "volume 2 2");
+    EXPECT_NE(fixture.lua("return cube:view({kind = 'flat'})").find("A texture of the kind \"cube\" has no view of the kind \"flat\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("return cube:view({mipLevel = 2, mipLevels = 3})").find("The mip levels of a view lie within the 4 mip levels of its texture, which 3 levels from the level 2 do not."), std::string::npos);
+    EXPECT_NE(fixture.lua("return cube:view({kind = 'array', layer = 4, layers = 3})").find("The layers of a view lie within the 6 layers of its texture, which 3 layers from the layer 4 do not."), std::string::npos);
+    EXPECT_NE(fixture.lua("return cube:view():view()").find("A view shows a range of a texture, not of another view."), std::string::npos);
+    EXPECT_NE(fixture.lua("return cube:view({slices = 2})").find("Unknown option \"slices\"."), std::string::npos);
+}
+
+// A dynamic texture of layers takes new pixels for one layer at a time, and one that keeps mipmaps has the GPU generate them after each upload.
+TEST(GraphicsLuaTest, UpdatesTheLayersOfDynamicTextures) {
+    test::LuaFixture fixture;
+    fixture.runLua("graphics = require('haylen.graphics')");
+    fixture.frames(1);
+    fixture.runLua("faces = graphics.newTexture(2, 2, {kind = 'cube', dynamic = true, mipmaps = true})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 6);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().mipmapGenerations, 1);
+
+    fixture.runLua("faces:update(string.rep(string.char(255, 0, 0, 255), 4), {layer = 4})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 1);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, 16U);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().mipmapGenerations, 1);
+    EXPECT_EQ(fixture.lua("return faces.mipLevels"), "2");
+    EXPECT_NE(fixture.lua("faces:update(string.rep('\\0', 16), {layer = 6})").find("The dynamic texture has 6 layers from 0, so it has no layer 6."), std::string::npos);
 }
 
 // Images keep pixels on the CPU, decode and blit on the task pool, pack into atlases and become textures, and work on the pool never sees what Lua changes later.

@@ -21,7 +21,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surfac
     return std::make_unique<Device>(Connection::take(), surface);
 }
 
-Device::Device(std::unique_ptr<Connection> owned, const std::optional<Surface>& surface) : connection(std::move(owned)), device(connection->getDevice()), queue(connection->getQueue()), capabilities(describeCapabilities(*connection)), uniformRing(device, WGPUBufferUsage_Uniform, connection->getLimits().minUniformBufferOffsetAlignment, "haylen-uniforms"), uploads(device, WGPUBufferUsage_CopySrc, kCopyAlignment, "haylen-uploads") {
+Device::Device(std::unique_ptr<Connection> owned, const std::optional<Surface>& surface) : connection(std::move(owned)), device(connection->getDevice()), queue(connection->getQueue()), capabilities(describeCapabilities(*connection)), uniformRing(device, WGPUBufferUsage_Uniform, connection->getLimits().minUniformBufferOffsetAlignment, "haylen-uniforms"), uploads(device, WGPUBufferUsage_CopySrc, kCopyAlignment, "haylen-uploads"), mipmaps(device, connection->getLimits().minUniformBufferOffsetAlignment) {
     if (connection->hasFeature(WGPUFeatureName_TimestampQuery)) {
         timer = std::make_unique<FrameTimer>(device);
     }
@@ -76,7 +76,7 @@ Device::~Device() {
     }
 }
 
-// WebGPU renders and samples every uncompressed color format of the RHI, while 32-bit floats filter and blend only with their features, `Rg11B10Float` renders only with its own, and the depth format with a 32-bit float and stencil exists only with its own. Each family of compressed formats samples with its feature, and WebGPU has no HDR profile of ASTC. Shaders write the storage formats of its core as storage images. Its attachments take one or four samples, except the 32-bit floats, which WebGPU resolves into no image, so they take one. A cube takes faces as large as a flat image. The core of WebGPU binds storage buffers and draws with indirect arguments, and a uniform block holds what one binding of the adapter reads, at most what the uniform ring takes for a block.
+// WebGPU renders and samples every uncompressed color format of the RHI, while 32-bit floats filter and blend only with their features, `Rg11B10Float` renders only with its own, and the depth format with a 32-bit float and stencil exists only with its own. Each family of compressed formats samples with its feature, and WebGPU has no HDR profile of ASTC. Shaders write the storage formats of its core as storage images. Its attachments take one or four samples, except the 32-bit floats, which WebGPU resolves into no image, so they take one. A cube takes faces as large as a flat image, and the core of WebGPU has cube arrays and views of ranges of mip levels and layers. The formats that render and filter generate their mip levels through the draws of `MipmapGenerator`. The core of WebGPU binds storage buffers and draws with indirect arguments, and a uniform block holds what one binding of the adapter reads, at most what the uniform ring takes for a block.
 gpu::Device::Capabilities Device::describeCapabilities(const Connection& connection) {
     const WGPULimits& limits = connection.getLimits();
     Capabilities result;
@@ -84,6 +84,8 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
     result.maxArrayLayers = static_cast<int>(limits.maxTextureArrayLayers);
     result.maxVolumeSize = static_cast<int>(limits.maxTextureDimension3D);
     result.maxCubeSize = static_cast<int>(limits.maxTextureDimension2D);
+    result.cubeArrays = true;
+    result.imageViews = true;
     result.originTopLeft = true;
     result.independentBlend = true;
     result.gpuTiming = connection.hasFeature(WGPUFeatureName_TimestampQuery);
@@ -114,6 +116,7 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
         support.blend = renders && !ImageInfo::isDepth(format) && (!wideFloat || floatBlending);
         support.filter = !ImageInfo::isDepth(format) && (!wideFloat || floatFiltering);
         support.storage = storage;
+        support.mipmaps = support.render && support.filter;
         support.sampleCounts = !renders ? std::uint8_t{0} : (wideFloat ? std::uint8_t{1} : std::uint8_t{1 | 4});
     }
 
@@ -218,8 +221,10 @@ void Device::writeLevel(WGPUTexture texture, int level, int width, int height, i
     wgpuQueueWriteTexture(queue, &destination, pixels.data(), bytes, &layout, &extent);
 }
 
+// A dynamic image or a render target of more than one mip level whose format generates them is drawn into by the passes of `MipmapGenerator`, which sample its levels too.
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
-    ImageRules::check(desc, capabilities);
+    const ImageRules::Description description = ImageRules::check(desc, capabilities);
+    const bool generatesMipmaps = desc.mipLevels > 1 && capabilities.getFormat(desc.format).mipmaps;
 
     WGPUTextureDescriptor descriptor = WGPU_TEXTURE_DESCRIPTOR_INIT;
     descriptor.label = Conversion::toText(desc.label);
@@ -230,8 +235,10 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     descriptor.sampleCount = static_cast<std::uint32_t>(desc.sampleCount);
     switch (desc.kind) {
     case ImageKind::Texture:
-    case ImageKind::Dynamic:
         descriptor.usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst;
+        break;
+    case ImageKind::Dynamic:
+        descriptor.usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst | (generatesMipmaps ? WGPUTextureUsage_RenderAttachment : WGPUTextureUsage_None);
         break;
     case ImageKind::RenderTarget:
         descriptor.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | (desc.sampleCount == 1 ? WGPUTextureUsage_CopySrc : WGPUTextureUsage_None);
@@ -248,7 +255,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     WGPUTextureViewDescriptor view = WGPU_TEXTURE_VIEW_DESCRIPTOR_INIT;
     view.dimension = desc.sampleCount > 1 ? WGPUTextureViewDimension_2D : Conversion::toViewDimension(desc.type);
     view.aspect = ImageInfo::isDepth(desc.format) ? WGPUTextureAspect_DepthOnly : WGPUTextureAspect_All;
-    ImageRecord record{.texture = texture, .sampled = wgpuTextureCreateView(texture, &view), .type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .sampleCount = desc.sampleCount, .format = desc.format, .kind = desc.kind};
+    ImageRecord record{.texture = texture, .sampled = wgpuTextureCreateView(texture, &view), .description = description};
 
     for (std::size_t level = 0; level < desc.levels.size() && desc.kind == ImageKind::Texture; ++level) {
         const ImageInfo::Extent extent = ImageInfo::getLevelExtent(desc, static_cast<int>(level));
@@ -256,6 +263,28 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     }
 
     return {images.add(std::move(record))};
+}
+
+// A view is a texture view of the range of its image, of the type of the view, which samples the depth of a depth stencil image. A volume view takes the one layer that WebGPU gives the views of volumes.
+gpu::Device::Image Device::makeView(const ViewDesc& desc) {
+    ImageRecord& image = images.get(desc.image.id);
+    const ImageRules::Description description = ImageRules::checkView(image.description, desc, capabilities);
+
+    const bool volume = desc.type == TextureType::Volume;
+    WGPUTextureViewDescriptor descriptor = WGPU_TEXTURE_VIEW_DESCRIPTOR_INIT;
+    descriptor.label = Conversion::toText(desc.label);
+    descriptor.dimension = Conversion::toViewDimension(desc.type);
+    descriptor.baseMipLevel = static_cast<std::uint32_t>(desc.baseMipLevel);
+    descriptor.mipLevelCount = static_cast<std::uint32_t>(desc.mipLevels);
+    descriptor.baseArrayLayer = volume ? 0U : static_cast<std::uint32_t>(desc.baseLayer);
+    descriptor.arrayLayerCount = volume ? 1U : static_cast<std::uint32_t>(desc.layers);
+    descriptor.aspect = ImageInfo::isDepth(image.description.format) ? WGPUTextureAspect_DepthOnly : WGPUTextureAspect_All;
+    image.views.reserve(image.views.size() + 1);
+    holdRetirements(1);
+
+    const std::uint64_t id = images.add({.sampled = wgpuTextureCreateView(image.texture, &descriptor), .description = description});
+    image.views.push_back(id);
+    return {id};
 }
 
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
@@ -588,13 +617,21 @@ void Device::releaseRetired() noexcept {
     retired.clear();
 }
 
+// The commands that recorded a bind group keep what it points at, so the groups of the sources of the mip levels go at once.
 void Device::releaseImage(ImageRecord& image) noexcept {
     for (const auto& [key, view] : image.attachments) {
         retire(Retired::Kind::TextureView, view);
     }
 
+    for (const MipmapGenerator::Source& source : image.mipmapSources) {
+        wgpuBindGroupRelease(source.group);
+        retire(Retired::Kind::TextureView, source.view);
+    }
+
     retire(Retired::Kind::TextureView, image.sampled);
-    retire(Retired::Kind::Texture, image.texture);
+    if (image.texture != nullptr) {
+        retire(Retired::Kind::Texture, image.texture);
+    }
 }
 
 // A destroyed object may hand its address to the next one, so the state the pass encoder holds is sent again. The commands that recorded a bind group keep what it points at, so the groups of a destroyed buffer go away at once.
@@ -607,13 +644,28 @@ void Device::destroy(Buffer buffer) noexcept {
     }
 }
 
+// An image takes its views with it, and a view leaves its image, which forgets it.
 void Device::destroy(Image image) noexcept {
-    if (std::optional<ImageRecord> record = images.remove(image.id)) {
-        imageGroups.forgetImage(image.id);
-        releaseImage(*record);
-        bound = {};
-        imagesDirty = true;
+    std::optional<ImageRecord> record = images.remove(image.id);
+    if (!record) {
+        return;
     }
+
+    if (ImageRecord* viewed = images.find(record->description.viewed.id)) {
+        std::erase(viewed->views, image.id);
+    }
+
+    for (const std::uint64_t view : record->views) {
+        if (std::optional<ImageRecord> viewRecord = images.remove(view)) {
+            imageGroups.forgetImage(view);
+            releaseImage(*viewRecord);
+        }
+    }
+
+    imageGroups.forgetImage(image.id);
+    releaseImage(*record);
+    bound = {};
+    imagesDirty = true;
 }
 
 void Device::destroy(Sampler sampler) noexcept {
@@ -690,28 +742,56 @@ void Device::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destinat
     wgpuCommandEncoderCopyBufferToBuffer(encoder, from.buffer, sourceOffset, to.buffer, destinationOffset, size);
 }
 
+// Every write is checked before the first one reaches the queue, and each writes its region into its mip level at the layer of an array or a cube, or the slice of a volume, that its origin names.
 void Device::writeImages(std::span<const ImageWrite> writes) {
     for (const ImageWrite& write : writes) {
+        ImageRules::checkWrite(images.get(write.image.id).description, write);
+    }
+
+    ImageRules::checkDistinctWrites(writes);
+
+    for (const ImageWrite& write : writes) {
         const ImageRecord& image = images.get(write.image.id);
-        if (image.kind != ImageKind::Dynamic) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
         const Region& region = write.region;
-        const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
-        const std::size_t rowBytes = ImageInfo::getRowBytes(image.format, region.width);
-        if (!inside || write.pixels.size() != rowBytes * static_cast<std::size_t>(region.height)) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
+        const std::size_t rowBytes = ImageInfo::getRowBytes(image.description.format, region.width);
         WGPUTexelCopyTextureInfo destination = WGPU_TEXEL_COPY_TEXTURE_INFO_INIT;
         destination.texture = image.texture;
-        destination.origin = {.x = static_cast<std::uint32_t>(region.x), .y = static_cast<std::uint32_t>(region.y), .z = 0};
+        destination.mipLevel = static_cast<std::uint32_t>(write.mipLevel);
+        destination.origin = {.x = static_cast<std::uint32_t>(region.x), .y = static_cast<std::uint32_t>(region.y), .z = static_cast<std::uint32_t>(write.layer)};
         WGPUTexelCopyBufferLayout layout = WGPU_TEXEL_COPY_BUFFER_LAYOUT_INIT;
         layout.bytesPerRow = static_cast<std::uint32_t>(rowBytes);
         layout.rowsPerImage = static_cast<std::uint32_t>(region.height);
         const WGPUExtent3D extent{.width = static_cast<std::uint32_t>(region.width), .height = static_cast<std::uint32_t>(region.height), .depthOrArrayLayers = 1};
         wgpuQueueWriteTexture(queue, &destination, write.pixels.data(), write.pixels.size(), &layout, &extent);
+    }
+}
+
+// Each smaller mip level draws from the source of the level above it, one pass for each of its layers or slices into the views that passes draw into it through, in the command encoder of the frame between the passes around the call. The pipeline is ready for the layers or slices of the second level, which no smaller level outnumbers.
+void Device::generateMipmaps(Image image) {
+    requireNoPass(ContractError::Rule::Mipmaps);
+    ImageRecord& record = images.get(image.id);
+    const ImageRules::Description& description = record.description;
+    ImageRules::checkMipmaps(description, capabilities);
+
+    const bool volume = description.type == TextureType::Volume;
+    if (record.mipmapSources.empty()) {
+        const auto sources = static_cast<std::size_t>(description.mipLevels - 1);
+        record.mipmapSources.reserve(sources);
+        holdRetirements(sources);
+        for (int level = 1; level < description.mipLevels; ++level) {
+            record.mipmapSources.push_back(mipmaps.makeSource(record.texture, volume, level, description.layers));
+        }
+    }
+
+    const WGPURenderPipeline pipeline = mipmaps.prepare(Conversion::toTextureFormat(description.format), volume, description.getLevelExtent(1).depth);
+    openEncoder();
+    for (int level = 1; level < description.mipLevels; ++level) {
+        const MipmapGenerator::Source& source = record.mipmapSources[static_cast<std::size_t>(level - 1)];
+        const int count = description.getLevelExtent(level).depth;
+        for (int layer = 0; layer < count; ++layer) {
+            const std::uint32_t depthSlice = volume ? static_cast<std::uint32_t>(layer) : WGPU_DEPTH_SLICE_UNDEFINED;
+            mipmaps.draw(encoder, pipeline, source, getAttachmentView(record, level, layer), depthSlice, layer);
+        }
     }
 }
 
@@ -730,7 +810,8 @@ void Device::requireNoPass(ContractError::Rule rule) const {
 
 // The view of an attachment covers one mip level and one layer, and a volume is drawn into through a view of its level with the slice the pass names.
 WGPUTextureView Device::getAttachmentView(ImageRecord& image, int mipLevel, int layer) {
-    const int viewLayer = image.type == TextureType::Volume ? 0 : layer;
+    const bool volume = image.description.type == TextureType::Volume;
+    const int viewLayer = volume ? 0 : layer;
     const std::uint32_t key = (static_cast<std::uint32_t>(mipLevel) << 16U) | static_cast<std::uint32_t>(viewLayer);
     const auto found = std::ranges::find(image.attachments, key, &std::pair<std::uint32_t, WGPUTextureView>::first);
     if (found != image.attachments.end()) {
@@ -738,7 +819,7 @@ WGPUTextureView Device::getAttachmentView(ImageRecord& image, int mipLevel, int 
     }
 
     WGPUTextureViewDescriptor descriptor = WGPU_TEXTURE_VIEW_DESCRIPTOR_INIT;
-    descriptor.dimension = image.type == TextureType::Volume ? WGPUTextureViewDimension_3D : WGPUTextureViewDimension_2D;
+    descriptor.dimension = volume ? WGPUTextureViewDimension_3D : WGPUTextureViewDimension_2D;
     descriptor.baseMipLevel = static_cast<std::uint32_t>(mipLevel);
     descriptor.mipLevelCount = 1;
     descriptor.baseArrayLayer = static_cast<std::uint32_t>(viewLayer);
@@ -813,21 +894,22 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
         ImageRecord& image = images.get(attachment.image.id);
-        if (image.kind != ImageKind::RenderTarget) {
+        ImageRecord* resolve = attachment.resolve.isValid() ? &images.get(attachment.resolve.id) : nullptr;
+        if (image.description.isView() || image.description.kind != ImageKind::RenderTarget || (resolve != nullptr && resolve->description.isView())) {
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 
         colors[index] = WGPU_RENDER_PASS_COLOR_ATTACHMENT_INIT;
         colors[index].view = getAttachmentView(image, attachment.mipLevel, attachment.layer);
-        colors[index].depthSlice = image.type == TextureType::Volume ? static_cast<std::uint32_t>(attachment.layer) : WGPU_DEPTH_SLICE_UNDEFINED;
-        colors[index].resolveTarget = attachment.resolve.isValid() ? getAttachmentView(images.get(attachment.resolve.id), 0, 0) : nullptr;
+        colors[index].depthSlice = image.description.type == TextureType::Volume ? static_cast<std::uint32_t>(attachment.layer) : WGPU_DEPTH_SLICE_UNDEFINED;
+        colors[index].resolveTarget = resolve != nullptr ? getAttachmentView(*resolve, attachment.resolveMipLevel, attachment.resolveLayer) : nullptr;
         colors[index].loadOp = Conversion::toLoad(attachment.load);
         colors[index].storeOp = Conversion::toStore(attachment.store);
         colors[index].clearValue = Conversion::toColor(attachment.clear);
 
         if (index == 0) {
-            passWidth = std::max(1, image.width >> attachment.mipLevel);
-            passHeight = std::max(1, image.height >> attachment.mipLevel);
+            passWidth = std::max(1, image.description.width >> attachment.mipLevel);
+            passHeight = std::max(1, image.description.height >> attachment.mipLevel);
         }
     }
 
@@ -835,23 +917,23 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& image = images.get(attachment.image.id);
-        if (image.kind != ImageKind::DepthStencil) {
+        if (image.description.isView() || image.description.kind != ImageKind::DepthStencil) {
             throw ContractError(ContractError::Rule::PassAttachments);
         }
 
-        depth.view = getAttachmentView(image, 0, 0);
+        depth.view = getAttachmentView(image, attachment.mipLevel, attachment.layer);
         depth.depthLoadOp = Conversion::toLoad(attachment.depthLoad);
         depth.depthStoreOp = Conversion::toStore(attachment.depthStore);
         depth.depthClearValue = attachment.clearDepth;
-        if (ImageInfo::hasStencil(image.format)) {
+        if (ImageInfo::hasStencil(image.description.format)) {
             depth.stencilLoadOp = Conversion::toLoad(attachment.stencilLoad);
             depth.stencilStoreOp = Conversion::toStore(attachment.stencilStore);
             depth.stencilClearValue = attachment.clearStencil;
         }
 
         if (desc.colors.empty()) {
-            passWidth = image.width;
-            passHeight = image.height;
+            passWidth = std::max(1, image.description.width >> attachment.mipLevel);
+            passHeight = std::max(1, image.description.height >> attachment.mipLevel);
         }
     }
 
@@ -1298,6 +1380,7 @@ void Device::commit() {
     }
 
     releaseRetired();
+    mipmaps.releaseOutgrown();
     imageGroups.trim(frame);
     uniforms.fill({});
     ++frame;
@@ -1377,15 +1460,16 @@ void Device::removeSurface(int surface) {
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
-    if (record.kind != ImageKind::RenderTarget || record.sampleCount != 1) {
+    const ImageRules::Description& description = record.description;
+    if (description.isView() || description.kind != ImageKind::RenderTarget || description.sampleCount != 1) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
+    if (width <= 0 || height <= 0 || width > description.width || height > description.height) {
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    return std::make_unique<ImageReadback>(device, queue, record.texture, record.format, width, height);
+    return std::make_unique<ImageReadback>(device, queue, record.texture, description.format, width, height);
 }
 
 std::unique_ptr<gpu::Device::Readback> Device::readBuffer(Buffer buffer, std::size_t offset, std::size_t size) {

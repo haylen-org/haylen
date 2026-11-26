@@ -94,12 +94,14 @@ TEST_F(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
     EXPECT_THROW(material.set("strength", math::Vec2{}), std::invalid_argument);
     EXPECT_THROW(material.set("palette", std::vector<float>(4, 0.0F)), std::invalid_argument);
     EXPECT_THROW(material.setTexture("missing", mask), std::invalid_argument);
+    const graphics::Texture cube = fixture.engine().getGraphics().createTexture(graphics::Device::TextureData{.type = gpu::Device::TextureType::Cube, .width = 2, .height = 2, .layers = 6}, math::Color::white());
+    EXPECT_THROW(material.setTexture("mask_texture", cube), std::invalid_argument);
     EXPECT_THROW((void)material.getTexture("tint"), std::invalid_argument);
     EXPECT_EQ(material.getResource()->revision, revision + 1);
 
     EXPECT_THROW(graphics2d::Material{graphics::Shader{}}, std::invalid_argument);
     EXPECT_THROW((void)graphics2d::Material{}.getShader(), std::logic_error);
-    const std::string bare = R"({"format": "haylen-shader", "version": 4, "name": "bare", "sources": [], "programs": {"sprite": {"attributes": [], "blocks": [], "textures": [], "samplers": [], "pairs": [], "outputs": 1, "targets": {}}}})";
+    const std::string bare = R"({"format": "haylen-shader", "version": 5, "name": "bare", "sources": [], "programs": {"sprite": {"attributes": [], "blocks": [], "textures": [], "samplers": [], "pairs": [], "outputs": 1, "targets": {}}}})";
     EXPECT_THROW(graphics2d::Material{graphics::Shader::parse(test::TestFiles::bytes(bare))}, std::invalid_argument);
 }
 
@@ -200,6 +202,45 @@ TEST_F(MaterialTest, DrawsWithAShaderThatNeverSamplesItsTexture) {
     fixture.frames(2);
 
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// A material samples a texture of the kind that its shader declares, a white texture of that kind while it has none, and a draw shows flat textures alone.
+TEST_F(MaterialTest, SamplesTexturesOfTheKindThatItsShaderDeclares) {
+    const std::vector<std::uint8_t> bytes = test::MaterialShaders::compile("sky", test::MaterialShaders::kSkySource);
+    test::EngineFixture fixture({{"content/shaders/sky.shader", std::string(bytes.begin(), bytes.end())}});
+    graphics::Device& device = fixture.engine().getGraphics();
+    graphics2d::Material material(fixture.engine().getAssets().shader("shaders/sky.shader"));
+    const graphics::Texture cube = device.createTexture(graphics::Device::TextureData{.type = gpu::Device::TextureType::Cube, .width = 4, .height = 4, .layers = 6}, math::Color::white());
+    const graphics::Texture flat = device.createTexture(graphics::Image(4, 4, math::Color::white()));
+    EXPECT_THROW(material.setTexture("sky_texture", flat), std::invalid_argument);
+
+    // The first frame samples the white cube of the device, and the second the cube that the material takes.
+    int frame = 0;
+    // clang-format off
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
+        if (++frame == 2) {
+            material.setTexture("sky_texture", cube);
+        }
+
+        graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginScreen();
+        renderer.drawRect({0.0F, 0.0F, 4.0F, 4.0F}, math::Color::white(), {.material = material});
+    }));
+    // clang-format on
+    fixture.frames(2);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(device.getWhiteTexture(gpu::Device::TextureType::Cube).getLayers(), 6);
+
+    // clang-format off
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
+        graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginScreen();
+        renderer.draw({.texture = cube});
+    }));
+    // clang-format on
+    fixture.frames(1);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("A texture of the kind \"cube\" is no image that a draw shows. Give it to a material whose shader samples a texture of that kind."), std::string::npos);
 }
 
 TEST_F(MaterialTest, ReloadsItsShaderInPlace) {

@@ -268,8 +268,9 @@ struct RendererState {
     // Tells whether a draw with the order shows in the open canvas, whose visibility mask may leave it out.
     [[nodiscard]] bool accepts(const DrawOrder& order);
 
-    // Keeps the texture or the baked batch alive until the frame is submitted.
+    // Keeps the texture or the baked batch alive until the frame is submitted. The texture of a draw is flat, while `keep` takes a texture of a material of any kind.
     void retain(const graphics::Texture& texture);
+    void keep(const graphics::Texture& texture);
     void retain(const std::shared_ptr<StaticBatchResource>& batch);
 
     // Returns the next image of the groups of the frame, with the size of the pass of a canvas.

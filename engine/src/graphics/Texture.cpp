@@ -37,6 +37,10 @@ std::string_view Texture::borderColorName(BorderColor value) noexcept {
     return std::ranges::find(kBorderColorNames, value, &std::pair<std::string_view, BorderColor>::second)->first;
 }
 
+std::string_view Texture::typeName(gpu::Device::TextureType value) noexcept {
+    return std::ranges::find(gpu::Device::kTextureTypeNames, value, &std::pair<std::string_view, gpu::Device::TextureType>::second)->first;
+}
+
 int Texture::getWidth() const noexcept {
     return resource ? resource->width : 0;
 }
@@ -59,6 +63,26 @@ Texture::Options Texture::getOptions() const noexcept {
 
 gpu::Device::PixelFormat Texture::getFormat() const noexcept {
     return resource ? resource->format : gpu::Device::PixelFormat::Rgba8;
+}
+
+gpu::Device::TextureType Texture::getType() const noexcept {
+    return resource ? resource->type : gpu::Device::TextureType::Flat;
+}
+
+int Texture::getLayers() const noexcept {
+    return resource && resource->type != gpu::Device::TextureType::Volume ? resource->layers : 1;
+}
+
+int Texture::getDepth() const noexcept {
+    return resource && resource->type == gpu::Device::TextureType::Volume ? resource->layers : 1;
+}
+
+int Texture::getMipLevels() const noexcept {
+    return resource ? resource->mipLevels : 1;
+}
+
+bool Texture::isView() const noexcept {
+    return resource && resource->viewed;
 }
 
 std::string_view Texture::getLabel() const noexcept {

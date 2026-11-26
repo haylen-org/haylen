@@ -81,6 +81,9 @@ class Texture final {
     [[nodiscard]] static std::optional<BorderColor> borderColorFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view borderColorName(BorderColor value) noexcept;
 
+    // The name of a type of texture from `gpu::Device::kTextureTypeNames`: `flat`, `array`, `volume`, `cube` or `cubeArray`.
+    [[nodiscard]] static std::string_view typeName(gpu::Device::TextureType value) noexcept;
+
     [[nodiscard]] bool isValid() const noexcept {
         return resource != nullptr;
     }
@@ -92,6 +95,21 @@ class Texture final {
 
     // The pixel format of the texture on the GPU, such as `Rgba8` for the textures of images and a compressed format for a texture made from its blocks.
     [[nodiscard]] gpu::Device::PixelFormat getFormat() const noexcept;
+
+    // The type of the texture on the GPU: flat, an array of layers, a volume of slices, a cube or an array of cubes.
+    [[nodiscard]] gpu::Device::TextureType getType() const noexcept;
+
+    // The layers of an array, the six faces of a cube and six faces for each cube of a cube array, and 1 for a flat texture and a volume.
+    [[nodiscard]] int getLayers() const noexcept;
+
+    // The slices of a volume, and 1 for the other types.
+    [[nodiscard]] int getDepth() const noexcept;
+
+    // The mip levels of the texture, 1 for a texture without mipmaps.
+    [[nodiscard]] int getMipLevels() const noexcept;
+
+    // Whether the texture is a view of a range of the mip levels and layers of another texture.
+    [[nodiscard]] bool isView() const noexcept;
 
     // The path of a texture that the assets loaded from the package, or an empty text for a texture made at run time.
     [[nodiscard]] std::string_view getLabel() const noexcept;

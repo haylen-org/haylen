@@ -10,6 +10,7 @@ target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/Gl.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/GpuTimer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/DrawnClear.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/DrawnResolve.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/PixelReadback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ReadbackBuffer.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ScaledDrawable.cpp"

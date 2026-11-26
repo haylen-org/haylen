@@ -65,7 +65,7 @@ TEST_F(VideoStreamTest, UploadsOnlyTheNewestFrameAndResizesInPlace) {
     EXPECT_FALSE(stream.update(device));
     EXPECT_EQ(stream.getFrameCount(), 1U);
     EXPECT_EQ(heard, std::vector<double>{3.0});
-    EXPECT_EQ(texture.getResource()->staged, (std::vector<std::uint8_t>{5, 4, 3, 255, 5, 4, 3, 255}));
+    EXPECT_EQ(texture.getResource()->staged.front().pixels, (std::vector<std::uint8_t>{5, 4, 3, 255, 5, 4, 3, 255}));
 
     // A frame of another size resizes the texture that every handle shares.
     const std::vector<std::byte> larger = makeFrame(3, 2, 9);
@@ -83,8 +83,8 @@ TEST_F(VideoStreamTest, UploadsOnlyTheNewestFrameAndResizesInPlace) {
     EXPECT_NE(again, texture);
     EXPECT_EQ(again.getSize(), haylen::math::Vec2(3.0F, 2.0F));
     ASSERT_NE(again.getResource(), nullptr);
-    ASSERT_FALSE(again.getResource()->staged.empty());
-    EXPECT_EQ(again.getResource()->staged.front(), 11U);
+    ASSERT_FALSE(again.getResource()->staged.front().pixels.empty());
+    EXPECT_EQ(again.getResource()->staged.front().pixels.front(), 11U);
 
     EXPECT_THROW(stream.push(larger.data(), 0, 2, getStride(3), 0.0), std::invalid_argument);
     EXPECT_THROW(stream.push(larger.data(), 3, 2, 8, 0.0), std::invalid_argument);

@@ -189,6 +189,23 @@ void main() {
 }
 @end
 
+// Reads the middle of a face of a cube of a cube array, with the face in the order of the cube program and the cube in z.
+@fs cube_array_fs
+@include_block sample_params
+layout(binding=0) uniform textureCubeArray cubes_texture;
+layout(binding=0) uniform sampler cubes_sampler;
+
+in vec2 uv;
+out vec4 frag_color;
+
+void main() {
+    int face = int(lookup.y + 0.5);
+    float facing = face % 2 == 0 ? 1.0 : -1.0;
+    vec3 direction = vec3(face / 2 == 0 ? facing : 0.0, face / 2 == 1 ? facing : 0.0, face / 2 == 2 ? facing : 0.0);
+    frag_color = textureLod(samplerCubeArray(cubes_texture, cubes_sampler), vec4(direction, lookup.z), lookup.x);
+}
+@end
+
 @fs unfilterable_fs
 @include_block sample_params
 @sample_type float_texture unfilterable_float
@@ -220,6 +237,22 @@ void main() {
 }
 @end
 
+// Writes white where the depth of the layer y of an array of depths passes the comparison of the sampler against the depth z of the parameters, and black elsewhere, as the cascades of a shadow map read.
+@fs shadow_layers_fs
+@include_block sample_params
+@sample_type cascades_texture depth
+layout(binding=0) uniform texture2DArray cascades_texture;
+layout(binding=0) uniform samplerShadow cascades_sampler;
+
+in vec2 uv;
+out vec4 frag_color;
+
+void main() {
+    float lit = texture(sampler2DArrayShadow(cascades_texture, cascades_sampler), vec4(uv, lookup.y, lookup.z));
+    frag_color = vec4(lit, lit, lit, 1.0);
+}
+@end
+
 // Writes a color of its own into each of four targets.
 @fs targets_fs
 out vec4 first_color;
@@ -245,6 +278,8 @@ void main() {
 @program array fullscreen_vs array_fs
 @program volume fullscreen_vs volume_fs
 @program cube fullscreen_vs cube_fs
+@program cube_array fullscreen_vs cube_array_fs
 @program unfilterable fullscreen_vs unfilterable_fs
 @program shadow fullscreen_vs shadow_fs
+@program shadow_layers fullscreen_vs shadow_layers_fs
 @program targets fullscreen_vs targets_fs

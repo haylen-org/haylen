@@ -70,6 +70,9 @@ Shader packages carry SPIR-V modules, the `spirv` language, with the descriptor 
 | Separate blend for each color target | Where the GPU has the feature `independentBlend`. |
 | GPU time of a frame | Timestamp queries, where the queue writes timestamps. |
 | First row of a render target | The top row. |
+| Cube arrays | Where the GPU has the feature `imageCubeArray`, which the device turns on. Cubes and cube arrays are made cube compatible, so array views of their faces work. |
+| Views of images | Image views of the range, and every image rests in one layout while a pass moves only the mip level and the layer that it draws into, so a pass samples a view of the other levels. |
+| Mip generation | A chain of `vkCmdBlitImage` with a linear filter, level by level, for the formats whose optimal tiling has blit source, blit destination and linear filtering. |
 
 ## Debugging
 

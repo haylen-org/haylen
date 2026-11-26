@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -27,6 +28,9 @@ struct DeviceState {
     std::shared_ptr<ResourceGraveyard> graveyard = std::make_shared<ResourceGraveyard>();
     std::vector<std::pair<Texture::Options, gpu::Device::Sampler>> samplers;
     Texture white;
+
+    // The white textures of the other kinds, by `gpu::Device::TextureType`, made when a material first samples one.
+    std::array<Texture, gpu::Device::kTextureTypeNames.size()> whites;
     std::uint32_t nextTextureId = 1;
     gpu::Device::PixelFormat offscreenFormat = gpu::Device::PixelFormat::Rgba8;
 
@@ -76,11 +80,11 @@ struct DeviceState {
     // Checks the sampling of the options against the device, with their mipmaps settled, and gives a texture with the linear filter and mipmaps the most anisotropy of the device unless the options name one. Throws `std::invalid_argument` with a sentence for options that the device cannot sample with.
     [[nodiscard]] Texture::Options settle(Texture::Options options) const;
 
-    // Creates the image of a texture, with its mipmaps when asked for, and counts the bytes they hold.
-    [[nodiscard]] gpu::Device::Image createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes);
+    // Creates the image of a texture, with its mipmaps when asked for, and counts the bytes and the mip levels they hold.
+    [[nodiscard]] gpu::Device::Image createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes, int& mipLevels);
 
-    // Creates an image whose pixels change in place. Its pixels arrive with the next upload.
-    [[nodiscard]] gpu::Device::Image createDynamicImage(int width, int height, gpu::Device::PixelFormat format);
+    // The layers of the image of texture data as the GPU device counts them: the slices of a volume, and the layers or faces of the other types.
+    [[nodiscard]] static int getLayers(const Device::TextureData& data) noexcept;
 
     // Returns the bytes an image of the size and pixel format holds, for the debug statistics.
     [[nodiscard]] static std::size_t getImageBytes(int width, int height, gpu::Device::PixelFormat format);
@@ -88,11 +92,14 @@ struct DeviceState {
     // Creates a render target of a pixel format, such as the floating-point light maps of the 2D renderer.
     [[nodiscard]] RenderTarget createRenderTarget(int width, int height, gpu::Device::PixelFormat format, Texture::Options options);
 
-    // Creates a texture whose pixels change in place, and keeps its first pixels for the next upload.
-    [[nodiscard]] Texture createDynamicTexture(int width, int height, gpu::Device::PixelFormat format, std::span<const std::uint8_t> pixels, Texture::Options options);
+    // Creates a texture whose image takes the pixels of the first level of each layer with the next upload, which keeps them for later uploads when the texture is dynamic. With `mipmaps` the image holds every mip level, which the GPU generates after each upload.
+    [[nodiscard]] Texture createStagedTexture(const Device::TextureData& data, Texture::Options options, bool dynamic);
 
-    // Keeps the pixels of the region of a dynamic texture that changed for the next upload, out of every pixel of the texture. A texture that already waits for an upload keeps the smallest region that holds both changes, from the newer pixels.
-    void stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels, gpu::Device::Region changed);
+    // Makes the image of a staged texture of the shape, with every mip level when the GPU generates them.
+    [[nodiscard]] gpu::Device::Image createStagedImage(const Device::TextureData& data, bool mipmaps, int& mipLevels);
+
+    // Keeps the pixels of the region of a layer of a staged texture that changed for the next upload, out of every pixel of the layer. A layer that already waits for an upload keeps the smallest region that holds both changes, from the newer pixels.
+    void stagePixels(const std::shared_ptr<TextureResource>& resource, int layer, std::span<const std::uint8_t> pixels, gpu::Device::Region changed);
 
   private:
     // The samples a linear texture with mipmaps takes along the longer side of the footprint of a pixel, so a texture drawn much smaller along one side than the other, such as the middle of a nine-slice squeezed into a narrow button, keeps the detail of its other side.

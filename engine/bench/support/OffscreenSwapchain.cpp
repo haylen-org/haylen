@@ -108,12 +108,20 @@ void OffscreenSwapchain::writeBuffer(Buffer buffer, std::size_t offset, std::spa
     device->writeBuffer(buffer, offset, data);
 }
 
+gpu::Device::Image OffscreenSwapchain::makeView(const ViewDesc& desc) {
+    return device->makeView(desc);
+}
+
 void OffscreenSwapchain::copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) {
     device->copyBuffer(source, sourceOffset, destination, destinationOffset, size);
 }
 
 void OffscreenSwapchain::writeImages(std::span<const ImageWrite> writes) {
     device->writeImages(writes);
+}
+
+void OffscreenSwapchain::generateMipmaps(Image image) {
+    device->generateMipmaps(image);
 }
 
 void OffscreenSwapchain::beginPass(const PassDesc& desc) {

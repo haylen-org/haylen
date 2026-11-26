@@ -676,4 +676,228 @@ TEST_F(NullDeviceTest, ReadsWholeRenderTargetsOfOneSample) {
     EXPECT_FALSE(copy->poll().has_value());
 }
 
+// A cube array holds six square faces for each of its cubes within the most layers of an array, only on a device that has cube arrays, and no graphics API has depth volumes.
+TEST_F(NullDeviceTest, ChecksCubeArraysAndTheTypesOfDepthImages) {
+    NullDevice device;
+    EXPECT_NO_THROW((void)device.makeImage({.type = Device::TextureType::CubeArray, .width = 4, .height = 4, .layers = 12, .kind = Device::ImageKind::RenderTarget, .label = "cubes"}));
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.type = Device::TextureType::CubeArray, .width = 4, .height = 4, .layers = 8, .kind = Device::ImageKind::RenderTarget, .label = "cubes"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.type = Device::TextureType::CubeArray, .width = 4, .height = 2, .layers = 6, .kind = Device::ImageKind::RenderTarget, .label = "cubes"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_NO_THROW((void)device.makeImage({.type = Device::TextureType::Cube, .width = 4, .height = 4, .layers = 6, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "shadows"}));
+    EXPECT_NO_THROW((void)device.makeImage({.type = Device::TextureType::Array, .width = 4, .height = 4, .layers = 4, .mipLevels = 2, .format = Device::PixelFormat::Depth16, .kind = Device::ImageKind::DepthStencil, .label = "cascades"}));
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.type = Device::TextureType::Volume, .width = 4, .height = 4, .layers = 4, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "depth volume"}); }), gpu::ContractError::Rule::Image);
+
+    Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
+    capabilities.cubeArrays = false;
+    NullDevice limited(Device::Language::None, capabilities);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)limited.makeImage({.type = Device::TextureType::CubeArray, .width = 4, .height = 4, .layers = 6, .kind = Device::ImageKind::RenderTarget, .label = "cubes"}); }), gpu::ContractError::Rule::Image);
+}
+
+// A view takes the type of its image, or an array of the faces of a cube or a cube array, and a range of mip levels and layers that the image holds, on a device that has views.
+TEST_F(NullDeviceTest, MakesViewsOfTheRangesThatTheirImagesHold) {
+    NullDevice device;
+    const Device::Image flat = device.makeImage({.width = 8, .height = 8, .mipLevels = 4, .kind = Device::ImageKind::RenderTarget, .label = "flat"});
+    const Device::Image layers = device.makeImage({.type = Device::TextureType::Array, .width = 8, .height = 8, .layers = 4, .kind = Device::ImageKind::RenderTarget, .label = "layers"});
+    const Device::Image cube = device.makeImage({.type = Device::TextureType::Cube, .width = 8, .height = 8, .layers = 6, .mipLevels = 2, .kind = Device::ImageKind::RenderTarget, .label = "cube"});
+    const Device::Image cubes = device.makeImage({.type = Device::TextureType::CubeArray, .width = 8, .height = 8, .layers = 18, .kind = Device::ImageKind::RenderTarget, .label = "cubes"});
+    const Device::Image volume = device.makeImage({.type = Device::TextureType::Volume, .width = 8, .height = 8, .layers = 8, .mipLevels = 3, .kind = Device::ImageKind::RenderTarget, .label = "volume"});
+    const Device::Image samples = device.makeImage({.width = 8, .height = 8, .sampleCount = 4, .kind = Device::ImageKind::RenderTarget, .label = "samples"});
+
+    EXPECT_NO_THROW((void)device.makeView({.image = flat, .baseMipLevel = 1, .mipLevels = 3}));
+    EXPECT_NO_THROW((void)device.makeView({.image = layers, .type = Device::TextureType::Array, .baseLayer = 1, .layers = 3}));
+    EXPECT_NO_THROW((void)device.makeView({.image = cube, .type = Device::TextureType::Cube, .baseMipLevel = 1, .layers = 6}));
+    EXPECT_NO_THROW((void)device.makeView({.image = cube, .type = Device::TextureType::Array, .baseLayer = 2, .layers = 3}));
+    EXPECT_NO_THROW((void)device.makeView({.image = cubes, .type = Device::TextureType::CubeArray, .baseLayer = 6, .layers = 12}));
+    EXPECT_NO_THROW((void)device.makeView({.image = cubes, .type = Device::TextureType::Array, .baseLayer = 7, .layers = 1}));
+    const Device::Image slices = device.makeView({.image = volume, .type = Device::TextureType::Volume, .baseMipLevel = 1, .mipLevels = 2, .layers = 8});
+
+    const std::array<Device::ViewDesc, 10> refused{{
+        {.image = flat, .baseMipLevel = 2, .mipLevels = 3},
+        {.image = flat, .type = Device::TextureType::Array},
+        {.image = layers, .type = Device::TextureType::Flat},
+        {.image = layers, .type = Device::TextureType::Array, .baseLayer = 3, .layers = 2},
+        {.image = cube, .type = Device::TextureType::Flat},
+        {.image = cube, .type = Device::TextureType::Cube, .layers = 5},
+        {.image = cubes, .type = Device::TextureType::CubeArray, .baseLayer = 3, .layers = 6},
+        {.image = cubes, .type = Device::TextureType::Cube, .layers = 6},
+        {.image = samples},
+        {.image = slices, .type = Device::TextureType::Volume, .layers = 8},
+    }};
+    for (const Device::ViewDesc& desc : refused) {
+        EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeView(desc); }), gpu::ContractError::Rule::View) << static_cast<int>(desc.type) << " from " << desc.baseLayer;
+    }
+
+    Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
+    capabilities.imageViews = false;
+    NullDevice limited(Device::Language::None, capabilities);
+    const Device::Image image = limited.makeImage({.width = 8, .height = 8, .mipLevels = 2, .kind = Device::ImageKind::RenderTarget, .label = "flat"});
+    EXPECT_EQ(test::ContractRule::of([&] { (void)limited.makeView({.image = image}); }), gpu::ContractError::Rule::View);
+}
+
+// Destroying an image destroys its views, and a view leaves its image when it goes.
+TEST_F(NullDeviceTest, DestroysTheViewsOfAnImageWithIt) {
+    NullDevice device;
+    const Device::Image image = device.makeImage({.width = 8, .height = 8, .mipLevels = 2, .kind = Device::ImageKind::RenderTarget, .label = "image"});
+    const Device::Image first = device.makeView({.image = image});
+    const Device::Image second = device.makeView({.image = image, .baseMipLevel = 1});
+    device.destroy(first);
+    EXPECT_NO_THROW((void)device.makeView({.image = image}));
+
+    std::vector<Device::Pool> pools;
+    device.readPools(pools);
+    EXPECT_EQ(pools[0].used, 3);
+    device.destroy(image);
+    device.readPools(pools);
+    EXPECT_EQ(pools[0].used, 0);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeView({.image = second}); }), gpu::ContractError::Rule::MissingObject);
+}
+
+// A dynamic image of any type takes writes into regions of its mip levels and layers, one for each mip level and layer in a call.
+TEST_F(NullDeviceTest, WritesEveryMipLevelAndLayerOfDynamicImages) {
+    NullDevice device;
+    const Device::Image layers = device.makeImage({.type = Device::TextureType::Array, .width = 4, .height = 4, .layers = 3, .mipLevels = 3, .kind = Device::ImageKind::Dynamic, .label = "layers"});
+    const Device::Image volume = device.makeImage({.type = Device::TextureType::Volume, .width = 4, .height = 4, .layers = 4, .mipLevels = 2, .kind = Device::ImageKind::Dynamic, .label = "volume"});
+    const std::span<const std::byte> texel = std::span(pixels).first(4);
+    const std::array<Device::ImageWrite, 4> writes{{
+        {.image = layers, .mipLevel = 2, .layer = 2, .region = {0, 0, 1, 1}, .pixels = texel},
+        {.image = layers, .mipLevel = 2, .layer = 1, .region = {0, 0, 1, 1}, .pixels = texel},
+        {.image = layers, .mipLevel = 0, .layer = 2, .region = {3, 3, 1, 1}, .pixels = texel},
+        {.image = volume, .mipLevel = 1, .layer = 1, .region = {1, 1, 1, 1}, .pixels = texel},
+    }};
+    device.writeImages(writes);
+    device.commit();
+    EXPECT_EQ(device.getLastFrame().imageWrites, 4);
+
+    const std::array<Device::ImageWrite, 4> outside{{
+        {.image = layers, .mipLevel = 3, .region = {0, 0, 1, 1}, .pixels = texel},
+        {.image = layers, .mipLevel = 0, .layer = 3, .region = {0, 0, 1, 1}, .pixels = texel},
+        {.image = layers, .mipLevel = 1, .region = {2, 0, 1, 1}, .pixels = texel},
+        {.image = volume, .mipLevel = 1, .layer = 2, .region = {0, 0, 1, 1}, .pixels = texel},
+    }};
+    for (const Device::ImageWrite& write : outside) {
+        const std::array<Device::ImageWrite, 1> one{write};
+        EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(one); }), gpu::ContractError::Rule::ImageWrite) << write.mipLevel << ", " << write.layer;
+        device.commit();
+    }
+
+    const std::array<Device::ImageWrite, 2> twice{{{.image = layers, .mipLevel = 1, .layer = 1, .region = {0, 0, 1, 1}, .pixels = texel}, {.image = layers, .mipLevel = 1, .layer = 1, .region = {1, 1, 1, 1}, .pixels = texel}}};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(twice); }), gpu::ContractError::Rule::ImageWrite);
+}
+
+// Dynamic images and render targets of more than one level and one sample generate their mip levels outside a pass, in a format that the device generates them in, after the writes of the frame.
+TEST_F(NullDeviceTest, GeneratesTheMipLevelsOfDynamicImagesAndRenderTargets) {
+    Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
+    capabilities.getFormat(Device::PixelFormat::Rgba16Float).mipmaps = false;
+    NullDevice device(Device::Language::None, capabilities);
+    const Device::Image dynamic = device.makeImage({.type = Device::TextureType::Cube, .width = 4, .height = 4, .layers = 6, .mipLevels = 3, .kind = Device::ImageKind::Dynamic, .label = "dynamic"});
+    const Device::Image target = device.makeImage({.width = 4, .height = 4, .mipLevels = 3, .kind = Device::ImageKind::RenderTarget, .label = "target"});
+    device.generateMipmaps(dynamic);
+    device.generateMipmaps(target);
+    device.commit();
+    EXPECT_EQ(device.getLastFrame().mipmapGenerations, 2);
+
+    const std::vector<std::byte> levelPixels(4 * 4 * 4);
+    const std::array<std::span<const std::byte>, 1> textureLevels{levelPixels};
+    const Device::Image texture = device.makeImage({.width = 4, .height = 4, .levels = textureLevels, .label = "texture"});
+    const Device::Image oneLevel = device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::RenderTarget, .label = "one level"});
+    const Device::Image halves = device.makeImage({.width = 4, .height = 4, .mipLevels = 3, .format = Device::PixelFormat::Rgba16Float, .kind = Device::ImageKind::RenderTarget, .label = "halves"});
+    const Device::Image depth = device.makeImage({.width = 4, .height = 4, .mipLevels = 3, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "depth"});
+    const Device::Image view = device.makeView({.image = target});
+    const std::array<Device::Image, 5> refused{texture, oneLevel, halves, depth, view};
+    for (const Device::Image image : refused) {
+        EXPECT_EQ(test::ContractRule::of([&] { device.generateMipmaps(image); }), gpu::ContractError::Rule::Mipmaps);
+    }
+
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::RenderTarget, .label = "other"})}}};
+    device.beginPass({.colors = colors});
+    EXPECT_EQ(test::ContractRule::of([&] { device.generateMipmaps(target); }), gpu::ContractError::Rule::Mipmaps);
+    device.endPass();
+    device.commit();
+
+    const std::span<const std::byte> texel = std::span(pixels).first(4);
+    const std::array<Device::ImageWrite, 1> writes{{{.image = dynamic, .region = {0, 0, 1, 1}, .pixels = texel}}};
+    device.generateMipmaps(target);
+    EXPECT_EQ(test::ContractRule::of([&] { device.writeImages(writes); }), gpu::ContractError::Rule::ImageWrite);
+    device.commit();
+    device.writeImages(writes);
+    EXPECT_NO_THROW(device.generateMipmaps(dynamic));
+    device.commit();
+}
+
+// Depth and stencil attach at a mip level and a layer of their image, such as one face of a cube of shadows, and a multisampled color resolves into a mip level and a layer of a render target that is no volume and has the size of the pass there.
+TEST_F(NullDeviceTest, AttachesDepthAndResolvesAtAMipLevelAndALayer) {
+    NullDevice device;
+    const Device::Image shadows = device.makeImage({.type = Device::TextureType::Cube, .width = 8, .height = 8, .layers = 6, .mipLevels = 2, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "shadows"});
+    const Device::Image small = device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::RenderTarget, .label = "small"});
+    const std::array<Device::ColorAttachment, 1> smallColors{{{.image = small}}};
+    EXPECT_NO_THROW(device.beginPass({.colors = smallColors, .depthStencil = Device::DepthStencilAttachment{.image = shadows, .mipLevel = 1, .layer = 5}}));
+    device.endPass();
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.colors = smallColors, .depthStencil = Device::DepthStencilAttachment{.image = shadows, .layer = 5}}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = shadows, .layer = 6}}); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.depthStencil = Device::DepthStencilAttachment{.image = shadows, .mipLevel = 2}}); }), gpu::ContractError::Rule::PassAttachments);
+
+    const Device::Image samples = device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .kind = Device::ImageKind::RenderTarget, .label = "samples"});
+    const Device::Image layers = device.makeImage({.type = Device::TextureType::Array, .width = 8, .height = 8, .layers = 3, .mipLevels = 2, .kind = Device::ImageKind::RenderTarget, .label = "layers"});
+    const Device::Image volume = device.makeImage({.type = Device::TextureType::Volume, .width = 4, .height = 4, .layers = 2, .kind = Device::ImageKind::RenderTarget, .label = "volume"});
+    const std::array<Device::ColorAttachment, 1> resolved{{{.image = samples, .resolve = layers, .resolveMipLevel = 1, .resolveLayer = 2}}};
+    EXPECT_NO_THROW(device.beginPass({.colors = resolved}));
+    device.endPass();
+
+    const std::array<Device::ColorAttachment, 4> refused{{
+        {.image = samples, .resolve = layers, .resolveLayer = 2},
+        {.image = samples, .resolve = layers, .resolveMipLevel = 1, .resolveLayer = 3},
+        {.image = samples, .resolve = layers, .resolveMipLevel = 2},
+        {.image = samples, .resolve = volume},
+    }};
+    for (const Device::ColorAttachment& color : refused) {
+        const std::array<Device::ColorAttachment, 1> colors{color};
+        EXPECT_EQ(test::ContractRule::of([&] { device.beginPass({.colors = colors}); }), gpu::ContractError::Rule::PassAttachments) << color.resolveMipLevel << ", " << color.resolveLayer;
+    }
+
+    device.commit();
+}
+
+// A draw samples the mip levels and layers of an image that its pass neither draws nor resolves into, through a view of them, while the image itself and a view of a mip level and a layer that the pass reaches stay out of its bindings.
+TEST_F(NullDeviceTest, SamplesTheMipLevelsAndLayersThatThePassDoesNotReach) {
+    NullDevice device;
+    const std::array<Device::TextureBinding, 1> flatSlot{{{.slot = 0}}};
+    const std::array<Device::TextureBinding, 1> arraySlot{{{.slot = 0, .type = Device::TextureType::Array}}};
+    const std::array<Device::SamplerBinding, 1> samplers{{{.slot = 0}}};
+    const std::array<Device::ColorTarget, 1> targets{};
+    const std::array<Device::ColorTarget, 2> pairedTargets{};
+    const Device::Pipeline flat = device.makePipeline({.program = device.makeProgram({.textures = flatSlot, .samplers = samplers, .label = "flat"}), .colors = targets, .label = "flat"});
+    const Device::Pipeline layered = device.makePipeline({.program = device.makeProgram({.textures = arraySlot, .samplers = samplers, .label = "layers"}), .colors = pairedTargets, .label = "layers"});
+    const Device::Image chain = device.makeImage({.width = 8, .height = 8, .mipLevels = 3, .kind = Device::ImageKind::RenderTarget, .label = "chain"});
+    const Device::Image layers = device.makeImage({.type = Device::TextureType::Array, .width = 4, .height = 4, .layers = 3, .kind = Device::ImageKind::RenderTarget, .label = "layers"});
+    const Device::Image above = device.makeView({.image = chain, .baseMipLevel = 0, .mipLevels = 1});
+    const Device::Image reached = device.makeView({.image = chain, .baseMipLevel = 0, .mipLevels = 2});
+    const Device::Image otherLayers = device.makeView({.image = layers, .type = Device::TextureType::Array, .baseLayer = 1, .layers = 2});
+    const Device::Image drawnLayer = device.makeView({.image = layers, .type = Device::TextureType::Array, .baseLayer = 0, .layers = 2});
+    Device::Bindings bindings;
+    bindings.samplers[0] = device.makeSampler({});
+
+    const std::array<Device::ColorAttachment, 1> second{{{.image = chain, .mipLevel = 1}}};
+    device.beginPass({.colors = second});
+    device.applyPipeline(flat);
+    bindings.textures[0] = above;
+    EXPECT_NO_THROW(device.applyBindings(bindings));
+    bindings.textures[0] = reached;
+    EXPECT_EQ(test::ContractRule::of([&] { device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
+    bindings.textures[0] = chain;
+    EXPECT_EQ(test::ContractRule::of([&] { device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
+    device.endPass();
+
+    const Device::Image small = device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::RenderTarget, .label = "small"});
+    const std::array<Device::ColorAttachment, 2> firstLayer{{{.image = layers}, {.image = small}}};
+    device.beginPass({.colors = firstLayer});
+    device.applyPipeline(layered);
+    bindings.textures[0] = otherLayers;
+    EXPECT_NO_THROW(device.applyBindings(bindings));
+    bindings.textures[0] = drawnLayer;
+    EXPECT_EQ(test::ContractRule::of([&] { device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
+    bindings.textures[0] = layers;
+    EXPECT_EQ(test::ContractRule::of([&] { device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
+    device.endPass();
+    device.commit();
+}
+
 } // namespace haylen::gpu

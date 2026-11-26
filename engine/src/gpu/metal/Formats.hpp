@@ -17,6 +17,7 @@ class Formats final {
     // The formats of the BC family, which Metal has on iOS and tvOS from 16.4 on.
     [[nodiscard]] static MTLPixelFormat toBcPixelFormat(gpu::Device::PixelFormat format) noexcept API_AVAILABLE(macos(11.0), ios(16.4), tvos(16.4));
 
+    [[nodiscard]] static MTLTextureType toTextureType(gpu::Device::TextureType type, bool multisampled) noexcept;
     [[nodiscard]] static MTLVertexFormat toVertexFormat(gpu::Device::VertexFormat format) noexcept;
     [[nodiscard]] static MTLPrimitiveType toPrimitiveType(gpu::Device::Primitive primitive) noexcept;
     [[nodiscard]] static MTLPrimitiveTopologyClass toTopologyClass(gpu::Device::Primitive primitive) noexcept;

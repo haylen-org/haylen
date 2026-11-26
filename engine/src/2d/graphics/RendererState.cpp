@@ -230,7 +230,16 @@ bool RendererState::accepts(const DrawOrder& order) {
     return (order.visibility & canvas.options.visibilityMask) != 0;
 }
 
+// A draw samples its texture as a flat image, so only a material whose shader declares a texture of another type samples an array, a cube or a volume.
 void RendererState::retain(const graphics::Texture& texture) {
+    if (texture.getType() != gpu::Device::TextureType::Flat) {
+        throw std::invalid_argument(std::format("A texture of the kind \"{}\" is no image that a draw shows. Give it to a material whose shader samples a texture of that kind.", graphics::Texture::typeName(texture.getType())));
+    }
+
+    keep(texture);
+}
+
+void RendererState::keep(const graphics::Texture& texture) {
     graphics::TextureResource& resource = *texture.getResource();
     if (resource.retainEpoch != epoch) {
         resource.retainEpoch = epoch;
@@ -517,8 +526,8 @@ std::uint32_t RendererState::pushShade(Shade shade, const Material& material) {
         shade.textureBegin = static_cast<std::uint32_t>(shadeTextures.size());
         for (const graphics::Shader::TextureSlot& slot : shade.material->shader.getTextures()) {
             const graphics::Texture texture = shade.material->getTextureAt(slot.slot);
-            const graphics::Texture& bound = texture.isValid() ? texture : white;
-            retain(bound);
+            const graphics::Texture& bound = texture.isValid() ? texture : device.getWhiteTexture(slot.type);
+            keep(bound);
             shadeTextures.push_back(bound.getResource().get());
         }
     }

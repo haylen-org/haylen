@@ -142,6 +142,7 @@ class Gl final {
     static constexpr Enum kTexture3d = 0x806F;
     static constexpr Enum kTexture2dArray = 0x8C1A;
     static constexpr Enum kTextureCubeMap = 0x8513;
+    static constexpr Enum kTextureCubeMapArray = 0x9009;
     static constexpr Enum kTextureCubeMapPositiveX = 0x8515;
     static constexpr Enum kTexture0 = 0x84C0;
     static constexpr Enum kTextureMagFilter = 0x2800;
@@ -296,6 +297,8 @@ class Gl final {
         bool astc = false;
         bool astcHdr = false;
         bool borderClamp = false;
+        bool cubeArrays = false;
+        bool textureView = false;
     };
 
     // Loads every entry point of the flavour from the context, which must be current, and throws `std::runtime_error` when the context is older than the flavour needs or lacks one of them.
@@ -370,6 +373,8 @@ class Gl final {
     void (*texSubImage3D)(Enum target, Int level, Int x, Int y, Int z, Sizei width, Sizei height, Sizei depth, Enum format, Enum type, const void* pixels) = nullptr;
     void (*compressedTexSubImage2D)(Enum target, Int level, Int x, Int y, Sizei width, Sizei height, Enum format, Sizei size, const void* data) = nullptr;
     void (*compressedTexSubImage3D)(Enum target, Int level, Int x, Int y, Int z, Sizei width, Sizei height, Sizei depth, Enum format, Sizei size, const void* data) = nullptr;
+    void (*generateMipmap)(Enum target) = nullptr;
+    void (*textureView)(Uint texture, Enum target, Uint original, Enum format, Uint firstLevel, Uint levels, Uint firstLayer, Uint layers) = nullptr;
 
     void (*genSamplers)(Sizei count, Uint* samplers) = nullptr;
     void (*deleteSamplers)(Sizei count, const Uint* samplers) = nullptr;
@@ -470,6 +475,7 @@ class Gl final {
         std::string_view robustness;
         std::string_view parallelShaderCompile;
         std::string_view clipControl;
+        std::string_view textureView;
     };
 
     // Points the entry point at the function of the name and the suffix, and leaves it null when the context knows no such function.

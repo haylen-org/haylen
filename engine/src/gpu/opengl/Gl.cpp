@@ -87,6 +87,8 @@ void Gl::readFeatures() {
         features.astc = hasExtension("GL_KHR_texture_compression_astc_ldr");
         features.astcHdr = hasExtension("GL_KHR_texture_compression_astc_hdr");
         features.borderClamp = true;
+        features.cubeArrays = true;
+        features.textureView = true;
         return;
     }
 
@@ -119,6 +121,11 @@ void Gl::readFeatures() {
     features.astc = version >= 32 || hasExtension("GL_KHR_texture_compression_astc_ldr");
     features.astcHdr = hasExtension("GL_KHR_texture_compression_astc_hdr");
     features.borderClamp = version >= 32 || hasExtension("GL_EXT_texture_border_clamp") || hasExtension("GL_OES_texture_border_clamp");
+
+    // Cube arrays belong to OpenGL ES 3.2 alone, since the GLSL ES of a program that samples one is version 3.20, and views of textures come only with an extension of OpenGL ES 3.1.
+    features.cubeArrays = version >= 32;
+    features.textureView = hasExtension("GL_EXT_texture_view") || hasExtension("GL_OES_texture_view");
+    suffixes.textureView = hasExtension("GL_EXT_texture_view") ? "EXT" : "OES";
 
     features.bufferStorage = hasExtension("GL_EXT_buffer_storage");
     features.vertexAttribBinding = version >= 31;
@@ -189,6 +196,7 @@ void Gl::loadCore(GlContext& context) {
     require(context, texSubImage3D, "glTexSubImage3D");
     require(context, compressedTexSubImage2D, "glCompressedTexSubImage2D");
     require(context, compressedTexSubImage3D, "glCompressedTexSubImage3D");
+    require(context, generateMipmap, "glGenerateMipmap");
 
     require(context, genSamplers, "glGenSamplers");
     require(context, deleteSamplers, "glDeleteSamplers");
@@ -326,6 +334,11 @@ void Gl::loadOptional(GlContext& context) {
     if (features.clipControl) {
         bindSuffixed(context, clipControl, "glClipControl", suffixes.clipControl);
         features.clipControl = clipControl != nullptr;
+    }
+
+    if (features.textureView) {
+        bindSuffixed(context, textureView, "glTextureView", suffixes.textureView);
+        features.textureView = textureView != nullptr;
     }
 }
 

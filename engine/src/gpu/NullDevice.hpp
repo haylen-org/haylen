@@ -16,12 +16,13 @@
 
 #include "gpu/BufferRules.hpp"
 #include "gpu/ImageInfo.hpp"
+#include "gpu/ImageRules.hpp"
 #include "haylen/gpu/ContractError.hpp"
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::gpu {
 
-// The device of the headless host, which draws nothing and checks every call against the contract of `Device`: objects exist when they are used, images fit their type, mip levels, layers, sample count and format, passes open and close in turn with attachments that match each other and the pipelines drawn with them, multisampled attachments resolve into images of one sample, draws happen inside a pass with a pipeline, its bindings and every uniform block of its program, debug groups balance, and the surface comes and goes in turn. A broken call throws `std::logic_error`, so the tests of the engine fail on it. It keeps what the last committed frame did for tests to read. It holds the memory of the buffers and images it destroyed for later, the way a device keeps its empty memory blocks, until a trim gives it back, which happens only outside a pass.
+// The device of the headless host, which draws nothing and checks every call against the contract of `Device`: objects exist when they are used, images fit their type, mip levels, layers, sample count and format, views take ranges their images hold, passes open and close in turn with attachments that match each other and the pipelines drawn with them, multisampled attachments resolve into images of one sample, draws happen inside a pass with a pipeline, its bindings and every uniform block of its program, debug groups balance, and the surface comes and goes in turn. A broken call throws `std::logic_error`, so the tests of the engine fail on it. It keeps what the last committed frame did for tests to read. It holds the memory of the buffers and images it destroyed for later, the way a device keeps its empty memory blocks, until a trim gives it back, which happens only outside a pass.
 class NullDevice final : public Device {
   public:
     static constexpr int kMaxImageSize = 16 * 1024;
@@ -69,6 +70,7 @@ class NullDevice final : public Device {
         std::size_t imageWriteBytes = 0;
         int bufferWrites = 0;
         int bufferCopies = 0;
+        int mipmapGenerations = 0;
     };
 
     static constexpr std::string_view kMissingCaptureTool = "The headless host draws nothing, so no capture tool records its frames. Capture on a platform whose graphics API has one, such as Metal on macOS or Vulkan and Direct3D under RenderDoc.";
@@ -104,6 +106,7 @@ class NullDevice final : public Device {
     [[nodiscard]] Sampler makeSampler(const SamplerDesc& desc) override;
     [[nodiscard]] Program makeProgram(const ProgramDesc& desc) override;
     [[nodiscard]] Pipeline makePipeline(const PipelineDesc& desc) override;
+    [[nodiscard]] Image makeView(const ViewDesc& desc) override;
     void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) override;
 
     void destroy(Buffer buffer) noexcept override;
@@ -115,6 +118,7 @@ class NullDevice final : public Device {
     void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) override;
     void copyBuffer(Buffer source, std::size_t sourceOffset, Buffer destination, std::size_t destinationOffset, std::size_t size) override;
     void writeImages(std::span<const ImageWrite> writes) override;
+    void generateMipmaps(Image image) override;
 
     void beginPass(const PassDesc& desc) override;
 
@@ -245,10 +249,18 @@ class NullDevice final : public Device {
         Targets targets{};
     };
 
-    // The pass that is open, with the images it draws into: its color attachments, the images they resolve into and its depth stencil image.
+    // A mip level and a layer of an image that a pass draws or resolves into.
+    struct Subresource {
+        Image image{};
+        int mipLevel = 0;
+        int layer = 0;
+    };
+
+    // The pass that is open, with the mip levels and layers it draws into: those of its color attachments, of the images they resolve into and of its depth stencil image.
     struct OpenPass {
         Targets targets{};
-        std::array<std::uint64_t, (kMaxColorTargets * 2) + 1> images{};
+        std::array<Subresource, (kMaxColorTargets * 2) + 1> drawn{};
+        std::size_t drawnCount = 0;
         std::size_t debugGroups = 0;
     };
 
@@ -270,6 +282,7 @@ class NullDevice final : public Device {
     void checkVertexLayout(const PipelineDesc& desc) const;
     [[nodiscard]] Targets describeOffscreenPass(const PassDesc& desc, OpenPass& pass) const;
     void checkColorAttachment(const ColorAttachment& color, ImageInfo::Extent& extent, int& sampleCount) const;
+    void checkDepthStencilAttachment(const DepthStencilAttachment& depthStencil, ImageInfo::Extent& extent, int& sampleCount) const;
     void checkTexture(const TextureBinding& binding, Image image) const;
     void checkSampler(const SamplerBinding& binding, Sampler sampler) const;
     void checkIndexRange(int first, int count) const;
@@ -277,7 +290,7 @@ class NullDevice final : public Device {
     void writeStream(BufferState& state, std::size_t offset, std::size_t size);
     [[nodiscard]] BufferState& getBuffer(Buffer buffer);
     [[nodiscard]] const BufferState& getBuffer(Buffer buffer) const;
-    [[nodiscard]] const ImageDesc& getImage(Image image) const;
+    [[nodiscard]] const ImageRules::Description& getImage(Image image) const;
     [[nodiscard]] const PipelineState& getAppliedPipeline() const;
     void requirePass() const;
     void requireNoPass(ContractError::Rule broken = ContractError::Rule::PassOrder) const;
@@ -288,7 +301,7 @@ class NullDevice final : public Device {
     static void checkSize(const Surface::Size& size);
 
     std::unordered_map<std::uint64_t, BufferState> buffers;
-    std::unordered_map<std::uint64_t, ImageDesc> images;
+    std::unordered_map<std::uint64_t, ImageRules::Description> images;
     std::unordered_map<std::uint64_t, SamplerDesc> samplers;
     std::unordered_map<std::uint64_t, ProgramRecord> programs;
     std::unordered_map<std::uint64_t, PipelineState> pipelines;
@@ -341,6 +354,7 @@ class NullDevice final : public Device {
     FrameRecord currentFrame;
     std::size_t recordedPasses = 0;
     bool imagesWritten = false;
+    bool mipmapsGenerated = false;
     FrameRecord lastFrame;
 };
 

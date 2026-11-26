@@ -98,8 +98,13 @@ void Material::set(std::string_view name, std::span<const float> values) {
 
 void Material::setTexture(std::string_view name, graphics::Texture texture) {
     MaterialResource& state = getChecked();
-    if (state.shader.findTexture(name) == nullptr) {
+    const graphics::Shader::TextureSlot* slot = state.shader.findTexture(name);
+    if (slot == nullptr) {
         throw std::invalid_argument(std::format("The shader \"{}\" has no texture named \"{}\".", state.shader.getName(), name));
+    }
+
+    if (texture.isValid() && texture.getType() != slot->type) {
+        throw std::invalid_argument(std::format("The texture \"{}\" of the shader \"{}\" takes a texture of the kind \"{}\", not \"{}\".", name, state.shader.getName(), graphics::Texture::typeName(slot->type), graphics::Texture::typeName(texture.getType())));
     }
 
     state.textures.insert_or_assign(std::string(name), std::move(texture));

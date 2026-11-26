@@ -1,7 +1,9 @@
 #include "graphics/GraphicsBinding.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <format>
@@ -212,6 +214,12 @@ int GraphicsBinding::newTexture(lua_State* L) {
         }
     }
 
+    const haylen::graphics::Device::TextureData shape = readShape(L, width, height);
+    if (shape.type != haylen::gpu::Device::TextureType::Flat || shape.layers != 1 || shape.depth != 1) {
+        pushLayeredTexture(L, shape, pixels, fill, dynamic);
+        return 1;
+    }
+
     haylen::graphics::Device& device = lua::Runtime::getEngine(L).getGraphics();
     const haylen::graphics::Texture::Options options = lua::TypeConverter::readTextureOptions(L, 3, {kTextureContentFields});
     if (!pixels) {
@@ -221,6 +229,66 @@ int GraphicsBinding::newTexture(lua_State* L) {
 
     const haylen::graphics::Image image(width, height, std::vector<std::uint8_t>(pixels->begin(), pixels->end()));
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
+    return 1;
+}
+
+haylen::graphics::Device::TextureData GraphicsBinding::readShape(lua_State* L, int width, int height) {
+    haylen::graphics::Device::TextureData shape{.width = width, .height = height};
+    if (lua_isnoneornil(L, 3)) {
+        return shape;
+    }
+
+    luaL_checktype(L, 3, LUA_TTABLE);
+    lua::Table::readField(L, 3, "kind", shape.type);
+    const bool cube = shape.type == haylen::gpu::Device::TextureType::Cube || shape.type == haylen::gpu::Device::TextureType::CubeArray;
+    shape.layers = cube ? 6 : 1;
+    lua::Table::readField(L, 3, "layers", shape.layers);
+    lua::Table::readField(L, 3, "depth", shape.depth);
+    return shape;
+}
+
+// The pixels hold every layer of the first level one after another, four bytes a pixel, and a texture that changes in place takes new pixels for each layer with `update`.
+void GraphicsBinding::pushLayeredTexture(lua_State* L, const haylen::graphics::Device::TextureData& shape, std::optional<std::string_view> pixels, haylen::math::Color fill, bool dynamic) {
+    haylen::graphics::Device& device = lua::Runtime::getEngine(L).getGraphics();
+    haylen::graphics::Texture::Options options = lua::TypeConverter::readTextureOptions(L, 3, {kTextureContentFields});
+    if (!pixels) {
+        lua::Stack::push(L, dynamic ? device.createDynamicTexture(shape, fill, options) : device.createTexture(shape, fill, options));
+        return;
+    }
+
+    const std::array<std::span<const std::byte>, 1> levels{std::as_bytes(std::span(pixels->data(), pixels->size()))};
+    haylen::graphics::Device::TextureData data = shape;
+    data.levels = levels;
+    if (dynamic) {
+        lua::Stack::push(L, device.createDynamicTexture(data, options));
+        return;
+    }
+
+    options.mipmaps = options.hasMipmaps();
+    lua::Stack::push(L, device.createTexture(data, options));
+}
+
+// Makes a view of a range of the mip levels and layers of a texture with `texture:view({kind, mipLevel, mipLevels, layer, layers})`, which takes the kind of the texture, every level from the first one and every layer from the first one by default.
+int GraphicsBinding::viewTexture(lua_State* L) {
+    const haylen::graphics::Texture& texture = lua::Userdata::check<haylen::graphics::Texture>(L, 1);
+    haylen::graphics::Device::TextureView view{.type = texture.getType()};
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::checkFields(L, 2, {kViewFields});
+        lua::Table::readField(L, 2, "kind", view.type);
+        lua::Table::readField(L, 2, "mipLevel", view.mipLevel);
+        lua::Table::readField(L, 2, "layer", view.layer);
+    }
+
+    const bool whole = view.type == haylen::gpu::Device::TextureType::Flat || view.type == haylen::gpu::Device::TextureType::Volume;
+    view.mipLevels = texture.getMipLevels() - view.mipLevel;
+    view.layers = whole ? 1 : (view.type == haylen::gpu::Device::TextureType::Cube ? 6 : texture.getLayers() - view.layer);
+    if (!lua_isnoneornil(L, 2)) {
+        lua::Table::readField(L, 2, "mipLevels", view.mipLevels);
+        lua::Table::readField(L, 2, "layers", view.layers);
+    }
+
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().createView(texture, view));
     return 1;
 }
 
@@ -252,7 +320,9 @@ void GraphicsBinding::pushDataTexture(lua_State* L, int width, int height) {
 
     lua_pop(L, 1);
     const haylen::graphics::Texture::Options options = lua::TypeConverter::readTextureOptions(L, 3, {kTextureDataFields});
-    const haylen::graphics::Device::TextureData data{.width = width, .height = height, .format = format, .levels = levels};
+    haylen::graphics::Device::TextureData data = readShape(L, width, height);
+    data.format = format;
+    data.levels = levels;
     lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().createTexture(data, options));
 }
 
@@ -270,7 +340,7 @@ void GraphicsBinding::pushImageTexture(lua_State* L) {
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
 }
 
-// Replaces the pixels of a dynamic texture with `texture:update(pixels, {region})`, every RGBA byte of the texture in a string or a data view, which the upload reads in place, of which only the region, a rectangle in whole pixels, changed. Without a region every pixel changed.
+// Replaces the pixels of a layer of a dynamic texture with `texture:update(pixels, {region, layer})`, every RGBA byte of the layer in a string or a data view, which the upload reads in place, of which only the region, a rectangle in whole pixels, changed. Without a region every pixel changed, and without a layer the first one.
 int GraphicsBinding::updateTexture(lua_State* L) {
     const haylen::graphics::Texture& texture = lua::Userdata::check<haylen::graphics::Texture>(L, 1);
     const std::string_view bytes = lua::TypeConverter::readBytes(L, 2);
@@ -283,11 +353,13 @@ int GraphicsBinding::updateTexture(lua_State* L) {
 
     luaL_checktype(L, 3, LUA_TTABLE);
     lua::Table::checkFields(L, 3, {kUpdateFields});
+    int layer = 0;
+    lua::Table::readField(L, 3, "layer", layer);
     lua_getfield(L, 3, "region");
     const bool changedPart = !lua_isnil(L, -1);
     lua_pop(L, 1);
     if (!changedPart) {
-        device.updateTexture(texture, pixels);
+        device.updateTexture(texture, layer, pixels, {0, 0, texture.getWidth(), texture.getHeight()});
         return 0;
     }
 
@@ -298,7 +370,7 @@ int GraphicsBinding::updateTexture(lua_State* L) {
         throw std::invalid_argument("The region of \"texture:update\" must hold whole pixels.");
     }
 
-    device.updateTexture(texture, pixels, {static_cast<int>(region.x), static_cast<int>(region.y), static_cast<int>(region.width), static_cast<int>(region.height)});
+    device.updateTexture(texture, layer, pixels, {static_cast<int>(region.x), static_cast<int>(region.y), static_cast<int>(region.width), static_cast<int>(region.height)});
     return 0;
 }
 
@@ -324,11 +396,13 @@ void GraphicsBinding::setField(lua_State* L, const char* name, bool value) {
 
 int GraphicsBinding::capabilities(lua_State* L) {
     const haylen::gpu::Device::Capabilities& device = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities();
-    lua_createtable(L, 0, 15);
+    lua_createtable(L, 0, 17);
     setField(L, "maxTextureSize", device.maxImageSize);
     setField(L, "maxArrayLayers", device.maxArrayLayers);
     setField(L, "maxVolumeSize", device.maxVolumeSize);
     setField(L, "maxCubeSize", device.maxCubeSize);
+    setField(L, "cubeArrays", device.cubeArrays);
+    setField(L, "imageViews", device.imageViews);
     setField(L, "originTopLeft", device.originTopLeft);
     lua::Stack::push(L, device.depthRange);
     lua_setfield(L, -2, "depthRange");
@@ -351,12 +425,13 @@ int GraphicsBinding::capabilities(lua_State* L) {
 int GraphicsBinding::formatSupport(lua_State* L) {
     const auto format = lua::Stack::read<haylen::gpu::Device::PixelFormat>(L, 1);
     const haylen::gpu::Device::FormatSupport& support = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities().getFormat(format);
-    lua_createtable(L, 0, 6);
+    lua_createtable(L, 0, 7);
     setField(L, "sample", support.sample);
     setField(L, "filter", support.filter);
     setField(L, "render", support.render);
     setField(L, "blend", support.blend);
     setField(L, "storage", support.storage);
+    setField(L, "mipmaps", support.mipmaps);
     lua_createtable(L, 4, 0);
     int index = 0;
     for (unsigned count = 1; count <= 128; count *= 2) {
@@ -402,6 +477,26 @@ int GraphicsBinding::textureFilter(lua_State* L) {
 
 int GraphicsBinding::textureFormat(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getFormat());
+    return 1;
+}
+
+int GraphicsBinding::textureKind(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getType());
+    return 1;
+}
+
+int GraphicsBinding::textureLayers(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getLayers());
+    return 1;
+}
+
+int GraphicsBinding::textureDepth(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getDepth());
+    return 1;
+}
+
+int GraphicsBinding::textureMipLevels(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getMipLevels());
     return 1;
 }
 
@@ -605,6 +700,7 @@ void GraphicsBinding::install(lua_State* L) {
         .install();
     lua::ClassBuilder<haylen::graphics::Texture>(L)
         .function("update", &lua::Binding::native<&updateTexture>)
+        .function("view", &lua::Binding::native<&viewTexture>)
         .property("width", &textureWidth)
         .property("height", &textureHeight)
         .property("filter", &textureFilter)
@@ -618,6 +714,10 @@ void GraphicsBinding::install(lua_State* L) {
         .property("borderColor", &textureBorderColor)
         .property("mipmaps", &textureMipmaps)
         .property("format", &textureFormat)
+        .property("kind", &textureKind)
+        .property("layers", &textureLayers)
+        .property("depth", &textureDepth)
+        .property("mipLevels", &textureMipLevels)
         .meta("__eq", &lua::Userdata::equal<haylen::graphics::Texture>)
         .install();
     // clang-format on

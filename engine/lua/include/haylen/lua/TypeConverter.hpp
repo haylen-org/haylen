@@ -642,6 +642,16 @@ template <> struct EnumNames<haylen::gpu::Device::BufferUpdate> {
     }
 };
 
+template <> struct EnumNames<haylen::gpu::Device::TextureType> {
+    static std::optional<haylen::gpu::Device::TextureType> fromName(std::string_view name) {
+        const auto found = std::ranges::find(haylen::gpu::Device::kTextureTypeNames, name, &std::pair<std::string_view, haylen::gpu::Device::TextureType>::first);
+        return found != haylen::gpu::Device::kTextureTypeNames.end() ? std::optional(found->second) : std::nullopt;
+    }
+    static std::string_view name(haylen::gpu::Device::TextureType value) {
+        return haylen::graphics::Texture::typeName(value);
+    }
+};
+
 template <> struct EnumNames<haylen::gpu::Device::PixelFormat> {
     static std::optional<haylen::gpu::Device::PixelFormat> fromName(std::string_view name) {
         const auto found = std::ranges::find(haylen::gpu::Device::kPixelFormatNames, name, &std::pair<std::string_view, haylen::gpu::Device::PixelFormat>::first);
