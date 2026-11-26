@@ -6,10 +6,12 @@ from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.folders import Folders
 from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
+from haylen.platforms.android.android_native_build import AndroidNativeBuild
 from haylen.platforms.android.android_signing_key import AndroidSigningKey
 from haylen.platforms.build_product import BuildProduct
 from haylen.platforms.prepared_project import PreparedProject
 from haylen.platforms.product_component import ProductComponent
+from haylen.platforms.symbol_files import SymbolFiles
 from haylen.toolchains.gradle import Gradle
 
 
@@ -64,7 +66,7 @@ class AndroidGradleBuild:
             shutil.copy2(AndroidGradleBuild.newest(outputs / "bundle" / variant.lower(), "*.aab"), AndroidGradleBuild.bundle(prepared))
 
         components = tuple(ProductComponent(project.target, apk, "abi") for project in product.projects)
-        symbols = AndroidGradleBuild.symbols(prepared) if product.configuration is Configuration.RELEASE else ()
+        symbols = (AndroidGradleBuild.symbols(prepared),) if product.configuration is Configuration.RELEASE else ()
         return BuildProduct(prepared, apk, "apk", components, symbols)
 
     def bundle_only(self, prepared: PreparedProject) -> Path:
@@ -92,8 +94,15 @@ class AndroidGradleBuild:
         return found[-1]
 
     @staticmethod
-    def symbols(prepared: PreparedProject) -> tuple[Path, ...]:
-        """The symbol files of the app library of a release for each ABI, which stay in the native build trees for crash reports and never ship."""
-        abis = {project.target.abi for project in prepared.product.projects}
-        found = (prepared.folders.build / "cxx").glob("**/symbols/*/*.debug")
-        return tuple(sorted(path for path in found if abis.intersection(path.parts)))
+    def symbols(prepared: PreparedProject) -> Path:
+        """Places the library of the app of a release for each ABI as it links, with its symbol table and the line tables of the app and of the engine, in a folder per ABI of the symbols of the product. The external native build keeps it in the symbols folder of its tree, while Gradle strips the library that it packs."""
+        library = f"lib{AndroidNativeBuild.APP_LIBRARY}.so"
+        built = sorted((prepared.folders.build / "cxx").glob(f"**/symbols/*/{library}"))
+        files = {}
+        for project in prepared.product.projects:
+            abi = project.target.abi
+            found = [path for path in built if abi in path.parts]
+            if not found:
+                raise BuildFailed(f'The native build of "{abi}" kept no "{library}" with its symbols, although it succeeded. Build the app again with "--verbose" to see the output of Gradle.')
+            files[f"{abi}/{library}"] = found[0]
+        return SymbolFiles.place(prepared.folders.symbols, files)

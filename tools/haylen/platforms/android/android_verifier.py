@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from pathlib import Path
 
 from haylen.content.protected_release import ProtectedRelease
 from haylen.content.protected_releases import ProtectedReleases
@@ -7,6 +8,7 @@ from haylen.content.release_package import ReleasePackage
 from haylen.core.configuration import Configuration
 from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
+from haylen.native.elf_symbols import ElfSymbols
 from haylen.platforms.android.android_apk import AndroidApk
 from haylen.platforms.android.android_asset_packs import AndroidAssetPacks
 from haylen.platforms.android.android_contributions import AndroidContributions
@@ -18,6 +20,7 @@ from haylen.platforms.android.android_native_methods import AndroidNativeMethods
 from haylen.platforms.android.android_platform import AndroidPlatform
 from haylen.platforms.android.elf_library import ElfLibrary
 from haylen.platforms.build_product import BuildProduct
+from haylen.platforms.symbol_resolution import SymbolResolution
 from haylen.platforms.verification_check import VerificationCheck
 from haylen.platforms.verification_report import VerificationReport
 
@@ -30,6 +33,8 @@ class AndroidVerifier:
     LOAD_ENTRY = "JNI_OnLoad"
     LISTED_NATIVES = 3
     PLUGIN_CLASS_PREFIX = "dev.haylen.plugin."
+    # The folder of a bundle where Gradle puts the debug information of the native libraries, which Google Play reads.
+    BUNDLE_SYMBOLS = "BUNDLE-METADATA/com.android.tools.build.debugsymbols"
 
     def __init__(self, context: ToolingContext, releases: Callable[[], ProtectedReleases]) -> None:
         self.context = context
@@ -42,7 +47,42 @@ class AndroidVerifier:
         checks = [*self.libraries(product, entries), *self.natives(product, apk, entries), *self.manifest(product, apk)]
         if resolved.configuration is Configuration.RELEASE:
             checks += self.release(product, apk, entries)
+            checks += self.symbols(product, apk, entries)
         return VerificationReport(tuple(checks))
+
+    def symbols(self, product: BuildProduct, apk: AndroidApk, entries: set[str]) -> list[VerificationCheck]:
+        """Checks for every ABI of a release that the APK ships the library of the app stripped, that the library as it links, which the symbols of the product keep, resolves an address of the engine through its line tables, and that a bundle carries its debug information to Google Play."""
+        resolver = ElfSymbols()
+        library = f"lib{AndroidNativeBuild.APP_LIBRARY}.so"
+        bundle = AndroidGradleBuild.bundle(product.prepared)
+        checks = AndroidVerifier.bundle_symbols(product, bundle) if bundle.is_file() else []
+        for project in product.prepared.product.projects:
+            abi = project.target.abi
+            entry = f"lib/{abi}/{library}"
+            if entry in entries:
+                unstripped = ElfSymbols.unstripped_sections(apk.read(entry), f'"{entry}" of `{Repository.shown(product.path)}`')
+                if unstripped:
+                    listed = ", ".join(f'"{name}"' for name in unstripped[: AndroidVerifier.LISTED_NATIVES])
+                    checks.append(
+                        VerificationCheck.failed(
+                            "stripped", f'The APK ships "{entry}" with the sections {listed}, which only the symbols of the build hold. Build the app again.', AndroidVerifier.SOURCE
+                        )
+                    )
+            symbols = product.prepared.folders.symbols / abi / library
+            checks.append(SymbolResolution.verify(resolver.resolve(symbols), symbols, AndroidVerifier.SOURCE))
+        return checks
+
+    @staticmethod
+    def bundle_symbols(product: BuildProduct, bundle: Path) -> list[VerificationCheck]:
+        """Checks that the bundle of a release carries the debug information of the library of the app for every ABI to Google Play."""
+        library = f"lib{AndroidNativeBuild.APP_LIBRARY}.so"
+        bundled = AndroidApk(bundle).entries()
+        lacking = [project.target.abi for project in product.prepared.product.projects if f"{AndroidVerifier.BUNDLE_SYMBOLS}/{project.target.abi}/{library}.dbg" not in bundled]
+        if lacking:
+            listed = ", ".join(f'"{abi}"' for abi in lacking)
+            detail = f'The bundle `{Repository.shown(bundle)}` carries no debug information of "{library}" for {listed}, so Google Play would show its crashes without the files and lines of the engine. Build the app again.'
+            return [VerificationCheck.failed("bundleSymbols", detail, AndroidVerifier.SOURCE)]
+        return [VerificationCheck.passed("bundleSymbols", f'The bundle carries the debug information of "{library}" to Google Play.', AndroidVerifier.SOURCE)]
 
     def libraries(self, product: BuildProduct, entries: set[str]) -> list[VerificationCheck]:
         resolved = product.prepared.product

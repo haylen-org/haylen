@@ -33,6 +33,11 @@ class ProductFolders:
         return self.root / "products"
 
     @property
+    def symbols(self) -> Path:
+        """The symbol files of a Release build, with the line tables of the app and of the engine, which crash reports read and which never ship."""
+        return self.root / "symbols"
+
+    @property
     def package(self) -> Path:
         """The staged copy of the package, with every plugin at `plugins/<id>/`."""
         return self.root / "package"

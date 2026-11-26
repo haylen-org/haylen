@@ -32,9 +32,12 @@ from haylen.platforms.preparation import Preparation
 from haylen.platforms.prepared_project import PreparedProject
 from haylen.platforms.product_component import ProductComponent
 from haylen.platforms.product_folders import ProductFolders
+from haylen.platforms.symbol_files import SymbolFiles
+from haylen.platforms.symbol_resolution import SymbolResolution
 from haylen.platforms.target_description import TargetDescription
 from haylen.platforms.verification_check import VerificationCheck
 from haylen.platforms.verification_report import VerificationReport
+from haylen.platforms.web.wasm_symbols import WasmSymbols
 from haylen.platforms.web.web_port import WebPort
 from haylen.platforms.web.web_project import WebProject
 from haylen.platforms.web.web_site import WebSite
@@ -52,6 +55,8 @@ class WebBackend(PlatformBackend):
     SOURCE = "web"
     # The runtime of the page and the files that it loads from next to its script, which every site holds.
     SITE_FILES = ("index.html", WebProject.LOADER, WebProject.CONFIG, *WebPort.PLAYER_FILES)
+    # The symbol map and the source map of the runtime of a release, which `haylen_add_app` keeps beside it in its tree, named after the page and the module that it links.
+    SYMBOL_FILES = ("haylen.html.symbols", "haylen.wasm.map")
     WEB_MODULE = {
         "type": "object",
         "additionalProperties": False,
@@ -158,9 +163,29 @@ class WebBackend(PlatformBackend):
         if release is not None:
             site.minify()
         components = tuple(ProductComponent(project.target, folders.products / "haylen.wasm", "runtime") for project in resolved.projects)
-        symbols = WebBackend.cmake_folder(folders) / "symbols"
-        auxiliary = (symbols,) if symbols.is_dir() else ()
+        auxiliary = ()
+        if release is not None:
+            built = WebBackend.cmake_folder(folders) / "symbols" / "haylen"
+            auxiliary = (SymbolFiles.place(folders.symbols, {name: built / name for name in WebBackend.SYMBOL_FILES}),)
         return BuildProduct(prepared, folders.products, "site", components, auxiliary)
+
+    @staticmethod
+    def symbols(product: BuildProduct) -> list[VerificationCheck]:
+        """Checks that the WebAssembly module of a release ships without its symbols and that the symbol map and the source map beside it resolve an address of the engine."""
+        module = WasmSymbols(product.path / "haylen.wasm")
+        checks = []
+        unstripped = module.unstripped_sections()
+        if unstripped:
+            listed = ", ".join(f'"{name}"' for name in unstripped)
+            checks.append(
+                VerificationCheck.failed(
+                    "stripped", f"The module `{Repository.shown(module.module)}` ships the sections {listed}, which only the symbols of the build hold. Build the app again.", WebBackend.SOURCE
+                )
+            )
+        folder = product.prepared.folders.symbols
+        symbol_map, source_map = (folder / name for name in WebBackend.SYMBOL_FILES)
+        checks.append(SymbolResolution.verify(module.resolve(symbol_map, source_map), folder, WebBackend.SOURCE))
+        return checks
 
     def link(self, prepared: PreparedProject) -> Path:
         """Links the runtime of the page with Emscripten and returns the folder of its files."""
@@ -196,6 +221,7 @@ class WebBackend(PlatformBackend):
                 VerificationCheck.failed("release", f'The site holds the zipped package "{path.relative_to(site).as_posix()}", while a release ships only its protected release.', WebBackend.SOURCE)
                 for path in sorted(site.rglob("*.zip"))
             ]
+            checks += WebBackend.symbols(product)
         return VerificationReport(tuple(checks))
 
     def run(self, product: BuildProduct, launch: LaunchRequest) -> None:

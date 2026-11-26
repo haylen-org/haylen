@@ -9,6 +9,7 @@ from haylen.content.release_package import ReleasePackage
 from haylen.core.app_kind import AppKind
 from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
+from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
@@ -41,6 +42,7 @@ from haylen.platforms.prepared_project import PreparedProject
 from haylen.platforms.product_folders import ProductFolders
 from haylen.platforms.signing_request import SigningRequest
 from haylen.platforms.target_description import TargetDescription
+from haylen.platforms.verification_check import VerificationCheck
 from haylen.platforms.verification_report import VerificationReport
 from haylen.toolchains.android_debug_bridge import AndroidDebugBridge
 from haylen.toolchains.android_ndk import AndroidNdk
@@ -158,6 +160,10 @@ class AndroidBackend(PlatformBackend):
         bundle = AndroidGradleBuild.bundle(product.prepared)
         if not AndroidGradleBuild.names(product.prepared, AndroidGradleBuild.DELIVERED_PACKS):
             bundle = AndroidGradleBuild(self.context).bundle_only(product.prepared)
+        if product.prepared.product.configuration is Configuration.RELEASE:
+            failed = [check.detail for check in AndroidVerifier.bundle_symbols(product, bundle) if check.outcome is VerificationCheck.Outcome.FAILED]
+            if failed:
+                raise BuildFailed(failed[0])
         request.output.mkdir(parents=True, exist_ok=True)
         if request.format == AndroidBackend.BUNDLE:
             copied = request.output / bundle.name

@@ -29,6 +29,7 @@ from haylen.platforms.preparation import Preparation
 from haylen.platforms.prepared_project import PreparedProject
 from haylen.platforms.product_component import ProductComponent
 from haylen.platforms.product_folders import ProductFolders
+from haylen.platforms.symbol_files import SymbolFiles
 from haylen.platforms.verification_report import VerificationReport
 
 
@@ -116,7 +117,10 @@ class AppleBackend(PlatformBackend):
 
         auxiliary = []
         if product.configuration is Configuration.RELEASE:
-            auxiliary.append(products / f"{product.app.name}.app.dSYM")
+            # Xcode writes a dSYM for the app and for each of its app extensions, which hold the line tables of the engine that the app links.
+            app_dsym = products / f"{path.name}.dSYM"
+            dsyms = {found.name: found for found in sorted(products.glob("*.dSYM"))} | {app_dsym.name: app_dsym}
+            auxiliary.append(SymbolFiles.place(prepared.folders.symbols, dsyms))
             release = ProtectedReleases.last(product.app, AppleTarget.RELEASE_PROFILE)
             auxiliary += BackgroundAssetPacks(self.context).package(product.primary, target, release, prepared.folders.products / "asset-packs")
         return BuildProduct(prepared, path, "app", components, tuple(auxiliary))

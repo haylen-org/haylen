@@ -13,8 +13,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # The engine and its dependencies use no C++ modules, so their sources compile without the module scan, which would preprocess each of them once more.
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
-# MSVC writes the debug information into each object instead of one PDB that every compile of a target shares, so parallel compiles never wait for that file and compiler caches keep the objects.
-set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
 
 set(HAYLEN_ENGINE_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL "Haylen engine source directory.")
 set(HAYLEN_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE INTERNAL "Haylen CMake module directory.")
@@ -44,17 +42,24 @@ else()
 endif()
 option(HAYLEN_WARNINGS_AS_ERRORS "Fail the build of the targets of the engine on any compiler warning. The variable HAYLEN_WARNINGS_AS_ERRORS of the environment names it for every build tree." ${haylen_warnings_as_errors})
 
-# The file and line of each instruction are what stack traces and sanitizer reports read, in objects about a third of the size of those that describe the code fully for a debugger, as continuous integration builds them for its compiler caches. MSVC has no format with lines alone, so its objects carry no debug information then.
-if(HAYLEN_DEBUG_INFO STREQUAL "LINES")
-  if(MSVC)
-    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "")
-  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options("$<$<CONFIG:Debug,RelWithDebInfo>:-g1>")
-  else()
-    add_compile_options("$<$<CONFIG:Debug,RelWithDebInfo>:-gline-tables-only>")
-  endif()
-elseif(NOT HAYLEN_DEBUG_INFO STREQUAL "FULL")
+# The file and line of each instruction are what stack traces, sanitizer reports and crash reports read, in objects about a third of the size of those that describe the code fully for a debugger. Continuous integration builds its Debug trees with them for its compiler caches, and every Release build keeps them, so the symbol files of a release app resolve the frames of the engine and its dependencies, while the binaries that ship are stripped. MSVC has no format with lines alone, so its Release objects carry the full debug information that the PDB of an app needs, and its Debug objects carry none with `LINES`.
+if(NOT HAYLEN_DEBUG_INFO MATCHES "^(FULL|LINES)$")
   message(FATAL_ERROR "The option \"HAYLEN_DEBUG_INFO\" is \"FULL\" or \"LINES\", not \"${HAYLEN_DEBUG_INFO}\".")
+endif()
+if(HAYLEN_DEBUG_INFO STREQUAL "LINES")
+  set(haylen_line_configurations "Debug,RelWithDebInfo,Release")
+else()
+  set(haylen_line_configurations "Release")
+endif()
+# MSVC writes the debug information into each object instead of one PDB that every compile of a target shares, so parallel compiles never wait for that file and compiler caches keep the objects.
+if(MSVC AND HAYLEN_DEBUG_INFO STREQUAL "LINES")
+  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Release>:Embedded>")
+elseif(MSVC)
+  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo,Release>:Embedded>")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_compile_options("$<$<CONFIG:${haylen_line_configurations}>:-g1>")
+else()
+  add_compile_options("$<$<CONFIG:${haylen_line_configurations}>:-gline-tables-only>")
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${HAYLEN_CMAKE_DIR}")

@@ -12,10 +12,12 @@ from haylen.platforms.apple.app_bundle import AppBundle
 from haylen.platforms.apple.apple_contributions import AppleContributions
 from haylen.platforms.apple.apple_sdk_files import AppleSdkFiles
 from haylen.platforms.apple.apple_target import AppleTarget
+from haylen.platforms.apple.dsym_symbols import DsymSymbols
 from haylen.platforms.apple.info_plist_keys import InfoPlistKeys
 from haylen.platforms.apple.property_lists import PropertyLists
 from haylen.platforms.backend_registry import BackendRegistry
 from haylen.platforms.build_product import BuildProduct
+from haylen.platforms.symbol_resolution import SymbolResolution
 from haylen.platforms.verification_check import VerificationCheck
 from haylen.platforms.verification_report import VerificationReport
 
@@ -92,6 +94,9 @@ class AppleVerifier:
             releases = ProtectedReleases.locate(self.context, BackendRegistry.discover(self.context))
             folder = bundle.package.relative_to(product.path).as_posix()
             checks += releases.inspection(ReleasePackage.of(resolved)).checks(ReleaseEntry.of_folder(product.path), folder)
+            dsym = product.prepared.folders.symbols / f"{product.path.name}.dSYM"
+            symbols = DsymSymbols(self.context)
+            checks += [SymbolResolution.verify(symbols.resolve(dsym, bundle.executable.name, architecture), dsym, AppleVerifier.SOURCE) for architecture in sorted(built)]
         return VerificationReport(tuple(checks))
 
     @staticmethod

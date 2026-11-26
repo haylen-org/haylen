@@ -105,23 +105,36 @@ function(haylen_setup_windows_app target console)
   target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/platform/windows/haylen.manifest")
 endfunction()
 
-# Builds a release without the symbols of the app, which stay in the folder `symbols/<target>` of the build tree for crash reports: a dSYM on macOS, the symbol map of Emscripten, the PDB of the public symbols on Windows and a debug file that the stripped binary names elsewhere.
+# Builds a release without symbols, which stay in the folder `symbols/<target>` of the build tree for crash reports with the file and line of each instruction of the app and of the engine, whose Release SDKs keep them: a dSYM on macOS, the source map and the symbol map of the WebAssembly module of Emscripten, the PDB on Windows, the library as it links on Android, whose Gradle build strips the library that it packs, and a debug file that the stripped binary names elsewhere.
 function(haylen_harden_release target)
   set(folder "${CMAKE_BINARY_DIR}/symbols/${target}")
   file(MAKE_DIRECTORY "${folder}")
+  if(MSVC)
+    set_target_properties(${target} PROPERTIES MSVC_DEBUG_INFORMATION_FORMAT Embedded)
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(${target} PRIVATE -g1)
+  else()
+    target_compile_options(${target} PRIVATE -gline-tables-only)
+  endif()
   if(APPLE)
-    target_link_options(${target} PRIVATE "LINKER:-dead_strip")
+    # The link-time optimization of the engine writes its objects where dsymutil reads their debug information.
+    target_link_options(${target} PRIVATE "LINKER:-dead_strip" "LINKER:-object_path_lto,${CMAKE_CURRENT_BINARY_DIR}/lto/${target}")
     add_custom_command(TARGET ${target} POST_BUILD
       COMMAND xcrun dsymutil "$<TARGET_FILE:${target}>" -o "${folder}/$<TARGET_FILE_NAME:${target}>.dSYM"
       COMMAND xcrun strip "$<TARGET_FILE:${target}>"
       VERBATIM
     )
   elseif(EMSCRIPTEN)
-    # Emscripten minifies the runtime it links, and the workers next to the page go through the terser it ships.
-    target_link_options(${target} PRIVATE --emit-symbol-map)
+    # The source map keeps every optimization of the link, which DWARF would limit, and the shipped module drops the address of the map, which never reaches the site. Emscripten minifies the runtime it links, and the workers next to the page go through the terser it ships.
+    target_link_options(${target} PRIVATE -gsource-map --emit-symbol-map)
+    execute_process(COMMAND "${EMSCRIPTEN_ROOT_PATH}/em-config${EMCC_SUFFIX}" LLVM_ROOT OUTPUT_VARIABLE llvm_root OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+    find_program(HAYLEN_WASM_OBJCOPY llvm-objcopy HINTS "${llvm_root}" NO_DEFAULT_PATH REQUIRED)
     set(terser "${EMSCRIPTEN_ROOT_PATH}/node_modules/terser/bin/terser")
+    set(module "$<TARGET_FILE_DIR:${target}>/$<TARGET_FILE_BASE_NAME:${target}>.wasm")
     add_custom_command(TARGET ${target} POST_BUILD
       COMMAND "${CMAKE_COMMAND}" -E rename "$<TARGET_FILE:${target}>.symbols" "${folder}/$<TARGET_FILE_NAME:${target}>.symbols"
+      COMMAND "${CMAKE_COMMAND}" -E rename "${module}.map" "${folder}/$<TARGET_FILE_BASE_NAME:${target}>.wasm.map"
+      COMMAND "${HAYLEN_WASM_OBJCOPY}" --remove-section=sourceMappingURL "${module}"
       COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} "${terser}" "$<TARGET_FILE_DIR:${target}>/haylen-audio-worklet.js" --compress --mangle --output "$<TARGET_FILE_DIR:${target}>/haylen-audio-worklet.js"
       COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} "${terser}" "$<TARGET_FILE_DIR:${target}>/haylen-content-store.js" --compress --mangle --output "$<TARGET_FILE_DIR:${target}>/haylen-content-store.js"
       VERBATIM
@@ -129,13 +142,17 @@ function(haylen_harden_release target)
   elseif(MSVC)
     target_link_options(${target} PRIVATE /DEBUG /OPT:REF /OPT:ICF)
     set_target_properties(${target} PROPERTIES PDB_OUTPUT_DIRECTORY "${folder}")
+  elseif(ANDROID)
+    target_link_options(${target} PRIVATE "LINKER:--gc-sections")
+    # The library exports only the entry points that Java and GameActivity look up.
+    file(WRITE "${folder}/exports.map" "{\n  global:\n    JNI_OnLoad;\n    Java_*;\n    GameActivity_onCreate;\n  local:\n    *;\n};\n")
+    target_link_options(${target} PRIVATE "LINKER:--version-script=${folder}/exports.map")
+    add_custom_command(TARGET ${target} POST_BUILD
+      COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${target}>" "${folder}/$<TARGET_FILE_NAME:${target}>"
+      VERBATIM
+    )
   else()
     target_link_options(${target} PRIVATE "LINKER:--gc-sections")
-    if(ANDROID)
-      # The library exports only the entry points that Java and GameActivity look up.
-      file(WRITE "${folder}/exports.map" "{\n  global:\n    JNI_OnLoad;\n    Java_*;\n    GameActivity_onCreate;\n  local:\n    *;\n};\n")
-      target_link_options(${target} PRIVATE "LINKER:--version-script=${folder}/exports.map")
-    endif()
     add_custom_command(TARGET ${target} POST_BUILD
       COMMAND "${CMAKE_OBJCOPY}" --only-keep-debug "$<TARGET_FILE:${target}>" "${folder}/$<TARGET_FILE_NAME:${target}>.debug"
       COMMAND "${CMAKE_OBJCOPY}" --strip-all "--add-gnu-debuglink=${folder}/$<TARGET_FILE_NAME:${target}>.debug" "$<TARGET_FILE:${target}>"

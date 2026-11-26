@@ -187,13 +187,13 @@ The Windows project that the desktop backend generates embeds the same manifest 
 
 A Release build ships the [protected release](../content/content.md) of the app instead of the package as it is. The tooling builds it with the content tool of the host and the keys of the app from its [key folder](../content/content.md#key-folders), writes the bootstrap of the app next to it and hands both to the function, the release in `CONTENT` and the bootstrap in `BOOTSTRAP`. So a C++ app and a Lua app read their content through the same code, and CMake never builds a release itself.
 
-A build with a `BOOTSTRAP` also builds without symbols, which stay in `symbols/<target>/` of the build tree for crash reports:
+A build with a `BOOTSTRAP` also builds without symbols, which stay in `symbols/<target>/` of the build tree for crash reports. The sources of the app compile with the file and line of each instruction, as the engine of the Release SDKs does, so the symbols resolve the frames of the app and of the engine:
 
-- Android and Linux link with `--gc-sections` and ship stripped. The symbols stay in a `.debug` file, which the binary names in its debug link.
-- Windows links with `/DEBUG /OPT:REF /OPT:ICF` and keeps the PDB of the public symbols in that folder.
-- macOS links with dead code stripping. The executable leaves its symbols in a dSYM, `<target>.dSYM`, and ships stripped.
-- The web keeps the symbol map of Emscripten in that folder, and minifies the processor of the audio output and the worker of the content store next to the page.
-- The Android library exports only the entry points of Java and GameActivity.
+- Linux links with `--gc-sections` and ships stripped. The symbols stay in a `.debug` file, which the binary names in its debug link.
+- Android links with `--gc-sections` and exports only the entry points of Java and GameActivity. The folder keeps the library as it links, and Gradle strips the library that it packs.
+- Windows links with `/DEBUG /OPT:REF /OPT:ICF` and keeps the PDB in that folder.
+- macOS links with dead code stripping, and the linker keeps the objects of link-time optimization where `dsymutil` reads them. The executable leaves its symbols in a dSYM, `<target>.dSYM`, and ships stripped.
+- The web keeps the source map and the symbol map of Emscripten in that folder and drops the address of the source map from the module, and it minifies the processor of the audio output and the worker of the content store next to the page.
 
 ## An app written in C++
 

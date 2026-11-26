@@ -25,6 +25,7 @@ from haylen.core.target_id import TargetId
 from haylen.development.app_run import AppRun
 from haylen.development.development_reach import DevelopmentReach
 from haylen.native.cmake_tree import CMakeTree
+from haylen.native.elf_symbols import ElfSymbols
 from haylen.platforms.backend_registry import BackendRegistry
 from haylen.platforms.build_product import BuildProduct
 from haylen.platforms.capability import Capability
@@ -40,6 +41,7 @@ from haylen.platforms.desktop.desktop_verifier import DesktopVerifier
 from haylen.platforms.desktop.host_native_libraries import HostNativeLibraries
 from haylen.platforms.desktop.inno_setup import InnoSetup
 from haylen.platforms.desktop.linux_entries import LinuxEntries
+from haylen.platforms.desktop.pdb_symbols import PdbSymbols
 from haylen.platforms.environment_report import EnvironmentReport
 from haylen.platforms.generated_tree import GeneratedTree
 from haylen.platforms.launch_request import LaunchRequest
@@ -52,7 +54,10 @@ from haylen.platforms.preparation import Preparation
 from haylen.platforms.prepared_project import PreparedProject
 from haylen.platforms.product_component import ProductComponent
 from haylen.platforms.product_folders import ProductFolders
+from haylen.platforms.symbol_files import SymbolFiles
+from haylen.platforms.symbol_resolution import SymbolResolution
 from haylen.platforms.target_description import TargetDescription
+from haylen.platforms.verification_check import VerificationCheck
 from haylen.platforms.verification_report import VerificationReport
 from haylen.plugins.core_contributions import CoreContributions
 from haylen.toolchains.build_tools import BuildTools
@@ -69,6 +74,9 @@ class DesktopBackend(PlatformBackend):
     STEAM = "steam"
     PACKAGES = (".exe", ".deb", ".AppImage")
     DEVICES = {"windows": "This PC", "linux": "This computer"}
+    # The symbol files that `haylen_add_app` keeps beside a release: the debug file on Linux and the PDB on Windows.
+    SYMBOL_SUFFIXES = (".debug", ".pdb")
+    LISTED_SECTIONS = 3
     # The `.deb` lists the libraries of the system that the app links, which CPack finds with these tools of Debian.
     # The AppImage generator of CPack, which the Linux installer packs with, came with CMake 4.2.
     APPIMAGE_CPACK = (4, 2)
@@ -216,8 +224,10 @@ class DesktopBackend(PlatformBackend):
         app = DesktopApp.of_product(prepared.product)
         layout = DesktopLayout.of(prepared.product.platform, app, folders.products)
         components = tuple(ProductComponent(project.target, layout.executable, "executable") for project in prepared.product.projects)
-        symbols = tree.folder / "symbols"
-        auxiliary = (symbols,) if symbols.is_dir() else ()
+        auxiliary = ()
+        if prepared.product.configuration is Configuration.RELEASE:
+            built = sorted(path for path in (tree.folder / "symbols").glob("*/*") if path.suffix in DesktopBackend.SYMBOL_SUFFIXES)
+            auxiliary = (SymbolFiles.place(folders.symbols, {path.name: path for path in built}),)
         return BuildProduct(prepared, folders.products, "app", components, auxiliary)
 
     def verify(self, product: BuildProduct) -> VerificationReport:
@@ -228,7 +238,28 @@ class DesktopBackend(PlatformBackend):
         if resolved.configuration is Configuration.RELEASE:
             source = ReleasePackage.of(resolved)
             checks += self.releases().inspection(source).checks(ReleaseEntry.of_folder(product.path), layout.package)
+            checks += self.symbols(product, layout)
         return VerificationReport(tuple(checks))
+
+    def symbols(self, product: BuildProduct, layout: DesktopLayout) -> list[VerificationCheck]:
+        """Checks that the executable of a release ships stripped on Linux and that its symbols resolve an address of the engine: the debug file on Linux, whose line tables the tooling reads, and the PDB with DbgHelp on Windows."""
+        folder = product.prepared.folders.symbols
+        if product.prepared.product.platform == "windows":
+            pdb = folder / f"{layout.executable.stem}.pdb"
+            return [SymbolResolution.verify(PdbSymbols().resolve(pdb), pdb, DesktopBackend.NAME)]
+
+        checks = []
+        unstripped = ElfSymbols.unstripped_sections(layout.executable.read_bytes(), f"`{Repository.shown(layout.executable)}`")
+        if unstripped:
+            listed = ", ".join(f'"{name}"' for name in unstripped[: DesktopBackend.LISTED_SECTIONS])
+            checks.append(
+                VerificationCheck.failed(
+                    "stripped", f"The executable `{Repository.shown(layout.executable)}` ships the sections {listed}, which only its debug file holds. Build the app again.", DesktopBackend.NAME
+                )
+            )
+        debug = folder / f"{layout.executable.name}.debug"
+        checks.append(SymbolResolution.verify(ElfSymbols().resolve(debug), debug, DesktopBackend.NAME))
+        return checks
 
     def run(self, product: BuildProduct, launch: LaunchRequest) -> None:
         """Registers the links of the URL schemes of the app for the installed app and runs it, in development with the Debug configuration."""

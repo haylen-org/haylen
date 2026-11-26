@@ -19,7 +19,7 @@ val haylenKeys = listOf("debug", "release").mapNotNull { type -> haylenKey(type)
 
 android {
     namespace = {{NAMESPACE}}
-    // The NDK that built the native libraries of the app strips their debug information from the APK, while the build folder keeps it for the debugger.
+    // The NDK that built the native libraries of the app strips their symbols and debug information from the APK, while the build folder keeps them for the debugger and for crash reports.
     ndkVersion = {{NDK_VERSION}}
     compileSdk {
         version = release({{COMPILE_SDK}}) {
@@ -68,6 +68,10 @@ android {
             isShrinkResources = {{MINIFY}}
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfig = signingConfigs.findByName("release")
+            // The bundle carries the line tables of the native libraries to Google Play, which shows the function, the file and the line of each native frame of a crash.
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
 
