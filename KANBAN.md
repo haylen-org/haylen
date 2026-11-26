@@ -5,13 +5,13 @@
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30 days) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-323 · Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU](#kb-323)**<br>🟠 high · `fix` · 6/10 | — | — | **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 | — | — | **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 | — | — | **[KB-322 · Corrigir os defeitos confirmados da revisão da RHI no Direct3D](#kb-322)**<br>🟠 high · `fix` · 6/10 | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 | — | — | **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 | — | — | **[KB-322 · Corrigir os defeitos confirmados da revisão da RHI no Direct3D](#kb-322)**<br>🟠 high · `fix` · 6/10 | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 |
 | **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 | — | — | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 | **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 |
 | **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | — | — | — | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 | **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 |
 | **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | — | — | — | **[KB-330 · No Android, o teclado fecha às vezes quando o aparelho gira com um campo editando](#kb-330)**<br>🟠 high · `bug` · 4/10 | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 |
-| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
+| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 |
+| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
 | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
 | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | — | — | — | — | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
 | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | — | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
@@ -273,7 +273,6 @@
 | **[KB-296 · Texturas HDR carregadas de arquivo no 2D e no 3D](#kb-296)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-304 · Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo](#kb-304)**<br>🟡 medium · `task` · 7/10 | — | — | — | — | — |
 | **[KB-319 · Juntar famílias de métodos que descrevem um só estado num método com um enum](#kb-319)**<br>🟡 medium · `refactor` · 6/10 | — | — | — | — | — |
-| **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | — | — |
 | **[KB-333 · No Android, o campo levantado não cai e sobe de novo quando o aparelho gira com o teclado aberto](#kb-333)**<br>🟡 medium · `bug` · 4/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
@@ -8038,11 +8037,17 @@ O dono não quer limitações como a dos aparelhos do iOS do [KB-313](#kb-313). 
 ### KB-315
 
 - **Title:** O player gera o mesmo identificador quando roda direto uma pasta sem identificador
-- **Status:** doing
+- **Status:** testing
 - **Type:** fix
 - **Priority:** medium
 - **Complexity:** 2
-- **Progress:** No `main` (`e1fdf553b`): uma pasta ou zip no disco sem `identifier` recebe na engine o mesmo identificador das ferramentas, por uma regra só: `local.`, as letras e os dígitos ASCII do nome e 8 dígitos hexadecimais do BLAKE2b do caminho resolvido. O `core::AppIdentifier` e o `AppIdentifier` das ferramentas são testados contra o mesmo arquivo de casos. Falta um caso: um pacote que só existe na memória, como o que um `haylen.launch` baixa, ainda recebe `com.haylen.app`. A regra vai cobrir esse caso também, com o hash do endereço de onde o pacote veio.
+- **Progress:** No `main` (`e1fdf553b` e `53db97399`), com uma regra só para todo pacote sem `identifier`: `local.`, as letras da última parte do local e 8 dígitos hexadecimais do BLAKE2b do local inteiro. O local de cada tipo de pacote:
+  - uma pasta ou zip no disco: o caminho resolvido;
+  - um pacote lançado: a opção nova `address` do `haylen.launch`;
+  - um projeto do editor web: a origem da página com o `storageNamespace`;
+  - os outros pacotes na memória: o local que quem os cria informa.
+
+Um pacote sem identificador e sem local para o app com a frase que pede para construir de novo com `haylen app build`. As telas de "parado" e "faltando" não abrem armazenamento. Os testes da engine, do Lua e das ferramentas leem os mesmos casos. Os 3047 testes da engine passam, também com os dois sanitizers, junto com as verificações de página da web e do editor. Falta a execução completa da CI.
 
 #### Description
 
@@ -8465,11 +8470,11 @@ A execução completa 45711109150 falhou no teste de UI do Android `TextInputTes
 ### KB-331
 
 - **Title:** A verificação de cada commit pega os avisos que só o GCC e o MSVC dão
-- **Status:** todo
+- **Status:** doing
 - **Type:** improvement
 - **Priority:** medium
 - **Complexity:** 5
-- **Progress:** Ainda não começou.
+- **Progress:** Começou no trabalho das ferramentas.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
