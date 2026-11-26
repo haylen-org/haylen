@@ -18,6 +18,11 @@ if(HAYLEN_SANITIZERS STREQUAL "THREAD")
   add_link_options(-fsanitize=thread)
 endif()
 
+# AddressSanitizer and UndefinedBehaviorSanitizer instrument the targets of the engine, which `haylen_enable_warnings` names, and every program and library of the build links their runtime, since each one that links an object of the engine, such as the player, links instrumented code.
+if(HAYLEN_SANITIZERS STREQUAL "ADDRESS")
+  add_link_options(-fsanitize=address,undefined)
+endif()
+
 # The fuzzer learns from the coverage of everything it reaches, so a fuzzing build instruments every target, the dependencies included, and checks their memory with AddressSanitizer. Only a Clang that links libFuzzer builds it.
 if(HAYLEN_BUILD_FUZZERS)
   include(CheckCXXSourceCompiles)
@@ -41,7 +46,6 @@ function(haylen_enable_warnings target)
 
   if(HAYLEN_SANITIZERS STREQUAL "ADDRESS")
     target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
-    target_link_options(${target} PRIVATE -fsanitize=address,undefined)
   endif()
 endfunction()
 
