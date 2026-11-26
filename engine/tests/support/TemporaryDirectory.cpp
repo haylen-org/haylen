@@ -1,7 +1,10 @@
 #include "support/TemporaryDirectory.hpp"
 
+#include <gtest/gtest.h>
+
 #include <atomic>
 #include <random>
+#include <system_error>
 
 #include "support/TestFiles.hpp"
 
@@ -14,6 +17,9 @@ TemporaryDirectory::TemporaryDirectory() : path(makeUniquePath()) {
 TemporaryDirectory::~TemporaryDirectory() {
     std::error_code error;
     std::filesystem::remove_all(path, error);
+    if (error) {
+        ADD_FAILURE() << "The test could not remove its temporary folder \"" << path.string() << "\": " << error.message();
+    }
 }
 
 void TemporaryDirectory::write(const std::string& relative, const std::string& content) const {

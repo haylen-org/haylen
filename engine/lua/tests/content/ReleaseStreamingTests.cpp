@@ -24,10 +24,10 @@
 
 namespace haylen::lua::content {
 
-// Plays sounds that stream from a protected release, whose reader decrypts the chunks that a range covers and nothing else.
-class ReleaseStreamingTest : public haylen::audio::MixerFixture {
+// Plays sounds that stream from a protected release, whose reader decrypts the chunks that a range covers and nothing else. The release is the first base, so its folder goes only after the mixer of the second base let go of the voices whose readers hold its files open.
+class ReleaseStreamingTest : protected test::ReleaseFixture, public haylen::audio::MixerFixture {
   protected:
-    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
+    ReleaseStreamingTest() : test::ReleaseFixture(std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections) {}
 };
 
 TEST_F(ReleaseStreamingTest, DecryptsOnlyTheChunksAroundTheCursorOfAVoice) {
@@ -36,11 +36,11 @@ TEST_F(ReleaseStreamingTest, DecryptsOnlyTheChunksAroundTheCursorOfAVoice) {
     files.emplace("haylen.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("return {}"));
     files.emplace("content/music/long.wav", makePositions(kFrames));
-    release.build(haylen::io::MemoryPackage("source", std::move(files)));
-    const auto counting = std::make_shared<test::CountingPackage>(release.getFiles());
-    const std::shared_ptr<haylen::io::Package> package = release.open(counting);
+    build(haylen::io::MemoryPackage("source", std::move(files)));
+    const auto counting = std::make_shared<test::CountingPackage>(getFiles());
+    const std::shared_ptr<haylen::io::Package> package = open(counting);
     std::uint64_t shardBytes = 0;
-    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(release.getFolder())) {
+    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(getFolder())) {
         shardBytes += entry.path().extension() == ".hpak" ? entry.file_size() : 0;
     }
 

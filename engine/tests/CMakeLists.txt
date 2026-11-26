@@ -1,5 +1,6 @@
 set(HAYLEN_TEST_SOURCES
   support/AllocationTrackerTests.cpp
+  support/TemporaryDirectoryTests.cpp
   2d/animation/AnimatedBatchTests.cpp
   2d/animation/AtlasBuilderTests.cpp
   2d/animation/Animation2DTests.cpp
@@ -338,7 +339,7 @@ target_include_directories(haylen-native-test PRIVATE "${HAYLEN_ENGINE_DIR}/incl
 target_link_libraries(haylen-native-test PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
 haylen_enable_warnings(haylen-native-test)
 add_dependencies(haylen-tests haylen-native-test)
-target_compile_definitions(haylen-test-support PUBLIC HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen-native-test>")
+target_compile_definitions(haylen-test-support PUBLIC HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen-native-test>" HAYLEN_NATIVE_SEARCH_FOLDER="${CMAKE_CURRENT_BINARY_DIR}/native-search")
 
 # The desktop player keeps a folder of its own, so the library goes next to it too, where the tests of native libraries in the test project load it by name.
 if(TARGET haylen AND TARGET haylen-headless)
@@ -370,7 +371,7 @@ if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen-content-fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen-content-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   target_include_directories(haylen-content-fuzzer PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
-  target_link_libraries(haylen-content-fuzzer PRIVATE haylen-content-writer haylen::headless haylen-stb haylen-monocypher)
+  target_link_libraries(haylen-content-fuzzer PRIVATE haylen-content-writer haylen::headless haylen-stb haylen-monocypher GTest::gtest)
   target_link_options(haylen-content-fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen-content-fuzzer)
 

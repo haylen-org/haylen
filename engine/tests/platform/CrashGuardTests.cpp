@@ -20,6 +20,7 @@
 
 namespace haylen::platform {
 
+// Each test that writes a report makes its own folder, since the process of a death test builds the fixture and crashes without destroying it.
 class CrashGuardTest : public ::testing::Test {
   protected:
     static constexpr int kForwarded = 3;
@@ -92,11 +93,10 @@ class CrashGuardTest : public ::testing::Test {
     static inline void* faultAddress = nullptr;
     static inline struct sigaction guardAction{};
 #endif
-
-    test::TemporaryDirectory directory;
 };
 
 TEST_F(CrashGuardTest, WritesTheReasonAndTheLastPublishedContext) {
+    const test::TemporaryDirectory directory;
     const std::filesystem::path report = directory.getPath() / "crash-report.json";
     CrashGuard::writeReport("segmentationFault");
     EXPECT_FALSE(std::filesystem::exists(report)) << "Nothing is written before the guard knows its file.";
@@ -123,6 +123,7 @@ TEST_F(CrashGuardTest, HandsAnExceptionToTheFilterThatWasThereBefore) {
 // A crash reporter that a plugin installed before the guard receives the fault itself, with its address, not a signal that the guard raised again.
 TEST_F(CrashGuardTest, HandsAFaultWithItsInformationToTheHandlerThatWasThereBefore) {
     GTEST_FLAG_SET(death_test_style, "fast");
+    const test::TemporaryDirectory directory;
     const std::filesystem::path report = directory.getPath() / "crash-report.json";
     // clang-format off
     EXPECT_EXIT({
@@ -139,6 +140,7 @@ TEST_F(CrashGuardTest, HandsAFaultWithItsInformationToTheHandlerThatWasThereBefo
 // A crash reporter that a plugin installs after the guard sees the crash first and hands it on to the guard, which writes its report.
 TEST_F(CrashGuardTest, WritesTheReportWhenAHandlerInstalledLaterHandsTheCrashOn) {
     GTEST_FLAG_SET(death_test_style, "fast");
+    const test::TemporaryDirectory directory;
     const std::filesystem::path report = directory.getPath() / "crash-report.json";
     // clang-format off
     EXPECT_EXIT({
@@ -158,6 +160,7 @@ TEST_F(CrashGuardTest, WritesTheReportWhenAHandlerInstalledLaterHandsTheCrashOn)
 // The thread that installs the guard plays the frames, and a stack overflow there leaves no stack for a handler but its alternate one.
 TEST_F(CrashGuardTest, ReportsAStackOverflow) {
     GTEST_FLAG_SET(death_test_style, "fast");
+    const test::TemporaryDirectory directory;
     const std::filesystem::path report = directory.getPath() / "crash-report.json";
     // clang-format off
     EXPECT_EXIT({

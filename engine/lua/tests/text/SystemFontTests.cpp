@@ -14,6 +14,7 @@
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/FontCollection.hpp"
 #include "support/LuaFixture.hpp"
+#include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::lua::text {
@@ -108,8 +109,8 @@ TEST_F(SystemFontTest, ReadsTheFaceOfACollection) {
 
 // A face whose glyphs are bitmaps, or that lacks the character the platform named it for, is refused and never read again.
 TEST_F(SystemFontTest, RefusesFacesTheEngineCannotDrawAndReadsThemOnce) {
-    const std::filesystem::path folder = std::filesystem::temp_directory_path() / ("haylen-system-fonts-" + std::to_string(::testing::UnitTest::GetInstance()->random_seed()));
-    std::filesystem::create_directories(folder);
+    const test::TemporaryDirectory directory;
+    const std::filesystem::path& folder = directory.getPath();
     const std::vector<std::uint8_t> bitmaps = test::FontCollection::addTable(test::FontCollection::read("mplus-1p-regular.ttf"), 0x43424454U);
     test::TestFiles::write(folder / "bitmaps.ttf", bitmaps);
     fixture.host().addSystemFont(U"한글", folder / "bitmaps.ttf");
@@ -123,7 +124,6 @@ TEST_F(SystemFontTest, RefusesFacesTheEngineCannotDrawAndReadsThemOnce) {
     EXPECT_TRUE(systemFonts().getFaces().empty());
     EXPECT_EQ(fixture.host().getSystemFontReads(), 2);
     EXPECT_EQ(fixture.host().getSystemFontLookups(), 3);
-    std::filesystem::remove_all(folder);
 }
 
 // Lua loads the face of a collection that the option names.

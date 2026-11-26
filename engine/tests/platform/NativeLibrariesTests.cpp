@@ -2,17 +2,38 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <sstream>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include "haylen/platform/NativeLibraries.hpp"
-#include "support/TemporaryDirectory.hpp"
 
 namespace haylen::platform {
 
 class NativeLibrariesTest : public ::testing::Test {
   protected:
+    // Whether a place that the message lists lies in the folder. The places name the real folder of the executable, which a path through a symbolic link, such as one of the build tree, names in another way, so the folders compare as the same folder on disk.
+    [[nodiscard]] static bool listsPlaceIn(const std::string& message, const std::filesystem::path& folder) {
+        std::istringstream lines(message);
+        std::string line;
+        while (std::getline(lines, line)) {
+            const std::size_t end = line.rfind(": ");
+            if (!line.starts_with("  ") || end == std::string::npos) {
+                continue;
+            }
+
+            std::error_code error;
+            const std::filesystem::path place(line.substr(2, end - 2));
+            if (std::filesystem::equivalent(place.parent_path(), folder, error)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     static int linkedTwice(int value) {
         return value * 2;
     }
@@ -58,17 +79,18 @@ TEST_F(NativeLibrariesTest, SitsNextToBothPlayers) {
 }
 #endif
 
+// A library stays loaded for the rest of its process, so the copy of the test library lives in a folder of the build tree instead of a temporary folder, which a loaded library would keep on Windows.
 TEST_F(NativeLibrariesTest, SearchesAddedFoldersBeforeThePlatformFolders) {
-    const test::TemporaryDirectory folder;
+    const std::filesystem::path folder(HAYLEN_NATIVE_SEARCH_FOLDER);
     const std::filesystem::path library(HAYLEN_NATIVE_TEST_LIBRARY);
-    const std::vector<std::string> names = NativeLibraries::getFileNames("native_copy");
+    const std::vector<std::string> names = NativeLibraries::getFileNames("native-copy");
     ASSERT_FALSE(names.empty());
-    const std::string copy = names.front();
-    std::filesystem::copy_file(library, folder.getPath() / copy);
+    std::filesystem::create_directories(folder);
+    std::filesystem::copy_file(library, folder / names.front(), std::filesystem::copy_options::update_existing);
 
-    EXPECT_THROW((void)NativeLibraries::open("native_copy"), std::runtime_error);
-    NativeLibraries::addSearchFolder(folder.getPath());
-    const NativeLibraries::Library loaded = NativeLibraries::open("native_copy");
+    EXPECT_THROW((void)NativeLibraries::open("native-copy"), std::runtime_error);
+    NativeLibraries::addSearchFolder(folder);
+    const NativeLibraries::Library loaded = NativeLibraries::open("native-copy");
     EXPECT_NE(loaded.handle, nullptr);
     EXPECT_NE(NativeLibraries::findSymbol(loaded, "native_test_checksum"), nullptr);
 }
@@ -80,7 +102,7 @@ TEST_F(NativeLibrariesTest, ListsEveryPlaceItSearched) {
     } catch (const std::runtime_error& error) {
         const std::string message = error.what();
         EXPECT_NE(message.find("The native library \"native_nowhere\" could not be loaded. These are the places it searched:"), std::string::npos);
-        EXPECT_NE(message.find(std::filesystem::path(HAYLEN_NATIVE_TEST_LIBRARY).make_preferred().parent_path().string()), std::string::npos);
+        EXPECT_TRUE(listsPlaceIn(message, std::filesystem::path(HAYLEN_NATIVE_TEST_LIBRARY).parent_path())) << message;
         EXPECT_NE(message.find("not found"), std::string::npos);
         EXPECT_NE(message.find("The libraries linked into the app: not registered"), std::string::npos);
     }

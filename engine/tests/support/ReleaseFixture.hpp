@@ -21,8 +21,8 @@
 
 namespace haylen::test {
 
-// Builds the protected release of an app package with fixed test keys through the release builder, each build into a folder of its own that reuses the release before it, and opens it again.
-class ReleaseFixture final {
+// Builds the protected release of an app package with fixed test keys through the release builder, each build into a folder of its own that reuses the release before it, and opens it again. A test fixture whose other parts hold files of the release, such as the voices of a mixer, takes it as its first base, so the release goes last.
+class ReleaseFixture {
   public:
     static constexpr std::string_view kIdentifier = "com.haylen.tests";
     static constexpr std::string_view kProfile = "desktop";

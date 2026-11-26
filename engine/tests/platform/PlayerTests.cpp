@@ -43,6 +43,7 @@ class PlayerTest : public ::testing::Test {
         HostKept = 2,
         ServicesKept = 3,
         DisplayNotWaited = 4,
+        TestFailed = 5,
     };
 
     // The frames that the player plays in the test of its waits for the display.
@@ -151,10 +152,10 @@ class PlayerTest : public ::testing::Test {
         TextInput textInput;
     };
 
-    // A platform with one screen, which counts how often the player starts and ends it, and whose links cannot be listened for where it refuses them, as when the system refuses the channel that the links of later processes come through.
+    // A platform with one screen and the user data of its apps in a folder of the test, which counts how often the player starts and ends it, and whose links cannot be listened for where it refuses them, as when the system refuses the channel that the links of later processes come through.
     class Platform final : public port::PlatformService, public port::DisplayService, public port::LinkService {
       public:
-        explicit Platform(bool refusing) noexcept : refusesLinks(refusing) {}
+        Platform(bool refusing, std::filesystem::path data) noexcept : refusesLinks(refusing), userData(std::move(data)) {}
 
         [[nodiscard]] std::string_view getName() const noexcept override {
             return "player-test";
@@ -173,7 +174,7 @@ class PlayerTest : public ::testing::Test {
         }
 
         [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override {
-            return std::filesystem::temp_directory_path() / "haylen-player-tests" / std::string(identifier);
+            return userData / std::string(identifier);
         }
 
         void persistUserData() override {}
@@ -229,11 +230,12 @@ class PlayerTest : public ::testing::Test {
 
       private:
         bool refusesLinks = false;
+        std::filesystem::path userData;
     };
 
     // Creates the player on a platform whose last step of the creation fails, and tells what the failure left behind.
-    [[nodiscard]] static Outcome createOnFailingPlatform() {
-        const auto platform = std::make_shared<Platform>(true);
+    [[nodiscard]] static Outcome createOnFailingPlatform(const std::filesystem::path& userData) {
+        const auto platform = std::make_shared<Platform>(true, userData);
         Services::install({.platform = platform, .displays = platform, .links = platform});
 
         bool windowGone = false;
@@ -257,9 +259,20 @@ class PlayerTest : public ::testing::Test {
         return platform->initialized == 1 && platform->shutDown == 1 ? Outcome::Clean : Outcome::ServicesKept;
     }
 
+    // Plays a run of the player with the user data of its apps in a temporary folder, which goes once the run ended. The process of a death test tells its parent only its status, so a failure of the test in it, such as a folder that cannot go, ends it with a status of its own.
+    [[nodiscard]] static Outcome runWithUserData(Outcome (*run)(const std::filesystem::path&)) {
+        Outcome outcome = Outcome::Clean;
+        {
+            const test::TemporaryDirectory userData;
+            outcome = run(userData.getPath());
+        }
+
+        return ::testing::Test::HasFailure() ? Outcome::TestFailed : outcome;
+    }
+
     // Plays frames of an app that draws every frame, and tells whether the player waited for the display after each one.
-    [[nodiscard]] static Outcome playFrames() {
-        const auto platform = std::make_shared<Platform>(false);
+    [[nodiscard]] static Outcome playFrames(const std::filesystem::path& userData) {
+        const auto platform = std::make_shared<Platform>(false, userData);
         Services::install({.platform = platform, .displays = platform, .links = platform});
 
         const test::TemporaryDirectory folder;
@@ -286,13 +299,13 @@ class PlayerTest : public ::testing::Test {
 // A player whose creation fails lets go of everything it made, its host with the window among them, and ends the services of the platform that it started, so the process ends without a player to clean up.
 TEST_F(PlayerTest, LeavesNothingOfAPlayerWhoseCreationFailed) {
     GTEST_FLAG_SET(death_test_style, "threadsafe");
-    EXPECT_EXIT(std::exit(static_cast<int>(createOnFailingPlatform())), ::testing::ExitedWithCode(static_cast<int>(Outcome::Clean)), "");
+    EXPECT_EXIT(std::exit(static_cast<int>(runWithUserData(createOnFailingPlatform))), ::testing::ExitedWithCode(static_cast<int>(Outcome::Clean)), "");
 }
 
 // Every platform reads the events of a frame after the frame before it returned, so each frame that presented ends with a wait for the display, and input reaches the screen as soon as the display allows.
 TEST_F(PlayerTest, WaitsForTheDisplayAfterEveryFrameThatPresented) {
     GTEST_FLAG_SET(death_test_style, "threadsafe");
-    EXPECT_EXIT(std::exit(static_cast<int>(playFrames())), ::testing::ExitedWithCode(static_cast<int>(Outcome::Clean)), "");
+    EXPECT_EXIT(std::exit(static_cast<int>(runWithUserData(playFrames))), ::testing::ExitedWithCode(static_cast<int>(Outcome::Clean)), "");
 }
 
 } // namespace haylen::platform

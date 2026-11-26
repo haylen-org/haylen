@@ -5,7 +5,7 @@
 
 namespace haylen::test {
 
-// Creates a unique folder under the system temporary directory and removes it afterwards.
+// Creates a unique folder under the system temporary directory and removes it afterwards. A folder that cannot go, such as one with a file that the test still holds open on Windows, fails the test with its path and the reason.
 class TemporaryDirectory final {
   public:
     TemporaryDirectory();
