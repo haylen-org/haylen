@@ -2224,6 +2224,8 @@ Câmeras `graphics3d::Camera`: perspectiva, ortográfica, frustum assimétrico e
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de câmera, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -2273,6 +2275,8 @@ Etapa: Renderizador 3D.
 Malhas: `graphics3d::MeshData` na CPU (atributos por semântica intercalados ou separados, índices de 16 e 32 bits, submalhas com o espaço de material de cada uma, alvos de morph, pesos de skin, caixa e esfera de limites e a cadeia de LODs) e `graphics3d::Mesh` na GPU (imutável ou dinâmica com atualização por faixa, com uma faixa de desenho que desenha só parte dos índices), geração de normais por ângulo com ângulo de suavização, tangentes MikkTSpace, limites recalculados, e validação com frases claras (índice fora do buffer, NaN, triângulos degenerados ignorados de forma determinística). Em Lua, `graphics3d.newMesh{...}` com buffers de data view. Testes: CPU de cada validação, GPU de malha intercalada com índices de 16 e 32 bits em todas as APIs, Lua.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Este cartão traz também o componente de nós 3D de malha e instâncias, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
 
 #### Acceptance criteria
 
@@ -2473,6 +2477,8 @@ Etapa: Renderizador 3D.
 Níveis de detalhe: cadeias de LOD do arquivo ou geradas pelo meshoptimizer na preparação de modelos, escolha por tamanho na tela com viés e histerese, transição por pontilhado sem estalo, faixas de visibilidade com HLOD (um grupo trocado por uma malha unida de longe) e impostores octaédricos e billboards de objetos para o que está muito longe, assados por `haylen app bake impostors`. Testes: CPU de escolha e histerese e do assador, GPU da transição e da troca para o impostor, benchmark de estalos e alocações limitados.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Este cartão traz também o componente de nós 3D de grupo de níveis de detalhe, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
 
 #### Acceptance criteria
 
@@ -2824,6 +2830,8 @@ Billboards, sprites e texto no mundo: billboards esféricos e cilíndricos com o
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de sprite e texto no mundo, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -2848,6 +2856,8 @@ Etapa: Renderizador 3D.
 GUIs no mundo: um `ui::Gui` desenhado numa textura sobre um quadrado ou painel curvo 3D com o tamanho em metros, na resolução que o painel cobre na tela, para que o texto fique nítido de perto e em ângulo, com entrada por raio (mouse, toque, controles e mãos de XR), navegação por foco, a árvore de acessibilidade mantida e a mesma regra de ponteiro por camadas das GUIs de hoje, usado em painéis de XR e telas dentro do jogo. Testes: CPU do raio e do foco, GPU, Lua, projeto de testes.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Este cartão traz também o componente de nós 3D de GUI no mundo, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
 
 #### Acceptance criteria
 
@@ -3503,6 +3513,8 @@ Decalques: decalques projetados por caixa com cor base, normal, ORM e emissão, 
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de decalque, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -3628,6 +3640,8 @@ Luzes em `haylen::lighting3d` (`engine/src/3d/lighting/`, Lua `haylen.lighting3d
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de luz, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -3703,6 +3717,8 @@ Ambiente e IBL em `lighting3d::Environment`, por mundo ou por câmera: céu (cor
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de ambiente, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -3727,6 +3743,8 @@ Etapa: Luz, sombras e ambiente.
 Sondas de reflexo: assadas pela ferramenta ou uma vez em tempo de execução e em tempo real (por intervalo, sob pedido ou ao mover, com as faces divididas entre quadros), projeção em caixa com correção de paralaxe, distância de mistura, prioridade, resolução, filtragem por rugosidade na GPU e um array ou atlas de sondas, com a cadeia reflexo de espaço de tela, sonda e céu. Testes: GPU em todas as APIs, Lua, projeto de testes.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Este cartão traz também o componente de nós 3D de sonda de reflexo, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
 
 #### Acceptance criteria
 
@@ -4128,6 +4146,8 @@ Caminhos, marcadores e anexos: `Path3D` numa `Spline3D` com seguidor (inclinaç�
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de seguidor de caminho, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -4178,6 +4198,8 @@ Clipes e trilhas em `haylen::animation3d` (`engine/src/3d/animation/`, Lua `hayl
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de animador, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -4202,6 +4224,8 @@ Etapa: Animação 3D.
 Esqueletos e skin: ossos com pose de repouso e matrizes de bind inversas, sem limite baixo de ossos (paleta em buffer de storage ou textura, com divisão da malha por paleta no portátil onde os uniforms limitam, ou erro claro), 4 e 8 pesos por vértice, skinning na GPU no shader de vértice e pré-skinning em compute no moderno (para reusar nos passes de sombra), caminho de referência na CPU para testes, quaternion dual opcional e instanciação de malhas com skin para multidões (ossos numa textura compartilhada e tempo por instância), e clonar um modelo com skin com cada malha ligada aos ossos do clone. Testes: CPU do empacotamento dos índices e pesos por vértice (pesos normalizados e índices dentro do esqueleto, com o arquivo que não cumpre recusado com frase clara), CPU e GPU iguais num esqueleto de duas juntas em todas as APIs, mais ossos que a paleta, benchmark de 500 personagens com 64 juntas.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Este cartão traz também o componente de nós 3D de malha com skin e anexo a um osso, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
 
 #### Acceptance criteria
 
@@ -4252,6 +4276,8 @@ Etapa: Animação 3D.
 Animador com camadas: camadas com peso e máscara de ossos (sobrepor ou somar), transição cruzada com curva, grupos de sincronia, velocidade e sentido com mudança suave ao longo de um tempo, modos de laço (uma vez, mantendo ou não a última pose, repetir e vai e volta), extração de movimento da raiz (para o nó ou para o personagem da física), grupos de animadores controlados juntos, cache de poses, eventos com dono e amostragem em jobs sem Lua. Testes: CPU de transição andar e correr normalizada e sem salto, movimento da raiz com pai escalado, Lua.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Este cartão traz também o componente de nós 3D de animador, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
 
 #### Acceptance criteria
 
@@ -4608,6 +4634,8 @@ Personagem: o controlador virtual cinemático da Jolt (rampas máximas, subir de
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de personagem, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -4632,6 +4660,8 @@ Etapa: Física 3D com Jolt.
 Veículos: com rodas (carro e moto, com motor, câmbio, diferenciais, barras estabilizadoras e suspensão por roda) e de esteiras, pela restrição de veículo da Jolt, mais o ajudante de flutuação para barcos sobre a água 3D. Testes: CPU de aceleração, frenagem e curva estáveis, Lua, projeto de testes.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Este cartão traz também o componente de nós 3D de veículo, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
 
 #### Acceptance criteria
 
@@ -5071,6 +5101,8 @@ Posição 3D no mixer (`audio::Mixer`): vozes com posição e velocidade `Vec3`,
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de fonte de som e ouvinte, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -5146,6 +5178,8 @@ Ciclo de vida do áudio 3D: fontes pausam e voltam nas interrupções da sessão
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Este cartão traz também o componente de nós 3D de fonte de som e ouvinte, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -5195,6 +5229,8 @@ Etapa: Partículas e efeitos 3D.
 Partículas 3D na CPU em `haylen::particles3d` (`engine/src/3d/particles/`, Lua `haylen.particles3d`): estrutura de arrays em blocos simulados em jobs como no 2D, emissores (ponto, esfera, hemisfério, caixa, cone, anel, superfície e volume de malha, malha com skin e arestas), módulos ao longo da vida (velocidade, aceleração, arrasto, gravidade, turbulência por ruído 3D, órbita e radial, curvas de tamanho, cor e rotação, quadros de flipbook e herança da velocidade do emissor), modos de desenho (billboard, esticado pela velocidade, horizontal, vertical, malhas e fitas), ordenação, partículas suaves (desvanecer na profundidade), partículas iluminadas pelas sondas, colisão (raios da física 3D em lote, planos, profundidade da cena no moderno e heightfield), subemissores (no nascimento, na morte e na colisão), rajadas, espaço local ou de mundo, aquecimento e sementes determinísticas, observadores com condições (idade, velocidade, colisão, contagem, tempo e distância em metros) e ações (emitir, mudar um módulo, tocar um som ou mandar um evento entregue em lote ao Lua uma vez por quadro), num asset `.particles3d` (JSON). Testes: CPU determinística sem NaN, fuzzer do asset, GPU do desenho em todas as APIs, Lua, benchmark, projeto de testes.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Este cartão traz também o componente de nós 3D de emissor de partículas, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
 
 #### Acceptance criteria
 
@@ -5295,6 +5331,8 @@ Etapa: Partículas e efeitos 3D.
 Terreno em `haylen::terrain3d` (`engine/src/3d/terrain/`, Lua `haylen.terrain3d`): heightmap de 16 bits ou float com tamanho e altura em metros, LOD por quadtree contínua com transição sem trincas entre níveis, camadas de pintura num array de texturas com mistura por altura, triplanar em encostas, repetição dupla por distância e ladrilhamento estocástico contra a repetição, buracos, consultas de altura e normal, heightfield da física 3D, fonte para a navegação 3D, ladrilhos em streaming para mundos grandes, edição em tempo de execução por pincéis (subir, baixar, suavizar, nivelar e pintar) com dados para desfazer, e camadas de detalhe e de vegetação por mapas de densidade, desenhadas pelo item de vegetação com vento, LOD, desvanecer por distância e sombras. Testes: CPU das consultas, GPU sem trincas entre ladrilhos de LOD diferentes em todas as APIs, Lua, benchmark, projeto de testes.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Este cartão traz também o componente de nós 3D de terreno, registrado pela API de tipos de componente do KB-144 (`nodes3d::ComponentType`), com as mesmas palavras das opções da API do subsistema.
 
 #### Acceptance criteria
 
