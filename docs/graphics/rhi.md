@@ -186,6 +186,7 @@ A device is lost when the GPU resets or is removed, when its driver fails or upd
 | `maxVolumeSize` | The largest side of a volume, along its width, its height and its slices. |
 | `maxCubeSize` | The largest side of the square faces of a cube. |
 | `originTopLeft` | Whether the first row of a render target is its top row. |
+| `depthRange` | The range of depth in clip space, `ZeroToOne` or `NegativeOneToOne` of `math::Mat4::DepthRange`, which the vertex stages write and the projections of the renderers take. |
 | `independentBlend` | Whether each color target of a pipeline takes a blend and a write mask of its own. Without it, every target takes those of the first. |
 | `gpuTiming` | Whether `getGpuFrameSeconds` measures the time the GPU took for a frame. |
 | `textureFormats` | The pixel formats that images can be made in and sampled. |
@@ -279,6 +280,7 @@ The matrix lists what each device reports. "From the GPU" means that the device 
 | Independent blend | Yes | Yes | Where the GPU has the feature | Yes | On OpenGL ES 3.2 or with an extension | No | Yes |
 | GPU timing | Yes | Yes | Where the queue writes timestamps | Yes | With `GL_EXT_disjoint_timer_query` | With `EXT_disjoint_timer_query_webgl2` | With the feature `timestamp-query` |
 | First row | Top | Top | Top | Bottom | Bottom | Bottom | Top |
+| Range of depth | 0 to 1 | 0 to 1 | 0 to 1 | 0 to 1 with `glClipControl` of OpenGL 4.5 or `GL_ARB_clip_control`, -1 to 1 without | 0 to 1 with `GL_EXT_clip_control`, -1 to 1 without | 0 to 1 with `EXT_clip_control`, -1 to 1 without | 0 to 1 |
 | Frame capture | The frame capture of Metal in the Debug runs of `haylen app run` | PIX or RenderDoc on Direct3D 12, RenderDoc on Direct3D 11, when one launched the app | RenderDoc when it launched the app | RenderDoc when it launched the app | RenderDoc when it launched the app | No | No |
 | Vertical sync off | On macOS and Mac Catalyst | Yes, with tearing where the display allows it | Mailbox or immediate where the surface offers them | Swap interval 0 | Swap interval 0 | The swap interval that SDL hands the page | No, the browser paces the canvas |
 

@@ -50,6 +50,32 @@ TEST_P(GpuDepthStencilTest, TestsAndWritesDepth) {
     EXPECT_TRUE(isNear(pixels.at(6, 4), {1.0F, 0.0F, 0.0F, 1.0F}));
 }
 
+// Reversed depth keeps far planes apart in a float depth buffer only where the clip depth from 0 to 1 reaches the buffer unchanged, so two planes a hundred millionth apart near the far end of the range still pass a test of greater depth one after the other.
+TEST_P(GpuDepthStencilTest, KeepsThePrecisionOfReversedDepthNearTheFarEnd) {
+    if (capabilities().depthRange != math::Mat4::DepthRange::ZeroToOne) {
+        GTEST_SKIP() << "The driver maps clip depth from -1 to 1, since it has no clip control.";
+    }
+
+    if (!capabilities().renderFormats[static_cast<std::size_t>(Device::PixelFormat::Depth32Float)]) {
+        GTEST_SKIP() << "The device draws into no depth image of 32-bit floats.";
+    }
+
+    const Device::Image color = makeTarget(kSize, kSize);
+    const Device::Image depth = makeDepth(Device::PixelFormat::Depth32Float);
+    const std::array<Device::ColorTarget, 1> formats{};
+    const Device::Pipeline pipeline = makePlanePipeline(formats, {.format = Device::PixelFormat::Depth32Float, .depthCompare = Device::CompareFunction::Greater, .depthWrite = true});
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = color, .clear = math::Color::black()}}};
+
+    device().beginPass({.colors = colors, .depthStencil = Device::DepthStencilAttachment{.image = depth, .clearDepth = 0.0F}});
+    device().applyPipeline(pipeline);
+    drawPlane({1.0F, 0.0F, 0.0F, 1.0F}, 1.0e-8F);
+    drawPlane({0.0F, 1.0F, 0.0F, 1.0F}, 2.0e-8F);
+    device().endPass();
+    device().commit();
+
+    EXPECT_TRUE(isNear(read(color, kSize, kSize).at(4, 4), {0.0F, 1.0F, 0.0F, 1.0F}));
+}
+
 // A depth attachment cleared to the near end turns every plane away, and one that keeps its depth tests the next pass against it.
 TEST_P(GpuDepthStencilTest, ClearsAndKeepsDepthAsItsLoadsSay) {
     const Device::PixelFormat format = getDepthFormat();

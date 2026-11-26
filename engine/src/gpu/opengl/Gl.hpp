@@ -71,6 +71,8 @@ class Gl final {
     static constexpr Enum kFramebufferSrgb = 0x8DB9;
     static constexpr Enum kProgramPointSize = 0x8642;
     static constexpr Enum kTextureCubeMapSeamless = 0x884F;
+    static constexpr Enum kLowerLeft = 0x8CA1;
+    static constexpr Enum kZeroToOne = 0x935F;
     static constexpr Enum kDebugOutput = 0x92E0;
     static constexpr Enum kDebugOutputSynchronous = 0x8242;
 
@@ -246,6 +248,7 @@ class Gl final {
         bool textureFloatLinear = false;
         bool anisotropicFiltering = false;
         bool parallelShaderCompile = false;
+        bool clipControl = false;
     };
 
     // Loads every entry point of the flavour from the context, which must be current, and throws `std::runtime_error` when the context is older than the flavour needs or lacks one of them.
@@ -402,6 +405,8 @@ class Gl final {
 
     void (*maxShaderCompilerThreads)(Uint count) = nullptr;
 
+    void (*clipControl)(Enum origin, Enum depth) = nullptr;
+
   private:
     // The suffixes of the names of the entry points of the optional features, which a context takes from the extension that brings each of them when its version lacks it.
     struct Suffixes {
@@ -411,6 +416,7 @@ class Gl final {
         std::string_view debug;
         std::string_view robustness;
         std::string_view parallelShaderCompile;
+        std::string_view clipControl;
     };
 
     // Points the entry point at the function of the name and the suffix, and leaves it null when the context knows no such function.

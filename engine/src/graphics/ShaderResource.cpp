@@ -333,7 +333,7 @@ void ShaderResource::readMaterialBindings(const ProgramInfo& program) {
 void ShaderResource::read(const core::Json& document) {
     core::JsonValidator::requireKnownKeys(document, {"format", "version", "name", "sources", "programs"}, "a shader file");
 
-    if (document.at("format") != "haylen-shader" || document.at("version") != 2) {
+    if (document.at("format") != "haylen-shader" || document.at("version") != 3) {
         throw ShaderPackageError(ShaderPackageError::Problem::Version);
     }
 

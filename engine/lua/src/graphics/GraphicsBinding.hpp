@@ -28,6 +28,7 @@ class GraphicsBinding final {
     static int maxVolumeSize(lua_State* L);
     static int maxCubeSize(lua_State* L);
     static int sampleCounts(lua_State* L);
+    static int depthRange(lua_State* L);
     static int whiteTexture(lua_State* L);
     static int apiName(lua_State* L);
 

@@ -15,6 +15,7 @@
 
 #include "haylen/gpu/Surface.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/math/Mat4.hpp"
 #include "haylen/math/Rect.hpp"
 
 namespace haylen::core {
@@ -340,6 +341,9 @@ class Device {
 
         // Whether the first row of a render target is its top row, as on Metal, Direct3D, Vulkan and WebGPU, rather than its bottom row, as on OpenGL.
         bool originTopLeft = true;
+
+        // The range of depth in clip space that the vertex stages write and the device maps onto the depth of its attachments: `0` to `1` on Metal, Direct3D, Vulkan and WebGPU, and on OpenGL, OpenGL ES and WebGL2 where the driver takes the range through clip control, and `-1` to `1` on those without it, whose projections take the range.
+        math::Mat4::DepthRange depthRange = math::Mat4::DepthRange::ZeroToOne;
 
         // Whether each color target of a pipeline takes a blend and a write mask of its own, rather than all of them those of the first target.
         bool independentBlend = false;

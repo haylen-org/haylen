@@ -50,6 +50,11 @@ Device::Device(Api flavour, const Surface& surface, bool validation) : context(m
         gl.enable(Gl::kTextureCubeMapSeamless);
     }
 
+    // The vertex stages write depth from 0 to 1, which clip control maps onto the depth of the attachments without the loss of precision that a range from -1 to 1 brings to reversed depth.
+    if (gl.getFeatures().clipControl) {
+        gl.clipControl(Gl::kLowerLeft, Gl::kZeroToOne);
+    }
+
     if (!gl.isWeb()) {
         ring = std::make_unique<UploadRing>(gl, state, kFramesInFlight);
     }
@@ -159,6 +164,7 @@ void Device::readCapabilities() {
     gl.getIntegerv(Gl::kMaxCubeMapTextureSize, &value);
     capabilities.maxCubeSize = value;
     capabilities.originTopLeft = false;
+    capabilities.depthRange = features.clipControl ? math::Mat4::DepthRange::ZeroToOne : math::Mat4::DepthRange::NegativeOneToOne;
     capabilities.independentBlend = features.drawBuffersIndexed;
     capabilities.gpuTiming = timer.isAvailable();
 

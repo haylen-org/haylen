@@ -77,8 +77,12 @@ void Gl::readFeatures() {
         features.anisotropicFiltering = version >= 46 || hasExtension("GL_ARB_texture_filter_anisotropic") || hasExtension("GL_EXT_texture_filter_anisotropic");
         features.parallelShaderCompile = hasExtension("GL_KHR_parallel_shader_compile") || hasExtension("GL_ARB_parallel_shader_compile");
         suffixes.parallelShaderCompile = hasExtension("GL_KHR_parallel_shader_compile") ? "KHR" : "ARB";
+        features.clipControl = version >= 45 || hasExtension("GL_ARB_clip_control");
         return;
     }
+
+    features.clipControl = hasExtension("GL_EXT_clip_control");
+    suffixes.clipControl = "EXT";
 
     features.colorBufferFloat = hasExtension("GL_EXT_color_buffer_float");
     features.colorBufferHalfFloat = features.colorBufferFloat || hasExtension("GL_EXT_color_buffer_half_float");
@@ -287,6 +291,11 @@ void Gl::loadOptional(GlContext& context) {
     if (features.parallelShaderCompile) {
         bindSuffixed(context, maxShaderCompilerThreads, "glMaxShaderCompilerThreads", suffixes.parallelShaderCompile);
         features.parallelShaderCompile = maxShaderCompilerThreads != nullptr;
+    }
+
+    if (features.clipControl) {
+        bindSuffixed(context, clipControl, "glClipControl", suffixes.clipControl);
+        features.clipControl = clipControl != nullptr;
     }
 }
 

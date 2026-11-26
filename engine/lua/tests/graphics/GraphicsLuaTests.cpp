@@ -29,6 +29,7 @@ TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
     EXPECT_EQ(fixture.lua("return graphics.maxVolumeSize()"), "2048");
     EXPECT_EQ(fixture.lua("return graphics.maxCubeSize()"), "16384");
     EXPECT_EQ(fixture.lua("return table.concat(graphics.sampleCounts('rgba16Float'), ',')"), "1,2,4,8");
+    EXPECT_EQ(fixture.lua("return graphics.depthRange()"), "zeroToOne");
     EXPECT_NE(fixture.lua("return graphics.sampleCounts('rgba7')").find("unknown value 'rgba7'"), std::string::npos);
 
     // A size beyond the device fails before its pixels are allocated.

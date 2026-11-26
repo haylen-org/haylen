@@ -85,6 +85,7 @@ Every call that changes OpenGL state goes through a state cache. The cache knows
 | Lost context | Reported by `isLost` through `glGetGraphicsResetStatus` where the context has robustness, after a frame that the GPU did not finish within ten seconds, and on WebGL2 through the lost state of the WebGL context. |
 | Multisampling | Render targets and depth stencil images of the counts of 2, 4 and 8 that `glGetInternalformativ` lists in `GL_SAMPLES` for the renderbuffers of each format. Multisampled images are resolved, never sampled. |
 | Origin | The first row of a render target is its bottom row, so `originTopLeft` is `false`. Viewports and scissors still take rectangles from the top left. |
+| Range of depth | The vertex stages write depth from 0 to 1 in clip space, as on every graphics API, and the device takes that range with `glClipControl`, of OpenGL 4.5, `GL_ARB_clip_control` or `GL_EXT_clip_control`, so reversed depth keeps its precision. A driver without clip control maps depth from -1 to 1, which `depthRange` reports as `NegativeOneToOne`, and the projections built for that range correct it. |
 | Validation | With validation on, `KHR_debug` sends the messages of the driver to the log, errors as errors, and names objects and debug groups for GPU debuggers. Contexts without it, such as WebGL2, report errors through `glGetError` at the end of each pass and frame. |
 
 ## Limits

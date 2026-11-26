@@ -336,11 +336,11 @@ local glow = graphics2d.newMaterial(assets.shader('shaders/inner-glow.shader'), 
 
 ## The .shader file
 
-A `.shader` file is a Haylen shader package: compact JSON that `haylen-shaderc` writes and nothing else edits, in version 2 of the [package format](https://github.com/haylen-org/haylen-shader-compiler/blob/main/docs/format.md).
+A `.shader` file is a Haylen shader package: compact JSON that `haylen-shaderc` writes and nothing else edits, in version 3 of the [package format](https://github.com/haylen-org/haylen-shader-compiler/blob/main/docs/format.md).
 
 | Key | Meaning |
 | --- | --- |
-| `format`, `version` | `"haylen-shader"` and `2`. |
+| `format`, `version` | `"haylen-shader"` and `3`. |
 | `name` | The name of the source file without its folder and its extension. |
 | `sources` | The source of every stage of every program for every target, each text once. |
 | `programs` | Each of the ten programs under its name, with its `attributes`, its uniform `blocks` with their `members`, its `textures`, its `samplers`, the texture sampler `pairs` that its stages sample with, the number of color `outputs`, which is 0 for a program that draws depth alone, and its `targets`. The members have names, types, element counts and byte offsets that follow the std140 rules. For each of `msl-macos`, `msl-ios`, `msl-ios-simulator`, `hlsl5`, `glsl430`, `glsl300es`, `wgsl` and `spirv`, the targets give the source and entry point of each stage and the binding of each uniform block, texture and sampler in that language. The `spirv` target holds each module as the Base64 text of its words and gives each binding with its descriptor set: the uniform blocks in set 0 at the binding of their slot, the textures in set 1 at the binding of their slot and the samplers in set 1 at 64 plus their slot. |
@@ -351,7 +351,7 @@ The shaders of the engine are packages of the same format. The engine compiles t
 
 Reading the file also checks it, so a damaged or hand-edited file fails at once instead of when a draw uses it. The file must follow these rules:
 
-- It is a version 2 package.
+- It is a version 3 package.
 - Every attribute, uniform block, texture and sampler fits the binding slots of every GPU device, and no two uniform blocks, textures or samplers of a program share a slot. Every binding number is in range.
 - Every uniform block takes a multiple of 16 bytes, and every uniform of a block fits inside it.
 - Every stage names a source of the file, and every pair names a texture and a sampler that its program declares.

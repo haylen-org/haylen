@@ -161,6 +161,11 @@ int GraphicsBinding::sampleCounts(lua_State* L) {
     return 1;
 }
 
+int GraphicsBinding::depthRange(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities().depthRange);
+    return 1;
+}
+
 int GraphicsBinding::whiteTexture(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getWhiteTexture());
     return 1;
@@ -324,6 +329,7 @@ int GraphicsBinding::open(lua_State* L) {
         {"maxVolumeSize", &maxVolumeSize},
         {"maxCubeSize", &maxCubeSize},
         {"sampleCounts", &lua::Binding::native<&sampleCounts>},
+        {"depthRange", &depthRange},
         {"newFontFamily", &lua::Binding::native<&FontBinding::newFontFamily>},
         {"systemFonts", &FontBinding::systemFonts},
         {"newBitmapFont", &lua::Binding::native<&FontBinding::newBitmapFont>},

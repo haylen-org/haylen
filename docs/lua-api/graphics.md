@@ -1,6 +1,6 @@
 # 📖 `haylen.graphics`
 
-The module `haylen.graphics` makes the resources that every kind of drawing shares: textures, render targets, images on the CPU, fonts, font families and vector images. It also names the graphics API and what the device holds: the largest texture, volume and cube, and the sample counts of each format. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md). The [rendering guide](../graphics/rendering.md) explains how the engine draws, and the [text guide](../graphics/text.md) explains fonts.
+The module `haylen.graphics` makes the resources that every kind of drawing shares: textures, render targets, images on the CPU, fonts, font families and vector images. It also names the graphics API and what the device holds: the largest texture, volume and cube, the sample counts of each format and the range of depth. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md). The [rendering guide](../graphics/rendering.md) explains how the engine draws, and the [text guide](../graphics/text.md) explains fonts.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -89,6 +89,18 @@ local graphics = require('haylen.graphics')
 
 local counts = graphics.sampleCounts('rgba16Float')
 print('The most samples of a light buffer: ' .. counts[#counts])
+```
+
+### graphics.depthRange()
+
+Returns the range of depth in the clip space of this device, `'zeroToOne'` or `'negativeOneToOne'`, which the projections of [`haylen.math`](math.md) take as their `depthRange`, so a projection matches the device that draws, as the [coordinates guide](../3d/coordinates.md#depth) explains. Every device takes `'zeroToOne'`, except OpenGL, OpenGL ES and WebGL2 on a driver without clip control.
+
+```lua
+local graphics = require('haylen.graphics')
+local m = require('haylen.math')
+
+local projection = m.perspective({nearPlane = 0.1, depthRange = graphics.depthRange()})
+print(projection:apply({0, 0, -0.1}).z)
 ```
 
 ## Texture
