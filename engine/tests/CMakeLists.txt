@@ -50,6 +50,10 @@ set(HAYLEN_TEST_SOURCES
   2d/tiled/MapQueryTests.cpp
   2d/tiled/TileCollisionTests.cpp
   2d/tiled/TiledTests.cpp
+  3d/spatial/GridRayTests.cpp
+  3d/spatial/KdTreeTests.cpp
+  3d/spatial/MeshBvhTests.cpp
+  3d/spatial/Spatial3DTests.cpp
   ai/DecisionTests.cpp
   ai/StateMachineTests.cpp
   audio/AudioAssetTests.cpp

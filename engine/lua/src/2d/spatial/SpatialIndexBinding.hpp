@@ -15,7 +15,7 @@
 
 namespace haylen::lua::spatial2d {
 
-// Installs the `HashGrid`, `QuadTree`, `AabbTree` and `KdTree` classes of `haylen.spatial2d`. Each stores any Lua value, keyed by identity like table keys, and all share their query methods. The user value of a structure holds `ids`, which maps each stored value to its id, and `values`, which maps ids back.
+// Installs the `HashGrid2D`, `QuadTree`, `AabbTree2D` and `KdTree2D` classes of `haylen.spatial2d`. Each stores any Lua value, keyed by identity like table keys, and all share their query methods. The user value of a structure holds `ids`, which maps each stored value to its id, and `values`, which maps ids back.
 class SpatialIndexBinding final {
   public:
     static void install(lua_State* L);

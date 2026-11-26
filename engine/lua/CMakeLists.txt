@@ -55,6 +55,9 @@ set(HAYLEN_LUA_SOURCES
   src/2d/tiled/MapBuilderBinding.cpp
   src/2d/tiled/MapQueryBinding.cpp
   src/2d/tiled/TiledBinding.cpp
+  src/3d/spatial/MeshBvhBinding.cpp
+  src/3d/spatial/Spatial3DBinding.cpp
+  src/3d/spatial/SpatialIndexBinding.cpp
   src/ai/AiBinding.cpp
   src/ai/BehaviorTreeBinding.cpp
   src/ai/InfluenceMapBinding.cpp
@@ -148,6 +151,7 @@ set(HAYLEN_LUA_SOURCES
   src/modules/PlatformModule.cpp
   src/modules/Procedural2DModule.cpp
   src/modules/Spatial2DModule.cpp
+  src/modules/Spatial3DModule.cpp
   src/modules/StorageModule.cpp
   src/modules/TiledModule.cpp
   src/modules/UiModule.cpp

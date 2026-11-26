@@ -24,6 +24,7 @@
 #include "modules/PlatformModule.hpp"
 #include "modules/Procedural2DModule.hpp"
 #include "modules/Spatial2DModule.hpp"
+#include "modules/Spatial3DModule.hpp"
 #include "modules/StorageModule.hpp"
 #include "modules/TiledModule.hpp"
 #include "modules/UiModule.hpp"
@@ -45,6 +46,7 @@ void BuiltInModules::registerAll(Modules& modules) {
     modules.add(std::make_unique<TiledModule>());
     modules.add(std::make_unique<Nodes2DModule>());
     modules.add(std::make_unique<Spatial2DModule>());
+    modules.add(std::make_unique<Spatial3DModule>());
     modules.add(std::make_unique<Procedural2DModule>());
     modules.add(std::make_unique<Navigation2DModule>());
     modules.add(std::make_unique<LocalizationModule>());

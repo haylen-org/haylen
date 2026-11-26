@@ -24,7 +24,7 @@
 namespace haylen::lua {
 
 template <> struct Type<lua::spatial2d::ScriptedIndex<haylen::spatial2d::HashGrid>> {
-    static constexpr const char* name = "haylen.HashGrid";
+    static constexpr const char* name = "haylen.HashGrid2D";
     using Storage = lua::spatial2d::ScriptedIndex<haylen::spatial2d::HashGrid>;
 };
 
@@ -34,12 +34,12 @@ template <> struct Type<lua::spatial2d::ScriptedIndex<haylen::spatial2d::QuadTre
 };
 
 template <> struct Type<lua::spatial2d::ScriptedIndex<haylen::spatial2d::AabbTree>> {
-    static constexpr const char* name = "haylen.AabbTree";
+    static constexpr const char* name = "haylen.AabbTree2D";
     using Storage = lua::spatial2d::ScriptedIndex<haylen::spatial2d::AabbTree>;
 };
 
 template <> struct Type<lua::spatial2d::ScriptedIndex<haylen::spatial2d::KdTree>> {
-    static constexpr const char* name = "haylen.KdTree";
+    static constexpr const char* name = "haylen.KdTree2D";
     using Storage = lua::spatial2d::ScriptedIndex<haylen::spatial2d::KdTree>;
 };
 

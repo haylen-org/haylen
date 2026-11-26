@@ -27,10 +27,10 @@ print(slime.health) -- 2
 
 | Structure | Best for | Moving an entry | Not suited for |
 | --- | --- | --- | --- |
-| [`HashGrid`](../lua-api/spatial2d.md#hashgrid) | Many entries of a similar size that move every frame, such as enemies and bullets. | Cheap, often only new bounds. | Entries far larger than its cells. |
+| [`HashGrid2D`](../lua-api/spatial2d.md#hashgrid2d) | Many entries of a similar size that move every frame, such as enemies and bullets. | Cheap, often only new bounds. | Entries far larger than its cells. |
 | [`QuadTree`](../lua-api/spatial2d.md#quadtree) | Entries of very different sizes over an area known ahead, such as the objects of a level. | Moderate. | Worlds without limits. |
-| [`AabbTree`](../lua-api/spatial2d.md#aabbtree) | Many moving entries of any size over a world without limits, and many ray casts. | Free inside its margin, moderate outside it. | Nothing in particular. It is a good default. |
-| [`KdTree`](../lua-api/spatial2d.md#kdtree) | Points that rarely change, when the nearest queries come most often, such as resources or spawn points. | A rebuild of the whole tree. | Entries that move every frame. |
+| [`AabbTree2D`](../lua-api/spatial2d.md#aabbtree2d) | Many moving entries of any size over a world without limits, and many ray casts. | Free inside its margin, moderate outside it. | Nothing in particular. It is a good default. |
+| [`KdTree2D`](../lua-api/spatial2d.md#kdtree2d) | Points that rarely change, when the nearest queries come most often, such as resources or spawn points. | A rebuild of the whole tree. | Entries that move every frame. |
 
 A game with physics already has these queries in its world of [`haylen.physics2d`](../lua-api/physics2d.md), such as `world:queryPoint` and `world:raycast`. Use a structure of `haylen.spatial2d` for the entities without bodies, such as pickups, sounds, the targets of an ability or thousands of simple enemies that physics would make too costly.
 
@@ -335,7 +335,7 @@ scene.push({
 })
 ```
 
-The cost of a visibility polygon grows with the square of the walls, as [costs](#costs) explains. Pass only the walls near the light: keep the walls in an `AabbTree` and query the area that the light reaches.
+The cost of a visibility polygon grows with the square of the walls, as [costs](#costs) explains. Pass only the walls near the light: keep the walls in an `AabbTree2D` and query the area that the light reaches.
 
 ### Recipe: checking a generated level
 
@@ -436,10 +436,10 @@ The structures work in C++, and a query costs one call across the Lua boundary h
 
 | Structure | Store or move | Query |
 | --- | --- | --- |
-| `HashGrid` | The cells the entry covers. A move inside the same cells only updates the bounds. | The cells the query covers, and never much more than a visit to every entry. |
+| `HashGrid2D` | The cells the entry covers. A move inside the same cells only updates the bounds. | The cells the query covers, and never much more than a visit to every entry. |
 | `QuadTree` | The depth of the tree. | The squares the query reaches, about the logarithm of the size for small queries. |
-| `AabbTree` | Free inside the margin. Outside it, about the logarithm of the size. | About the logarithm of the size, plus the entries found. |
-| `KdTree` | A full rebuild with `kdTree:build`, about n log n. | About the logarithm of the size for nearest queries. |
+| `AabbTree2D` | Free inside the margin. Outside it, about the logarithm of the size. | About the logarithm of the size, plus the entries found. |
+| `KdTree2D` | A full rebuild with `kdTree:build`, about n log n. | About the logarithm of the size for nearest queries. |
 
 Every query returns a new Lua list, which allocates. A hot loop that runs many queries per frame, such as one per bullet, does best with point and circle queries that find few entries.
 

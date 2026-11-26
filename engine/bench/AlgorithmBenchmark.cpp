@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <functional>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>
@@ -22,20 +23,29 @@
 #include "haylen/2d/spatial/KdTree.hpp"
 #include "haylen/2d/spatial/Neighbor.hpp"
 #include "haylen/2d/spatial/RayHit.hpp"
+#include "haylen/3d/spatial/AabbTree.hpp"
+#include "haylen/3d/spatial/Bvh.hpp"
+#include "haylen/3d/spatial/HashGrid.hpp"
+#include "haylen/3d/spatial/KdTree.hpp"
+#include "haylen/3d/spatial/MeshBvh.hpp"
+#include "haylen/3d/spatial/Octree.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/math/Box.hpp"
 #include "haylen/math/Frustum.hpp"
+#include "haylen/math/Geometry3D.hpp"
 #include "haylen/math/Mat4.hpp"
 #include "haylen/math/MatrixBatch.hpp"
 #include "haylen/math/Quat.hpp"
 #include "haylen/math/Random.hpp"
 #include "haylen/math/Ray2D.hpp"
+#include "haylen/math/Ray3D.hpp"
+#include "haylen/math/Sphere.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/math/Vec3.hpp"
 
 namespace haylen::bench {
 
-// Times the path finding, crowd, spatial, ray casting and batch math algorithms on the CPU and prints the average time of each run.
+// Times the path finding, crowd, spatial structures of 2D and 3D, mesh hierarchy, ray casting and batch math algorithms on the CPU and prints the average time of each run.
 class AlgorithmBenchmark final {
   public:
     static int run() {
@@ -46,6 +56,8 @@ class AlgorithmBenchmark final {
         measureNavMesh();
         measureCrowd(jobs);
         measureSpatial();
+        measureSpatial3D();
+        measureMeshBvh();
         measureRaycasts(jobs);
         measureBatchMath();
         return 0;
@@ -244,6 +256,167 @@ class AlgorithmBenchmark final {
             }
         });
         // clang-format on
+    }
+
+    // The queries that every 3D structure answers on one scene, so their times compare with each other and with a search through every box.
+    struct SpatialQueries {
+        std::vector<math::Box> areas;
+        std::vector<math::Frustum> frustums;
+        std::vector<math::Ray3D> rays;
+        std::vector<math::Vec3> points;
+    };
+
+    [[nodiscard]] static SpatialQueries spatialQueries(math::Random& random) {
+        SpatialQueries queries;
+        for (int query = 0; query < 1000; ++query) {
+            const math::Vec3 place{random.range(-500.0F, 500.0F), random.range(-50.0F, 50.0F), random.range(-500.0F, 500.0F)};
+            const math::Vec3 aim{random.range(-500.0F, 500.0F), 0.0F, random.range(-500.0F, 500.0F)};
+            queries.areas.push_back(math::Box::fromCenter(place, {20.0F, 20.0F, 20.0F}));
+            queries.rays.push_back(math::Ray3D::between(place, aim));
+            queries.points.push_back(place);
+            if (query < 100) {
+                const math::Mat4 viewProjection = math::Mat4::perspective({.aspect = 16.0F / 9.0F, .nearPlane = 0.1F, .farPlane = 300.0F}) * math::Mat4::lookAt(place, aim);
+                queries.frustums.push_back(math::Frustum::fromMatrix(viewProjection, math::Mat4::DepthRange::ZeroToOne));
+            }
+        }
+
+        return queries;
+    }
+
+    template <typename Structure> static void measureStructure(const char* name, const Structure& structure, const SpatialQueries& queries) {
+        std::vector<std::uint64_t> ids;
+        std::vector<spatial3d::RayHit> hits;
+        std::vector<spatial3d::Neighbor> neighbors;
+        const std::string prefix = name;
+        // clang-format off
+        measure((prefix + ", 1000 box queries").c_str(), 5, [&] {
+            for (const math::Box& area : queries.areas) {
+                structure.query(area, ids);
+            }
+        });
+        measure((prefix + ", 100 frustum queries").c_str(), 5, [&] {
+            for (const math::Frustum& frustum : queries.frustums) {
+                structure.queryFrustum(frustum, ids);
+            }
+        });
+        measure((prefix + ", 1000 rays for the first hit").c_str(), 5, [&] {
+            for (const math::Ray3D& ray : queries.rays) {
+                structure.raycast(ray, 1, hits);
+            }
+        });
+        measure((prefix + ", 1000 queries for the 8 nearest").c_str(), 5, [&] {
+            for (const math::Vec3& point : queries.points) {
+                structure.nearest(point, 8, 1e9F, neighbors);
+            }
+        });
+        // clang-format on
+    }
+
+    // Measures every 3D structure over 100000 boxes of one to four meters in a kilometer, next to a search through every box.
+    static void measureSpatial3D() {
+        constexpr std::size_t kCount = 100000;
+        math::Random random(31);
+        std::vector<std::uint64_t> ids;
+        std::vector<math::Box> boxes;
+        std::vector<math::Sphere> spheres;
+        for (std::size_t index = 0; index < kCount; ++index) {
+            const math::Vec3 center{random.range(-500.0F, 500.0F), random.range(-50.0F, 50.0F), random.range(-500.0F, 500.0F)};
+            const math::Vec3 size{random.range(1.0F, 4.0F), random.range(1.0F, 4.0F), random.range(1.0F, 4.0F)};
+            ids.push_back(index);
+            boxes.push_back(math::Box::fromCenter(center, size));
+            spheres.push_back({center, size.x * 0.5F});
+        }
+
+        const SpatialQueries queries = spatialQueries(random);
+        spatial3d::HashGrid grid(4.0F);
+        spatial3d::Octree octree({{-512.0F, -64.0F, -512.0F}, {512.0F, 64.0F, 512.0F}}, {.maxEntries = 16, .maxDepth = 10});
+        spatial3d::AabbTree tree;
+        spatial3d::Bvh bvh;
+        spatial3d::KdTree points;
+        // clang-format off
+        measureCold("3D hash grid, set 100000 boxes", 1, [&] { grid.setAll(ids, boxes); });
+        measureCold("3D octree, set 100000 boxes", 1, [&] { octree.setAll(ids, boxes); });
+        measureCold("3D AABB tree, set 100000 boxes", 1, [&] { tree.setAll(ids, boxes); });
+        measureCold("BVH, set and build 100000 boxes", 1, [&] {
+            bvh.setAll(ids, boxes);
+            bvh.build();
+        });
+        measure("BVH, refit 100000 boxes", 5, [&] { bvh.refit(); });
+        measureCold("3D k-d tree, set and build 100000 spheres", 1, [&] {
+            points.setAll(ids, spheres);
+            points.build();
+        });
+        // clang-format on
+
+        measureStructure("3D hash grid", grid, queries);
+        measureStructure("3D octree", octree, queries);
+        measureStructure("3D AABB tree", tree, queries);
+        measureStructure("BVH", bvh, queries);
+        measureStructure("3D k-d tree", points, queries);
+
+        std::size_t found = 0;
+        // clang-format off
+        measure("Every box, 10 box queries", 3, [&] {
+            for (std::size_t query = 0; query < 10; ++query) {
+                found = static_cast<std::size_t>(std::ranges::count_if(boxes, [&](const math::Box& box) { return box.intersects(queries.areas[query]); }));
+            }
+        });
+        // clang-format on
+        std::printf("Boxes in the last area: %zu\n", found);
+    }
+
+    // Measures the rays and closest points of a mesh of 200000 triangles, next to a search through every triangle.
+    static void measureMeshBvh() {
+        constexpr int kSide = 316;
+        math::Random random(32);
+        std::vector<float> positions;
+        for (int z = 0; z <= kSide; ++z) {
+            for (int x = 0; x <= kSide; ++x) {
+                positions.insert(positions.end(), {static_cast<float>(x), random.range(-0.5F, 0.5F), static_cast<float>(-z)});
+            }
+        }
+
+        std::vector<std::uint32_t> indices;
+        for (int z = 0; z < kSide; ++z) {
+            for (int x = 0; x < kSide; ++x) {
+                const auto corner = static_cast<std::uint32_t>(z * (kSide + 1) + x);
+                const auto row = static_cast<std::uint32_t>(kSide + 1);
+                indices.insert(indices.end(), {corner, corner + 1, corner + row + 1, corner, corner + row + 1, corner + row});
+            }
+        }
+
+        std::optional<spatial3d::MeshBvh> mesh;
+        measureCold("Mesh BVH, build 200000 triangles", 1, [&] { mesh.emplace(positions, indices); });
+        const auto side = static_cast<float>(kSide);
+        std::vector<math::Ray3D> rays;
+        for (int ray = 0; ray < 10000; ++ray) {
+            const math::Vec3 start{random.range(0.0F, side), 20.0F, random.range(-side, 0.0F)};
+            const math::Vec3 end{random.range(0.0F, side), -1.0F, random.range(-side, 0.0F)};
+            rays.push_back(math::Ray3D::between(start, end));
+        }
+
+        std::size_t hits = 0;
+        // clang-format off
+        measure("Mesh BVH, 10000 rays", 5, [&] {
+            hits = 0;
+            for (const math::Ray3D& ray : rays) {
+                hits += mesh->raycast(ray).has_value() ? std::size_t{1} : std::size_t{0};
+            }
+        });
+        measure("Mesh BVH, 10000 closest points", 5, [&] {
+            for (const math::Ray3D& ray : rays) {
+                (void)mesh->closestPoint(ray.origin);
+            }
+        });
+        measure("Every triangle, 10 rays", 3, [&] {
+            for (std::size_t ray = 0; ray < 10; ++ray) {
+                for (std::uint32_t triangle = 0; triangle < mesh->getTriangleCount(); ++triangle) {
+                    (void)math::Geometry3D::raycast(rays[ray], mesh->getTriangle(triangle));
+                }
+            }
+        });
+        // clang-format on
+        std::printf("Rays that hit the mesh: %zu of %zu\n", hits, rays.size());
     }
 
     static void measureRaycasts(core::JobSystem& jobs) {

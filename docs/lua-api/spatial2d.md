@@ -8,18 +8,18 @@ local spatial2d = require('haylen.spatial2d')
 
 ## Structures
 
-The four structures are [`HashGrid`](#hashgrid), [`QuadTree`](#quadtree), [`AabbTree`](#aabbtree) and [`KdTree`](#kdtree). They work the same way:
+The four structures are [`HashGrid2D`](#hashgrid2d), [`QuadTree`](#quadtree), [`AabbTree2D`](#aabbtree2d) and [`KdTree2D`](#kdtree2d). They work the same way:
 
 - A structure stores any Lua value except `nil`, usually the table of an entity. Queries return the values themselves.
 - Values are compared by identity, the way table keys are. A structure keeps every stored value alive until it is removed or the structure is cleared.
 - Every query returns a new list. The methods `query`, `queryCircle`, `queryPoint` and `pick` list the values in the order they were added, so results never depend on how the entries moved. The methods `raycast` and `kNearest` list them by distance, and a tie goes to the value added first. A value that is removed and stored again counts as added again.
 - Bounds that touch count as overlapping, so a rectangle of size zero works as a point.
 
-The structures `HashGrid`, `QuadTree` and `AabbTree` store rectangles. A rectangle is a `Rect`, a table `{x, y, width, height}` or a table `{x = 0, y = 0, width = 0, height = 0}`. A rectangle with a negative size or a component that is not finite raises `Spatial bounds must be finite and have a non-negative size.` A `KdTree` stores points with an optional radius instead, and its queries treat each point as a circle.
+The structures `HashGrid2D`, `QuadTree` and `AabbTree2D` store rectangles. A rectangle is a `Rect`, a table `{x, y, width, height}` or a table `{x = 0, y = 0, width = 0, height = 0}`. A rectangle with a negative size or a component that is not finite raises `Spatial bounds must be finite and have a non-negative size.` A `KdTree2D` stores points with an optional radius instead, and its queries treat each point as a circle.
 
 ### spatial2d.newHashGrid(cellSize)
 
-Returns a [`HashGrid`](#hashgrid), a spatial hash whose cells are `cellSize` units wide and high. A spatial hash files every entry under the cells that its rectangle covers. A cell size about the size of a typical entity, or a little larger, keeps queries fast. A size that is not positive and finite raises `A spatial hash needs a positive cell size.`
+Returns a [`HashGrid2D`](#hashgrid2d), a spatial hash whose cells are `cellSize` units wide and high. A spatial hash files every entry under the cells that its rectangle covers. A cell size about the size of a typical entity, or a little larger, keeps queries fast. A size that is not positive and finite raises `A spatial hash needs a positive cell size.`
 
 A stored rectangle covers at most 65536 cells, or `hash:set` raises `A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.`. It lies within 536870912 cells of the origin, or `hash:set` raises `A spatial hash entry must lie within 536870912 cells of the origin.`. A query never costs much more than a visit to every stored value, so a huge area, or a point or a ray far from every entry, stays cheap.
 
@@ -50,7 +50,7 @@ print(tree.area.width, tree.nodeCount) -- 4096.0 1
 
 ### spatial2d.newAabbTree(margin)
 
-Returns an [`AabbTree`](#aabbtree), a dynamic tree of bounding boxes. It keeps a box around each entry that is `margin` units larger on every side, `4` by default, and it moves an entry in the tree only when the entry leaves that box. Larger margins make more small moves free, and smaller ones make queries tighter. A margin that is negative or not finite raises `An AABB tree needs a finite margin of zero or more.`
+Returns an [`AabbTree2D`](#aabbtree2d), a dynamic tree of bounding boxes. It keeps a box around each entry that is `margin` units larger on every side, `4` by default, and it moves an entry in the tree only when the entry leaves that box. Larger margins make more small moves free, and smaller ones make queries tighter. A margin that is negative or not finite raises `An AABB tree needs a finite margin of zero or more.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -61,7 +61,7 @@ print(tree.margin, tree.height) -- 8.0 0
 
 ### spatial2d.newKdTree()
 
-Returns an empty [`KdTree`](#kdtree), a tree of points that splits space along x and y in turn. It answers nearest queries fastest, and it is rebuilt with `kdTree:build` after its points change.
+Returns an empty [`KdTree2D`](#kdtree2d), a tree of points that splits space along x and y in turn. It answers nearest queries fastest, and it is rebuilt with `kdTree:build` after its points change.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -78,7 +78,7 @@ These methods exist on every structure, except where a method names the structur
 
 ### structure:set(value, rect)
 
-Stores `value` with the bounds `rect` in a `HashGrid`, a `QuadTree` or an `AabbTree`. When the value is already stored, it moves to the new bounds. A `nil` value raises `bad argument #1 to 'set' (a value to store is required)`. A `KdTree` takes a point instead, as [`kdTree:set`](#kdtreesetvalue-x-y-radius) describes.
+Stores `value` with the bounds `rect` in a `HashGrid2D`, a `QuadTree` or an `AabbTree2D`. When the value is already stored, it moves to the new bounds. A `nil` value raises `bad argument #1 to 'set' (a value to store is required)`. A `KdTree2D` takes a point instead, as [`kdTree:set`](#kdtreesetvalue-x-y-radius) describes.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -119,7 +119,7 @@ print(tree:has(chest), tree:has({name = 'chest'})) -- true false
 
 ### structure:bounds(value)
 
-Returns the `Rect` stored for `value` in a `HashGrid`, a `QuadTree` or an `AabbTree`, or `nil` when the value is not stored. A `KdTree` has [`kdTree:point`](#kdtreepointvalue) instead.
+Returns the `Rect` stored for `value` in a `HashGrid2D`, a `QuadTree` or an `AabbTree2D`, or `nil` when the value is not stored. A `KdTree2D` has [`kdTree:point`](#kdtreepointvalue) instead.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -272,9 +272,9 @@ hash:clear()
 print(hash.size) -- 0
 ```
 
-## HashGrid
+## HashGrid2D
 
-A `HashGrid` is a spatial hash that [`spatial2d.newHashGrid`](#spatial2dnewhashgridcellsize) returns. Moving an entry costs about the same as storing it, so it suits many entries of a similar size that move every frame. It has the [structure methods](#structure-methods) `hash:set`, `hash:remove`, `hash:has`, `hash:bounds`, `hash:query`, `hash:queryCircle`, `hash:queryPoint`, `hash:raycast`, `hash:nearest`, `hash:kNearest`, `hash:pick` and `hash:clear`.
+A `HashGrid2D` is a spatial hash that [`spatial2d.newHashGrid`](#spatial2dnewhashgridcellsize) returns. Moving an entry costs about the same as storing it, so it suits many entries of a similar size that move every frame. It has the [structure methods](#structure-methods) `hash:set`, `hash:remove`, `hash:has`, `hash:bounds`, `hash:query`, `hash:queryCircle`, `hash:queryPoint`, `hash:raycast`, `hash:nearest`, `hash:kNearest`, `hash:pick` and `hash:clear`.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -309,9 +309,9 @@ end
 print(level.size, level.nodeCount > 1) -- 10 true
 ```
 
-## AabbTree
+## AabbTree2D
 
-An `AabbTree` is a dynamic tree of bounding boxes that [`spatial2d.newAabbTree`](#spatial2dnewaabbtreemargin) returns. It suits many moving entries of any size over an area without limits. It has the [structure methods](#structure-methods) `tree:set`, `tree:remove`, `tree:has`, `tree:bounds`, `tree:query`, `tree:queryCircle`, `tree:queryPoint`, `tree:raycast`, `tree:nearest`, `tree:kNearest`, `tree:pick` and `tree:clear`.
+An `AabbTree2D` is a dynamic tree of bounding boxes that [`spatial2d.newAabbTree`](#spatial2dnewaabbtreemargin) returns. It suits many moving entries of any size over an area without limits. It has the [structure methods](#structure-methods) `tree:set`, `tree:remove`, `tree:has`, `tree:bounds`, `tree:query`, `tree:queryCircle`, `tree:queryPoint`, `tree:raycast`, `tree:nearest`, `tree:kNearest`, `tree:pick` and `tree:clear`.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -329,9 +329,9 @@ end
 print(ships.size, ships.height, ships.margin)
 ```
 
-## KdTree
+## KdTree2D
 
-A `KdTree` is a tree of points that [`spatial2d.newKdTree`](#spatial2dnewkdtree) returns. It suits points that rarely change, when nearest queries come most often. Its points change freely, but a query needs a [`kdTree:build`](#kdtreebuild) after a change. It has the [structure methods](#structure-methods) `kdTree:remove`, `kdTree:has`, `kdTree:query`, `kdTree:queryCircle`, `kdTree:queryPoint`, `kdTree:raycast`, `kdTree:nearest`, `kdTree:kNearest`, `kdTree:pick` and `kdTree:clear`, and the methods below.
+A `KdTree2D` is a tree of points that [`spatial2d.newKdTree`](#spatial2dnewkdtree) returns. It suits points that rarely change, when nearest queries come most often. Its points change freely, but a query needs a [`kdTree:build`](#kdtreebuild) after a change. It has the [structure methods](#structure-methods) `kdTree:remove`, `kdTree:has`, `kdTree:query`, `kdTree:queryCircle`, `kdTree:queryPoint`, `kdTree:raycast`, `kdTree:nearest`, `kdTree:kNearest`, `kdTree:pick` and `kdTree:clear`, and the methods below.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -906,12 +906,12 @@ These messages come from the functions and methods of the module. Messages that 
 | Message | Cause |
 | --- | --- |
 | `A spatial hash needs a positive cell size.` | The cell size of `spatial2d.newHashGrid` is not positive and finite. |
-| `A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.` | A rectangle of a `HashGrid` is far larger than its cells. |
-| `A spatial hash entry must lie within 536870912 cells of the origin.` | A rectangle of a `HashGrid` lies too far away. |
+| `A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.` | A rectangle of a `HashGrid2D` is far larger than its cells. |
+| `A spatial hash entry must lie within 536870912 cells of the origin.` | A rectangle of a `HashGrid2D` lies too far away. |
 | `A quadtree needs an area of positive size, room for an entry per quadrant and a depth from 0 to 16.` | The area or the options of `spatial2d.newQuadTree` are out of range. |
 | `An AABB tree needs a finite margin of zero or more.` | The margin of `spatial2d.newAabbTree` is negative or not finite. |
 | `A k-d tree entry needs a finite point and a finite radius of zero or more.` | The point or the radius of `kdTree:set` is out of range. |
-| `The k-d tree changed since it was last built, so it needs "build" before a query.` | A `KdTree` was queried after a change and before `kdTree:build`. |
+| `The k-d tree changed since it was last built, so it needs "build" before a query.` | A `KdTree2D` was queried after a change and before `kdTree:build`. |
 | `bad argument #1 to 'set' (a value to store is required)` | The value of `structure:set` is `nil`. |
 | `Spatial bounds must be finite and have a non-negative size.` | A rectangle of a structure has a negative size or a component that is not finite. |
 | `A spatial query radius must not be negative.` | The radius of `structure:queryCircle` is negative. |

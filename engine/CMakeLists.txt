@@ -207,6 +207,15 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/tiled/Tileset.cpp
   src/2d/tiled/WangSet.cpp
   src/2d/tiled/World.cpp
+  src/3d/spatial/AabbTree.cpp
+  src/3d/spatial/Bvh.cpp
+  src/3d/spatial/BvhNodes.cpp
+  src/3d/spatial/EntryBounds.cpp
+  src/3d/spatial/GridRay.cpp
+  src/3d/spatial/HashGrid.cpp
+  src/3d/spatial/KdTree.cpp
+  src/3d/spatial/MeshBvh.cpp
+  src/3d/spatial/Octree.cpp
   src/ai/BehaviorTree.cpp
   src/ai/InfluenceMap.cpp
   src/ai/ResponseCurve.cpp

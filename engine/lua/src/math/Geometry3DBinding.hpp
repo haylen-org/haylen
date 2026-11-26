@@ -29,6 +29,9 @@ class Geometry3DBinding final {
     // Sets the constructors of the 3D shapes on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
+    // Pushes the hit table of a ray cast, with its `distance`, `point` and `normal`, or `nil` for no hit.
+    static void pushHit(lua_State* L, const std::optional<haylen::math::RayHit3D>& hit);
+
   private:
     static int planeToString(lua_State* L);
     static int planeEqual(lua_State* L);
@@ -45,7 +48,6 @@ class Geometry3DBinding final {
     [[nodiscard]] static haylen::math::Capsule newCapsule(haylen::math::Vec3 start, haylen::math::Vec3 end, float radius);
     [[nodiscard]] static haylen::math::Triangle newTriangle(haylen::math::Vec3 a, haylen::math::Vec3 b, haylen::math::Vec3 c);
     [[nodiscard]] static haylen::math::Frustum newFrustum(const haylen::math::Mat4& viewProjection, std::optional<haylen::math::Mat4::DepthRange> depthRange);
-    static void pushHit(lua_State* L, const std::optional<haylen::math::RayHit3D>& hit);
     static int rayFromView(lua_State* L);
     static int rayCast(lua_State* L);
     static int boxContains(lua_State* L);
