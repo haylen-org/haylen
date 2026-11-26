@@ -231,6 +231,26 @@ TEST_P(GpuPassTest, ReadsBackRegionsOfTheTargetOnce) {
     EXPECT_FALSE(copy->poll().has_value());
 }
 
+// The platform waits for the display outside a pass, after the readbacks that it starts once a frame committed and the objects with contents that a frame which draws nothing makes, which some devices record into the next frame.
+TEST_P(GpuPassTest, WaitsForTheDisplayOutsidePassesAfterReadbacksAndUploads) {
+    const Device::Image target = makeTarget(4, 4);
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = target, .clear = math::Color::black()}}};
+    device().beginPass({.colors = colors, .label = "haylen-test-open-pass"});
+    EXPECT_EQ(test::ContractRule::of([&] { device().waitForDisplay(); }), gpu::ContractError::Rule::PassOrder);
+    device().endPass();
+    device().commit();
+    const std::unique_ptr<Device::Readback> copy = device().readImage(target, 4, 4);
+    device().waitForDisplay();
+
+    const std::array<std::byte, 16> pixels{};
+    const std::array<std::span<const std::byte>, 1> levels{pixels};
+    const Device::Image uploaded = makeImage({.width = 2, .height = 2, .levels = levels, .label = "haylen-test-uploaded"});
+    EXPECT_TRUE(uploaded.isValid());
+    device().waitForDisplay();
+    EXPECT_EQ(finishCopy(*copy).size(), std::size_t{64});
+    EXPECT_FALSE(device().isLost());
+}
+
 INSTANTIATE_TEST_SUITE_P(Devices, GpuPassTest, ::testing::ValuesIn(test::GpuFixture::getTestedApis()), test::GpuFixture::nameApi);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GpuPassTest);
 

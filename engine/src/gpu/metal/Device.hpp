@@ -9,10 +9,10 @@
 
 namespace haylen::gpu::metal {
 
-// The device of Metal on macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS. It records each frame into one command buffer that holds no references, keeps up to `kFramesInFlight` frames on the GPU behind a semaphore, and releases destroyed objects once the frames that may use them finished. Uniforms, the pixels of dynamic images and the writes into dynamic buffers pass through an upload ring of each frame in shared memory, stream buffers keep a region for each frame in flight, dynamic buffers live in the memory of the GPU and take their writes and copies as blits between the passes of the frame, readbacks copy on command buffers of their own, and the encoder of a pass receives only the state that changes. Swapchain passes draw into the drawables of the `CAMetalLayer` of the surface, with their multisampled color and their depth and stencil in tile memory on Apple GPUs. Its Metal objects live in the source file, so the device factory includes this header from C++.
+// The device of Metal on macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS. It records each frame into one command buffer that holds no references, keeps up to `kFramesInFlight` frames on the GPU behind a semaphore, one that the GPU runs while the next one records, and releases destroyed objects once the frames that may use them finished. Uniforms, the pixels of dynamic images and the writes into dynamic buffers pass through an upload ring of each frame in shared memory, stream buffers keep a region for each frame in flight, dynamic buffers live in the memory of the GPU and take their writes and copies as blits between the passes of the frame, readbacks copy on command buffers of their own, and the encoder of a pass receives only the state that changes. Swapchain passes draw into the drawables of the `CAMetalLayer` of the surface, with their multisampled color and their depth and stencil in tile memory on Apple GPUs. Its Metal objects live in the source file, so the device factory includes this header from C++.
 class Device final : public gpu::Device {
   public:
-    static constexpr int kFramesInFlight = 3;
+    static constexpr int kFramesInFlight = 2;
 
     // Creates the device of the GPU that shows the layer of the surface, or of the default GPU to draw offscreen without one. Throws `std::runtime_error` when the machine has no Metal GPU or the surface holds no `CAMetalLayer`.
     [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& surface, const DeviceOptions& options);
@@ -67,6 +67,9 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+
+    // Claims the slot of the next frame, once the GPU finished the frame before the last, and takes the next drawable of every surface that presented, which comes once the display took the frame before, so the next frame reads its input with a drawable at hand.
+    void waitForDisplay() override;
 
     // Releases the objects that the GPU finished with and makes the upload ring of each frame in flight as small as its last frame wrote. Metal frees the memory of every object that the device releases, so the rings are all that the device keeps for later.
     void trim() override;

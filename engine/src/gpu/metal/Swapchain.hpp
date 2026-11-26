@@ -14,8 +14,8 @@ class Swapchain final {
     static constexpr MTLPixelFormat kColorFormat = MTLPixelFormatBGRA8Unorm;
     static constexpr MTLPixelFormat kDepthFormat = MTLPixelFormatDepth32Float_Stencil8;
 
-    // The drawables a layer keeps, one for each frame in flight.
-    static constexpr NSUInteger kDrawables = 3;
+    // The drawables a layer keeps, the one that the display shows and the one that the next frame draws, so no frame waits to be shown behind another and its input reaches the screen at the next refresh it makes.
+    static constexpr NSUInteger kDrawables = 2;
 
     Swapchain(id<MTLDevice> metal, Graveyard& retired, int samples, bool tileMemory);
 
@@ -38,7 +38,10 @@ class Swapchain final {
         return memoryless;
     }
 
-    // Takes the drawable of the frame, once a frame. It fails without a surface, while the surface has no pixels and when the layer gave no drawable in time.
+    // Takes the drawable of the next frame ahead of its passes, which it keeps until a frame draws and presents it, and the size of the surface replaces one that it took at another size. A surface without a layer or without pixels takes none, and neither does a layer that gave no drawable in time.
+    void prepare();
+
+    // Takes the drawable that the swapchain pass of the frame draws into, which the commit of the frame presents. It fails where `prepare` takes none.
     [[nodiscard]] bool acquire();
 
     [[nodiscard]] id<CAMetalDrawable> getDrawable() const noexcept {
@@ -53,8 +56,8 @@ class Swapchain final {
         return depth;
     }
 
-    // Presents the drawable of the frame once the command buffer finished drawing it.
-    void present(id<MTLCommandBuffer> commands);
+    // Presents the drawable of the frame once the command buffer finished drawing it, and gives whether the frame drew one.
+    bool present(id<MTLCommandBuffer> commands);
 
   private:
     void makeAttachments(NSUInteger pixelWidth, NSUInteger pixelHeight);
@@ -64,6 +67,9 @@ class Swapchain final {
     Graveyard& graveyard;
     CAMetalLayer* layer = nil;
     id<CAMetalDrawable> drawable = nil;
+
+    // Whether a pass of the frame that records drew the drawable.
+    bool drawn = false;
     id<MTLTexture> multisample = nil;
     id<MTLTexture> depth = nil;
     int width = 0;

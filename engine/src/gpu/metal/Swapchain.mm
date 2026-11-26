@@ -2,6 +2,7 @@
 
 #include <format>
 #include <stdexcept>
+#include <utility>
 
 namespace haylen::gpu::metal {
 
@@ -39,6 +40,7 @@ void Swapchain::detach() {
     graveyard.retire(drawable);
     layer = nil;
     drawable = nil;
+    drawn = false;
 }
 
 // The layer stretches its drawable over its bounds, so a drawable smaller than the window shows at the size of the window, and the window size needs nothing of the device.
@@ -47,13 +49,17 @@ void Swapchain::resize(const Surface::Size& size) noexcept {
     height = size.height;
 }
 
-bool Swapchain::acquire() {
-    if (drawable != nil) {
-        return true;
+// A drawable that no frame drew holds no command of the GPU, so one that the wait for the display took before the surface resized goes back to the layer at once, which keeps the layer from running out of drawables. A frame keeps the drawable it drew until it presents it.
+void Swapchain::prepare() {
+    const bool fits = drawable != nil && static_cast<int>(drawable.texture.width) == width && static_cast<int>(drawable.texture.height) == height;
+    if (fits || drawn) {
+        return;
     }
 
+    drawable = nil;
+
     if (layer == nil || width <= 0 || height <= 0) {
-        return false;
+        return;
     }
 
     const CGSize size = CGSizeMake(width, height);
@@ -65,19 +71,26 @@ bool Swapchain::acquire() {
         drawable = [layer nextDrawable];
     }
 
-    if (drawable == nil) {
+    if (drawable != nil) {
+        makeAttachments(drawable.texture.width, drawable.texture.height);
+    }
+}
+
+bool Swapchain::acquire() {
+    prepare();
+    drawn = drawable != nil;
+    return drawn;
+}
+
+// A drawable that the frame did not draw stays for the next frame.
+bool Swapchain::present(id<MTLCommandBuffer> commands) {
+    if (!std::exchange(drawn, false)) {
         return false;
     }
 
-    makeAttachments(drawable.texture.width, drawable.texture.height);
+    [commands presentDrawable:drawable];
+    drawable = nil;
     return true;
-}
-
-void Swapchain::present(id<MTLCommandBuffer> commands) {
-    if (drawable != nil) {
-        [commands presentDrawable:drawable];
-        drawable = nil;
-    }
 }
 
 // The attachments of the old size may still be drawn by frames in flight, so they wait for them in the graveyard.

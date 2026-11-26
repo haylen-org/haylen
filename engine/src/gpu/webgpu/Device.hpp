@@ -86,6 +86,7 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+    void waitForDisplay() override;
 
     // Releases the chunks of the uniform ring and of the uploads that the last frame did not reach, with the bind groups of the uniform ring. The browser holds every other upload and frees each object that the device releases, so the rings are all that the device keeps for later.
     void trim() override;

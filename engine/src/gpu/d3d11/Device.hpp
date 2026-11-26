@@ -94,6 +94,7 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+    void waitForDisplay() override;
 
     // Asks the driver, through `IDXGIDevice3::Trim`, to give back the memory it keeps for the device, such as the copies of dynamic buffers and the memory of released objects.
     void trim() override;
@@ -237,7 +238,6 @@ class Device final : public gpu::Device {
     void createDevice(bool validation);
     void readCapabilities();
     void openFrame();
-    void waitForDisplays() noexcept;
     void loseDevice(HRESULT reason);
     [[nodiscard]] SurfaceChain& requireChain(int number) const;
     [[nodiscard]] SurfaceChain& requireAddedChain(int number) const;

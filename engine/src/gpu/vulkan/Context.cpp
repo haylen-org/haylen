@@ -153,7 +153,12 @@ void Context::createDevice() {
         extensions.push_back("VK_KHR_portability_subset");
     }
 
+    // A present that carries an id lets the device wait until the display shows it, which both extensions bring together.
+    const bool presentWaitExtensions = swapchain && has(VK_KHR_PRESENT_ID_EXTENSION_NAME) && has(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
+
     VkPhysicalDeviceTextureCompressionASTCHDRFeatures astcHdrFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, .pNext = nullptr, .textureCompressionASTC_HDR = VK_FALSE};
+    VkPhysicalDevicePresentWaitFeaturesKHR presentWaitFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR, .pNext = nullptr, .presentWait = VK_FALSE};
+    VkPhysicalDevicePresentIdFeaturesKHR presentIdFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR, .pNext = &presentWaitFeatures, .presentId = VK_FALSE};
     VkPhysicalDeviceDynamicRenderingFeatures renderingFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES, .pNext = nullptr, .dynamicRendering = VK_FALSE};
     VkPhysicalDeviceFeatures2 supported{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = nullptr, .features = {}};
     const bool canRender = apiVersion >= VK_API_VERSION_1_3 || renderingExtension;
@@ -165,6 +170,11 @@ void Context::createDevice() {
 
     if (canAstcHdr) {
         *supportedTail = &astcHdrFeatures;
+        supportedTail = &astcHdrFeatures.pNext;
+    }
+
+    if (presentWaitExtensions) {
+        *supportedTail = &presentIdFeatures;
     }
 
     vkGetPhysicalDeviceFeatures2(physicalDevice, &supported);
@@ -178,6 +188,12 @@ void Context::createDevice() {
         extensions.push_back(VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME);
     }
 
+    presentWait = presentWaitExtensions && presentIdFeatures.presentId == VK_TRUE && presentWaitFeatures.presentWait == VK_TRUE;
+    if (presentWait) {
+        extensions.push_back(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
+    }
+
     // The block compressed formats of each family sample only on a device made with its feature.
     enabledFeatures.samplerAnisotropy = supported.features.samplerAnisotropy;
     enabledFeatures.independentBlend = supported.features.independentBlend;
@@ -185,6 +201,8 @@ void Context::createDevice() {
     enabledFeatures.textureCompressionETC2 = supported.features.textureCompressionETC2;
     enabledFeatures.textureCompressionASTC_LDR = supported.features.textureCompressionASTC_LDR;
     VkPhysicalDeviceTextureCompressionASTCHDRFeatures enabledAstcHdr{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, .pNext = nullptr, .textureCompressionASTC_HDR = VK_TRUE};
+    VkPhysicalDevicePresentWaitFeaturesKHR enabledPresentWait{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR, .pNext = nullptr, .presentWait = VK_TRUE};
+    VkPhysicalDevicePresentIdFeaturesKHR enabledPresentId{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR, .pNext = &enabledPresentWait, .presentId = VK_TRUE};
     VkPhysicalDeviceDynamicRenderingFeatures enabledRendering{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES, .pNext = nullptr, .dynamicRendering = VK_TRUE};
     VkPhysicalDeviceFeatures2 enabled{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = nullptr, .features = enabledFeatures};
     void** enabledTail = &enabled.pNext;
@@ -195,6 +213,11 @@ void Context::createDevice() {
 
     if (astcHdr) {
         *enabledTail = &enabledAstcHdr;
+        enabledTail = &enabledAstcHdr.pNext;
+    }
+
+    if (presentWait) {
+        *enabledTail = &enabledPresentId;
     }
 
     const float priority = 1.0F;

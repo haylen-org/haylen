@@ -405,6 +405,8 @@ The worker layer in `engine/src/platform/worker/` runs the web runtime in the Wo
 
 A halted app, which the lifecycle options decide by the app state, skips steps 9 and 10 and advances the clock by zero. An app in the background, or under an opaque screen of a plugin, also skips drawing, like a covered app once it drew its covered frame, as the [lifecycle guide](lifecycle.md) explains. The game pause of `Engine::setPaused` gates scenes, autoloads, timers and tweens by their `ProcessMode` inside those steps.
 
+Once `Engine::frame` returned, `Player::frame` waits for the display through `gpu::Device::waitForDisplay`, which returns once the displays can take another frame. Every platform layer reads the events of the next frame only after that, so input reaches the screen as soon as the display allows, as [frame pacing](../graphics/rhi.md#frame-pacing) describes.
+
 ### Frame rate
 
 The platform layer plays a frame for every refresh of the display by default, at the highest refresh the display has. The frame rate of the app, `window.frameRate` in `haylen.json` or [`window.setFrameRate`](../lua-api/window.md#windowsetframerateframespersecond) in Lua, aims for fewer frames, such as 30 frames per second for a calm screen that saves battery, or caps a window without vsync, which would otherwise draw as fast as it can and spend a whole core. The host hands the rate to its platform layer through `NativeHost::applyFrameRate`, and each one paces its frames where its system does:

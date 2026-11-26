@@ -45,7 +45,11 @@ class Swapchain final {
 
     // Acquires the next image for the frame in flight, whose semaphore `getAcquired` gives to the submission that waits for it. It waits at most `timeout` nanoseconds and gives `VK_TIMEOUT` when the window system kept every image that long.
     [[nodiscard]] VkResult acquire(std::size_t frame, std::uint64_t timeout, std::uint32_t& index) const;
-    [[nodiscard]] VkResult present(std::uint32_t index) const;
+    // Presents the image at the index, with the id of the present where the device waits for presents, which `waitForDisplay` then waits for.
+    [[nodiscard]] VkResult present(std::uint32_t index);
+
+    // Waits at most `timeout` nanoseconds until the display shows the image that the swapchain presented last, where the device waits for presents, and gives `VK_TIMEOUT` when the display took longer. A swapchain that presented nothing since the last wait waits for nothing.
+    [[nodiscard]] VkResult waitForDisplay(std::uint64_t timeout);
 
     [[nodiscard]] VkSemaphore getAcquired(std::size_t frame) const noexcept {
         return acquired[frame];
@@ -175,6 +179,10 @@ class Swapchain final {
     Attachment color;
     Attachment depth;
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+
+    // The id of the last present, which grows with every present of the surface, and the id that the next wait waits for, or 0 when no present waits.
+    std::uint64_t presentId = 0;
+    std::uint64_t pendingPresent = 0;
     int turns = 0;
     bool warnedOpaque = false;
     bool warnedVsync = false;

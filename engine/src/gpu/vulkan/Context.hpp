@@ -80,6 +80,11 @@ class Context final {
         return swapchain;
     }
 
+    // Whether presents carry ids that the device waits for until the display shows them, through `VK_KHR_present_id` and `VK_KHR_present_wait`.
+    [[nodiscard]] bool hasPresentWait() const noexcept {
+        return presentWait;
+    }
+
     // How many bits of a timestamp of the queue count, or none where the queue measures no time.
     [[nodiscard]] std::uint32_t getTimestampBits() const noexcept {
         return timestampBits;
@@ -145,6 +150,7 @@ class Context final {
     bool dynamicRendering = false;
     bool astcHdr = false;
     bool swapchain = false;
+    bool presentWait = false;
     bool memoryBudget = false;
     bool debugUtils = false;
     // The text of the last name given to an object, kept so naming never allocates once it holds the longest name.

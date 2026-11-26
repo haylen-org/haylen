@@ -180,6 +180,10 @@ void OffscreenSwapchain::commit() {
     device->commit();
 }
 
+void OffscreenSwapchain::waitForDisplay() {
+    device->waitForDisplay();
+}
+
 void OffscreenSwapchain::resizeSurface(const gpu::Surface::Size& size) {
     device->resizeSurface(size);
 }

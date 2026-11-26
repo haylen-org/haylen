@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <format>
@@ -26,6 +27,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/gpu/ContractError.hpp"
 #include "haylen/gpu/SurfaceTurn.hpp"
+#include "platform/FrameCallbackGate.hpp"
 
 namespace haylen::gpu::vulkan {
 
@@ -277,17 +279,12 @@ bool Device::ensureFrame() {
         return false;
     }
 
-    Frame& frame = frames[frameIndex];
-    if (frame.submitted) {
-        const VkResult waited = vk.vkWaitForFences(context->getDevice(), 1, &frame.fence, VK_TRUE, UINT64_MAX);
-        if (waited != VK_SUCCESS) {
-            markLost(waited);
-            return false;
-        }
-
-        completeFrame(frame);
+    waitForNextFrame();
+    if (lost) {
+        return false;
     }
 
+    Frame& frame = frames[frameIndex];
     Context::check(vk.vkResetFences(context->getDevice(), 1, &frame.fence), "reset the fence of a frame");
     releases.collect(completedSerial);
     if (std::exchange(frame.trim, false)) {
@@ -476,6 +473,7 @@ void Device::commit() {
         }
 
         const VkResult presented = chain->swapchain->present(chain->imageIndex);
+        presentedSinceWait = presentedSinceWait || presented == VK_SUCCESS || presented == VK_SUBOPTIMAL_KHR;
         if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_SUBOPTIMAL_KHR || presented == VK_ERROR_SURFACE_LOST_KHR || presented == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
             chain->dirty = true;
         } else if (presented == VK_ERROR_DEVICE_LOST) {
@@ -495,6 +493,59 @@ void Device::commit() {
     finishTrim();
     readbacks.sweep();
     Context::check(failure, "present the swapchain of a surface");
+}
+
+// A device whose presents carry ids waits until the display showed the frames that presented, and any other one until the GPU finished the frame before the last, the frame whose slot the next frame takes, so one frame stays on the GPU while the next one records.
+void Device::waitForDisplay() {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    if (!std::exchange(presentedSinceWait, false) || lost) {
+        return;
+    }
+
+    if (context->hasPresentWait()) {
+        waitForPresents();
+        return;
+    }
+
+    waitForNextFrame();
+}
+
+// A window system that holds the presents of a surface, such as a compositor whose outputs sleep, shows nothing for as long as it holds them, so a wait that runs out after the time that counts as holding lets the next frame go on, and the swapchain then keeps the frames from running ahead.
+void Device::waitForPresents() {
+    const auto timeout = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(platform::FrameCallbackGate::kHeldSeconds));
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain == nullptr || !chain->swapchain) {
+            continue;
+        }
+
+        const VkResult waited = chain->swapchain->waitForDisplay(static_cast<std::uint64_t>(timeout.count()));
+        if (waited == VK_ERROR_OUT_OF_DATE_KHR || waited == VK_ERROR_SURFACE_LOST_KHR || waited == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
+            chain->dirty = true;
+        } else if (waited == VK_ERROR_DEVICE_LOST) {
+            markLost(waited);
+            return;
+        } else if (waited != VK_TIMEOUT) {
+            Context::check(waited, "wait for the display to show a frame");
+        }
+    }
+}
+
+void Device::waitForNextFrame() {
+    Frame& frame = frames[frameIndex];
+    if (!frame.submitted) {
+        return;
+    }
+
+    const VkResult waited = vk.vkWaitForFences(context->getDevice(), 1, &frame.fence, VK_TRUE, UINT64_MAX);
+    if (waited != VK_SUCCESS) {
+        markLost(waited);
+        return;
+    }
+
+    completeFrame(frame);
 }
 
 // The frame of a lost device submits nothing, so it lets go of the images it acquired, and the surfaces go and come back without a frame that holds them.

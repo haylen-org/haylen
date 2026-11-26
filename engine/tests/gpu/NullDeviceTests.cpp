@@ -550,6 +550,27 @@ TEST_F(NullDeviceTest, TakesTheSurfaceInTurnBetweenFrames) {
     device.commit();
 }
 
+// The platform waits for the display outside a pass, and only a frame that presented leaves a surface to wait for.
+TEST_F(NullDeviceTest, WaitsForTheDisplayBetweenFramesAfterThoseThatPresented) {
+    NullDevice device;
+    device.beginPass({});
+    EXPECT_EQ(test::ContractRule::of([&] { device.waitForDisplay(); }), gpu::ContractError::Rule::PassOrder);
+    device.endPass();
+    device.commit();
+    device.waitForDisplay();
+    EXPECT_EQ(device.getDisplayWaits(), 1U);
+    EXPECT_EQ(device.getPresentedWaits(), 1U);
+
+    const Device::Image target = device.makeImage({.width = 2, .height = 2, .kind = Device::ImageKind::RenderTarget, .label = "target"});
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = target}}};
+    device.beginPass({.colors = colors});
+    device.endPass();
+    device.commit();
+    device.waitForDisplay();
+    EXPECT_EQ(device.getDisplayWaits(), 2U);
+    EXPECT_EQ(device.getPresentedWaits(), 1U);
+}
+
 // A device may present a surface once a pass into another surface leaves it, so the passes of a frame into one surface follow one another, with offscreen passes between them.
 TEST_F(NullDeviceTest, KeepsThePassesOfAFrameIntoOneSurfaceTogether) {
     NullDevice device;

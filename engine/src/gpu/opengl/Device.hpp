@@ -90,6 +90,7 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+    void waitForDisplay() override;
 
     // Makes the upload ring and the uniform ring as small as their last frames needed, which is all that the device keeps for later: OpenGL frees the memory of each object that the device deletes, and WebGL2 hands the writes into buffers and images to the browser without an upload ring.
     void trim() override;
@@ -269,6 +270,9 @@ class Device final : public gpu::Device {
     bool frameStarted = false;
     bool drewSwapchain = false;
     bool presentedSwapchain = false;
+
+    // Whether a frame presented a drawable since the platform last waited for the display.
+    bool presentedSinceWait = false;
     PassState pass;
 #if !defined(__EMSCRIPTEN__)
     // The in-application API of RenderDoc when RenderDoc launched the app, which captures its frames.

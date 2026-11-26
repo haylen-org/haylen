@@ -1507,12 +1507,15 @@ void Device::commit() {
     }
 
     drainMessages();
-    waitForDisplays();
     HResult::check(failedPresent, "present the swapchain of a window");
 }
 
-// The commit ends once every surface that presented can take the next frame, so the platform reads the input of that frame only then, as late as the displays allow.
-void Device::waitForDisplays() noexcept {
+// Every surface that presented waits on its frame latency waitable object, so the platform reads the input of the next frame only once the displays took the frames before it.
+void Device::waitForDisplay() {
+    if (passOpen) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
     for (const std::unique_ptr<SurfaceChain>& chain : chains) {
         if (chain == nullptr || !std::exchange(chain->presented, false) || lost) {
             continue;

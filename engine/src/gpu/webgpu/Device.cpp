@@ -1303,6 +1303,13 @@ void Device::commit() {
     ++frame;
 }
 
+// The browser shows the canvases of a page at its own animation frames, which pace the frames of the app, and a page may not block, so the device waits for nothing between frames.
+void Device::waitForDisplay() {
+    if (pass != nullptr || skipping) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+}
+
 void Device::resizeSurface(const Surface::Size& size) {
     if (swapchain) {
         swapchain->resize(size);

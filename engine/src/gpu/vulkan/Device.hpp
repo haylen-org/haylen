@@ -103,6 +103,7 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+    void waitForDisplay() override;
 
     // Frees the memory blocks that no object uses and the chunks of the upload rings that the last frames left empty, through the Vulkan Memory Allocator.
     void trim() override;
@@ -338,6 +339,8 @@ class Device final : public gpu::Device {
     [[nodiscard]] bool ensureFrame();
     void completeFrame(Frame& frame);
     void pollFrames();
+    void waitForPresents();
+    void waitForNextFrame();
     void markLost(VkResult result);
     void abandonFrame() noexcept;
     void waitIdle();
@@ -423,6 +426,9 @@ class Device final : public gpu::Device {
     std::size_t frameIndex = 0;
     bool frameOpen = false;
     bool bufferUploads = false;
+
+    // Whether a frame presented a surface since the platform last waited for the display.
+    bool presentedSinceWait = false;
     std::uint64_t nextSerial = 1;
     std::uint64_t completedSerial = 0;
     std::optional<double> gpuFrameSeconds;

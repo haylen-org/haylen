@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <functional>
@@ -10,8 +11,10 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
+#include "gpu/NullDevice.hpp"
 #include "haylen/core/Application.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/platform/TextInput.hpp"
@@ -20,6 +23,7 @@
 #include "platform/Player.hpp"
 #include "platform/Services.hpp"
 #include "port/PortHost.hpp"
+#include "support/TemporaryDirectory.hpp"
 #include "support/TestApplication.hpp"
 
 // The player of these tests makes the app of a test application, as an app makes its own.
@@ -38,12 +42,19 @@ class PlayerTest : public ::testing::Test {
         Created = 1,
         HostKept = 2,
         ServicesKept = 3,
+        DisplayNotWaited = 4,
     };
+
+    // The frames that the player plays in the test of its waits for the display.
+    static constexpr int kPlayedFrames = 5;
 
     // A window of a port that has no pixels, input or sound, which tells the test when the player let go of it.
     class Window final : public port::Host {
       public:
         explicit Window(bool& gone) noexcept : destroyed(gone) {}
+
+        // A window whose GPU device the player takes when it starts the app.
+        Window(bool& gone, std::unique_ptr<gpu::Device> made) noexcept : destroyed(gone), device(std::move(made)) {}
 
         ~Window() override {
             destroyed = true;
@@ -101,7 +112,7 @@ class PlayerTest : public ::testing::Test {
         }
 
         [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override {
-            return nullptr;
+            return std::move(device);
         }
 
         void requestClose() override {}
@@ -136,12 +147,15 @@ class PlayerTest : public ::testing::Test {
 
       private:
         bool& destroyed;
+        std::unique_ptr<gpu::Device> device;
         TextInput textInput;
     };
 
-    // A platform with one screen whose links cannot be listened for, as when the system refuses the channel that the links of later processes come through, which counts how often the player starts and ends it.
+    // A platform with one screen, which counts how often the player starts and ends it, and whose links cannot be listened for where it refuses them, as when the system refuses the channel that the links of later processes come through.
     class Platform final : public port::PlatformService, public port::DisplayService, public port::LinkService {
       public:
+        explicit Platform(bool refusing) noexcept : refusesLinks(refusing) {}
+
         [[nodiscard]] std::string_view getName() const noexcept override {
             return "player-test";
         }
@@ -205,16 +219,21 @@ class PlayerTest : public ::testing::Test {
         }
 
         void listenForLinks(std::string_view) override {
-            throw std::runtime_error("The platform of the player tests refuses to listen for links.");
+            if (refusesLinks) {
+                throw std::runtime_error("The platform of the player tests refuses to listen for links.");
+            }
         }
 
         int initialized = 0;
         int shutDown = 0;
+
+      private:
+        bool refusesLinks = false;
     };
 
     // Creates the player on a platform whose last step of the creation fails, and tells what the failure left behind.
     [[nodiscard]] static Outcome createOnFailingPlatform() {
-        const auto platform = std::make_shared<Platform>();
+        const auto platform = std::make_shared<Platform>(true);
         Services::install({.platform = platform, .displays = platform, .links = platform});
 
         bool windowGone = false;
@@ -237,12 +256,43 @@ class PlayerTest : public ::testing::Test {
 
         return platform->initialized == 1 && platform->shutDown == 1 ? Outcome::Clean : Outcome::ServicesKept;
     }
+
+    // Plays frames of an app that draws every frame, and tells whether the player waited for the display after each one.
+    [[nodiscard]] static Outcome playFrames() {
+        const auto platform = std::make_shared<Platform>(false);
+        Services::install({.platform = platform, .displays = platform, .links = platform});
+
+        const test::TemporaryDirectory folder;
+        folder.write("haylen.json", R"({"name": "Display Waits"})");
+        auto made = std::make_unique<gpu::NullDevice>();
+        const gpu::NullDevice& device = *made;
+        bool windowGone = false;
+        std::string program = "haylen";
+        std::string package = folder.getPath().string();
+        std::array<char*, 2> arguments{program.data(), package.data()};
+        Player::create(static_cast<int>(arguments.size()), arguments.data(), std::make_unique<port::PortHost>(std::make_unique<Window>(windowGone, std::move(made))));
+        Player::initialize();
+
+        for (int frame = 0; frame < kPlayedFrames; ++frame) {
+            Player::frame(1.0 / 60.0);
+        }
+
+        const bool waited = device.getPresentedWaits() == static_cast<std::uint64_t>(kPlayedFrames);
+        Player::cleanup();
+        return waited ? Outcome::Clean : Outcome::DisplayNotWaited;
+    }
 };
 
 // A player whose creation fails lets go of everything it made, its host with the window among them, and ends the services of the platform that it started, so the process ends without a player to clean up.
 TEST_F(PlayerTest, LeavesNothingOfAPlayerWhoseCreationFailed) {
     GTEST_FLAG_SET(death_test_style, "threadsafe");
     EXPECT_EXIT(std::exit(static_cast<int>(createOnFailingPlatform())), ::testing::ExitedWithCode(static_cast<int>(Outcome::Clean)), "");
+}
+
+// Every platform reads the events of a frame after the frame before it returned, so each frame that presented ends with a wait for the display, and input reaches the screen as soon as the display allows.
+TEST_F(PlayerTest, WaitsForTheDisplayAfterEveryFrameThatPresented) {
+    GTEST_FLAG_SET(death_test_style, "threadsafe");
+    EXPECT_EXIT(std::exit(static_cast<int>(playFrames())), ::testing::ExitedWithCode(static_cast<int>(Outcome::Clean)), "");
 }
 
 } // namespace haylen::platform

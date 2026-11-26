@@ -7,7 +7,7 @@ else()
 endif()
 
 haylen_port(
-  CONTRACT 16
+  CONTRACT 17
   PLATFORM test-port
   SYSTEM_API ${test_port_system_api}
   CAPABILITIES dynamicLibraries

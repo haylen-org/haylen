@@ -18,7 +18,7 @@ The device runs on every GPU of the systems that the engine supports: macOS 14.0
 
 ## How it draws a frame
 
-The device records each frame into one command buffer. The command buffer holds no references to the objects it uses, since the device keeps every object alive itself until the frame finished. A semaphore keeps at most three frames on the GPU, and a completion handler of each command buffer tells the frame thread that the GPU finished.
+The device records each frame into one command buffer. The command buffer holds no references to the objects it uses, since the device keeps every object alive itself until the frame finished. A semaphore keeps at most two frames on the GPU, one that the GPU draws while the CPU records the next, and a completion handler of each command buffer tells the frame thread that the GPU finished. The wait for the display between frames claims the slot of the next frame and takes the next drawable of every surface that presented, so a frame never waits for the GPU or for a drawable after it read its input, as [frame pacing](rhi.md#frame-pacing) describes.
 
 - Uniforms and the pixels of dynamic images pass through an upload ring of each frame, a buffer in memory that the CPU and the GPU share. A uniform block of up to 4096 bytes goes to Metal as bytes of the command, which costs less than a range of the ring.
 - A stream buffer holds a region for each frame in flight in shared memory. The CPU writes the region of its frame while the GPU reads the regions of the frames before.
@@ -31,7 +31,7 @@ The device records each frame into one command buffer. The command buffer holds 
 
 ## Windows and swapchains
 
-Swapchain passes draw into the drawables of the `CAMetalLayer` of the window, one drawable for each frame in flight. On Apple GPUs the multisampled color and the depth and stencil of the window live in tile memory alone, through memoryless textures, since no pass stores them. A swapchain pass that keeps what the pass before it drew continues in the same encoder, so its color, depth and stencil stay in tile memory too. The iOS and tvOS simulators run on the GPU of the Mac, which has no tile memory, so there these attachments live in ordinary memory.
+Swapchain passes draw into the drawables of the `CAMetalLayer` of the window, which keeps two of them: the one that the display shows and the one that the next frame draws. A drawable that the wait for the display took stays for the next frame that draws, and one of a size that the surface left goes back unshown. On Apple GPUs the multisampled color and the depth and stencil of the window live in tile memory alone, through memoryless textures, since no pass stores them. A swapchain pass that keeps what the pass before it drew continues in the same encoder, so its color, depth and stencil stay in tile memory too. The iOS and tvOS simulators run on the GPU of the Mac, which has no tile memory, so there these attachments live in ordinary memory.
 
 A transparent window makes the layer not opaque, and the system composites its premultiplied pixels. Vertical sync is off when the layer turns off `displaySyncEnabled`, which only macOS and Mac Catalyst have, so iOS, iPadOS and tvOS always present at the pace of the display. A new size of the drawable takes effect at the next frame, and the attachments of the old size wait in the graveyard for the frames that still draw them.
 

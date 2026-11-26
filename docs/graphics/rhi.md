@@ -37,6 +37,7 @@ The [architecture guide](../core/architecture.md#layers) describes the platform 
 4. The renderer records its passes: offscreen passes for render targets, lights and effects first, then the pass into the swapchain. Each pass applies pipelines, bindings and uniforms and draws.
 5. `commit` submits the frame to the GPU and presents the swapchain.
 6. `graphics::Device::collectGarbage` hands the objects released during the frame to `destroy`, and `Device::processReads` starts the readbacks that scripts asked for.
+7. `Player::frame` ends with `waitForDisplay`, which returns once the displays can take another frame, and only then does the platform read the events of the next frame, as [frame pacing](#frame-pacing) describes.
 
 ### Why scripts never see the API
 
@@ -137,7 +138,7 @@ The CPU records a frame while the GPU still draws the frames before it. Each dev
 
 | Device | Frames in flight |
 | --- | --- |
-| Metal | 3 |
+| Metal | 2 |
 | Direct3D 12 | 2 |
 | Direct3D 11 | 2 |
 | Vulkan | 2 |
@@ -145,7 +146,22 @@ The CPU records a frame while the GPU still draws the frames before it. Each dev
 | WebGL2 | The browser orders the frames of the page. |
 | WebGPU | The browser orders the frames through its queue. |
 
-A device of a swapchain paces the frames so that each frame reads its input as late as the display allows. Direct3D 12 and Direct3D 11 make their swapchains with the frame latency waitable object of DXGI and one frame waiting to be shown, present without blocking and end the commit of a frame once every surface it presented can take the next one, so the platform reads the events of the next frame only then. Direct3D 11 waits for the frames in flight on a fence of Direct3D 11.4, which blocks the thread without spinning. Metal waits for its frame slot and its drawable, and Vulkan for its frame fence and the image it acquires, during the frame.
+Two frames in flight keep the GPU drawing one frame while the CPU records the next, and a third would only let the input of a frame wait behind one more frame. Direct3D 11 waits for the frames in flight on a fence of Direct3D 11.4, which blocks the thread without spinning.
+
+### Frame pacing
+
+The input of a frame reaches the screen as soon as the display allows when the frame reads that input only once the display can take it. So every device waits for the display in `waitForDisplay`, and never inside a frame after its input. The platform calls it between frames, before it reads the events of the next frame: `Player::frame` ends with it on every platform layer, the main callbacks of SDL, the frame thread of Android and the worker of the web, since each of them reads the events of the next frame after the frame before returned. The wait covers every surface that the frames since the last wait presented, the window and the surfaces beyond it, and a frame that presented nothing leaves nothing to wait for. The readbacks that the engine starts once a frame committed come before the wait, and some devices record them into the next frame, so only a call inside a pass breaks the contract and throws `gpu::ContractError` with `Rule::PassOrder`.
+
+| Device | What `waitForDisplay` waits for |
+| --- | --- |
+| Metal | The slot of the next frame, once the GPU finished the frame before the last, and the next drawable of every surface that presented. A `CAMetalLayer` keeps two drawables, the one that the display shows and the one that the next frame draws, so the drawable comes once the display took the frame before, and the frame draws into it without waiting. |
+| Direct3D 12 and Direct3D 11 | The frame latency waitable object of every swapchain that presented, which DXGI signals once the swapchain can take a frame. The swapchains let one frame wait to be shown, the fewest that DXGI allows, and a wait ends after one second at most, the bound that the documentation of DXGI waits with. |
+| Vulkan with `VK_KHR_present_id` and `VK_KHR_present_wait` | The display showing the frame that each swapchain presented last, through `vkWaitForPresentKHR`. A window system that holds the presents of a surface, such as a compositor whose outputs sleep, shows nothing while it holds them, so the wait ends after `FrameCallbackGate::kHeldSeconds`, the time after which a window system counts as holding its frames. |
+| Vulkan without them | The fence of the frame before the last, whose slot the next frame takes. |
+| OpenGL and OpenGL ES | The fence of the frame before the last, since OpenGL tells nothing of when a display shows a frame. |
+| WebGL2 and WebGPU | Nothing. The browser paces the frames of a page by its animation frames, and a page may not wait for the GPU. |
+
+The null device counts the waits, and how many of them followed frames that presented, for the engine tests. The GPU tests measure the age of the input in frames on every device that waits: frames whose GPU work takes far longer than their recording on the CPU present a surface, and once the wait after a frame returns, the GPU finished the frame before it.
 
 `destroy` never frees an object that a frame on the GPU may still use. Metal, Direct3D 12 and Vulkan keep it until the frames that may use it finished. Direct3D 11, OpenGL and WebGPU hand it to their API, which keeps it alive while queued commands use it. The engine itself destroys objects only between frames, through the graveyard of `graphics::Device`, and only on the frame thread.
 
@@ -335,6 +351,7 @@ A frame capture records every command of the device during some frames into a fi
 - The swapchain passes of a frame into one surface follow one another.
 - Pools hold at most the sizes that `NullDevice.hpp` declares, so a leak of GPU objects fails a test.
 - A capture begins and ends in turn outside a pass, only on a device that a test made with a capture tool.
+- The wait for the display comes outside a pass.
 - A trim comes outside a pass. The device holds the memory of the buffers and images it destroyed as spare bytes until a trim gives it back, the way a device keeps its empty memory blocks, and `getTrimCount` tells how often the engine trimmed it.
 
 The [testing guide](../tools/testing.md#the-headless-host) lists every check and how tests read what a frame did.

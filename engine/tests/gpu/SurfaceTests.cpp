@@ -1,9 +1,12 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "gpu/support/GpuFixture.hpp"
 #include "gpu/support/SecondSurface.hpp"
@@ -54,6 +57,11 @@ class GpuSurfaceTest : public test::GpuFixture {
         drawPlane(math::Color::white());
         device().endPass();
     }
+
+    // The side of the target and the draws that make the GPU work of a frame far longer than its recording on the CPU, and the frames that play.
+    static constexpr int kHeavySide = 1024;
+    static constexpr int kHeavyDraws = 16;
+    static constexpr int kPlayedFrames = 12;
 
     std::unique_ptr<test::SecondSurface> first;
     std::unique_ptr<test::SecondSurface> second;
@@ -211,6 +219,54 @@ TEST_P(GpuSurfaceTest, StretchesADrawableSmallerThanItsWindow) {
     device().commit();
     device().removeSurface(board);
     device().commit();
+    EXPECT_FALSE(device().isLost());
+}
+
+// A platform reads the input of a frame once the wait for the display returns, so the age of that input on the screen counts the frames that the GPU still had to finish then. Each frame here gives the GPU far more work than it takes the CPU to record, as a frame that would let the CPU run ahead of the GPU does, and presents a surface. The copy of the target of each frame starts after its commit and comes before the next frame on the GPU. Once the wait after a frame returns, the GPU finished the frame before it, so the copy of the frame before that one finished too, and the input of the next frame waits behind one frame at most.
+TEST_P(GpuSurfaceTest, ReadsTheInputOfAFrameBehindOneFrameAtMost) {
+    if (GetParam() == Device::Api::WebGpu || GetParam() == Device::Api::WebGl2) {
+        GTEST_SKIP() << "The browser paces the frames of a page by its animation frames, and a page may not wait for the GPU.";
+    }
+
+    int board = 0;
+    try {
+        board = device().addSurface(first->getSurface());
+    } catch (const std::runtime_error& error) {
+        if (std::string(error.what()).find("no desktop") == std::string::npos) {
+            throw;
+        }
+
+        GTEST_SKIP() << error.what();
+    }
+
+    const Device::Image target = makeTarget(kHeavySide, kHeavySide);
+    const std::array<Device::ColorTarget, 1> formats{};
+    const Device::Pipeline heavy = makePlanePipeline(formats);
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = target, .clear = math::Color::black()}}};
+    std::vector<std::unique_ptr<Device::Readback>> copies;
+
+    for (int frame = 0; frame < kPlayedFrames; ++frame) {
+        device().beginPass({.colors = colors, .label = "haylen-test-heavy"});
+        device().applyPipeline(heavy);
+        for (int draw = 0; draw < kHeavyDraws; ++draw) {
+            drawPlane({0.1F, 0.2F, 0.3F, 1.0F});
+        }
+
+        device().endPass();
+        drawInto(board, {0.3F, 0.2F, 0.1F, 1.0F});
+        device().commit();
+        copies.push_back(device().readImage(target, 4, 4));
+        device().waitForDisplay();
+
+        if (frame >= 2) {
+            const std::optional<std::vector<std::uint8_t>> pixels = copies[static_cast<std::size_t>(frame - 2)]->poll();
+            EXPECT_TRUE(pixels.has_value()) << "The GPU had not finished frame " << frame - 1 << " when frame " << frame + 1 << " read its input.";
+        }
+    }
+
+    device().removeSurface(board);
+    device().commit();
+    device().waitForDisplay();
     EXPECT_FALSE(device().isLost());
 }
 

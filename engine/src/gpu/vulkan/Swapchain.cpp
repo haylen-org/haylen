@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <stdexcept>
+#include <utility>
 
 #include "gpu/vulkan/Context.hpp"
 #include "gpu/vulkan/Conversions.hpp"
@@ -234,6 +235,7 @@ bool Swapchain::configure(const Settings& settings) {
     };
     const VolkDeviceTable& vk = context->getFunctions();
     const VkResult result = vk.vkCreateSwapchainKHR(context->getDevice(), &info, nullptr, &handle);
+    pendingPresent = 0;
 
     if (old != VK_NULL_HANDLE) {
         vk.vkDestroySwapchainKHR(context->getDevice(), old, nullptr);
@@ -323,9 +325,27 @@ VkResult Swapchain::acquire(std::size_t frame, std::uint64_t timeout, std::uint3
     return context->getFunctions().vkAcquireNextImageKHR(context->getDevice(), handle, timeout, acquired[frame], VK_NULL_HANDLE, &index);
 }
 
-VkResult Swapchain::present(std::uint32_t index) const {
-    const VkPresentInfoKHR info{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, .pNext = nullptr, .waitSemaphoreCount = 1, .pWaitSemaphores = &images[index].finished, .swapchainCount = 1, .pSwapchains = &handle, .pImageIndices = &index, .pResults = nullptr};
-    return context->getFunctions().vkQueuePresentKHR(context->getQueue(), &info);
+VkResult Swapchain::present(std::uint32_t index) {
+    VkPresentInfoKHR info{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, .pNext = nullptr, .waitSemaphoreCount = 1, .pWaitSemaphores = &images[index].finished, .swapchainCount = 1, .pSwapchains = &handle, .pImageIndices = &index, .pResults = nullptr};
+    if (!context->hasPresentWait()) {
+        return context->getFunctions().vkQueuePresentKHR(context->getQueue(), &info);
+    }
+
+    ++presentId;
+    const VkPresentIdKHR id{.sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR, .pNext = nullptr, .swapchainCount = 1, .pPresentIds = &presentId};
+    info.pNext = &id;
+    const VkResult result = context->getFunctions().vkQueuePresentKHR(context->getQueue(), &info);
+    pendingPresent = result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR ? presentId : 0;
+    return result;
+}
+
+VkResult Swapchain::waitForDisplay(std::uint64_t timeout) {
+    const std::uint64_t waited = std::exchange(pendingPresent, 0);
+    if (waited == 0 || handle == VK_NULL_HANDLE) {
+        return VK_SUCCESS;
+    }
+
+    return context->getFunctions().vkWaitForPresentKHR(context->getDevice(), handle, waited, timeout);
 }
 
 std::vector<VkImageView> Swapchain::getViews() const {
@@ -422,6 +442,7 @@ void Swapchain::destroyAttachment(Attachment& attachment) const {
 }
 
 void Swapchain::destroySwapchain() {
+    pendingPresent = 0;
     if (handle != VK_NULL_HANDLE) {
         context->getFunctions().vkDestroySwapchainKHR(context->getDevice(), handle, nullptr);
         handle = VK_NULL_HANDLE;

@@ -205,6 +205,10 @@ struct Device::Native {
     std::uint64_t frameNumber = kFirstFrame;
     std::size_t frameSlot = 0;
     bool frameOpen = false;
+
+    // Whether the wait for the display claimed the slot of the next frame, and whether a frame presented since the last wait.
+    bool slotClaimed = false;
+    bool presentedSinceWait = false;
     int passes = 0;
     bool imagesWritten = false;
     id<MTLCommandBuffer> commands = nil;
@@ -663,7 +667,7 @@ Device::~Device() {
         [native->transfer commit];
     }
 
-    const int taken = native->frameOpen ? 1 : 0;
+    const int taken = native->frameOpen || native->slotClaimed ? 1 : 0;
     for (int frame = taken; frame < kFramesInFlight; ++frame) {
         dispatch_semaphore_wait(native->signals->semaphore, DISPATCH_TIME_FOREVER);
     }
@@ -1509,7 +1513,10 @@ void Device::openFrame() {
         return;
     }
 
-    dispatch_semaphore_wait(native->signals->semaphore, DISPATCH_TIME_FOREVER);
+    if (!std::exchange(native->slotClaimed, false)) {
+        dispatch_semaphore_wait(native->signals->semaphore, DISPATCH_TIME_FOREVER);
+    }
+
     native->graveyard.release(native->signals->completed.load(std::memory_order_acquire));
     reportErrors();
 
@@ -1580,11 +1587,11 @@ void Device::commit() {
 
     endPendingPass();
     closeDebugGroups(Native::kCommandBufferGroup);
-    native->swapchain.present(native->commands);
+    native->presentedSinceWait = native->swapchain.present(native->commands) || native->presentedSinceWait;
 
     for (const std::unique_ptr<Swapchain>& chain : native->surfaces) {
         if (chain != nullptr) {
-            chain->present(native->commands);
+            native->presentedSinceWait = chain->present(native->commands) || native->presentedSinceWait;
         }
     }
 
@@ -1599,6 +1606,30 @@ void Device::commit() {
     native->frameOpen = false;
     ++native->frameNumber;
     native->graveyard.setFrame(native->frameNumber);
+}
+
+// A frame whose drawables wait to be shown keeps the next frame from taking a drawable until the display took the frame before, so the drawables come here, before the input of the next frame, instead of in its first swapchain pass. A layer that gives no drawable in time leaves the swapchain pass to ask again.
+void Device::waitForDisplay() {
+    if (native->passOpen) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    // A frame that a readback or an upload between frames already opened holds its slot.
+    if (!native->slotClaimed && !native->frameOpen) {
+        dispatch_semaphore_wait(native->signals->semaphore, DISPATCH_TIME_FOREVER);
+        native->slotClaimed = true;
+    }
+
+    if (!std::exchange(native->presentedSinceWait, false)) {
+        return;
+    }
+
+    native->swapchain.prepare();
+    for (const std::unique_ptr<Swapchain>& chain : native->surfaces) {
+        if (chain != nullptr) {
+            chain->prepare();
+        }
+    }
 }
 
 // The objects that wait for frames go once the GPU finished those frames, and all of them once every committed frame finished between frames, since no command buffer records them then.

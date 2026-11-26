@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "gpu/DriverIssues.hpp"
 #include "gpu/ImageInfo.hpp"
@@ -1354,10 +1355,12 @@ void Device::commit() {
     presentCurrentDrawable();
 
     for (Drawable& drawable : drawables) {
+        presentedSinceWait = presentedSinceWait || drawable.presented;
         drawable.drawn = false;
         drawable.presented = false;
     }
 
+    presentedSinceWait = presentedSinceWait || presentedSwapchain;
     drewSwapchain = false;
     presentedSwapchain = false;
 
@@ -1374,6 +1377,19 @@ void Device::commit() {
 
     ++frameIndex;
     frameStarted = false;
+}
+
+// OpenGL tells nothing of when a display shows a frame, so the platform reads the input of the next frame once the GPU finished the frame before the last one, which keeps one frame on the GPU while the next one records. A page may not wait for the GPU, and the browser paces its frames, so the device of WebGL2 keeps no fences and waits for nothing.
+void Device::waitForDisplay() {
+    if (pass.open) {
+        throw ContractError(ContractError::Rule::PassOrder);
+    }
+
+    if (!std::exchange(presentedSinceWait, false) || !ring || frameIndex < 2) {
+        return;
+    }
+
+    waitForFrame((frameIndex - 2) % kFramesInFlight);
 }
 
 void Device::checkLost() {

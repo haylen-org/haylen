@@ -812,6 +812,7 @@ void NullDevice::commit() {
 
     for (std::size_t index = 0; index < recordedPasses; ++index) {
         const PassRecord& made = currentFrame.passes[index];
+        presentedSinceWait = presentedSinceWait || made.swapchain;
         PassRecord& kept = lastFrame.passes[index];
         kept.swapchain = made.swapchain;
         kept.surface = made.surface;
@@ -829,6 +830,16 @@ void NullDevice::commit() {
     recordedPasses = 0;
     imagesWritten = false;
     ++frame;
+}
+
+// The platform waits between frames, where readbacks that it started after a commit may already have opened the next frame, so only a pass that is open breaks the contract.
+void NullDevice::waitForDisplay() {
+    requireNoPass();
+
+    ++displayWaits;
+    if (std::exchange(presentedSinceWait, false)) {
+        ++presentedWaits;
+    }
 }
 
 void NullDevice::resizeSurface(const Surface::Size& size) {

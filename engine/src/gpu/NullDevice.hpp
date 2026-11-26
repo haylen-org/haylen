@@ -126,7 +126,17 @@ class NullDevice final : public Device {
     void popDebugGroup() override;
 
     void commit() override;
+    void waitForDisplay() override;
     void trim() override;
+
+    // How many times the platform waited for the display, and how many of those waits followed frames that presented.
+    [[nodiscard]] std::uint64_t getDisplayWaits() const noexcept {
+        return displayWaits;
+    }
+
+    [[nodiscard]] std::uint64_t getPresentedWaits() const noexcept {
+        return presentedWaits;
+    }
 
     // How many times the engine trimmed the device.
     [[nodiscard]] int getTrimCount() const noexcept {
@@ -289,6 +299,11 @@ class NullDevice final : public Device {
     bool interruptedSincePass = false;
 
     bool lost = false;
+
+    // Whether a frame presented since the last wait for the display, and the waits so far.
+    bool presentedSinceWait = false;
+    std::uint64_t displayWaits = 0;
+    std::uint64_t presentedWaits = 0;
 
     // The bytes of the first level of the images and of the buffers that the device destroyed since the last trim, and the trims so far.
     std::size_t spare = 0;

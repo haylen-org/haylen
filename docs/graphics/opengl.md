@@ -59,7 +59,7 @@ The ring grows when a frame needs more room, and a frame that writes what the fr
 
 ## Frames in flight
 
-On OpenGL and OpenGL ES, three frames can be in flight. At the end of each frame the device places a fence. Before a frame writes its region of the upload ring, the device waits for the fence of the frame that used that region last. This also stops the CPU from running too far ahead of the GPU. A frame that the GPU did not finish within ten seconds loses the device, since a context without robustness never reports a GPU that stopped. WebGL2 has no upload ring and places no fences, since the browser orders the frames of the page.
+On OpenGL and OpenGL ES, three frames can be in flight. At the end of each frame the device places a fence. Before a frame writes its region of the upload ring, the device waits for the fence of the frame that used that region last. The wait for the display between frames waits for the fence of the frame before the last, so the CPU runs at most one frame ahead of the GPU and a frame never waits for a fence after it read its input, as [frame pacing](rhi.md#frame-pacing) describes. A frame that the GPU did not finish within ten seconds loses the device, since a context without robustness never reports a GPU that stopped. WebGL2 has no upload ring and places no fences, since the browser orders the frames of the page.
 
 OpenGL keeps an object alive while a queued command still uses it, so `destroy` deletes objects at once and the GPU still finishes the frames that use them.
 

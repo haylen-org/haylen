@@ -94,6 +94,7 @@ class Device final : public gpu::Device {
     void popDebugGroup() override;
 
     void commit() override;
+    void waitForDisplay() override;
 
     // Releases the objects that the GPU finished with, the upload pages of the pool beyond one for every frame in flight and the blocks of buffers that hold no buffer.
     void trim() override;
@@ -242,7 +243,6 @@ class Device final : public gpu::Device {
     void createDevice(bool validation);
     void readCapabilities();
     void openFrame();
-    void waitForDisplays() noexcept;
     void checkFrame(HRESULT result, std::string_view action);
     void submit(ID3D12GraphicsCommandList& list);
     [[nodiscard]] ID3D12GraphicsCommandList4& getTransferList();

@@ -364,6 +364,9 @@ void Player::frame(double seconds) {
 
     runtime.host->frameFinished(*runtime.engine);
 
+    // Every platform reads the events of the next frame after this one returns, so the frame ends once the displays can take another frame, and that input reaches the screen as soon as they allow.
+    runtime.engine->getGraphics().getGpu().waitForDisplay();
+
     // A restart or a launch happens between frames, where no engine code is on the stack.
     if (runtime.engine->isRestartRequested()) {
         restart();

@@ -64,6 +64,7 @@ class OffscreenSwapchain final : public gpu::Device {
     void pushDebugGroup(std::string_view name) override;
     void popDebugGroup() override;
     void commit() override;
+    void waitForDisplay() override;
     void trim() override;
 
     void resizeSurface(const gpu::Surface::Size& size) override;
