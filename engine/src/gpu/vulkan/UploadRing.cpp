@@ -20,10 +20,12 @@ UploadRing::~UploadRing() {
 void UploadRing::begin(int frame) {
     current = static_cast<std::size_t>(frame);
     chunk = 0;
+    destroyed.clear();
     std::vector<Chunk>& chunks = frames[current];
     // clang-format off
     std::erase_if(chunks, [this](const Chunk& made) {
         if (made.size > chunkSize) {
+            destroyed.push_back(made.buffer);
             destroyChunk(made);
             return true;
         }
@@ -64,9 +66,11 @@ void UploadRing::flush() {
 
 // The chunks keep the cursors of the last use of their frame until the frame begins again, so the chunks that use left empty are the ones the frames like it need no more. The first chunk stays, so a frame that writes again takes no new chunk.
 void UploadRing::trim(int frame) {
+    destroyed.clear();
     std::vector<Chunk>& chunks = frames[static_cast<std::size_t>(frame)];
     for (std::size_t index = chunks.size(); index-- > 1;) {
         if (chunks[index].cursor == 0) {
+            destroyed.push_back(chunks[index].buffer);
             destroyChunk(chunks[index]);
             chunks.erase(chunks.begin() + static_cast<std::ptrdiff_t>(index));
         }

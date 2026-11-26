@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -27,8 +28,13 @@ class UploadRing final {
     UploadRing(const UploadRing&) = delete;
     UploadRing& operator=(const UploadRing&) = delete;
 
-    // Starts taking from the chunks of a frame in flight, whose earlier use the GPU finished.
+    // Starts taking from the chunks of a frame in flight, whose earlier use the GPU finished, and destroys the chunks larger than the size of a chunk that the frame took before.
     void begin(int frame);
+
+    // The buffers of the chunks that the last `begin` or `trim` destroyed, whose handles Vulkan may give to buffers made later, so whatever names them by their handle forgets them.
+    [[nodiscard]] std::span<const VkBuffer> getDestroyed() const noexcept {
+        return destroyed;
+    }
 
     [[nodiscard]] Allocation allocate(VkDeviceSize size, VkDeviceSize alignment);
 
@@ -58,6 +64,7 @@ class UploadRing final {
     VkDeviceSize chunkSize = 0;
     std::string label;
     std::vector<std::vector<Chunk>> frames;
+    std::vector<VkBuffer> destroyed;
     std::size_t current = 0;
     std::size_t chunk = 0;
 };

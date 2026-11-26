@@ -60,10 +60,10 @@ VkDescriptorSet DescriptorCache::getUniformSet(VkDescriptorSetLayout layout, VkB
     }
 
     if (const auto found = uniformSets.find(key); found != uniformSets.end()) {
-        return found->second;
+        return found->second.set;
     }
 
-    const VkDescriptorSet set = allocate(layout).second;
+    const auto [pool, set] = allocate(layout);
     std::array<VkDescriptorBufferInfo, Device::kMaxBlocks> infos{};
     std::array<VkWriteDescriptorSet, Device::kMaxBlocks> writes{};
     for (std::size_t index = 0; index < blocks.size(); ++index) {
@@ -72,7 +72,7 @@ VkDescriptorSet DescriptorCache::getUniformSet(VkDescriptorSetLayout layout, VkB
     }
 
     context.getFunctions().vkUpdateDescriptorSets(context.getDevice(), static_cast<std::uint32_t>(blocks.size()), writes.data(), 0, nullptr);
-    uniformSets.emplace(key, set);
+    uniformSets.emplace(key, Entry{.pool = pool, .set = set});
     return set;
 }
 
@@ -94,6 +94,19 @@ void DescriptorCache::forgetImage(std::uint64_t id, std::uint64_t serial) {
 
 void DescriptorCache::forgetSampler(std::uint64_t id, std::uint64_t serial) {
     forget([id](const ResourceKey& key) { return std::ranges::find(key.samplers, id) != key.samplers.end(); }, serial);
+}
+
+void DescriptorCache::forgetUniformBuffer(VkBuffer buffer) noexcept {
+    const std::uint64_t handle = Context::toHandle(buffer);
+    for (auto entry = uniformSets.begin(); entry != uniformSets.end();) {
+        if (entry->first.buffer != handle) {
+            ++entry;
+            continue;
+        }
+
+        context.getFunctions().vkFreeDescriptorSets(context.getDevice(), entry->second.pool, 1, &entry->second.set);
+        entry = uniformSets.erase(entry);
+    }
 }
 
 void DescriptorCache::trim(std::uint64_t completed) {

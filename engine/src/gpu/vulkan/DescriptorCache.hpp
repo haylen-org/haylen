@@ -57,8 +57,20 @@ class DescriptorCache final {
     void forgetImage(std::uint64_t id, std::uint64_t serial);
     void forgetSampler(std::uint64_t id, std::uint64_t serial);
 
+    // Frees the sets of uniform blocks that point at a buffer of the uniform ring that the ring destroyed, whose frame finished, so a buffer that takes its handle later never finds them.
+    void forgetUniformBuffer(VkBuffer buffer) noexcept;
+
     // Frees the sets that no unfinished frame uses while the cache holds more than its bound.
     void trim(std::uint64_t completed);
+
+    // The sets that the cache holds and the sets that its pools hold room for.
+    [[nodiscard]] int getSetCount() const noexcept {
+        return static_cast<int>(resourceSets.size() + uniformSets.size());
+    }
+
+    [[nodiscard]] int getSetCapacity() const noexcept {
+        return static_cast<int>(pools.size() * kSetsPerPool);
+    }
 
   private:
     static constexpr std::uint32_t kSetsPerPool = 256;
@@ -89,7 +101,7 @@ class DescriptorCache final {
     ReleaseQueue& releaseQueue;
     std::vector<VkDescriptorPool> pools;
     std::unordered_map<ResourceKey, Entry, KeyHash> resourceSets;
-    std::map<UniformKey, VkDescriptorSet> uniformSets;
+    std::map<UniformKey, Entry> uniformSets;
 };
 
 } // namespace haylen::gpu::vulkan

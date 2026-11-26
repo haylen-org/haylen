@@ -322,6 +322,7 @@ class Device final : public gpu::Device {
     void markLost(VkResult result);
     void waitIdle();
     void finishTrim();
+    void forgetDestroyedUniforms() noexcept;
 
     [[nodiscard]] static std::vector<std::unique_ptr<SurfaceChain>> makeChains(const Instance& owner, const std::optional<Surface>& surface);
     [[nodiscard]] SurfaceChain& requireChain(int surface) const;

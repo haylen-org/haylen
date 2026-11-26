@@ -34,6 +34,7 @@ The device records each frame into two command buffers: one for the copies into 
 - A dynamic buffer holds a copy for each frame in flight, and the first write of a frame moves to the next copy.
 - The pixels of images go through staging memory that stays mapped, in chunks that each frame reuses once the GPU finished it.
 - The descriptor sets of textures and samplers are made once for each choice of images and samplers, so a frame that binds what the frame before bound writes no descriptor.
+- The descriptor set of the uniform blocks of a layout points at one buffer of the uniform ring and goes with that buffer when the ring destroys it, after a burst or in a trim, so a buffer that takes the same handle later never finds it. `readPools` reports the descriptor sets that the device holds as `descriptorSets`.
 - Memory comes from the Vulkan Memory Allocator, and released objects wait in a release queue for the frames that may use them.
 
 Passes draw with dynamic rendering where the GPU has it, from Vulkan 1.3 or through its extension. Elsewhere the device makes a render pass for each choice of formats, sample counts and load and store actions, and a framebuffer for each set of views, once. Images rest in one layout, and a pass moves its attachments out of it with barriers and back when it ends.

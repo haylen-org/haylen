@@ -213,6 +213,7 @@ void Device::readPools(std::vector<Pool>& pools) const {
         {.name = "samplers", .used = samplers.size(), .size = samplers.capacity()},
         {.name = "programs", .used = programs.size(), .size = programs.capacity()},
         {.name = "pipelines", .used = pipelines.size(), .size = pipelines.capacity()},
+        {.name = "descriptorSets", .used = descriptors.getSetCount(), .size = descriptors.getSetCapacity()},
     });
 }
 
@@ -245,11 +246,13 @@ bool Device::ensureFrame() {
     if (std::exchange(frame.trim, false)) {
         staging.trim(static_cast<int>(frameIndex));
         uniforms.trim(static_cast<int>(frameIndex));
+        forgetDestroyedUniforms();
     }
 
     finishTrim();
     staging.begin(static_cast<int>(frameIndex));
     uniforms.begin(static_cast<int>(frameIndex));
+    forgetDestroyedUniforms();
 
     Context::check(vk.vkResetCommandPool(context->getDevice(), frame.pool, 0), "reset the command pool of a frame");
     const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, .pInheritanceInfo = nullptr};
@@ -463,10 +466,18 @@ void Device::trim() {
 
         staging.trim(static_cast<int>(index));
         uniforms.trim(static_cast<int>(index));
+        forgetDestroyedUniforms();
     }
 
     trimSerial = idle ? completedSerial : nextSerial;
     finishTrim();
+}
+
+// The uniform sets name their buffers by their handles, which Vulkan may give to the buffers made after a chunk of the uniform ring went.
+void Device::forgetDestroyedUniforms() noexcept {
+    for (const VkBuffer buffer : uniforms.getDestroyed()) {
+        descriptors.forgetUniformBuffer(buffer);
+    }
 }
 
 // The allocator keeps an empty block of each memory type for the next allocation, which the trim gives back once every object released before it and every chunk it let go of left its block.
