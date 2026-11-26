@@ -19,7 +19,7 @@ template <> struct Type<haylen::animation2d::SkeletonData> {
 };
 
 template <> struct Type<haylen::animation2d::Skeleton> {
-    static constexpr const char* name = "haylen.Skeleton";
+    static constexpr const char* name = "haylen.Skeleton2D";
     using Storage = std::shared_ptr<haylen::animation2d::Skeleton>;
 };
 
@@ -27,7 +27,7 @@ template <> struct Type<haylen::animation2d::Skeleton> {
 
 namespace haylen::lua::animation2d {
 
-// Installs the `SkeletonData` and `Skeleton` classes of `haylen.animation2d`.
+// Installs the `SkeletonData` and `Skeleton2D` classes of `haylen.animation2d`.
 class SkeletonBinding final {
   public:
     static void install(lua_State* L);

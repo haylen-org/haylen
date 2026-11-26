@@ -156,7 +156,7 @@ print(data.bones[2])
 
 ### animation2d.newSkeleton(data, options)
 
-Creates a [`Skeleton`](#skeleton) of `data` in its setup pose. The optional table `options` takes `skin`, `x`, `y`, `rotation`, `scaleX`, `scaleY` and `color`, and any other key raises `Unknown option "<key>".`
+Creates a [`Skeleton2D`](#skeleton2d) of `data` in its setup pose. The optional table `options` takes `skin`, `x`, `y`, `rotation`, `scaleX`, `scaleY` and `color`, and any other key raises `Unknown option "<key>".`
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -835,7 +835,7 @@ A `StateGraph` is a checked [description](#state-graph-descriptions) of states, 
 
 ### graph:newPlayer(target, options)
 
-Returns a [`StateGraphPlayer`](#stategraphplayer) that runs the graph on a target. The target is an `Animator`, a sprite of an `AnimatedBatch`, or a track of a `Skeleton`. The optional table `options` gives the number of the sprite of a batch as `sprite`, or the track of a skeleton as `track`, 1 by default. The player starts in the initial state and plays its animation. A track below 1 raises an argument error that says `tracks are numbered from one`.
+Returns a [`StateGraphPlayer`](#stategraphplayer) that runs the graph on a target. The target is an `Animator`, a sprite of an `AnimatedBatch`, or a track of a `Skeleton2D`. The optional table `options` gives the number of the sprite of a batch as `sprite`, or the track of a skeleton as `track`, 1 by default. The player starts in the initial state and plays its animation. A track below 1 raises an argument error that says `tracks are numbered from one`.
 
 A target without an animation that a state plays raises `The state graph plays the animation "<name>", which its target lacks.`, and a batch without a valid `sprite` raises `A state graph player of an animated batch needs the number of one of its sprites in "sprite".`
 
@@ -942,9 +942,9 @@ local data = assets.load('animation/puppet.skeleton')
 print(#data.bones, #data.slots, data.skins[1], #data.events, data:duration(data.animations[1]))
 ```
 
-## Skeleton
+## Skeleton2D
 
-A `Skeleton` is one posed character of [`SkeletonData`](#skeletondata), from `animation2d.newSkeleton`. Tracks are numbered from 1 to 32, and a track below 1 raises an argument error that says `tracks are numbered from one`.
+A `Skeleton2D` is one posed character of [`SkeletonData`](#skeletondata), from `animation2d.newSkeleton`. Tracks are numbered from 1 to 32, and a track below 1 raises an argument error that says `tracks are numbered from one`.
 
 ### Properties
 

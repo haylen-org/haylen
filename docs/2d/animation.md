@@ -11,7 +11,7 @@ An animation is only data: a list of frames. A player runs it over time and show
 | One character whose code picks its animations. | An `Animator`, which plays named animations, queues the next one and reports frames, events and the end of a one-shot animation. |
 | Many sprites of one texture, such as a crowd, bullets or coins. | An `AnimatedBatch`, which advances and draws every sprite in C++ with one call from Lua per frame. |
 | A character whose animation follows its state, such as idle, run, jump and fall. | A `StateGraph` with a `StateGraphPlayer` for each character. It drives an animator, a sprite of a batch or a track of a skeleton, so only the changes of state reach Lua. |
-| A character made of parts, with smooth motion, aiming and equipment. | A `Skeleton` of a `.skeleton` file, with tracks that mix animations, cross fades, inverse kinematics, skins and events. |
+| A character made of parts, with smooth motion, aiming and equipment. | A `Skeleton2D` of a `.skeleton` file, with tracks that mix animations, cross fades, inverse kinematics, skins and events. |
 | Legs, arms, bodies, tails and tentacles moved by code alone, such as procedural creatures. | A `Chain`, which reaches a target from its root or follows its head. |
 
 ## Frame animations
@@ -272,7 +272,7 @@ The parts of a skeleton work like this:
 - A skin is a set of attachments, such as the blue armor or the red armor. The skin `default` always exists, and another skin falls back to it for the slots it leaves out.
 - Animations turn, move and scale bones from their setup pose. They also color slots, swap attachments, bend meshes, change constraints, reorder slots and fire events.
 
-The shared `SkeletonData` of a file holds the bones, slots, skins, constraints and animations. Each `Skeleton` made from it has its own pose, so many characters share one file.
+The shared `SkeletonData` of a file holds the bones, slots, skins, constraints and animations. Each `Skeleton2D` made from it has its own pose, so many characters share one file.
 
 Tracks let animations mix. Each track plays one animation with its own time, loop and weight, and later tracks play over earlier ones. A walk on track 1 and a wave on track 2 mix into a walking wave. The method `skeleton:crossFade` blends the pose of the old animation of a track into the new one over some seconds, so changes look smooth.
 
