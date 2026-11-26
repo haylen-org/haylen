@@ -13,6 +13,7 @@
 
 #include "gpu/ImageInfo.hpp"
 #include "gpu/support/GpuFixture.hpp"
+#include "haylen/math/ColorSpace.hpp"
 #include "support/ContractRule.hpp"
 
 namespace haylen::gpu {
@@ -66,10 +67,6 @@ class GpuTextureTest : public test::GpuFixture {
 
     [[nodiscard]] static std::uint8_t toByte(float value) noexcept {
         return static_cast<std::uint8_t>(std::lround(value * 255.0F));
-    }
-
-    [[nodiscard]] static float toLinear(float value) noexcept {
-        return value <= 0.04045F ? value / 12.92F : std::pow((value + 0.055F) / 1.055F, 2.4F);
     }
 
     // The bytes of one texel of the color in the format.
@@ -185,7 +182,7 @@ TEST_P(GpuTextureTest, SamplesEveryFormatTheDeviceSupports) {
         const Device::Image texture = makeTexture(1, 1, levels, format);
         math::Color expected = sampledColor(format);
         if (format == Device::PixelFormat::Rgba8Srgb) {
-            expected = {toLinear(expected.r), toLinear(expected.g), toLinear(expected.b), expected.a};
+            expected = {math::ColorSpace::decodeSrgb(expected.r), math::ColorSpace::decodeSrgb(expected.g), math::ColorSpace::decodeSrgb(expected.b), expected.a};
         }
 
         const Pixels pixels = sample(samplingProgram(format), texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
@@ -210,7 +207,7 @@ TEST_P(GpuTextureTest, FiltersEveryFormatTheDeviceFilters) {
 
         math::Color full = sampledColor(format);
         if (format == Device::PixelFormat::Rgba8Srgb) {
-            full = {toLinear(full.r), toLinear(full.g), toLinear(full.b), full.a};
+            full = {math::ColorSpace::decodeSrgb(full.r), math::ColorSpace::decodeSrgb(full.g), math::ColorSpace::decodeSrgb(full.b), full.a};
         }
 
         const math::Color empty = sampledColor(format) == storedColor(format) ? math::Color::transparent() : math::Color{0.0F, 0.0F, 0.0F, 1.0F};
@@ -441,7 +438,7 @@ TEST_P(GpuTextureTest, SamplesEveryFormatThatDynamicImagesWrite) {
         device().writeImages(writes);
         math::Color expected = sampledColor(format);
         if (format == Device::PixelFormat::Rgba8Srgb) {
-            expected = {toLinear(expected.r), toLinear(expected.g), toLinear(expected.b), expected.a};
+            expected = {math::ColorSpace::decodeSrgb(expected.r), math::ColorSpace::decodeSrgb(expected.g), math::ColorSpace::decodeSrgb(expected.b), expected.a};
         }
 
         const Pixels pixels = sample(samplingProgram(format), texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
