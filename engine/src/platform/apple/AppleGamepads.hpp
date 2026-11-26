@@ -23,8 +23,6 @@ class AppleGamepads final {
     static void setMotion(input::GamepadMotion::Sensors sensors);
 
   private:
-    static constexpr double kStandardGravity = 9.80665;
-
     static GamepadSlots slots;
     static std::vector<const void*> connected;
     static input::GamepadMotion::Sensors motion;

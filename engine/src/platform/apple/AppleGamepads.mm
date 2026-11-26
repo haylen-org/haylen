@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "haylen/math/Math.hpp"
 #import "platform/apple/AppleRemote.hpp"
 
 // The methods of CoreHaptics that a rumble calls, with `id` in place of its types, since the engine reaches the framework through GameController without linking it.
@@ -165,7 +166,7 @@ void AppleGamepads::readMotion(GCController* controller, input::GamepadState& st
     const auto take = [&state](input::MotionSensor sensor) { return state.motionSensors.test(static_cast<std::size_t>(sensor)) && motion.test(static_cast<std::size_t>(sensor)); };
     if (take(input::MotionSensor::Accelerometer)) {
         const GCAcceleration value = sensors.acceleration;
-        state.motion.acceleration = {static_cast<float>(-value.x * kStandardGravity), static_cast<float>(-value.y * kStandardGravity), static_cast<float>(-value.z * kStandardGravity)};
+        state.motion.acceleration = {static_cast<float>(-value.x) * math::Math::kStandardGravity, static_cast<float>(-value.y) * math::Math::kStandardGravity, static_cast<float>(-value.z) * math::Math::kStandardGravity};
         state.motion.sensors.set(static_cast<std::size_t>(input::MotionSensor::Accelerometer));
     }
 
