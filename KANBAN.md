@@ -253,6 +253,7 @@
 | **[KB-336 · As árvores 3D móveis consultam tão rápido quanto o BVH estático](#kb-336)**<br>🟡 medium · `improvement` · 4/10 | — | — | — | — | — |
 | **[KB-337 · O `haylen engine bench` roda os benchmarks num celular de verdade](#kb-337)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-338 · O hash FNV-1a fica num lugar só da engine](#kb-338)**<br>🟡 medium · `refactor` · 2/10 | — | — | — | — | — |
+| **[KB-339 · Medir e afinar a física 2D com várias threads contra o caso de 2500 corpos ativos](#kb-339)**<br>🟡 medium · `improvement` · 3/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -8733,6 +8734,31 @@ O hash FNV-1a está escrito em três lugares: na física 2D, no cache de bind gr
 
 - None
 
+### KB-339
+
+- **Title:** Medir e afinar a física 2D com várias threads contra o caso de 2500 corpos ativos
+- **Status:** todo
+- **Type:** improvement
+- **Priority:** medium
+- **Complexity:** 3
+- **Progress:** Ainda não começou. A física 2D já roda cada passo da Box2D 3.2.0 em várias threads pelo `core::JobSystem`.
+- **Parent:** [KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)
+
+#### Description
+
+A Haylen já roda as tarefas de cada passo da Box2D v3.2.0 nas threads do `core::JobSystem`, a partir de 1000 corpos acordados, com até 4 threads por padrão. O resultado é o mesmo, bit a bit, em qualquer número de threads. O benchmark de hoje cai de 2,12 ms com uma thread para 1,53 ms com quatro, numa pilha de 4000 caixas: 28% a menos.
+
+Uma comparação pública mostra 40% a menos com 2500 corpos dinâmicos ativos e três threads de trabalho num Apple M5 Max, com passo variável e com física a 30 Hz e a 60 Hz. O esperado é medir esse mesmo caso no benchmark da Haylen, nos mesmos ritmos, e afinar o limite de corpos acordados, o tamanho dos pedaços e o número padrão de threads, para chegar a esse ganho ou passar dele. Os números de antes e depois ficam no guia, num Mac, num desktop x64 e num celular modesto.
+
+#### Acceptance criteria
+
+- [ ] O benchmark tem o caso de 2500 corpos ativos com passo variável, a 30 Hz e a 60 Hz, com uma e com várias threads.
+- [ ] O ganho com várias threads chega a 40% ou passa disso, e os números estão no guia.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8755,7 +8781,7 @@ O hash FNV-1a está escrito em três lugares: na física 2D, no cache de bind gr
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-339. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-340. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
