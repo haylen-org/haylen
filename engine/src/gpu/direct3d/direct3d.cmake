@@ -8,7 +8,6 @@ target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/Formats.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/HResult.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/MipLevels.cpp"
-  "${CMAKE_CURRENT_LIST_DIR}/PixelConverter.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ShaderCompiler.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/ShaderRegisters.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Swapchain.cpp"

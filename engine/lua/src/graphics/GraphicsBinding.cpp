@@ -54,6 +54,11 @@ int GraphicsBinding::newTexture(lua_State* L) {
 
     const int width = lua::Stack::read<int>(L, 1);
     const int height = lua::Stack::read<int>(L, 2);
+    if (lua_istable(L, 3) && (hasField(L, 3, "format") || hasField(L, 3, "levels"))) {
+        pushDataTexture(L, width, height);
+        return 1;
+    }
+
     haylen::math::Color fill = haylen::math::Color::white();
     std::optional<std::string_view> pixels;
     bool dynamic = false;
@@ -77,6 +82,38 @@ int GraphicsBinding::newTexture(lua_State* L) {
     const haylen::graphics::Image image(width, height, std::vector<std::uint8_t>(pixels->begin(), pixels->end()));
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
     return 1;
+}
+
+bool GraphicsBinding::hasField(lua_State* L, int index, const char* name) {
+    lua_getfield(L, index, name);
+    const bool present = !lua_isnil(L, -1);
+    lua_pop(L, 1);
+    return present;
+}
+
+// A texture made from its levels takes the bytes of each level from the list `levels`, which the table of options keeps alive while the device copies them.
+void GraphicsBinding::pushDataTexture(lua_State* L, int width, int height) {
+    haylen::gpu::Device::PixelFormat format = haylen::gpu::Device::PixelFormat::Rgba8;
+    lua::Table::readField(L, 3, "format", format);
+    lua_getfield(L, 3, "levels");
+    if (!lua_istable(L, -1)) {
+        throw std::invalid_argument("A texture made in a format takes the bytes of each of its levels in the list \"levels\", the largest level first.");
+    }
+
+    const auto count = static_cast<int>(lua_rawlen(L, -1));
+    std::vector<std::span<const std::byte>> levels;
+    levels.reserve(static_cast<std::size_t>(count));
+    for (int index = 1; index <= count; ++index) {
+        lua_rawgeti(L, -1, index);
+        const std::string_view bytes = lua::TypeConverter::readBytes(L, -1);
+        levels.push_back(std::as_bytes(std::span(bytes.data(), bytes.size())));
+        lua_pop(L, 1);
+    }
+
+    lua_pop(L, 1);
+    const haylen::graphics::Texture::Options options = lua::TypeConverter::readTextureOptions(L, 3, {kTextureDataFields});
+    const haylen::graphics::Device::TextureData data{.width = width, .height = height, .format = format, .levels = levels};
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().createTexture(data, options));
 }
 
 void GraphicsBinding::pushImageTexture(lua_State* L) {
@@ -135,29 +172,51 @@ int GraphicsBinding::trim(lua_State* L) {
     return 0;
 }
 
-int GraphicsBinding::maxVolumeSize(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities().maxVolumeSize);
+void GraphicsBinding::setField(lua_State* L, const char* name, int value) {
+    lua::Stack::push(L, value);
+    lua_setfield(L, -2, name);
+}
+
+void GraphicsBinding::setField(lua_State* L, const char* name, bool value) {
+    lua::Stack::push(L, value);
+    lua_setfield(L, -2, name);
+}
+
+int GraphicsBinding::capabilities(lua_State* L) {
+    const haylen::gpu::Device::Capabilities& device = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities();
+    lua_createtable(L, 0, 8);
+    setField(L, "maxTextureSize", device.maxImageSize);
+    setField(L, "maxArrayLayers", device.maxArrayLayers);
+    setField(L, "maxVolumeSize", device.maxVolumeSize);
+    setField(L, "maxCubeSize", device.maxCubeSize);
+    setField(L, "originTopLeft", device.originTopLeft);
+    lua::Stack::push(L, device.depthRange);
+    lua_setfield(L, -2, "depthRange");
+    setField(L, "independentBlend", device.independentBlend);
+    setField(L, "gpuTiming", device.gpuTiming);
     return 1;
 }
 
-int GraphicsBinding::maxCubeSize(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities().maxCubeSize);
-    return 1;
-}
-
-// The counts that the images of the format take, from one sample up, and none for a format that the device draws not into.
-int GraphicsBinding::sampleCounts(lua_State* L) {
+// What the device does with the format, with the sample counts that its attachments take from one sample up, and none for a format that the device draws not into.
+int GraphicsBinding::formatSupport(lua_State* L) {
     const auto format = lua::Stack::read<haylen::gpu::Device::PixelFormat>(L, 1);
-    const std::uint8_t counts = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities().sampleCounts[static_cast<std::size_t>(format)];
+    const haylen::gpu::Device::FormatSupport& support = lua::Runtime::getEngine(L).getGraphics().getGpu().getCapabilities().getFormat(format);
+    lua_createtable(L, 0, 6);
+    setField(L, "sample", support.sample);
+    setField(L, "filter", support.filter);
+    setField(L, "render", support.render);
+    setField(L, "blend", support.blend);
+    setField(L, "storage", support.storage);
     lua_createtable(L, 4, 0);
     int index = 0;
     for (unsigned count = 1; count <= 128; count *= 2) {
-        if ((counts & count) != 0) {
+        if ((support.sampleCounts & count) != 0) {
             lua::Stack::push(L, static_cast<int>(count));
             lua_rawseti(L, -2, ++index);
         }
     }
 
+    lua_setfield(L, -2, "sampleCounts");
     return 1;
 }
 
@@ -188,6 +247,11 @@ int GraphicsBinding::textureHeight(lua_State* L) {
 
 int GraphicsBinding::textureFilter(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getOptions().filter);
+    return 1;
+}
+
+int GraphicsBinding::textureFormat(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics::Texture>(L, 1).getFormat());
     return 1;
 }
 
@@ -326,9 +390,8 @@ int GraphicsBinding::open(lua_State* L) {
         {"apiName", &apiName},
         {"maxTextureSize", &maxTextureSize},
         {"trim", &lua::Binding::native<&trim>},
-        {"maxVolumeSize", &maxVolumeSize},
-        {"maxCubeSize", &maxCubeSize},
-        {"sampleCounts", &lua::Binding::native<&sampleCounts>},
+        {"capabilities", &capabilities},
+        {"formatSupport", &lua::Binding::native<&formatSupport>},
         {"depthRange", &depthRange},
         {"newFontFamily", &lua::Binding::native<&FontBinding::newFontFamily>},
         {"systemFonts", &FontBinding::systemFonts},
@@ -351,6 +414,7 @@ void GraphicsBinding::install(lua_State* L) {
         .property("filter", &textureFilter)
         .property("wrap", &textureWrap)
         .property("mipmaps", &textureMipmaps)
+        .property("format", &textureFormat)
         .meta("__eq", &lua::Userdata::equal<haylen::graphics::Texture>)
         .install();
     // clang-format on

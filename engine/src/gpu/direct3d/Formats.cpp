@@ -51,9 +51,39 @@ DXGI_FORMAT Formats::getViewFormat(PixelFormat format) noexcept {
         return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
     case PixelFormat::Depth32FloatStencil8:
         return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+    case PixelFormat::Rg11B10Float:
+        return DXGI_FORMAT_R11G11B10_FLOAT;
+    case PixelFormat::Bc1:
+        return DXGI_FORMAT_BC1_UNORM;
+    case PixelFormat::Bc1Srgb:
+        return DXGI_FORMAT_BC1_UNORM_SRGB;
+    case PixelFormat::Bc2:
+        return DXGI_FORMAT_BC2_UNORM;
+    case PixelFormat::Bc2Srgb:
+        return DXGI_FORMAT_BC2_UNORM_SRGB;
+    case PixelFormat::Bc3:
+        return DXGI_FORMAT_BC3_UNORM;
+    case PixelFormat::Bc3Srgb:
+        return DXGI_FORMAT_BC3_UNORM_SRGB;
+    case PixelFormat::Bc4:
+        return DXGI_FORMAT_BC4_UNORM;
+    case PixelFormat::Bc4Snorm:
+        return DXGI_FORMAT_BC4_SNORM;
+    case PixelFormat::Bc5:
+        return DXGI_FORMAT_BC5_UNORM;
+    case PixelFormat::Bc5Snorm:
+        return DXGI_FORMAT_BC5_SNORM;
+    case PixelFormat::Bc6hUfloat:
+        return DXGI_FORMAT_BC6H_UF16;
+    case PixelFormat::Bc6hFloat:
+        return DXGI_FORMAT_BC6H_SF16;
+    case PixelFormat::Bc7:
+        return DXGI_FORMAT_BC7_UNORM;
+    case PixelFormat::Bc7Srgb:
+        return DXGI_FORMAT_BC7_UNORM_SRGB;
+    default:
+        return DXGI_FORMAT_UNKNOWN;
     }
-
-    return DXGI_FORMAT_UNKNOWN;
 }
 
 DXGI_FORMAT Formats::getDepthFormat(PixelFormat format) noexcept {
@@ -69,42 +99,6 @@ DXGI_FORMAT Formats::getDepthFormat(PixelFormat format) noexcept {
     default:
         return DXGI_FORMAT_UNKNOWN;
     }
-}
-
-std::size_t Formats::getBytesPerPixel(PixelFormat format) noexcept {
-    switch (format) {
-    case PixelFormat::R8:
-        return 1;
-    case PixelFormat::Rg8:
-    case PixelFormat::R16Float:
-    case PixelFormat::Depth16:
-        return 2;
-    case PixelFormat::Rgba8:
-    case PixelFormat::Rgba8Srgb:
-    case PixelFormat::Bgra8:
-    case PixelFormat::Rgb10A2:
-    case PixelFormat::Rg16Float:
-    case PixelFormat::R32Float:
-    case PixelFormat::Depth32Float:
-    case PixelFormat::Depth24Stencil8:
-        return 4;
-    case PixelFormat::Rgba16Float:
-    case PixelFormat::Rg32Float:
-    case PixelFormat::Depth32FloatStencil8:
-        return 8;
-    case PixelFormat::Rgba32Float:
-        return 16;
-    }
-
-    return 4;
-}
-
-bool Formats::isDepth(PixelFormat format) noexcept {
-    return format == PixelFormat::Depth16 || format == PixelFormat::Depth32Float || hasStencil(format);
-}
-
-bool Formats::hasStencil(PixelFormat format) noexcept {
-    return format == PixelFormat::Depth24Stencil8 || format == PixelFormat::Depth32FloatStencil8;
 }
 
 DXGI_FORMAT Formats::getVertexFormat(Device::VertexFormat format) noexcept {

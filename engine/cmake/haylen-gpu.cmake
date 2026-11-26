@@ -65,7 +65,7 @@ endforeach()
 list(REMOVE_DUPLICATES HAYLEN_SHADER_LANGUAGES)
 
 function(haylen_add_gpu_library)
-  add_library(haylen-gpu STATIC "${HAYLEN_ENGINE_DIR}/src/gpu/ContractError.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/DeviceFactory.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/DriverIssues.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/ImageRules.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/NullDevice.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/ProgramSlots.cpp")
+  add_library(haylen-gpu STATIC "${HAYLEN_ENGINE_DIR}/src/gpu/ContractError.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/DeviceFactory.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/DriverIssues.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/ImageRules.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/NullDevice.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/PixelConverter.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/ProgramSlots.cpp")
   add_library(haylen::gpu ALIAS haylen-gpu)
   # Only the drivers of Windows read the GPU that a process wants.
   if(WIN32)

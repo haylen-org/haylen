@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -7,6 +8,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -276,6 +278,26 @@ TEST(DeviceTest, ReadsRenderTargetsAndCapturesTheScreenInLaterFrames) {
     device.readTarget(target, [](std::optional<graphics::Image>, const std::string&) { FAIL() << "A cancelled read reached its callback."; });
     device.cancelReads();
     fixture.frames(2);
+}
+
+// A compressed format that the device does not sample makes no texture, and the sentence names the format and the graphics API, while a format it samples reaches the GPU device as its levels are.
+TEST(DeviceTest, RefusesATextureInAFormatThatTheDeviceDoesNotSample) {
+    gpu::Device::Capabilities capabilities = gpu::NullDevice::getDefaultCapabilities();
+    capabilities.getFormat(gpu::Device::PixelFormat::Astc4x4).sample = false;
+    graphics::Device device(std::make_unique<gpu::NullDevice>(gpu::Device::Language::None, capabilities, gpu::Device::Api::Vulkan));
+    const std::vector<std::byte> block(16);
+    const std::array<std::span<const std::byte>, 1> levels{block};
+
+    try {
+        (void)device.createTexture(graphics::Device::TextureData{.width = 4, .height = 4, .format = gpu::Device::PixelFormat::Astc4x4, .levels = levels});
+        FAIL() << "The device made a texture in a format it does not sample.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The graphics API \"vulkan\" of this device samples no texture of the format \"astc4x4\". Make the texture in a format that the device samples, as its format support tells.");
+    }
+
+    const graphics::Texture texture = device.createTexture(graphics::Device::TextureData{.width = 4, .height = 4, .format = gpu::Device::PixelFormat::Bc7, .levels = levels}, {.filter = graphics::Texture::Filter::Linear});
+    EXPECT_EQ(texture.getFormat(), gpu::Device::PixelFormat::Bc7);
+    EXPECT_FALSE(texture.getOptions().hasMipmaps());
 }
 
 TEST(DeviceTest, CapturesTheFramesItIsAskedForAndEndsACaptureThatStops) {

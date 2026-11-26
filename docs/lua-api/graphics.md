@@ -1,6 +1,6 @@
 # 📖 `haylen.graphics`
 
-The module `haylen.graphics` makes the resources that every kind of drawing shares: textures, render targets, images on the CPU, fonts, font families and vector images. It also names the graphics API and what the device holds: the largest texture, volume and cube, the sample counts of each format and the range of depth. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md). The [rendering guide](../graphics/rendering.md) explains how the engine draws, and the [text guide](../graphics/text.md) explains fonts.
+The module `haylen.graphics` makes the resources that every kind of drawing shares: textures, render targets, images on the CPU, fonts, font families and vector images. It also names the graphics API and what the device can do: its capabilities, what it does with each pixel format and the range of depth. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md). The [rendering guide](../graphics/rendering.md) explains how the engine draws, and the [text guide](../graphics/text.md) explains fonts.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -58,37 +58,51 @@ local canvas = graphics.newImage(side, 64)
 print(canvas.width)
 ```
 
-### graphics.maxVolumeSize()
+### graphics.capabilities()
 
-Returns the largest side in pixels that a volume image can have on this device, along its width, its height and its slices, as the [RHI guide](../graphics/rhi.md#capabilities) reports it for each graphics API. The 3D renderer reads it for volumes such as the grids of fog and light.
+Returns a table of what the GPU device of this app can do, as the [RHI guide](../graphics/rhi.md#capabilities) reports it for each graphics API. The values come from the GPU when the device starts, so they differ between machines.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `maxTextureSize` | integer | The largest side in pixels of a flat texture or render target, the value of [`graphics.maxTextureSize()`](#graphicsmaxtexturesize). |
+| `maxArrayLayers` | integer | The most layers of an array texture. |
+| `maxVolumeSize` | integer | The largest side in pixels of a volume texture, along its width, its height and its slices, which the 3D renderer reads for volumes such as the grids of fog and light. |
+| `maxCubeSize` | integer | The largest side in pixels of the square faces of a cube texture, such as the faces of an environment map. |
+| `originTopLeft` | boolean | Whether the first row of a render target is its top row. It is `false` on OpenGL, OpenGL ES and WebGL2. |
+| `depthRange` | string | The range of depth of clip space, as [`graphics.depthRange()`](#graphicsdepthrange) returns it. |
+| `independentBlend` | boolean | Whether each color target of a draw takes a blend of its own. |
+| `gpuTiming` | boolean | Whether the device measures the time the GPU takes for a frame, which [`debug.stats()`](debug.md#debugstats) reports. |
 
 ```lua
 local graphics = require('haylen.graphics')
 
-local slices = math.min(64, graphics.maxVolumeSize())
-print('A volume of ' .. slices .. ' slices fits this device.')
+local capabilities = graphics.capabilities()
+local slices = math.min(64, capabilities.maxVolumeSize)
+local face = math.min(1024, capabilities.maxCubeSize)
+print('A volume of ' .. slices .. ' slices and cubes of ' .. face .. ' pixels fit this device.')
 ```
 
-### graphics.maxCubeSize()
+### graphics.formatSupport(format)
 
-Returns the largest side in pixels of the square faces of a cube image on this device, such as the faces of an environment map.
+Returns a table of what the GPU device does with a pixel format, so an app picks a format that the device has. The formats are the uncompressed color formats `'r8'`, `'rg8'`, `'rgba8'`, `'rgba8Srgb'`, `'bgra8'`, `'rgb10A2'`, `'rg11B10Float'`, `'r16Float'`, `'rg16Float'`, `'rgba16Float'`, `'r32Float'`, `'rg32Float'` and `'rgba32Float'`, the depth formats `'depth16'`, `'depth32Float'`, `'depth24Stencil8'` and `'depth32FloatStencil8'`, the BC formats `'bc1'`, `'bc1Srgb'`, `'bc2'`, `'bc2Srgb'`, `'bc3'`, `'bc3Srgb'`, `'bc4'`, `'bc4Snorm'`, `'bc5'`, `'bc5Snorm'`, `'bc6hUfloat'`, `'bc6hFloat'`, `'bc7'` and `'bc7Srgb'`, the ETC2 and EAC formats `'etc2Rgb8'`, `'etc2Rgb8Srgb'`, `'etc2Rgb8A1'`, `'etc2Rgb8A1Srgb'`, `'etc2Rgba8'`, `'etc2Rgba8Srgb'`, `'eacR11'`, `'eacR11Snorm'`, `'eacRg11'` and `'eacRg11Snorm'`, and the ASTC formats of every block size from `'astc4x4'` to `'astc12x12'`, which are `'astc4x4'`, `'astc5x4'`, `'astc5x5'`, `'astc6x5'`, `'astc6x6'`, `'astc8x5'`, `'astc8x6'`, `'astc8x8'`, `'astc10x5'`, `'astc10x6'`, `'astc10x8'`, `'astc10x10'`, `'astc12x10'` and `'astc12x12'`, each also with `Srgb` and with `Hdr` after its name, such as `'astc6x6Srgb'` and `'astc6x6Hdr'` of the HDR profile. Another name raises `bad argument #1 to 'formatSupport' (unknown value '<name>')`.
 
-```lua
-local graphics = require('haylen.graphics')
-
-local face = math.min(1024, graphics.maxCubeSize())
-print('A cube with faces of ' .. face .. ' pixels fits this device.')
-```
-
-### graphics.sampleCounts(format)
-
-Returns the sample counts that render targets and depth stencil images of the format take on this device, as a list from one sample up, such as `{1, 4}`, or an empty list for a format that the device draws not into. A color format that takes more samples than one also resolves into an image of one sample. The formats are `'r8'`, `'rg8'`, `'rgba8'`, `'rgba8Srgb'`, `'bgra8'`, `'rgb10A2'`, `'r16Float'`, `'rg16Float'`, `'rgba16Float'`, `'r32Float'`, `'rg32Float'`, `'rgba32Float'`, `'depth16'`, `'depth32Float'`, `'depth24Stencil8'` and `'depth32FloatStencil8'`, and another name raises `bad argument #1 to 'sampleCounts' (unknown value '<name>')`.
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `sample` | boolean | Whether textures of the format exist and draws sample them. A block compressed format that the device lacks is `false`, and the [texture guide](../graphics/rendering.md#compressed-textures) explains how an app ships the formats of each target. |
+| `filter` | boolean | Whether draws sample the format with the `'linear'` filter. |
+| `render` | boolean | Whether render targets, or depth attachments for the depth formats, of the format exist. Block compressed formats never render. |
+| `blend` | boolean | Whether draws blend into render targets of the format. |
+| `storage` | boolean | Whether shaders write the format as a storage image. |
+| `sampleCounts` | list of integers | The sample counts that render targets and depth attachments of the format take, from one sample up, such as `{1, 4}`, or an empty list for a format that the device does not draw into. A color format that takes more samples than one also resolves into a texture of one sample. |
 
 ```lua
 local graphics = require('haylen.graphics')
 
-local counts = graphics.sampleCounts('rgba16Float')
-print('The most samples of a light buffer: ' .. counts[#counts])
+local light = graphics.formatSupport('rgba16Float')
+print('The most samples of a light buffer: ' .. light.sampleCounts[#light.sampleCounts])
+
+local format = graphics.formatSupport('astc6x6').sample and 'astc6x6' or 'bc7'
+print('The textures of this device use ' .. format .. '.')
 ```
 
 ### graphics.depthRange()
@@ -122,6 +136,15 @@ Makes a `Texture` of `width` by `height` pixels from code. The table `options` i
 | `wrap` | string | `'clamp'` | The `'clamp'`, `'repeat'` or `'mirror'` addressing. |
 | `mipmaps` | boolean | `true` with the `'linear'` filter, `false` otherwise | Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, blended between them with the `'linear'` filter. A dynamic texture never has them, and one with `mipmaps = true` raises `A texture that changes in place has no mipmaps.`. |
 
+With the options `format` and `levels`, the texture takes its pixels in a pixel format of the device, such as the blocks of a compressed format that the app ships for its target, as the [texture guide](../graphics/rendering.md#compressed-textures) explains. These two options take no `fill`, `pixels` or `dynamic`, which raise `Unknown option "<key>".`:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `format` | string | `'rgba8'` | A format of [`graphics.formatSupport`](#graphicsformatsupportformat) that the device samples and filters, such as `'bc7'` or `'astc6x6'`. |
+| `levels` | list of strings or data views | none | The bytes of each mip level, the largest level first, each holding the rows of blocks of its level tightly packed. A level smaller than a block takes one whole block. With more than one level the texture keeps mipmaps, unless `mipmaps = false` keeps only the first level. |
+
+A texture made in a format checks it before any byte reaches the GPU. A depth format raises `The format "<format>" belongs to depth attachments, so no texture is made in it.`. A format that the device does not sample raises `The graphics API "<api>" of this device samples no texture of the format "<format>". Make the texture in a format that the device samples, as its format support tells.`, and one that it samples only without filtering raises the same kind of sentence with `only without filtering`. Sides that hold no whole blocks raise `A texture of the format "<format>" has sides of whole blocks of <w> by <h> pixels, which <width> by <height> pixels are not.`. A missing list raises `A texture made in a format takes the bytes of each of its levels in the list "levels", the largest level first.`, a list of another count raises `A texture of <width> by <height> pixels brings from 1 to <count> levels, not <given>.`, a level of another size raises `The level <n> of a texture of <width> by <height> pixels of the format "<format>" holds <bytes> bytes, and it needs <expected>.`, and `mipmaps = true` with one level raises `A texture made from its levels keeps mipmaps only when it brings more than one level.`.
+
 A size of 0 or less raises `Texture dimensions must be positive.`, and a size above [`graphics.maxTextureSize()`](#graphicsmaxtexturesize) raises `Texture dimensions exceed the device limit.`. A filled texture checks its size before it makes any pixel. With `pixels`, the image of the pixels checks its size first: a negative size raises `Image dimensions cannot be negative.`, a side above 16384 raises `The image of <width> by <height> pixels is too large. An image has at most 16384 pixels on a side.`, and pixels of another length, an empty string among them, raise `Image pixel data does not match its dimensions.`.
 
 ```lua
@@ -133,6 +156,11 @@ local checker = graphics.newTexture(2, 2, {
     wrap = 'repeat',
 })
 print(red.width, checker.height)
+
+if graphics.formatSupport('bc7').sample then
+    local blocks = graphics.newTexture(4, 4, {format = 'bc7', levels = {string.rep('\0', 16)}, filter = 'linear'})
+    print(blocks.format)
+end
 ```
 
 ### graphics.newTexture(bytes, options)
@@ -198,6 +226,7 @@ local pixel = graphics2d.newSprite(graphics.whiteTexture(), {width = 8, height =
 | `filter` | string | read | Sampling filter, `'nearest'` or `'linear'`. |
 | `wrap` | string | read | Addressing mode, `'clamp'`, `'repeat'` or `'mirror'`. |
 | `mipmaps` | boolean | read | Whether the texture keeps smaller copies of its image. |
+| `format` | string | read | The pixel format of the texture on the GPU, `'rgba8'` for the textures of images and the format of a texture made from its levels. |
 
 ```lua
 local assets = require('haylen.assets')

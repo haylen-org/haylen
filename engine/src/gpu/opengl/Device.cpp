@@ -168,14 +168,18 @@ void Device::readCapabilities() {
     capabilities.independentBlend = features.drawBuffersIndexed;
     capabilities.gpuTiming = timer.isAvailable();
 
-    // Every flavour makes and samples images of every format, and OpenGL ES and WebGL2 draw into float formats and filter 32-bit floats only with their extensions.
-    for (std::size_t index = 0; index < capabilities.textureFormats.size(); ++index) {
-        const Conversions::Pixel pixel = Conversions::getPixel(static_cast<PixelFormat>(index), gl.isDesktop());
-        capabilities.textureFormats[index] = true;
-        capabilities.renderFormats[index] = isRenderable(pixel);
-        capabilities.blendableFormats[index] = !pixel.depth && isRenderable(pixel) && (!pixel.floating || features.floatBlend);
-        capabilities.filterableFormats[index] = !pixel.depth && (!pixel.floating || (features.textureFloatLinear && !noFloatFiltering));
-        capabilities.sampleCounts[index] = isRenderable(pixel) ? getSampleCounts(pixel) : std::uint8_t{0};
+    // Every flavour makes and samples images of every uncompressed format and of the compressed families its version or extensions hold, and OpenGL ES and WebGL2 draw into float formats and filter 32-bit floats only with their extensions.
+    for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
+        const auto format = static_cast<PixelFormat>(index);
+        const Conversions::Pixel pixel = Conversions::getPixel(format, gl.isDesktop());
+        const bool renderable = !pixel.compressed && isRenderable(pixel);
+        FormatSupport& support = capabilities.formats[index];
+        support.sample = isSampled(format);
+        support.render = renderable;
+        support.blend = !pixel.depth && renderable && (!pixel.floating || features.floatBlend);
+        support.filter = !pixel.depth && support.sample && (!pixel.floating || (features.textureFloatLinear && !noFloatFiltering));
+        support.storage = isStorage(format);
+        support.sampleCounts = renderable ? getSampleCounts(pixel) : std::uint8_t{0};
     }
 
     if (features.anisotropicFiltering && anisotropic) {
@@ -199,9 +203,9 @@ std::uint8_t Device::getSampleCounts(const Conversions::Pixel& pixel) const {
     return counts;
 }
 
-// OpenGL draws into every format of the RHI, and OpenGL ES and WebGL2 draw into float formats only with the extensions that make them renderable.
+// OpenGL draws into every uncompressed format of the RHI, and OpenGL ES and WebGL2 draw into float formats only with the extensions that make them renderable.
 bool Device::isRenderable(const Conversions::Pixel& pixel) const noexcept {
-    if (pixel.floating) {
+    if (pixel.floating || pixel.packedFloating) {
         return gl.getFeatures().colorBufferFloat;
     }
 
@@ -210,6 +214,64 @@ bool Device::isRenderable(const Conversions::Pixel& pixel) const noexcept {
     }
 
     return true;
+}
+
+// A block compressed family samples where the version of the flavour holds it or an extension adds it.
+bool Device::isSampled(PixelFormat format) const noexcept {
+    const Gl::Features& features = gl.getFeatures();
+    switch (ImageInfo::getCompression(format)) {
+    case ImageInfo::Compression::None:
+        return true;
+    case ImageInfo::Compression::Bc:
+        break;
+    case ImageInfo::Compression::Etc2:
+        return features.etc2;
+    case ImageInfo::Compression::Astc:
+        return features.astc;
+    case ImageInfo::Compression::AstcHdr:
+        return features.astcHdr;
+    }
+
+    switch (format) {
+    case PixelFormat::Bc1:
+    case PixelFormat::Bc2:
+    case PixelFormat::Bc3:
+        return features.s3tc;
+    case PixelFormat::Bc1Srgb:
+    case PixelFormat::Bc2Srgb:
+    case PixelFormat::Bc3Srgb:
+        return features.s3tcSrgb;
+    case PixelFormat::Bc4:
+    case PixelFormat::Bc4Snorm:
+    case PixelFormat::Bc5:
+    case PixelFormat::Bc5Snorm:
+        return features.rgtc;
+    default:
+        return features.bptc;
+    }
+}
+
+// Shaders write as storage images the formats of the image units of OpenGL 4.3 and of OpenGL ES 3.1, and OpenGL ES 3.0 and WebGL2 have no image units.
+bool Device::isStorage(PixelFormat format) const noexcept {
+    const Gl::Features& features = gl.getFeatures();
+    const bool embedded31 = !gl.isDesktop() && !gl.isWeb() && features.majorVersion * 10 + features.minorVersion >= 31;
+    switch (format) {
+    case PixelFormat::Rgba8:
+    case PixelFormat::Rgba16Float:
+    case PixelFormat::R32Float:
+    case PixelFormat::Rgba32Float:
+        return gl.isDesktop() || embedded31;
+    case PixelFormat::R8:
+    case PixelFormat::Rg8:
+    case PixelFormat::Rgb10A2:
+    case PixelFormat::Rg11B10Float:
+    case PixelFormat::R16Float:
+    case PixelFormat::Rg16Float:
+    case PixelFormat::Rg32Float:
+        return gl.isDesktop();
+    default:
+        return false;
+    }
 }
 
 Device::Language Device::getLanguage() const noexcept {
@@ -302,24 +364,23 @@ Gl::Uint Device::makeTexture(const ImageDesc& desc, const Conversions::Pixel& pi
 
 std::size_t Device::getLevelBytes(const ImageRecord& record, int level) const noexcept {
     const int layers = record.type == TextureType::Volume ? getLevelSize(record.layers, level) : record.layers;
-    return static_cast<std::size_t>(getLevelSize(record.width, level)) * static_cast<std::size_t>(getLevelSize(record.height, level)) * static_cast<std::size_t>(layers) * record.pixel.bytes;
+    return ImageInfo::getRegionBytes(record.format, getLevelSize(record.width, level), getLevelSize(record.height, level)) * static_cast<std::size_t>(layers);
 }
 
 // The source is the address of the pixels, or their offset in the pixel unpack buffer while one is bound, and the faces of a cube follow one another in it.
 void Device::uploadLevel(const ImageRecord& record, int level, std::uintptr_t source) {
     const int width = getLevelSize(record.width, level);
     const int height = getLevelSize(record.height, level);
-    const Conversions::Pixel& pixel = record.pixel;
     state.bindTexture(0, record.target, record.name);
 
     switch (record.type) {
     case TextureType::Flat:
-        gl.texSubImage2D(Gl::kTexture2d, level, 0, 0, width, height, pixel.format, pixel.type, reinterpret_cast<const void*>(source));
+        uploadLayers(record, Gl::kTexture2d, level, {width, height, 1}, source);
         return;
     case TextureType::Cube: {
         const std::size_t face = getLevelBytes(record, level) / 6;
         for (Gl::Enum index = 0; index < 6; ++index) {
-            gl.texSubImage2D(Gl::kTextureCubeMapPositiveX + index, level, 0, 0, width, height, pixel.format, pixel.type, reinterpret_cast<const void*>(source + face * index));
+            uploadLayers(record, Gl::kTextureCubeMapPositiveX + index, level, {width, height, 1}, source + face * index);
         }
 
         return;
@@ -327,10 +388,34 @@ void Device::uploadLevel(const ImageRecord& record, int level, std::uintptr_t so
     case TextureType::Array:
     case TextureType::Volume: {
         const int layers = record.type == TextureType::Volume ? getLevelSize(record.layers, level) : record.layers;
-        gl.texSubImage3D(record.target, level, 0, 0, 0, width, height, layers, pixel.format, pixel.type, reinterpret_cast<const void*>(source));
+        uploadLayers(record, record.target, level, {width, height, layers}, source);
         return;
     }
     }
+}
+
+// A compressed format takes its blocks as they are, with the bytes they hold, and the other formats take their pixels by their format and type.
+void Device::uploadLayers(const ImageRecord& record, Gl::Enum target, int level, const ImageInfo::Extent& extent, std::uintptr_t source) {
+    const Conversions::Pixel& pixel = record.pixel;
+    const auto* data = reinterpret_cast<const void*>(source);
+    const bool flat = target != Gl::kTexture2dArray && target != Gl::kTexture3d;
+    if (pixel.compressed) {
+        const auto size = static_cast<Gl::Sizei>(ImageInfo::getRegionBytes(record.format, extent.width, extent.height) * static_cast<std::size_t>(extent.depth));
+        if (flat) {
+            gl.compressedTexSubImage2D(target, level, 0, 0, extent.width, extent.height, pixel.internalFormat, size, data);
+            return;
+        }
+
+        gl.compressedTexSubImage3D(target, level, 0, 0, 0, extent.width, extent.height, extent.depth, pixel.internalFormat, size, data);
+        return;
+    }
+
+    if (flat) {
+        gl.texSubImage2D(target, level, 0, 0, extent.width, extent.height, pixel.format, pixel.type, data);
+        return;
+    }
+
+    gl.texSubImage3D(target, level, 0, 0, 0, extent.width, extent.height, extent.depth, pixel.format, pixel.type, data);
 }
 
 // A dynamic image is flat with one mip level, whose region takes the pixels at the address or the offset into the pixel unpack buffer.
@@ -599,7 +684,7 @@ std::size_t Device::checkImageWrites(std::span<const ImageWrite> writes) {
 
         const Region& region = write.region;
         const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= record.width && region.y + region.height <= record.height;
-        const std::size_t bytes = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * record.pixel.bytes;
+        const std::size_t bytes = ImageInfo::getRegionBytes(record.format, region.width, region.height);
         if (!inside || write.pixels.size() != bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
@@ -1254,7 +1339,7 @@ std::unique_ptr<Device::Readback> Device::readImage(Image image, int width, int 
     }
 
     const Gl::Uint framebuffer = getSingleFramebuffer(image, "haylen-readback");
-    return std::make_unique<PixelReadback>(context, framebuffer, width, height, record.pixel.floating || record.pixel.halfFloating);
+    return std::make_unique<PixelReadback>(context, framebuffer, width, height, record.pixel.floating || record.pixel.halfFloating || record.pixel.packedFloating);
 }
 
 // The drawable takes the swap interval of its surface while it is current, and the window takes its own back, since some platforms keep the interval with the context rather than with the drawable.

@@ -17,6 +17,8 @@ MTLPixelFormat Formats::toPixelFormat(gpu::Device::PixelFormat format) noexcept 
         return MTLPixelFormatBGRA8Unorm;
     case PixelFormat::Rgb10A2:
         return MTLPixelFormatRGB10A2Unorm;
+    case PixelFormat::Rg11B10Float:
+        return MTLPixelFormatRG11B10Float;
     case PixelFormat::R16Float:
         return MTLPixelFormatR16Float;
     case PixelFormat::Rg16Float:
@@ -36,48 +38,168 @@ MTLPixelFormat Formats::toPixelFormat(gpu::Device::PixelFormat format) noexcept 
     case PixelFormat::Depth24Stencil8:
     case PixelFormat::Depth32FloatStencil8:
         return MTLPixelFormatDepth32Float_Stencil8;
+    case PixelFormat::Bc1:
+    case PixelFormat::Bc1Srgb:
+    case PixelFormat::Bc2:
+    case PixelFormat::Bc2Srgb:
+    case PixelFormat::Bc3:
+    case PixelFormat::Bc3Srgb:
+    case PixelFormat::Bc4:
+    case PixelFormat::Bc4Snorm:
+    case PixelFormat::Bc5:
+    case PixelFormat::Bc5Snorm:
+    case PixelFormat::Bc6hUfloat:
+    case PixelFormat::Bc6hFloat:
+    case PixelFormat::Bc7:
+    case PixelFormat::Bc7Srgb:
+        if (@available(macOS 11.0, iOS 16.4, tvOS 16.4, *)) {
+            return toBcPixelFormat(format);
+        }
+
+        return MTLPixelFormatInvalid;
+    case PixelFormat::Etc2Rgb8:
+        return MTLPixelFormatETC2_RGB8;
+    case PixelFormat::Etc2Rgb8Srgb:
+        return MTLPixelFormatETC2_RGB8_sRGB;
+    case PixelFormat::Etc2Rgb8A1:
+        return MTLPixelFormatETC2_RGB8A1;
+    case PixelFormat::Etc2Rgb8A1Srgb:
+        return MTLPixelFormatETC2_RGB8A1_sRGB;
+    case PixelFormat::Etc2Rgba8:
+        return MTLPixelFormatEAC_RGBA8;
+    case PixelFormat::Etc2Rgba8Srgb:
+        return MTLPixelFormatEAC_RGBA8_sRGB;
+    case PixelFormat::EacR11:
+        return MTLPixelFormatEAC_R11Unorm;
+    case PixelFormat::EacR11Snorm:
+        return MTLPixelFormatEAC_R11Snorm;
+    case PixelFormat::EacRg11:
+        return MTLPixelFormatEAC_RG11Unorm;
+    case PixelFormat::EacRg11Snorm:
+        return MTLPixelFormatEAC_RG11Snorm;
+    case PixelFormat::Astc4x4:
+        return MTLPixelFormatASTC_4x4_LDR;
+    case PixelFormat::Astc4x4Srgb:
+        return MTLPixelFormatASTC_4x4_sRGB;
+    case PixelFormat::Astc4x4Hdr:
+        return MTLPixelFormatASTC_4x4_HDR;
+    case PixelFormat::Astc5x4:
+        return MTLPixelFormatASTC_5x4_LDR;
+    case PixelFormat::Astc5x4Srgb:
+        return MTLPixelFormatASTC_5x4_sRGB;
+    case PixelFormat::Astc5x4Hdr:
+        return MTLPixelFormatASTC_5x4_HDR;
+    case PixelFormat::Astc5x5:
+        return MTLPixelFormatASTC_5x5_LDR;
+    case PixelFormat::Astc5x5Srgb:
+        return MTLPixelFormatASTC_5x5_sRGB;
+    case PixelFormat::Astc5x5Hdr:
+        return MTLPixelFormatASTC_5x5_HDR;
+    case PixelFormat::Astc6x5:
+        return MTLPixelFormatASTC_6x5_LDR;
+    case PixelFormat::Astc6x5Srgb:
+        return MTLPixelFormatASTC_6x5_sRGB;
+    case PixelFormat::Astc6x5Hdr:
+        return MTLPixelFormatASTC_6x5_HDR;
+    case PixelFormat::Astc6x6:
+        return MTLPixelFormatASTC_6x6_LDR;
+    case PixelFormat::Astc6x6Srgb:
+        return MTLPixelFormatASTC_6x6_sRGB;
+    case PixelFormat::Astc6x6Hdr:
+        return MTLPixelFormatASTC_6x6_HDR;
+    case PixelFormat::Astc8x5:
+        return MTLPixelFormatASTC_8x5_LDR;
+    case PixelFormat::Astc8x5Srgb:
+        return MTLPixelFormatASTC_8x5_sRGB;
+    case PixelFormat::Astc8x5Hdr:
+        return MTLPixelFormatASTC_8x5_HDR;
+    case PixelFormat::Astc8x6:
+        return MTLPixelFormatASTC_8x6_LDR;
+    case PixelFormat::Astc8x6Srgb:
+        return MTLPixelFormatASTC_8x6_sRGB;
+    case PixelFormat::Astc8x6Hdr:
+        return MTLPixelFormatASTC_8x6_HDR;
+    case PixelFormat::Astc8x8:
+        return MTLPixelFormatASTC_8x8_LDR;
+    case PixelFormat::Astc8x8Srgb:
+        return MTLPixelFormatASTC_8x8_sRGB;
+    case PixelFormat::Astc8x8Hdr:
+        return MTLPixelFormatASTC_8x8_HDR;
+    case PixelFormat::Astc10x5:
+        return MTLPixelFormatASTC_10x5_LDR;
+    case PixelFormat::Astc10x5Srgb:
+        return MTLPixelFormatASTC_10x5_sRGB;
+    case PixelFormat::Astc10x5Hdr:
+        return MTLPixelFormatASTC_10x5_HDR;
+    case PixelFormat::Astc10x6:
+        return MTLPixelFormatASTC_10x6_LDR;
+    case PixelFormat::Astc10x6Srgb:
+        return MTLPixelFormatASTC_10x6_sRGB;
+    case PixelFormat::Astc10x6Hdr:
+        return MTLPixelFormatASTC_10x6_HDR;
+    case PixelFormat::Astc10x8:
+        return MTLPixelFormatASTC_10x8_LDR;
+    case PixelFormat::Astc10x8Srgb:
+        return MTLPixelFormatASTC_10x8_sRGB;
+    case PixelFormat::Astc10x8Hdr:
+        return MTLPixelFormatASTC_10x8_HDR;
+    case PixelFormat::Astc10x10:
+        return MTLPixelFormatASTC_10x10_LDR;
+    case PixelFormat::Astc10x10Srgb:
+        return MTLPixelFormatASTC_10x10_sRGB;
+    case PixelFormat::Astc10x10Hdr:
+        return MTLPixelFormatASTC_10x10_HDR;
+    case PixelFormat::Astc12x10:
+        return MTLPixelFormatASTC_12x10_LDR;
+    case PixelFormat::Astc12x10Srgb:
+        return MTLPixelFormatASTC_12x10_sRGB;
+    case PixelFormat::Astc12x10Hdr:
+        return MTLPixelFormatASTC_12x10_HDR;
+    case PixelFormat::Astc12x12:
+        return MTLPixelFormatASTC_12x12_LDR;
+    case PixelFormat::Astc12x12Srgb:
+        return MTLPixelFormatASTC_12x12_sRGB;
+    case PixelFormat::Astc12x12Hdr:
+        return MTLPixelFormatASTC_12x12_HDR;
     }
 
     return MTLPixelFormatRGBA8Unorm;
 }
 
-std::size_t Formats::getBytesPerPixel(gpu::Device::PixelFormat format) noexcept {
+MTLPixelFormat Formats::toBcPixelFormat(gpu::Device::PixelFormat format) noexcept {
     using PixelFormat = gpu::Device::PixelFormat;
     switch (format) {
-    case PixelFormat::R8:
-        return 1;
-    case PixelFormat::Rg8:
-    case PixelFormat::R16Float:
-    case PixelFormat::Depth16:
-        return 2;
-    case PixelFormat::Rgba8:
-    case PixelFormat::Rgba8Srgb:
-    case PixelFormat::Bgra8:
-    case PixelFormat::Rgb10A2:
-    case PixelFormat::Rg16Float:
-    case PixelFormat::R32Float:
-    case PixelFormat::Depth32Float:
-        return 4;
-    case PixelFormat::Rgba16Float:
-    case PixelFormat::Rg32Float:
-    case PixelFormat::Depth24Stencil8:
-    case PixelFormat::Depth32FloatStencil8:
-        return 8;
-    case PixelFormat::Rgba32Float:
-        return 16;
+    case PixelFormat::Bc1:
+        return MTLPixelFormatBC1_RGBA;
+    case PixelFormat::Bc1Srgb:
+        return MTLPixelFormatBC1_RGBA_sRGB;
+    case PixelFormat::Bc2:
+        return MTLPixelFormatBC2_RGBA;
+    case PixelFormat::Bc2Srgb:
+        return MTLPixelFormatBC2_RGBA_sRGB;
+    case PixelFormat::Bc3:
+        return MTLPixelFormatBC3_RGBA;
+    case PixelFormat::Bc3Srgb:
+        return MTLPixelFormatBC3_RGBA_sRGB;
+    case PixelFormat::Bc4:
+        return MTLPixelFormatBC4_RUnorm;
+    case PixelFormat::Bc4Snorm:
+        return MTLPixelFormatBC4_RSnorm;
+    case PixelFormat::Bc5:
+        return MTLPixelFormatBC5_RGUnorm;
+    case PixelFormat::Bc5Snorm:
+        return MTLPixelFormatBC5_RGSnorm;
+    case PixelFormat::Bc6hUfloat:
+        return MTLPixelFormatBC6H_RGBUfloat;
+    case PixelFormat::Bc6hFloat:
+        return MTLPixelFormatBC6H_RGBFloat;
+    case PixelFormat::Bc7:
+        return MTLPixelFormatBC7_RGBAUnorm;
+    case PixelFormat::Bc7Srgb:
+        return MTLPixelFormatBC7_RGBAUnorm_sRGB;
+    default:
+        return MTLPixelFormatInvalid;
     }
-
-    return 4;
-}
-
-bool Formats::isDepth(gpu::Device::PixelFormat format) noexcept {
-    using PixelFormat = gpu::Device::PixelFormat;
-    return format == PixelFormat::Depth16 || format == PixelFormat::Depth32Float || format == PixelFormat::Depth24Stencil8 || format == PixelFormat::Depth32FloatStencil8;
-}
-
-bool Formats::hasStencil(gpu::Device::PixelFormat format) noexcept {
-    using PixelFormat = gpu::Device::PixelFormat;
-    return format == PixelFormat::Depth24Stencil8 || format == PixelFormat::Depth32FloatStencil8;
 }
 
 MTLVertexFormat Formats::toVertexFormat(gpu::Device::VertexFormat format) noexcept {

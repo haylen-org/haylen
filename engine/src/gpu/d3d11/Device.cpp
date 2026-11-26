@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/d3d11/ImageReadback.hpp"
 #include "gpu/d3d11/StateObjects.hpp"
@@ -131,28 +132,34 @@ void Device::readCapabilities() {
     capabilities.gpuTiming = true;
 
     // Images sample through the view of their format, depth images draw through the view of their depth, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
-    for (std::size_t index = 0; index < Formats::kPixelFormatCount; ++index) {
+    for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
-        const bool depth = Formats::isDepth(format);
+        const bool depth = ImageInfo::isDepth(format);
+        // Direct3D has no ETC2, EAC or ASTC format, so those formats stay unsupported.
+        if (Formats::getViewFormat(format) == DXGI_FORMAT_UNKNOWN) {
+            continue;
+        }
+
         UINT view = 0;
         UINT target = 0;
         static_cast<void>(device->CheckFormatSupport(Formats::getViewFormat(format), &view));
         static_cast<void>(device->CheckFormatSupport(depth ? Formats::getDepthFormat(format) : Formats::getViewFormat(format), &target));
-        capabilities.textureFormats[index] = (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_SHADER_SAMPLE | D3D11_FORMAT_SUPPORT_SHADER_SAMPLE_COMPARISON)) != 0;
-        capabilities.renderFormats[index] = (target & static_cast<UINT>(depth ? D3D11_FORMAT_SUPPORT_DEPTH_STENCIL : D3D11_FORMAT_SUPPORT_RENDER_TARGET)) != 0;
-        capabilities.blendableFormats[index] = !depth && capabilities.renderFormats[index] && (target & static_cast<UINT>(D3D11_FORMAT_SUPPORT_BLENDABLE)) != 0;
-        capabilities.filterableFormats[index] = !depth && (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_SHADER_SAMPLE)) != 0;
-        capabilities.sampleCounts[index] = capabilities.renderFormats[index] ? std::uint8_t{1} : std::uint8_t{0};
+        capabilities.formats[index].sample = (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_SHADER_SAMPLE | D3D11_FORMAT_SUPPORT_SHADER_SAMPLE_COMPARISON)) != 0;
+        capabilities.formats[index].render = (target & static_cast<UINT>(depth ? D3D11_FORMAT_SUPPORT_DEPTH_STENCIL : D3D11_FORMAT_SUPPORT_RENDER_TARGET)) != 0;
+        capabilities.formats[index].blend = !depth && capabilities.formats[index].render && (target & static_cast<UINT>(D3D11_FORMAT_SUPPORT_BLENDABLE)) != 0;
+        capabilities.formats[index].filter = !depth && (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_SHADER_SAMPLE)) != 0;
+        capabilities.formats[index].storage = !depth && (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW)) != 0;
+        capabilities.formats[index].sampleCounts = capabilities.formats[index].render ? std::uint8_t{1} : std::uint8_t{0};
 
         const UINT multisampled = static_cast<UINT>(depth ? D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET : D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET | D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE);
-        if (!capabilities.renderFormats[index] || (target & multisampled) != multisampled) {
+        if (!capabilities.formats[index].render || (target & multisampled) != multisampled) {
             continue;
         }
 
         for (const UINT count : {2U, 4U, 8U}) {
             UINT levels = 0;
             if (SUCCEEDED(device->CheckMultisampleQualityLevels(depth ? Formats::getDepthFormat(format) : Formats::getViewFormat(format), count, &levels)) && levels > 0) {
-                capabilities.sampleCounts[index] |= static_cast<std::uint8_t>(count);
+                capabilities.formats[index].sampleCounts |= static_cast<std::uint8_t>(count);
             }
         }
     }
@@ -496,7 +503,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
 
         const Region& region = write.region;
         const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
-        const std::size_t row = static_cast<std::size_t>(region.width) * Formats::getBytesPerPixel(image.format);
+        const std::size_t row = ImageInfo::getRowBytes(image.format, region.width);
         const std::size_t bytes = row * static_cast<std::size_t>(region.height);
         if (!inside || write.pixels.size() != bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
@@ -738,7 +745,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         }
 
         pass.depthStencil = getAttachment(image, 0, 0).depth.Get();
-        const bool stencil = Formats::hasStencil(image.format);
+        const bool stencil = ImageInfo::hasStencil(image.format);
         pass.discardDepthStencil = attachment.depthStore == Store::Discard && (!stencil || attachment.stencilStore == Store::Discard);
         width = width > 0 ? width : image.width;
         height = height > 0 ? height : image.height;

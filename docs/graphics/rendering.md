@@ -619,10 +619,6 @@ async.spawn(function()
 end)
 ```
 
-Compressed texture formats are left out, because no format decodes on every graphics API of the engine. Desktop GPUs read BC, mobile GPUs read ETC2 and ASTC, and WebGPU and WebGL2 offer each one only where the device has it. A compressed release would need a copy for every family of devices.
-
-A measurement on the art of the sample Tiny Island shows what they would bring. Its 51 images hold 13 million pixels, which take 69 MB of texture memory as RGBA8 with mipmaps and would take about 17 MB as ASTC 4x4 or BC7. The files of Basis Universal that transcode to those formats with good quality, UASTC at a peak signal-to-noise ratio of about 41 dB against the PNG files, take 8.1 MB, which is 23 percent more than the 6.6 MB of the PNG files. The smaller kind, ETC1S, loses visible detail of painted art at 27 to 31 dB. Transcoding all of them takes about 80 to 140 milliseconds of the worker threads, against about 220 milliseconds to decode the PNG files with their mipmaps, and both happen away from the frame. So compressed textures would save texture memory that no app of the engine runs short of on the devices it supports, at the cost of larger downloads, a large dependency and a format for each family of GPUs in every GPU device. They also could not feed what reads the pixels of a texture, such as the atlas builder and the mipmaps that average by alpha.
-
 Modest phones of AWS Device Farm measure what the textures of the engine cost there, the PNG and JPEG files that apps ship. Two sets load as textures with the `linear` filter and their mipmaps: the 51 PNG images of Tiny Island, 6.6 MB in the package with 13.0 million pixels and 69.3 MB of texture memory as RGBA8 with mipmaps, and the 12 JPEG photos of Photo Social, 3.4 MB with 7.1 million pixels and 37.7 MB. An app loads every image of a set at once with `assets.loadAsync`, as a scene loads its art, three times, and the time of a set runs from the first request until every texture is ready. The first load reads cold files and the later ones read files that the system keeps in memory. Reading and decoding alone, every file of a set at once through `assets.bytesAsync` and `graphics.decodeImageAsync`, shows how much of the load is the work of the worker threads, and the rest is the mipmaps and the uploads within the upload budget of each frame. The longest frame tells how much a load holds up the frames, which the upload budget bounds.
 
 | Phone | GPU and API | PNG load, first and then | PNG read and decode | JPEG load, first and then | JPEG read and decode | Longest frame |
@@ -654,6 +650,24 @@ async.spawn(function()
     local atlas = builder:buildAsync({filter = 'linear'}):await()
     print(atlas.texture.width, atlas.texture.height)
 end)
+```
+
+## Compressed textures
+
+A block compressed texture holds blocks of pixels, such as 4 by 4 pixels in 16 bytes, which the GPU decodes as it samples them. So it takes a quarter of the memory of RGBA8 or less, and each frame reads less memory. Each family of GPUs reads its own formats: desktop GPUs read BC, mobile GPUs read ETC2 and ASTC, Apple GPUs read ETC2 and ASTC and, on every Mac and on the iPads of the M1 on, BC, and browsers offer each family only where the GPU under them has it. The function [`graphics.formatSupport`](../lua-api/graphics.md#graphicsformatsupportformat) tells which formats this device samples, and the [RHI guide](rhi.md#pixel-formats) lists them for each graphics API.
+
+The art of the sample Tiny Island shows what they bring. Its 51 images hold 13 million pixels, which take 69 MB of texture memory as RGBA8 with mipmaps and about 17 MB as ASTC 4x4 or BC7.
+
+The call `graphics.newTexture(width, height, {format = 'bc7', levels = {...}})` makes a texture from the blocks of each mip level as they are, the largest level first. The width and the height hold whole blocks, and a level smaller than a block takes one whole block. A device that lacks the format refuses the texture with a sentence that names the format and the graphics API. The engine never decodes the blocks on the CPU in its place, since that would take the memory and the time that the format saves and would hide that the app shipped a format its target cannot read. So an app ships each texture in a format of every target it runs on, such as BC7 for desktops and ASTC for phones, and picks the one that `graphics.formatSupport` reports. A compressed texture holds no pixels that the CPU reads, so the atlas builder and the mipmaps that average by alpha work on uncompressed images, and a compressed texture brings its mipmaps as levels.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+
+local format = graphics.formatSupport('astc4x4').sample and 'astc4x4' or 'bc7'
+local blocks = assets.bytes('textures/stone-' .. format .. '.bin')
+local stone = graphics.newTexture(256, 256, {format = format, levels = {blocks}, filter = 'linear'})
+print(stone.format, stone.width)
 ```
 
 ## Nine-slices

@@ -10,7 +10,7 @@ namespace haylen::port {
 // The contract between the engine and its ports: the headers of `haylen/port`, the function `haylen_port` of CMake and what a platform declares there. A port names the version it follows in the `CONTRACT` of its `haylen_port`, which the configuration of the engine compares with `kVersion`, and the version grows whenever the contract changes in a way that a port must follow.
 class Contract final {
   public:
-    static constexpr int kVersion = 14;
+    static constexpr int kVersion = 15;
 
     // What a platform allows apps to do beyond what every platform allows, which a port declares in the `CAPABILITIES` of its `haylen_port`: loading libraries at run time, writing code into memory and starting other processes.
     enum class Capability : std::uint8_t {

@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "gpu/HandleTable.hpp"
+#include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/ProgramSlots.hpp"
 #include "gpu/metal/EncoderState.hpp"
@@ -259,7 +260,7 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     passDesc = [MTLRenderPassDescriptor new];
 }
 
-// Every Metal GPU samples and draws into every format of the contract, with `Depth24Stencil8` as `Depth32FloatStencil8`, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats. The sizes and the samples follow the feature set tables of Metal: volumes of 2048 pixels on a side, cubes as large as flat images, and the sample counts the GPU takes for every format, except that a format of 32 bit floats resolves only on a GPU that filters it. A GPU outside the Apple families is the GPU of an Intel Mac, which takes images of 16384 pixels and blends, filters and resolves every format.
+// Every Metal GPU samples and draws into every uncompressed format of the contract, with `Depth24Stencil8` as `Depth32FloatStencil8`, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats. The sizes and the samples follow the feature set tables of Metal: volumes of 2048 pixels on a side, cubes as large as flat images, and the sample counts the GPU takes for every format, except that a format of 32 bit floats resolves only on a GPU that filters it. Apple GPUs sample the ETC2, EAC and ASTC formats, with the HDR profile of ASTC from the A13 and M1 on, and the GPUs that report it sample the BC formats, which every Mac and the iPads of the M1 on do. Shaders write the uncompressed color formats as storage images, and the sRGB one only on Apple GPUs. A GPU outside the Apple families is the GPU of an Intel Mac, which takes images of 16384 pixels and blends, filters and resolves every format.
 gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     Capabilities made;
     const bool apple = [metal supportsFamily:MTLGPUFamilyApple1];
@@ -279,16 +280,32 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     made.independentBlend = true;
     made.gpuTiming = true;
 
+    bool bc = false;
+    if (@available(macOS 11.0, iOS 16.4, tvOS 16.4, *)) {
+        bc = metal.supportsBCTextureCompression;
+    }
+
+    const bool astcHdr = [metal supportsFamily:MTLGPUFamilyApple6];
     const bool floats = [metal supportsFamily:MTLGPUFamilyApple7] || !apple;
     const bool floatFiltering = metal.supports32BitFloatFiltering;
-    for (std::size_t index = 0; index < made.blendableFormats.size(); ++index) {
+    for (std::size_t index = 0; index < made.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
+        FormatSupport& support = made.formats[index];
+        if (ImageInfo::isCompressed(format)) {
+            const ImageInfo::Compression compression = ImageInfo::getCompression(format);
+            support.sample = compression == ImageInfo::Compression::Bc ? bc : apple && (compression != ImageInfo::Compression::AstcHdr || astcHdr);
+            support.filter = support.sample;
+            continue;
+        }
+
         const bool wide = format == PixelFormat::R32Float || format == PixelFormat::Rg32Float || format == PixelFormat::Rgba32Float;
-        made.textureFormats[index] = true;
-        made.renderFormats[index] = true;
-        made.blendableFormats[index] = !Formats::isDepth(format) && (!wide || floats);
-        made.filterableFormats[index] = !Formats::isDepth(format) && (!wide || floatFiltering);
-        made.sampleCounts[index] = !wide || floatFiltering || !apple ? counts : std::uint8_t{1};
+        const bool depth = ImageInfo::isDepth(format);
+        support.sample = true;
+        support.render = true;
+        support.blend = !depth && (!wide || floats);
+        support.filter = !depth && (!wide || floatFiltering);
+        support.storage = !depth && (format != PixelFormat::Rgba8Srgb || apple);
+        support.sampleCounts = !wide || floatFiltering || !apple ? counts : std::uint8_t{1};
     }
 
     return made;
@@ -484,7 +501,7 @@ void Device::Native::checkPipeline(const PipelineDesc& desc) {
         }
     }
 
-    if (!desc.swapchain && desc.depthStencil.format && !Formats::isDepth(*desc.depthStencil.format)) {
+    if (!desc.swapchain && desc.depthStencil.format && !ImageInfo::isDepth(*desc.depthStencil.format)) {
         throw ContractError(ContractError::Rule::Pipeline);
     }
 }
@@ -528,12 +545,12 @@ void Device::Native::releaseLibraries(const ProgramEntry& entry) {
     }
 }
 
-// The pixels of a level sit row after row and layer after layer from the offset, and a volume copies all its slices at once.
+// The pixels of a level sit in rows of blocks, layer after layer from the offset, and a volume copies all its slices at once.
 void Device::Native::copyLevel(id<MTLBlitCommandEncoder> blit, id<MTLBuffer> source, NSUInteger offset, const ImageEntry& image, int level) {
     const auto width = static_cast<NSUInteger>(std::max(1, image.width >> level));
     const auto height = static_cast<NSUInteger>(std::max(1, image.height >> level));
-    const NSUInteger rowBytes = width * Formats::getBytesPerPixel(image.format);
-    const NSUInteger layerBytes = rowBytes * height;
+    const NSUInteger rowBytes = ImageInfo::getRowBytes(image.format, static_cast<int>(width));
+    const NSUInteger layerBytes = ImageInfo::getRegionBytes(image.format, static_cast<int>(width), static_cast<int>(height));
     if (image.type == TextureType::Volume) {
         const auto depth = static_cast<NSUInteger>(std::max(1, image.layers >> level));
         [blit copyFromBuffer:source sourceOffset:offset sourceBytesPerRow:rowBytes sourceBytesPerImage:layerBytes sourceSize:MTLSizeMake(width, height, depth) toTexture:image.texture destinationSlice:0 destinationLevel:static_cast<NSUInteger>(level) destinationOrigin:MTLOriginMake(0, 0, 0)];
@@ -722,22 +739,14 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     return image;
 }
 
-// The pixels go into a staging buffer of their own, which the transfer command buffer retains until it copied them.
+// The pixels go into a staging buffer of their own, which the transfer command buffer retains until it copied them. The rules of the image checked the size of every level.
 void Device::uploadLevels(Image image, std::span<const std::span<const std::byte>> levels) {
     const Native::ImageEntry& entry = native->requireImage(image);
-    const std::size_t pixel = Formats::getBytesPerPixel(entry.format);
     std::vector<std::size_t> offsets(levels.size());
     std::size_t total = 0;
     for (std::size_t level = 0; level < levels.size(); ++level) {
-        const auto shift = static_cast<int>(level);
-        const auto layers = static_cast<std::size_t>(entry.type == TextureType::Volume ? std::max(1, entry.layers >> shift) : entry.layers);
-        const std::size_t expected = static_cast<std::size_t>(std::max(1, entry.width >> shift)) * static_cast<std::size_t>(std::max(1, entry.height >> shift)) * layers * pixel;
-        if (levels[level].size() != expected) {
-            throw ContractError(ContractError::Rule::ImageWrite);
-        }
-
         offsets[level] = total;
-        total += (expected + 15U) & ~std::size_t{15U};
+        total += (levels[level].size() + 15U) & ~std::size_t{15U};
     }
 
     @autoreleasepool {
@@ -871,7 +880,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     native->checkPipeline(desc);
 
     const bool depth = desc.swapchain || desc.depthStencil.format.has_value();
-    const bool stencil = desc.swapchain || (desc.depthStencil.format && Formats::hasStencil(*desc.depthStencil.format));
+    const bool stencil = desc.swapchain || (desc.depthStencil.format && ImageInfo::hasStencil(*desc.depthStencil.format));
     Native::PipelineEntry entry{.program = desc.program, .primitive = Formats::toPrimitiveType(desc.primitive), .cull = Formats::toCullMode(desc.cullMode), .winding = Formats::toWinding(desc.frontFace), .depthBias = desc.depthStencil.depthBias, .depthBiasSlope = desc.depthStencil.depthBiasSlope, .buffers = desc.buffers.size()};
     if (desc.indexType != IndexType::None) {
         entry.indexType = desc.indexType == IndexType::UInt32 ? MTLIndexTypeUInt32 : MTLIndexTypeUInt16;
@@ -1013,7 +1022,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
 
         const Region& region = write.region;
         const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
-        const std::size_t expected = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * Formats::getBytesPerPixel(image.format);
+        const std::size_t expected = ImageInfo::getRegionBytes(image.format, region.width, region.height);
         if (!inside || write.pixels.size() != expected) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
@@ -1026,7 +1035,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
         for (std::size_t index = 0; index < writes.size(); ++index) {
             const Native::ImageEntry& image = native->requireImage(writes[index].image);
             const Region& region = writes[index].region;
-            const NSUInteger rowBytes = static_cast<NSUInteger>(region.width) * Formats::getBytesPerPixel(image.format);
+            const NSUInteger rowBytes = ImageInfo::getRowBytes(image.format, region.width);
             const MTLSize size = MTLSizeMake(static_cast<NSUInteger>(region.width), static_cast<NSUInteger>(region.height), 1);
             const MTLOrigin origin = MTLOriginMake(static_cast<NSUInteger>(region.x), static_cast<NSUInteger>(region.y), 0);
             [blit copyFromBuffer:native->staged[index].buffer sourceOffset:native->staged[index].offset sourceBytesPerRow:rowBytes sourceBytesPerImage:rowBytes * size.height sourceSize:size toTexture:image.texture destinationSlice:0 destinationLevel:0 destinationOrigin:origin];
@@ -1169,7 +1178,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         pass.depthAttachment.loadAction = Formats::toLoadAction(attachment.depthLoad);
         pass.depthAttachment.storeAction = attachment.depthStore == Store::Store ? MTLStoreActionStore : MTLStoreActionDontCare;
         pass.depthAttachment.clearDepth = attachment.clearDepth;
-        if (Formats::hasStencil(image.format)) {
+        if (ImageInfo::hasStencil(image.format)) {
             pass.stencilAttachment.texture = image.texture;
             pass.stencilAttachment.loadAction = Formats::toLoadAction(attachment.stencilLoad);
             pass.stencilAttachment.storeAction = attachment.stencilStore == Store::Store ? MTLStoreActionStore : MTLStoreActionDontCare;

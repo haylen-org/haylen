@@ -144,16 +144,27 @@ void Context::createDevice() {
         extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     }
 
+    // The HDR profile of ASTC is part of Vulkan 1.3, and before it an extension.
+    const bool astcHdrExtension = apiVersion < VK_API_VERSION_1_3 && has(VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME);
+    const bool canAstcHdr = apiVersion >= VK_API_VERSION_1_3 || astcHdrExtension;
+
     // A driver that runs Vulkan over another API names the parts of Vulkan it lacks through this extension, which it then requires.
     if (has("VK_KHR_portability_subset")) {
         extensions.push_back("VK_KHR_portability_subset");
     }
 
+    VkPhysicalDeviceTextureCompressionASTCHDRFeatures astcHdrFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, .pNext = nullptr, .textureCompressionASTC_HDR = VK_FALSE};
     VkPhysicalDeviceDynamicRenderingFeatures renderingFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES, .pNext = nullptr, .dynamicRendering = VK_FALSE};
     VkPhysicalDeviceFeatures2 supported{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = nullptr, .features = {}};
     const bool canRender = apiVersion >= VK_API_VERSION_1_3 || renderingExtension;
+    void** supportedTail = &supported.pNext;
     if (canRender) {
-        supported.pNext = &renderingFeatures;
+        *supportedTail = &renderingFeatures;
+        supportedTail = &renderingFeatures.pNext;
+    }
+
+    if (canAstcHdr) {
+        *supportedTail = &astcHdrFeatures;
     }
 
     vkGetPhysicalDeviceFeatures2(physicalDevice, &supported);
@@ -162,10 +173,29 @@ void Context::createDevice() {
         std::erase_if(extensions, [](const char* name) { return std::strcmp(name, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0; });
     }
 
+    astcHdr = canAstcHdr && astcHdrFeatures.textureCompressionASTC_HDR == VK_TRUE;
+    if (astcHdr && astcHdrExtension) {
+        extensions.push_back(VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME);
+    }
+
+    // The block compressed formats of each family sample only on a device made with its feature.
     enabledFeatures.samplerAnisotropy = supported.features.samplerAnisotropy;
     enabledFeatures.independentBlend = supported.features.independentBlend;
+    enabledFeatures.textureCompressionBC = supported.features.textureCompressionBC;
+    enabledFeatures.textureCompressionETC2 = supported.features.textureCompressionETC2;
+    enabledFeatures.textureCompressionASTC_LDR = supported.features.textureCompressionASTC_LDR;
+    VkPhysicalDeviceTextureCompressionASTCHDRFeatures enabledAstcHdr{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, .pNext = nullptr, .textureCompressionASTC_HDR = VK_TRUE};
     VkPhysicalDeviceDynamicRenderingFeatures enabledRendering{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES, .pNext = nullptr, .dynamicRendering = VK_TRUE};
-    const VkPhysicalDeviceFeatures2 enabled{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = dynamicRendering ? &enabledRendering : nullptr, .features = enabledFeatures};
+    VkPhysicalDeviceFeatures2 enabled{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = nullptr, .features = enabledFeatures};
+    void** enabledTail = &enabled.pNext;
+    if (dynamicRendering) {
+        *enabledTail = &enabledRendering;
+        enabledTail = &enabledRendering.pNext;
+    }
+
+    if (astcHdr) {
+        *enabledTail = &enabledAstcHdr;
+    }
 
     const float priority = 1.0F;
     const VkDeviceQueueCreateInfo queueInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, .pNext = nullptr, .flags = 0, .queueFamilyIndex = queueFamily, .queueCount = 1, .pQueuePriorities = &priority};

@@ -118,7 +118,7 @@ TEST_P(GpuPassTest, DrawsIntoFourTargetsAtOnce) {
 
 // A multisampled target resolves into a target of one sample, where the edge of a triangle covers part of the samples of its pixels.
 TEST_P(GpuPassTest, ResolvesMultisampledTargets) {
-    if ((capabilities().sampleCounts[static_cast<std::size_t>(Device::PixelFormat::Rgba8)] & 4U) == 0) {
+    if ((capabilities().getFormat(Device::PixelFormat::Rgba8).sampleCounts & 4U) == 0) {
         GTEST_SKIP() << "The device resolves no render target of four samples.";
     }
 

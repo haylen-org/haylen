@@ -14,11 +14,11 @@ class GpuDepthStencilTest : public test::GpuFixture {
 
     // The depth format of the tests, and the one with stencil, which is 24-bit depth where the device renders it and 32-bit float depth in its place elsewhere.
     [[nodiscard]] Device::PixelFormat getDepthFormat() const {
-        return capabilities().renderFormats[static_cast<std::size_t>(Device::PixelFormat::Depth32Float)] ? Device::PixelFormat::Depth32Float : Device::PixelFormat::Depth16;
+        return capabilities().getFormat(Device::PixelFormat::Depth32Float).render ? Device::PixelFormat::Depth32Float : Device::PixelFormat::Depth16;
     }
 
     [[nodiscard]] Device::PixelFormat getStencilFormat() const {
-        return capabilities().renderFormats[static_cast<std::size_t>(Device::PixelFormat::Depth24Stencil8)] ? Device::PixelFormat::Depth24Stencil8 : Device::PixelFormat::Depth32FloatStencil8;
+        return capabilities().getFormat(Device::PixelFormat::Depth24Stencil8).render ? Device::PixelFormat::Depth24Stencil8 : Device::PixelFormat::Depth32FloatStencil8;
     }
 
     [[nodiscard]] Device::Image makeDepth(Device::PixelFormat format) {
@@ -56,7 +56,7 @@ TEST_P(GpuDepthStencilTest, KeepsThePrecisionOfReversedDepthNearTheFarEnd) {
         GTEST_SKIP() << "The driver maps clip depth from -1 to 1, since it has no clip control.";
     }
 
-    if (!capabilities().renderFormats[static_cast<std::size_t>(Device::PixelFormat::Depth32Float)]) {
+    if (!capabilities().getFormat(Device::PixelFormat::Depth32Float).render) {
         GTEST_SKIP() << "The device draws into no depth image of 32-bit floats.";
     }
 
@@ -145,7 +145,7 @@ TEST_P(GpuDepthStencilTest, TestsTheStencilAgainstItsReference) {
 // A sampler that compares turns the depths of a depth image into lit and unlit against the reference of the draw.
 TEST_P(GpuDepthStencilTest, SamplesDepthThroughAComparison) {
     const Device::PixelFormat format = getDepthFormat();
-    if (!capabilities().textureFormats[static_cast<std::size_t>(format)]) {
+    if (!capabilities().getFormat(format).sample) {
         GTEST_SKIP() << "The device samples no image of the depth format of the tests.";
     }
 
@@ -180,7 +180,7 @@ TEST_P(GpuDepthStencilTest, SamplesDepthThroughAComparison) {
 // A pipeline without color targets draws depth alone into a pass without colors, as a shadow map does, and a later draw samples the depth it wrote.
 TEST_P(GpuDepthStencilTest, DrawsDepthWithoutColorTargets) {
     const Device::PixelFormat format = getDepthFormat();
-    if (!capabilities().textureFormats[static_cast<std::size_t>(format)]) {
+    if (!capabilities().getFormat(format).sample) {
         GTEST_SKIP() << "The device samples no image of the depth format of the tests.";
     }
 

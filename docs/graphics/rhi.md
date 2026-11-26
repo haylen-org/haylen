@@ -189,13 +189,51 @@ A device is lost when the GPU resets or is removed, when its driver fails or upd
 | `depthRange` | The range of depth in clip space, `ZeroToOne` or `NegativeOneToOne` of `math::Mat4::DepthRange`, which the vertex stages write and the projections of the renderers take. |
 | `independentBlend` | Whether each color target of a pipeline takes a blend and a write mask of its own. Without it, every target takes those of the first. |
 | `gpuTiming` | Whether `getGpuFrameSeconds` measures the time the GPU took for a frame. |
-| `textureFormats` | The pixel formats that images can be made in and sampled. |
-| `renderFormats` | The formats that render targets and depth stencil images can be made in. |
-| `blendableFormats` | The color formats that pipelines can blend into. |
-| `filterableFormats` | The color formats that linear filters can sample. |
-| `sampleCounts` | The sample counts that render targets and depth stencil images of each format take, as bits whose values are the counts, so `5` holds one sample and four. A color format that takes more samples than one also resolves into an image of one sample. |
+| `formats` | What the device does with each pixel format, a `FormatSupport` for each value of `PixelFormat`, which `getFormat(format)` returns. |
 
-For example, the light map of lit canvases is `Rgba16Float` only when that format is in `renderFormats` and `blendableFormats`, as the [lighting section](rendering.md#lighting) explains.
+A `FormatSupport` holds six values:
+
+| Field | Meaning |
+| --- | --- |
+| `sample` | Textures of the format can be made and sampled. |
+| `filter` | Linear filters sample the format, through texture slots of the type `SampleType::Float`. The other formats sample only through slots of `SampleType::UnfilterableFloat` with samplers of `SamplerType::NonFiltering`. |
+| `render` | Render targets, or depth stencil images for a depth format, can be made in the format. |
+| `blend` | Pipelines blend into the color format. |
+| `storage` | Shaders write the color format as a storage image. |
+| `sampleCounts` | The sample counts that render targets and depth stencil images of the format take, as bits whose values are the counts, so `5` holds one sample and four. A color format that takes more samples than one also resolves into an image of one sample. |
+
+For example, the light map of lit canvases is `Rgba16Float` only when that format renders and blends, as the [lighting section](rendering.md#lighting) explains.
+
+## Pixel formats
+
+`PixelFormat` names every format of images, and `kPixelFormatNames` names each one the way Lua writes it. The formats fall into three groups:
+
+- Uncompressed color formats: `R8`, `Rg8`, `Rgba8`, `Rgba8Srgb`, `Bgra8`, `Rgb10A2`, `Rg11B10Float`, `R16Float`, `Rg16Float`, `Rgba16Float`, `R32Float`, `Rg32Float` and `Rgba32Float`. `Rg11B10Float` holds three floats without a sign in 32 bits, which HDR color buffers take at half the memory of `Rgba16Float`.
+- Depth formats: `Depth16`, `Depth32Float`, `Depth24Stencil8` and `Depth32FloatStencil8`, which belong to depth stencil images. A draw samples their depth, and a sampler with a compare function compares it, as shadow maps need.
+- Block compressed formats, which hold blocks of pixels that the GPU decodes as it samples them: the BC family, `Bc1` to `Bc7` with their `Srgb`, `Snorm` and float forms, the ETC2 and EAC family, `Etc2Rgb8`, `Etc2Rgb8A1`, `Etc2Rgba8`, `EacR11` and `EacRg11` with their `Srgb` and `Snorm` forms, and the ASTC family, every block size from `Astc4x4` to `Astc12x12` in its plain, `Srgb` and `Hdr` forms.
+
+`gpu::ImageInfo` of `engine/src/gpu/ImageInfo.hpp` tells every device and the resources of the engine what a format holds: the pixels and bytes of one block, which is one pixel for an uncompressed format, the bytes of a row of blocks and of a region, and the compression family of a format. Every size of the contract counts in blocks. The rows of a level of a compressed image are rows of blocks, and a level smaller than a block takes one whole block on each side it lacks.
+
+A block compressed image follows rules that hold on every graphics API:
+
+- It is a texture, never a render target, a depth stencil image or a dynamic image.
+- It is flat, an array or a cube, never a volume, since most APIs have no compressed volumes.
+- Its width and height hold whole blocks, as Direct3D and WebGPU require. Its smaller mip levels round up to whole blocks.
+- Its format is one that the device samples. A device that lacks the format of an image refuses it, and the engine never decodes blocks on the CPU in its place. An app ships the formats of each target, as the [texture guide](rendering.md#compressed-textures) explains.
+
+Each device fills the table of formats from its graphics API when it starts.
+
+| Device | Formats |
+| --- | --- |
+| Metal | Every uncompressed and depth format. The ETC2, EAC and ASTC formats on Apple GPUs, with the HDR profile of ASTC from the A13 and M1 on. The BC formats where the device reports `supportsBCTextureCompression`, which every Mac and the iPads of the M1 on do, from iOS and tvOS 16.4 on. |
+| Direct3D 12 and 11 | What `CheckFeatureSupport` and `CheckFormatSupport` report for the DXGI format, the BC formats on every GPU of the feature level the devices need. Direct3D has no ETC2, EAC or ASTC format. |
+| Vulkan | What the format properties of the GPU report, with the BC, ETC2 and ASTC families only where the device has the features `textureCompressionBC`, `textureCompressionETC2` and `textureCompressionASTC_LDR`, which it turns on, and the HDR profile of ASTC with the feature of Vulkan 1.3 or of the extension `VK_EXT_texture_compression_astc_hdr`. |
+| OpenGL | Every uncompressed format, the BC4 to BC7 formats of OpenGL 4.3, ETC2 and EAC, BC1 to BC3 with `GL_EXT_texture_compression_s3tc` and their sRGB forms with `GL_EXT_texture_sRGB`, and ASTC with `GL_KHR_texture_compression_astc_ldr` and its HDR profile with `GL_KHR_texture_compression_astc_hdr`. |
+| OpenGL ES | Every uncompressed format, ETC2 and EAC of OpenGL ES 3.0, ASTC from OpenGL ES 3.2 on or with its extension, and the BC formats with `GL_EXT_texture_compression_s3tc`, `GL_EXT_texture_compression_s3tc_srgb`, `GL_EXT_texture_compression_rgtc` and `GL_EXT_texture_compression_bptc`. |
+| WebGL2 | Every uncompressed format, and each compressed family with the extension of WebGL that the browser offers: `WEBGL_compressed_texture_s3tc`, `WEBGL_compressed_texture_s3tc_srgb`, `EXT_texture_compression_rgtc`, `EXT_texture_compression_bptc`, `WEBGL_compressed_texture_etc` and `WEBGL_compressed_texture_astc`. WebGL2 shows a page no HDR profile of ASTC, so those formats are missing. |
+| WebGPU | Every uncompressed format, and each compressed family with the features `texture-compression-bc`, `texture-compression-etc2` and `texture-compression-astc`. WebGPU has no HDR profile of ASTC. `Rg11B10Float` renders only with the feature `rg11b10ufloat-renderable`. |
+
+The formats that shaders write as storage images are the ones that the API lists for its storage images or image units: from the format support of the GPU on Direct3D and Vulkan, the uncompressed color formats on Metal with the sRGB one only on Apple GPUs, the formats of the image units of OpenGL 4.3 and OpenGL ES 3.1, and `Rgba8`, `Rgba16Float`, `R32Float`, `Rg32Float` and `Rgba32Float` on WebGPU. OpenGL ES 3.0 and WebGL2 have no storage images.
 
 ## Validation and profiling
 
@@ -277,6 +315,12 @@ The matrix lists what each device reports. "From the GPU" means that the device 
 | Sample and draw into formats | Every format, `Depth24Stencil8` as `Depth32FloatStencil8` | From the GPU | From the GPU | Every format | Float targets with extensions | Float targets with extensions | Every format, `Depth32FloatStencil8` with its feature |
 | Blend into 32-bit floats | From the A14 and M1 on, and on Intel Macs | From the GPU | From the GPU | Yes | With `GL_EXT_float_blend` | With `GL_EXT_float_blend` | With the feature `float32-blendable` |
 | Filter 32-bit floats | Where the GPU supports it | From the GPU | From the GPU | Yes | With `GL_OES_texture_float_linear` | With `GL_OES_texture_float_linear` | With the feature `float32-filterable` |
+| Draw into `Rg11B10Float` | Yes | From the GPU | From the GPU | Yes | With `GL_EXT_color_buffer_float` | With `EXT_color_buffer_float` | With the feature `rg11b10ufloat-renderable` |
+| BC formats | Every Mac, and Apple GPUs that report them from 16.4 on | Yes | With `textureCompressionBC` | BC4 to BC7, and BC1 to BC3 with S3TC | With their extensions | With their extensions | With the feature `texture-compression-bc` |
+| ETC2 and EAC formats | Apple GPUs | No | With `textureCompressionETC2` | Yes | Yes | With `WEBGL_compressed_texture_etc` | With the feature `texture-compression-etc2` |
+| ASTC formats | Apple GPUs | No | With `textureCompressionASTC_LDR` | With `GL_KHR_texture_compression_astc_ldr` | From OpenGL ES 3.2 or with its extension | With `WEBGL_compressed_texture_astc` | With the feature `texture-compression-astc` |
+| HDR profile of ASTC | From the A13 and M1 on | No | With the feature of Vulkan 1.3 or its extension | With `GL_KHR_texture_compression_astc_hdr` | With `GL_KHR_texture_compression_astc_hdr` | No | No |
+| Storage images | The uncompressed color formats | From the GPU | From the GPU | The formats of the image units | From OpenGL ES 3.1 | No | `Rgba8`, `Rgba16Float`, `R32Float`, `Rg32Float` and `Rgba32Float` |
 | Independent blend | Yes | Yes | Where the GPU has the feature | Yes | On OpenGL ES 3.2 or with an extension | No | Yes |
 | GPU timing | Yes | Yes | Where the queue writes timestamps | Yes | With `GL_EXT_disjoint_timer_query` | With `EXT_disjoint_timer_query_webgl2` | With the feature `timestamp-query` |
 | First row | Top | Top | Top | Bottom | Bottom | Bottom | Top |
@@ -342,7 +386,7 @@ Some drivers have bugs that the tests on their GPUs showed, which the devices wo
 | Driver | Issue | What the device does |
 | --- | --- | --- |
 | Vulkan of the PowerVR Rogue GE8320, up to the driver 5776728 | Some pipelines fail with `VK_ERROR_OUT_OF_HOST_MEMORY`, and `vkCreateGraphicsPipelines` never returns for others. | The Vulkan device refuses the GPU, so the platform draws through OpenGL ES, the next API of the order, and logs why. |
-| OpenGL ES of the Xclipse GPUs, through ANGLE | The driver names `GL_OES_texture_float_linear` but samples the 32-bit float formats with the nearest texel. | `Capabilities::filterableFormats` leaves the 32-bit float formats out. |
+| OpenGL ES of the Xclipse GPUs, through ANGLE | The driver names `GL_OES_texture_float_linear` but samples the 32-bit float formats with the nearest texel. | The `filter` of the 32-bit float formats in `Capabilities::formats` is `false`. |
 | OpenGL ES of the Mali-G72, driver r19p0 | Some draws of a pass that follows another pass whose commands the driver still holds reset the context as guilty, and the frame is lost, so a scene leaves its target untouched in some runs. | Every pass ends with `glFlush`. With it the renderer scenes passed 45 times out of 45 on the Mali-G72 of Android 10, where 23 runs out of 24 failed without it. |
 | OpenGL ES of AMD, driver 25.10 | The driver names `GL_EXT_disjoint_timer_query` and measures its queries, but refuses `GL_GPU_DISJOINT_EXT` in `glGetIntegerv`, `glGetInteger64v`, `glGetBooleanv` and `glGetFloatv` with `GL_INVALID_ENUM`, an error that the debug output reports in each frame whose timing the device reads. | The GPU timer reads no disjoint state, as on OpenGL, which has none. A probe on the AMD Radeon PRO V620 found the call, and the tests of the OpenGL ES context passed there with the entry. |
 | OpenGL of AMD | The GPU hangs in the first frames that draw with new programs while the compiler threads of the driver still work on the shaders it compiled before, and the GPU reset that follows loses the context. On the AMD Radeon PRO V620, the render benchmark hung in its scene of shapes in every run with an empty shader cache, with the driver 25.10 on Linux, where the host reset the GPU, and with the driver 25.1.1 on Windows, which logged a timeout detection and recovery of the GPU. On Linux it hung even with `glFinish` after each frame, a flush after each pass or the link of each program awaited, and never once the cache held the shaders. | The device asks the context to compile on the thread that asks for it, with `glMaxShaderCompilerThreadsKHR(0)` of `GL_KHR_parallel_shader_compile` or `GL_ARB_parallel_shader_compile`. With it the scene passed every run with an empty cache on both systems, and the first frames took as long to compile as before. |

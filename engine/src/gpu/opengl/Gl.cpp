@@ -78,6 +78,13 @@ void Gl::readFeatures() {
         features.parallelShaderCompile = hasExtension("GL_KHR_parallel_shader_compile") || hasExtension("GL_ARB_parallel_shader_compile");
         suffixes.parallelShaderCompile = hasExtension("GL_KHR_parallel_shader_compile") ? "KHR" : "ARB";
         features.clipControl = version >= 45 || hasExtension("GL_ARB_clip_control");
+        features.s3tc = hasExtension("GL_EXT_texture_compression_s3tc");
+        features.s3tcSrgb = features.s3tc && hasExtension("GL_EXT_texture_sRGB");
+        features.rgtc = true;
+        features.bptc = true;
+        features.etc2 = true;
+        features.astc = hasExtension("GL_KHR_texture_compression_astc_ldr");
+        features.astcHdr = hasExtension("GL_KHR_texture_compression_astc_hdr");
         return;
     }
 
@@ -90,10 +97,25 @@ void Gl::readFeatures() {
     features.textureFloatLinear = hasExtension("GL_OES_texture_float_linear");
     features.anisotropicFiltering = hasExtension("GL_EXT_texture_filter_anisotropic");
 
+    // The browser names its compressed formats with extensions of WebGL, ETC2 among them, and shows no extension for the HDR profile of ASTC.
     if (isWeb()) {
         features.timerQuery = hasExtension("GL_EXT_disjoint_timer_query_webgl2");
+        features.s3tc = hasExtension("GL_WEBGL_compressed_texture_s3tc");
+        features.s3tcSrgb = hasExtension("GL_WEBGL_compressed_texture_s3tc_srgb");
+        features.rgtc = hasExtension("GL_EXT_texture_compression_rgtc");
+        features.bptc = hasExtension("GL_EXT_texture_compression_bptc");
+        features.etc2 = hasExtension("GL_WEBGL_compressed_texture_etc");
+        features.astc = hasExtension("GL_WEBGL_compressed_texture_astc");
         return;
     }
+
+    features.s3tc = hasExtension("GL_EXT_texture_compression_s3tc");
+    features.s3tcSrgb = hasExtension("GL_EXT_texture_compression_s3tc_srgb");
+    features.rgtc = hasExtension("GL_EXT_texture_compression_rgtc");
+    features.bptc = hasExtension("GL_EXT_texture_compression_bptc");
+    features.etc2 = true;
+    features.astc = version >= 32 || hasExtension("GL_KHR_texture_compression_astc_ldr");
+    features.astcHdr = hasExtension("GL_KHR_texture_compression_astc_hdr");
 
     features.bufferStorage = hasExtension("GL_EXT_buffer_storage");
     features.vertexAttribBinding = version >= 31;
@@ -160,6 +182,8 @@ void Gl::loadCore(GlContext& context) {
     require(context, texStorage3D, "glTexStorage3D");
     require(context, texSubImage2D, "glTexSubImage2D");
     require(context, texSubImage3D, "glTexSubImage3D");
+    require(context, compressedTexSubImage2D, "glCompressedTexSubImage2D");
+    require(context, compressedTexSubImage3D, "glCompressedTexSubImage3D");
 
     require(context, genSamplers, "glGenSamplers");
     require(context, deleteSamplers, "glDeleteSamplers");

@@ -31,8 +31,8 @@ TEST(WindowSamplesTest, RefusesACountTheGpuCannotTakeWithASentence) {
 // The swapchain draws its color and its depth with one count, so a window takes only the counts that both formats take.
 TEST(WindowSamplesTest, TakesTheCountsOfBothTheColorAndTheDepthOfTheSwapchain) {
     Device::Capabilities capabilities;
-    capabilities.sampleCounts[static_cast<std::size_t>(Device::PixelFormat::Bgra8)] = 1 | 2 | 4 | 8;
-    capabilities.sampleCounts[static_cast<std::size_t>(Device::PixelFormat::Depth24Stencil8)] = 1 | 4;
+    capabilities.getFormat(Device::PixelFormat::Bgra8).sampleCounts = 1 | 2 | 4 | 8;
+    capabilities.getFormat(Device::PixelFormat::Depth24Stencil8).sampleCounts = 1 | 4;
     EXPECT_EQ(WindowSamples::getSwapchainCounts(capabilities), 1 | 4);
 }
 

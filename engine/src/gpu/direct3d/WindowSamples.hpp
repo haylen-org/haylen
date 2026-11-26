@@ -21,8 +21,8 @@ class WindowSamples final {
 
     // The sample counts, as the bits of `Capabilities::sampleCounts`, that both the color and the depth of the swapchain take.
     [[nodiscard]] static std::uint8_t getSwapchainCounts(const Device::Capabilities& capabilities) noexcept {
-        const std::uint8_t color = capabilities.sampleCounts[static_cast<std::size_t>(Device::PixelFormat::Bgra8)];
-        const std::uint8_t depth = capabilities.sampleCounts[static_cast<std::size_t>(Device::PixelFormat::Depth24Stencil8)];
+        const std::uint8_t color = capabilities.getFormat(Device::PixelFormat::Bgra8).sampleCounts;
+        const std::uint8_t depth = capabilities.getFormat(Device::PixelFormat::Depth24Stencil8).sampleCounts;
         return static_cast<std::uint8_t>(color & depth);
     }
 

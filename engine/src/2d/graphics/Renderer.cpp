@@ -135,8 +135,8 @@ Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std:
 
     // Light maps hold light in floating point where the device renders and blends it, so lights can brighten the scene beyond its unlit colors.
     const gpu::Device::Capabilities& capabilities = device.getGpu().getCapabilities();
-    const auto halfFloat = static_cast<std::size_t>(gpu::Device::PixelFormat::Rgba16Float);
-    state->lightFormat = capabilities.renderFormats[halfFloat] && capabilities.blendableFormats[halfFloat] ? gpu::Device::PixelFormat::Rgba16Float : device.getState().offscreenFormat;
+    const gpu::Device::FormatSupport& halfFloat = capabilities.getFormat(gpu::Device::PixelFormat::Rgba16Float);
+    state->lightFormat = halfFloat.render && halfFloat.blend ? gpu::Device::PixelFormat::Rgba16Float : device.getState().offscreenFormat;
 
     state->transparent = device.createTexture(graphics::Image(1, 1), {.filter = graphics::Texture::Filter::Nearest, .mipmaps = false});
     state->light = device.createTexture(graphics::Image(RendererState::kLightTextureSize, RendererState::kLightTextureSize, radialFalloff(RendererState::kLightTextureSize)), {.filter = graphics::Texture::Filter::Linear});

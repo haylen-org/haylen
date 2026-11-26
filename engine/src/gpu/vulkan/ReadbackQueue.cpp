@@ -1,13 +1,10 @@
 #include "gpu/vulkan/ReadbackQueue.hpp"
 
-#include <algorithm>
-#include <array>
-#include <bit>
-#include <cmath>
-#include <cstring>
+#include <span>
 #include <stdexcept>
 
 #include "gpu/ImageInfo.hpp"
+#include "gpu/PixelConverter.hpp"
 #include "gpu/vulkan/Context.hpp"
 #include "gpu/vulkan/Conversions.hpp"
 #include "gpu/vulkan/ImageLayouts.hpp"
@@ -42,7 +39,7 @@ std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const Source& source) 
     const VolkDeviceTable& vk = context.getFunctions();
     const VkDevice device = context.getDevice();
 
-    const VkDeviceSize size = static_cast<VkDeviceSize>(source.width) * static_cast<VkDeviceSize>(source.height) * ImageInfo::getBytesPerPixel(source.format);
+    const VkDeviceSize size = static_cast<VkDeviceSize>(ImageInfo::getRegionBytes(source.format, source.width, source.height));
     const VkBufferCreateInfo bufferInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .pNext = nullptr, .flags = 0, .size = size, .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT, .sharingMode = VK_SHARING_MODE_EXCLUSIVE, .queueFamilyIndexCount = 0, .pQueueFamilyIndices = nullptr};
     const VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
     VmaAllocationInfo allocated{};
@@ -144,88 +141,15 @@ void ReadbackQueue::release(Copy& copy) const {
     copy.queue = nullptr;
 }
 
-// Every format becomes red, green, blue and alpha in eight bits each, with what a format lacks as 0 for colors and 1 for alpha, and the floats clamped to the range of a byte.
 std::vector<std::uint8_t> ReadbackQueue::convert(const std::byte* data, int width, int height, Device::PixelFormat format) {
-    const std::size_t count = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
-    std::vector<std::uint8_t> pixels(count * 4);
-    if (format == Device::PixelFormat::Rgba8 || format == Device::PixelFormat::Rgba8Srgb) {
-        std::memcpy(pixels.data(), data, pixels.size());
-        return pixels;
-    }
-
-    const std::size_t stride = ImageInfo::getBytesPerPixel(format);
-    for (std::size_t index = 0; index < count; ++index) {
-        const std::byte* source = data + index * stride;
-        std::array<float, 4> channels{0.0F, 0.0F, 0.0F, 1.0F};
-        std::array<std::uint8_t, 4> bytes{};
-        std::memcpy(bytes.data(), source, std::min<std::size_t>(stride, 4));
-        std::array<std::uint16_t, 4> halves{};
-        std::array<float, 4> floats{};
-        std::memcpy(halves.data(), source, std::min<std::size_t>(stride, 8));
-        std::memcpy(floats.data(), source, std::min<std::size_t>(stride, 16));
-
-        switch (format) {
-        case Device::PixelFormat::R8:
-            channels[0] = bytes[0] / 255.0F;
-            break;
-        case Device::PixelFormat::Rg8:
-            channels[0] = bytes[0] / 255.0F;
-            channels[1] = bytes[1] / 255.0F;
-            break;
-        case Device::PixelFormat::Bgra8:
-            channels = {bytes[2] / 255.0F, bytes[1] / 255.0F, bytes[0] / 255.0F, bytes[3] / 255.0F};
-            break;
-        case Device::PixelFormat::Rgb10A2: {
-            const std::uint32_t packed = std::bit_cast<std::uint32_t>(bytes);
-            channels = {static_cast<float>(packed & 0x3FFU) / 1023.0F, static_cast<float>((packed >> 10) & 0x3FFU) / 1023.0F, static_cast<float>((packed >> 20) & 0x3FFU) / 1023.0F, static_cast<float>(packed >> 30) / 3.0F};
-            break;
-        }
-        case Device::PixelFormat::R16Float:
-        case Device::PixelFormat::Rg16Float:
-        case Device::PixelFormat::Rgba16Float:
-            for (std::size_t channel = 0; channel < stride / 2; ++channel) {
-                channels[channel] = toFloat(halves[channel]);
-            }
-
-            break;
-        case Device::PixelFormat::R32Float:
-        case Device::PixelFormat::Rg32Float:
-        case Device::PixelFormat::Rgba32Float:
-            for (std::size_t channel = 0; channel < stride / 4; ++channel) {
-                channels[channel] = floats[channel];
-            }
-
-            break;
-        default:
-            break;
-        }
-
-        for (std::size_t channel = 0; channel < 4; ++channel) {
-            pixels[index * 4 + channel] = toByte(channels[channel]);
-        }
+    const std::size_t rowBytes = ImageInfo::getRowBytes(format, width);
+    const std::size_t pixelRow = static_cast<std::size_t>(width) * 4;
+    std::vector<std::uint8_t> pixels(pixelRow * static_cast<std::size_t>(height));
+    for (std::size_t row = 0; row < static_cast<std::size_t>(height); ++row) {
+        PixelConverter::convertRow(format, {data + row * rowBytes, rowBytes}, std::span(pixels).subspan(row * pixelRow, pixelRow));
     }
 
     return pixels;
-}
-
-float ReadbackQueue::toFloat(std::uint16_t half) noexcept {
-    const std::uint32_t sign = (half & 0x8000U) << 16;
-    const std::uint32_t exponent = (half >> 10) & 0x1FU;
-    const std::uint32_t mantissa = half & 0x3FFU;
-    if (exponent == 0) {
-        const float value = std::ldexp(static_cast<float>(mantissa), -24);
-        return sign != 0 ? -value : value;
-    }
-
-    if (exponent == 31) {
-        return std::bit_cast<float>(sign | 0x7F800000U | (mantissa << 13));
-    }
-
-    return std::bit_cast<float>(sign | ((exponent + 112) << 23) | (mantissa << 13));
-}
-
-std::uint8_t ReadbackQueue::toByte(float value) noexcept {
-    return static_cast<std::uint8_t>(std::lround(std::clamp(value, 0.0F, 1.0F) * 255.0F));
 }
 
 } // namespace haylen::gpu::vulkan

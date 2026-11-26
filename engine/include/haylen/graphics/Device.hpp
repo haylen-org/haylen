@@ -43,6 +43,14 @@ class Device final {
     // A rectangle of the pixels of a texture in whole pixels, from its top row and its left column.
     using Region = gpu::Device::Region;
 
+    // The pixels of a texture in a pixel format of the GPU device, such as the blocks of a compressed format that an app ships for its target, with one span for each mip level from the largest, each holding the rows of blocks of its level tightly packed.
+    struct TextureData {
+        int width = 0;
+        int height = 0;
+        gpu::Device::PixelFormat format = gpu::Device::PixelFormat::Rgba8;
+        std::span<const std::span<const std::byte>> levels{};
+    };
+
     explicit Device(std::unique_ptr<gpu::Device> device);
     ~Device();
 
@@ -50,6 +58,9 @@ class Device final {
     Device& operator=(const Device&) = delete;
 
     [[nodiscard]] Texture createTexture(const Image& image, Texture::Options options = {});
+
+    // Creates a texture from its levels in their format, which keeps mipmaps when it brings more than one level and `mipmaps` is not `false`. Throws `std::invalid_argument` for a format that is no format of textures, sides that hold no whole blocks, levels of another count or size, or a format that the device does not sample or filter, with a sentence that names the format and the graphics API.
+    [[nodiscard]] Texture createTexture(const TextureData& data, Texture::Options options = {});
     [[nodiscard]] RenderTarget createRenderTarget(int width, int height, Texture::Options options = {});
 
     // Creates a texture of one color, checking the size against the device before any pixel exists.
@@ -139,6 +150,8 @@ class Device final {
   private:
     static void validateSize(int width, int height, int limit);
     static void validateDistances(int width, int height, std::span<const std::uint16_t> distances, int limit);
+    void validateData(const TextureData& data, Texture::Options options) const;
+    [[nodiscard]] static std::string_view getFormatName(gpu::Device::PixelFormat format) noexcept;
 
     std::unique_ptr<DeviceState> state;
 };

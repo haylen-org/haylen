@@ -62,8 +62,6 @@ class ReadbackQueue final {
     void finish(Copy& copy);
     void release(Copy& copy) const;
     [[nodiscard]] static std::vector<std::uint8_t> convert(const std::byte* data, int width, int height, Device::PixelFormat format);
-    [[nodiscard]] static float toFloat(std::uint16_t half) noexcept;
-    [[nodiscard]] static std::uint8_t toByte(float value) noexcept;
 
     const Context& context;
     VkCommandPool pool = VK_NULL_HANDLE;

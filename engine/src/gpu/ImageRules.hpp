@@ -12,7 +12,7 @@ class ImageRules final {
     // Throws `ContractError` of the rule `Image` for a description that breaks the contract or reaches past the capabilities.
     static void check(const Device::ImageDesc& desc, const Device::Capabilities& capabilities);
 
-    // Whether a render target or a depth stencil image of the format takes the sample count, which is one of the bits of `Capabilities::sampleCounts`.
+    // Whether a render target or a depth stencil image of the format takes the sample count, which is one of the bits of the `sampleCounts` of its `FormatSupport`.
     [[nodiscard]] static bool takesSamples(const Device::Capabilities& capabilities, Device::PixelFormat format, int sampleCount) noexcept;
 
   private:

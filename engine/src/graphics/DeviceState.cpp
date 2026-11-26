@@ -97,9 +97,9 @@ void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, 
         changedTextures.push_back(resource);
     }
 
-    const std::size_t pixelBytes = gpu::ImageInfo::getBytesPerPixel(resource->format);
-    const std::size_t imageRow = static_cast<std::size_t>(resource->width) * pixelBytes;
-    const std::size_t regionRow = static_cast<std::size_t>(changed.width) * pixelBytes;
+    const std::size_t pixelBytes = gpu::ImageInfo::getRowBytes(resource->format, 1);
+    const std::size_t imageRow = gpu::ImageInfo::getRowBytes(resource->format, resource->width);
+    const std::size_t regionRow = gpu::ImageInfo::getRowBytes(resource->format, changed.width);
     resource->stagedRegion = changed;
     resource->staged.resize(regionRow * static_cast<std::size_t>(changed.height));
     for (int row = 0; row < changed.height; ++row) {
@@ -109,7 +109,7 @@ void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, 
 }
 
 std::size_t DeviceState::getImageBytes(int width, int height, gpu::Device::PixelFormat format) {
-    return static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * gpu::ImageInfo::getBytesPerPixel(format);
+    return gpu::ImageInfo::getRegionBytes(format, width, height);
 }
 
 RenderTarget DeviceState::createRenderTarget(int width, int height, gpu::Device::PixelFormat format, Texture::Options options) {

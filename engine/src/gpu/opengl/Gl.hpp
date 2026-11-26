@@ -186,6 +186,37 @@ class Gl final {
     static constexpr Enum kDepth24Stencil8 = 0x88F0;
     static constexpr Enum kDepth32fStencil8 = 0x8CAD;
 
+    // The block compressed formats, where the formats of ASTC follow their first one in the order of their block sizes from 4x4 to 12x12, and the HDR profile of ASTC takes the formats of its LDR profile.
+    static constexpr Enum kRgb = 0x1907;
+    static constexpr Enum kR11fG11fB10f = 0x8C3A;
+    static constexpr Enum kUnsignedInt10f11f11fRev = 0x8C3B;
+    static constexpr Enum kCompressedRgbaS3tcDxt1 = 0x83F1;
+    static constexpr Enum kCompressedRgbaS3tcDxt3 = 0x83F2;
+    static constexpr Enum kCompressedRgbaS3tcDxt5 = 0x83F3;
+    static constexpr Enum kCompressedSrgbAlphaS3tcDxt1 = 0x8C4D;
+    static constexpr Enum kCompressedSrgbAlphaS3tcDxt3 = 0x8C4E;
+    static constexpr Enum kCompressedSrgbAlphaS3tcDxt5 = 0x8C4F;
+    static constexpr Enum kCompressedRedRgtc1 = 0x8DBB;
+    static constexpr Enum kCompressedSignedRedRgtc1 = 0x8DBC;
+    static constexpr Enum kCompressedRgRgtc2 = 0x8DBD;
+    static constexpr Enum kCompressedSignedRgRgtc2 = 0x8DBE;
+    static constexpr Enum kCompressedRgbaBptcUnorm = 0x8E8C;
+    static constexpr Enum kCompressedSrgbAlphaBptcUnorm = 0x8E8D;
+    static constexpr Enum kCompressedRgbBptcSignedFloat = 0x8E8E;
+    static constexpr Enum kCompressedRgbBptcUnsignedFloat = 0x8E8F;
+    static constexpr Enum kCompressedR11Eac = 0x9270;
+    static constexpr Enum kCompressedSignedR11Eac = 0x9271;
+    static constexpr Enum kCompressedRg11Eac = 0x9272;
+    static constexpr Enum kCompressedSignedRg11Eac = 0x9273;
+    static constexpr Enum kCompressedRgb8Etc2 = 0x9274;
+    static constexpr Enum kCompressedSrgb8Etc2 = 0x9275;
+    static constexpr Enum kCompressedRgb8PunchthroughAlpha1Etc2 = 0x9276;
+    static constexpr Enum kCompressedSrgb8PunchthroughAlpha1Etc2 = 0x9277;
+    static constexpr Enum kCompressedRgba8Etc2Eac = 0x9278;
+    static constexpr Enum kCompressedSrgb8Alpha8Etc2Eac = 0x9279;
+    static constexpr Enum kCompressedRgbaAstcFirst = 0x93B0;
+    static constexpr Enum kCompressedSrgb8Alpha8AstcFirst = 0x93D0;
+
     static constexpr Enum kFramebuffer = 0x8D40;
     static constexpr Enum kReadFramebuffer = 0x8CA8;
     static constexpr Enum kDrawFramebuffer = 0x8CA9;
@@ -249,6 +280,13 @@ class Gl final {
         bool anisotropicFiltering = false;
         bool parallelShaderCompile = false;
         bool clipControl = false;
+        bool s3tc = false;
+        bool s3tcSrgb = false;
+        bool rgtc = false;
+        bool bptc = false;
+        bool etc2 = false;
+        bool astc = false;
+        bool astcHdr = false;
     };
 
     // Loads every entry point of the flavour from the context, which must be current, and throws `std::runtime_error` when the context is older than the flavour needs or lacks one of them.
@@ -318,6 +356,8 @@ class Gl final {
     void (*texStorage3D)(Enum target, Sizei levels, Enum format, Sizei width, Sizei height, Sizei depth) = nullptr;
     void (*texSubImage2D)(Enum target, Int level, Int x, Int y, Sizei width, Sizei height, Enum format, Enum type, const void* pixels) = nullptr;
     void (*texSubImage3D)(Enum target, Int level, Int x, Int y, Int z, Sizei width, Sizei height, Sizei depth, Enum format, Enum type, const void* pixels) = nullptr;
+    void (*compressedTexSubImage2D)(Enum target, Int level, Int x, Int y, Sizei width, Sizei height, Enum format, Sizei size, const void* data) = nullptr;
+    void (*compressedTexSubImage3D)(Enum target, Int level, Int x, Int y, Int z, Sizei width, Sizei height, Sizei depth, Enum format, Sizei size, const void* data) = nullptr;
 
     void (*genSamplers)(Sizei count, Uint* samplers) = nullptr;
     void (*deleteSamplers)(Sizei count, const Uint* samplers) = nullptr;

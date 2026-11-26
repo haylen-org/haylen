@@ -2,9 +2,7 @@
 
 #import <Metal/Metal.h>
 
-#include <array>
 #include <atomic>
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -22,16 +20,11 @@ class ImageReadback final : public gpu::Device::Readback {
     [[nodiscard]] std::optional<std::vector<std::uint8_t>> poll() override;
 
   private:
-    [[nodiscard]] static float fromHalf(std::uint16_t value) noexcept;
-    [[nodiscard]] static std::array<std::uint8_t, 4> toBytes(const std::array<float, 4>& color) noexcept;
-    [[nodiscard]] static std::array<float, 4> readHalves(const std::byte* source, std::size_t channels) noexcept;
-    [[nodiscard]] static std::array<float, 4> readFloats(const std::byte* source, std::size_t channels) noexcept;
-    [[nodiscard]] std::array<std::uint8_t, 4> readPixel(const std::byte* source) const noexcept;
-
     id<MTLBuffer> buffer = nil;
     std::shared_ptr<std::atomic<bool>> done = std::make_shared<std::atomic<bool>>(false);
     gpu::Device::PixelFormat format = gpu::Device::PixelFormat::Rgba8;
-    std::size_t pixelCount = 0;
+    int width = 0;
+    int height = 0;
     bool delivered = false;
 };
 

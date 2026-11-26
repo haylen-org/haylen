@@ -124,19 +124,41 @@ void Device::fillCapabilities() {
     capabilities.originTopLeft = true;
     capabilities.independentBlend = context->getEnabledFeatures().independentBlend == VK_TRUE;
     capabilities.gpuTiming = context->getTimestampBits() > 0 && limits.timestampPeriod > 0.0F;
-    for (std::size_t index = 0; index < capabilities.blendableFormats.size(); ++index) {
+    for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const VkFormat vulkanFormat = resolveFormat(format);
         const bool depth = ImageInfo::isDepth(format);
+        const bool compressed = ImageInfo::isCompressed(format);
         const VkFormatFeatureFlags sampled = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
         const VkFormatFeatureFlags drawn = depth ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | sampled : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | sampled;
-        capabilities.textureFormats[index] = context->hasFormatFeatures(vulkanFormat, sampled);
-        capabilities.renderFormats[index] = context->hasFormatFeatures(vulkanFormat, drawn);
-        capabilities.blendableFormats[index] = !depth && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT);
-        capabilities.filterableFormats[index] = !depth && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
-        capabilities.sampleCounts[index] = capabilities.renderFormats[index] ? getSampleCounts(vulkanFormat, depth) : std::uint8_t{0};
-        capabilities.renderFormats[index] = capabilities.sampleCounts[index] != 0;
+        FormatSupport& support = capabilities.formats[index];
+        support.sample = isFeatureEnabled(format) && context->hasFormatFeatures(vulkanFormat, sampled);
+        support.render = !compressed && context->hasFormatFeatures(vulkanFormat, drawn);
+        support.blend = !depth && !compressed && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT);
+        support.filter = !depth && support.sample && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
+        support.storage = !depth && !compressed && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
+        support.sampleCounts = support.render ? getSampleCounts(vulkanFormat, depth) : std::uint8_t{0};
+        support.render = support.sampleCounts != 0;
     }
+}
+
+// A block compressed format samples only on a device that was made with the feature of its family.
+bool Device::isFeatureEnabled(PixelFormat format) const noexcept {
+    const VkPhysicalDeviceFeatures& enabled = context->getEnabledFeatures();
+    switch (ImageInfo::getCompression(format)) {
+    case ImageInfo::Compression::None:
+        return true;
+    case ImageInfo::Compression::Bc:
+        return enabled.textureCompressionBC == VK_TRUE;
+    case ImageInfo::Compression::Etc2:
+        return enabled.textureCompressionETC2 == VK_TRUE;
+    case ImageInfo::Compression::Astc:
+        return enabled.textureCompressionASTC_LDR == VK_TRUE;
+    case ImageInfo::Compression::AstcHdr:
+        return context->hasAstcHdr();
+    }
+
+    return false;
 }
 
 // The counts come from the image format properties of an attachment of the format, among the counts of the contract, and a format whose attachments the GPU does not make takes none.
@@ -918,14 +940,13 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
     }
 
     const bool volume = record.type == TextureType::Volume;
-    const std::size_t pixelBytes = ImageInfo::getBytesPerPixel(record.pixelFormat);
     copyRegions.clear();
     for (std::size_t level = 0; level < levels.size(); ++level) {
         const auto width = static_cast<std::uint32_t>(std::max(record.width >> level, 1));
         const auto height = static_cast<std::uint32_t>(std::max(record.height >> level, 1));
         const auto depth = volume ? static_cast<std::uint32_t>(std::max(record.layers >> level, 1)) : 1U;
         const auto layers = volume ? 1U : static_cast<std::uint32_t>(record.layers);
-        const std::size_t bytes = std::size_t{width} * height * depth * layers * pixelBytes;
+        const std::size_t bytes = ImageInfo::getRegionBytes(record.pixelFormat, static_cast<int>(width), static_cast<int>(height)) * depth * layers;
         if (levels[level].size() < bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
@@ -1441,7 +1462,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
 
         const Region& region = write.region;
         const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= record.width && region.y + region.height <= record.height;
-        const std::size_t bytes = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * ImageInfo::getBytesPerPixel(record.pixelFormat);
+        const std::size_t bytes = ImageInfo::getRegionBytes(record.pixelFormat, region.width, region.height);
         if (!inside || write.pixels.size() != bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }

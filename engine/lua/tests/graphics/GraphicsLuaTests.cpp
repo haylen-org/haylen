@@ -26,11 +26,7 @@ TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(1, 1, {pixels = string.char(255, 0, 0, 255)}) return t.width"), "1");
     EXPECT_NE(fixture.lua("return graphics.newTexture(2, 2, {pixels = 'short'})").find("error: "), std::string::npos);
     EXPECT_EQ(fixture.lua("return graphics.maxTextureSize()"), "16384");
-    EXPECT_EQ(fixture.lua("return graphics.maxVolumeSize()"), "2048");
-    EXPECT_EQ(fixture.lua("return graphics.maxCubeSize()"), "16384");
-    EXPECT_EQ(fixture.lua("return table.concat(graphics.sampleCounts('rgba16Float'), ',')"), "1,2,4,8");
     EXPECT_EQ(fixture.lua("return graphics.depthRange()"), "zeroToOne");
-    EXPECT_NE(fixture.lua("return graphics.sampleCounts('rgba7')").find("unknown value 'rgba7'"), std::string::npos);
 
     // A size beyond the device fails before its pixels are allocated.
     EXPECT_NE(fixture.lua("return graphics.newTexture(2147483647, 2147483647)").find("Texture dimensions exceed the device limit."), std::string::npos);
@@ -40,7 +36,41 @@ TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
     EXPECT_EQ(fixture.lua("return graphics.apiName()"), "none");
 }
 
-// The bytes of an image file, such as a PNG that a plugin returns, become a texture.
+// The capabilities of the device and what it does with each pixel format reach Lua as tables.
+TEST(GraphicsLuaTest, ReportsTheCapabilitiesOfTheDeviceAndOfEachFormat) {
+    test::LuaFixture fixture;
+    fixture.runLua("graphics = require('haylen.graphics') capabilities = graphics.capabilities()");
+
+    EXPECT_EQ(fixture.lua("return capabilities.maxTextureSize .. ' ' .. capabilities.maxArrayLayers .. ' ' .. capabilities.maxVolumeSize .. ' ' .. capabilities.maxCubeSize"), "16384 2048 2048 16384");
+    EXPECT_EQ(fixture.lua("return tostring(capabilities.originTopLeft) .. ' ' .. capabilities.depthRange .. ' ' .. tostring(capabilities.independentBlend) .. ' ' .. tostring(capabilities.gpuTiming)"), "true zeroToOne false false");
+    EXPECT_EQ(fixture.lua("local s = graphics.formatSupport('rgba16Float') return tostring(s.sample) .. tostring(s.filter) .. tostring(s.render) .. tostring(s.blend) .. ' ' .. table.concat(s.sampleCounts, ',')"), "truetruetruetrue 1,2,4,8");
+    EXPECT_EQ(fixture.lua("local s = graphics.formatSupport('rgba32Float') return tostring(s.filter) .. ' ' .. tostring(s.blend) .. ' ' .. tostring(s.storage)"), "false false true");
+    EXPECT_EQ(fixture.lua("local s = graphics.formatSupport('astc6x6Srgb') return tostring(s.sample) .. ' ' .. tostring(s.render) .. ' ' .. #s.sampleCounts"), "true false 0");
+    EXPECT_EQ(fixture.lua("local s = graphics.formatSupport('depth32Float') return tostring(s.render) .. ' ' .. tostring(s.filter)"), "true false");
+    EXPECT_NE(fixture.lua("return graphics.formatSupport('rgba7')").find("unknown value 'rgba7'"), std::string::npos);
+}
+
+// A texture made in a format takes the bytes of each of its levels as they are, such as the blocks of a compressed format, and refuses levels that do not fit.
+TEST(GraphicsLuaTest, CreatesTexturesFromTheLevelsOfAFormat) {
+    test::LuaFixture fixture;
+    fixture.runLua("graphics = require('haylen.graphics') block = string.rep('\\0', 16)");
+
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(4, 4, {format = 'bc7', levels = {block}, filter = 'linear'}) return t.format .. ' ' .. t.width .. ' ' .. tostring(t.mipmaps)"), "bc7 4 false");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(8, 8, {format = 'bc7', levels = {string.rep(block, 4), block}}) return tostring(t.mipmaps)"), "true");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(10, 8, {format = 'astc5x4', levels = {string.rep(block, 4)}}) return t.format"), "astc5x4");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(2, 1, {format = 'rgba8', levels = {string.rep('\\255', 8)}}) return t.format"), "rgba8");
+    EXPECT_EQ(fixture.lua("return graphics.whiteTexture().format"), "rgba8");
+    EXPECT_NE(fixture.lua("return graphics.newTexture(6, 4, {format = 'bc1', levels = {block}})").find("A texture of the format \"bc1\" has sides of whole blocks of 4 by 4 pixels, which 6 by 4 pixels are not."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc1', levels = {block}})").find("The level 1 of a texture of 4 by 4 pixels of the format \"bc1\" holds 16 bytes, and it needs 8."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc7', levels = {block}, mipmaps = true})").find("A texture made from its levels keeps mipmaps only when it brings more than one level."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'depth16', levels = {block}})").find("The format \"depth16\" belongs to depth attachments, so no texture is made in it."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc7'})").find("A texture made in a format takes the bytes of each of its levels in the list \"levels\", the largest level first."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc7', levels = {}})").find("A texture of 4 by 4 pixels brings from 1 to 3 levels, not 0."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc7', levels = {block}, fill = '#FF0000'})").find("Unknown option \"fill\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(4, 4, {format = 'bc9', levels = {block}})").find("bc9"), std::string::npos);
+    EXPECT_NE(fixture.lua("return graphics.newTexture(1, 1, {format = 'rgba32Float', levels = {string.rep('\\0', 16)}})").find("The graphics API \"none\" of this device samples the format \"rgba32Float\" only without filtering, and textures filter."), std::string::npos);
+}
+
 // The memory of the textures that the app let go of stays with the device for later until a trim gives it back, which the statistics report.
 TEST(GraphicsLuaTest, TrimsTheMemoryThatTheDeviceHoldsForLater) {
     test::LuaFixture fixture;
@@ -55,6 +85,7 @@ TEST(GraphicsLuaTest, TrimsTheMemoryThatTheDeviceHoldsForLater) {
     EXPECT_EQ(fixture.host().getGpu().getTrimCount(), trims + 1);
 }
 
+// The bytes of an image file, such as a PNG that a plugin returns, become a texture.
 TEST(GraphicsLuaTest, CreatesTexturesFromTheBytesOfImageFiles) {
     const std::vector<std::uint8_t> image = test::TestFiles::pngImage(5, 3, 0x336699FFU);
     test::LuaFixture fixture;

@@ -3,8 +3,8 @@
 #include <stdexcept>
 #include <utility>
 
-#include "gpu/direct3d/Formats.hpp"
-#include "gpu/direct3d/PixelConverter.hpp"
+#include "gpu/ImageInfo.hpp"
+#include "gpu/PixelConverter.hpp"
 
 namespace haylen::gpu::d3d12 {
 
@@ -22,12 +22,12 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
         throw std::runtime_error("The GPU could not hand over the pixels of a render target.");
     }
 
-    const std::size_t rowBytes = static_cast<std::size_t>(width) * direct3d::Formats::getBytesPerPixel(format);
+    const std::size_t rowBytes = ImageInfo::getRowBytes(format, width);
     const std::size_t pixelRow = static_cast<std::size_t>(width) * 4;
     std::vector<std::uint8_t> pixels(pixelRow * static_cast<std::size_t>(height));
     for (int row = 0; row < height; ++row) {
         const auto* source = static_cast<const std::byte*>(mapped) + static_cast<std::size_t>(row) * rowPitch;
-        direct3d::PixelConverter::convertRow(format, {source, rowBytes}, std::span(pixels).subspan(static_cast<std::size_t>(row) * pixelRow, pixelRow));
+        PixelConverter::convertRow(format, {source, rowBytes}, std::span(pixels).subspan(static_cast<std::size_t>(row) * pixelRow, pixelRow));
     }
 
     const D3D12_RANGE nothing{.Begin = 0, .End = 0};

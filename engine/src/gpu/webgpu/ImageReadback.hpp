@@ -34,11 +34,6 @@ class ImageReadback final : public Device::Readback {
     static constexpr std::uint32_t kRowAlignment = 256;
 
     static void receiveMapping(WGPUMapAsyncStatus status, WGPUStringView message, void* first, void* second);
-    [[nodiscard]] static float fromHalf(std::uint16_t bits) noexcept;
-    [[nodiscard]] static std::uint8_t toByte(float value) noexcept;
-    [[nodiscard]] static std::uint8_t toByte(std::uint32_t value, std::uint32_t maximum) noexcept;
-
-    void convertRow(std::span<const std::byte> source, std::span<std::uint8_t> target) const noexcept;
 
     WGPUBuffer buffer = nullptr;
     Device::PixelFormat format;

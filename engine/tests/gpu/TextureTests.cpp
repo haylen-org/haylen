@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "gpu/ImageInfo.hpp"
+#include "gpu/support/CompressedBlocks.hpp"
 #include "gpu/support/GpuFixture.hpp"
 #include "haylen/math/ColorSpace.hpp"
 #include "support/ContractRule.hpp"
@@ -21,18 +22,35 @@ namespace haylen::gpu {
 class GpuTextureTest : public test::GpuFixture {
   protected:
     static constexpr math::Color kColor{0.8F, 0.4F, 0.2F, 0.6F};
-    static constexpr std::array<Device::PixelFormat, 12> kColorFormats{
-        Device::PixelFormat::R8, Device::PixelFormat::Rg8, Device::PixelFormat::Rgba8, Device::PixelFormat::Rgba8Srgb, Device::PixelFormat::Bgra8, Device::PixelFormat::Rgb10A2, Device::PixelFormat::R16Float, Device::PixelFormat::Rg16Float, Device::PixelFormat::Rgba16Float, Device::PixelFormat::R32Float, Device::PixelFormat::Rg32Float, Device::PixelFormat::Rgba32Float,
+    static constexpr std::array<Device::PixelFormat, 13> kColorFormats{
+        Device::PixelFormat::R8, Device::PixelFormat::Rg8, Device::PixelFormat::Rgba8, Device::PixelFormat::Rgba8Srgb, Device::PixelFormat::Bgra8, Device::PixelFormat::Rgb10A2, Device::PixelFormat::Rg11B10Float, Device::PixelFormat::R16Float, Device::PixelFormat::Rg16Float, Device::PixelFormat::Rgba16Float, Device::PixelFormat::R32Float, Device::PixelFormat::Rg32Float, Device::PixelFormat::Rgba32Float,
     };
 
     // The program that samples the format: the one that filters where the device filters the format, and the one that reads texels without filtering elsewhere.
     [[nodiscard]] std::string_view samplingProgram(Device::PixelFormat format) const noexcept {
-        return capabilities().filterableFormats[static_cast<std::size_t>(format)] ? "textured" : "unfilterable";
+        return capabilities().getFormat(format).filter ? "textured" : "unfilterable";
     }
 
-    // The color of the tests as a format holds it, with the alpha of two bits of `Rgb10A2` at its largest.
+    // The color of the tests as a format holds it, with the alpha of two bits of `Rgb10A2` at its largest and the missing alpha of `Rg11B10Float` as 1.
     [[nodiscard]] static math::Color storedColor(Device::PixelFormat format) noexcept {
-        return format == Device::PixelFormat::Rgb10A2 ? math::Color{kColor.r, kColor.g, kColor.b, 1.0F} : kColor;
+        const bool opaque = format == Device::PixelFormat::Rgb10A2 || format == Device::PixelFormat::Rg11B10Float;
+        return opaque ? math::Color{kColor.r, kColor.g, kColor.b, 1.0F} : kColor;
+    }
+
+    // Whether the format holds an alpha channel, without which its texels read an alpha of 1.
+    [[nodiscard]] static bool hasAlpha(Device::PixelFormat format) noexcept {
+        switch (format) {
+        case Device::PixelFormat::R8:
+        case Device::PixelFormat::Rg8:
+        case Device::PixelFormat::Rg11B10Float:
+        case Device::PixelFormat::R16Float:
+        case Device::PixelFormat::Rg16Float:
+        case Device::PixelFormat::R32Float:
+        case Device::PixelFormat::Rg32Float:
+            return false;
+        default:
+            return true;
+        }
     }
 
     // What a draw samples from a texel of the color: the channels the format lacks read as 0 and its missing alpha as 1.
@@ -73,7 +91,7 @@ class GpuTextureTest : public test::GpuFixture {
     [[nodiscard]] static std::vector<std::byte> encode(Device::PixelFormat format) {
         const math::Color color = storedColor(format);
         const std::array<float, 4> channels{color.r, color.g, color.b, color.a};
-        std::vector<std::byte> texel(ImageInfo::getBytesPerPixel(format));
+        std::vector<std::byte> texel(ImageInfo::getRowBytes(format, 1));
         const auto put = [&texel](const auto& value, std::size_t offset) { std::memcpy(texel.data() + offset, &value, sizeof(value)); };
         switch (format) {
         case Device::PixelFormat::R8:
@@ -90,6 +108,9 @@ class GpuTextureTest : public test::GpuFixture {
             break;
         case Device::PixelFormat::Rgb10A2:
             put(static_cast<std::uint32_t>(std::lround(color.r * 1023.0F)) | (static_cast<std::uint32_t>(std::lround(color.g * 1023.0F)) << 10U) | (static_cast<std::uint32_t>(std::lround(color.b * 1023.0F)) << 20U) | (3U << 30U), 0);
+            break;
+        case Device::PixelFormat::Rg11B10Float:
+            put(static_cast<std::uint32_t>(toHalf(color.r) >> 4U) | (static_cast<std::uint32_t>(toHalf(color.g) >> 4U) << 11U) | (static_cast<std::uint32_t>(toHalf(color.b) >> 5U) << 22U), 0);
             break;
         case Device::PixelFormat::R16Float:
         case Device::PixelFormat::Rg16Float:
@@ -170,10 +191,10 @@ class GpuTextureTest : public test::GpuFixture {
 
 // Every color format that the device samples reads back the color its texels hold, with the channels it lacks at their defaults.
 TEST_P(GpuTextureTest, SamplesEveryFormatTheDeviceSupports) {
-    ASSERT_TRUE(capabilities().textureFormats[static_cast<std::size_t>(Device::PixelFormat::Rgba8)]) << "Every device samples the format Rgba8, which the capabilities must mark.";
+    ASSERT_TRUE(capabilities().getFormat(Device::PixelFormat::Rgba8).sample) << "Every device samples the format Rgba8, which the capabilities must mark.";
     const Device::Sampler sampler = makeSampler(kNearest);
     for (const Device::PixelFormat format : kColorFormats) {
-        if (!capabilities().textureFormats[static_cast<std::size_t>(format)]) {
+        if (!capabilities().getFormat(format).sample) {
             continue;
         }
 
@@ -190,16 +211,62 @@ TEST_P(GpuTextureTest, SamplesEveryFormatTheDeviceSupports) {
     }
 }
 
-// Every color format that the device marks filterable blends its texels with a linear filter. A row of an empty texel and a texel of the color, drawn four pixels wide, takes three quarters of the color at its third pixel, while the channels the format lacks keep their defaults.
-TEST_P(GpuTextureTest, FiltersEveryFormatTheDeviceFilters) {
-    ASSERT_TRUE(capabilities().filterableFormats[static_cast<std::size_t>(Device::PixelFormat::Rgba8)]) << "Every device filters the format Rgba8, which the capabilities must mark.";
-    const Device::Sampler sampler = makeSampler({});
-    for (const Device::PixelFormat format : kColorFormats) {
-        if (!capabilities().filterableFormats[static_cast<std::size_t>(format)]) {
+// Every block compressed format that the device samples, from the BC, ETC2, EAC and ASTC families, reads back the color of a block that decodes to one color, uploaded as the blocks it is, and the sRGB formats read it in linear values.
+TEST_P(GpuTextureTest, SamplesEveryCompressedFormatTheDeviceSupports) {
+    const Device::Sampler sampler = makeSampler(kNearest);
+    int sampled = 0;
+    for (std::size_t index = 0; index < Device::kPixelFormatCount; ++index) {
+        const auto format = static_cast<Device::PixelFormat>(index);
+        if (!ImageInfo::isCompressed(format) || !capabilities().getFormat(format).sample) {
             continue;
         }
 
-        std::vector<std::byte> texels(ImageInfo::getBytesPerPixel(format));
+        const test::CompressedBlocks::Block block = test::CompressedBlocks::make(format);
+        const ImageInfo::Block size = ImageInfo::getBlock(format);
+        const std::array<std::span<const std::byte>, 1> levels{block.bytes};
+        const Device::Image texture = makeTexture(size.width, size.height, levels, format);
+        const Pixels pixels = sample("textured", texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
+        EXPECT_TRUE(isNear(pixels.at(0, 0), block.sampled, 3)) << Device::kPixelFormatNames[index].first;
+        ++sampled;
+    }
+
+    if (sampled == 0) {
+        GTEST_SKIP() << "The GPU of this device samples no block compressed format.";
+    }
+}
+
+// The rules of the contract refuse a compressed format as an attachment, as a volume, with sides that hold no whole blocks, or on a device that does not sample it.
+TEST_P(GpuTextureTest, RefusesCompressedImagesOutsideTheContract) {
+    const std::vector<std::byte> blocks(16 * 4);
+    const std::array<std::span<const std::byte>, 1> levels{blocks};
+    for (std::size_t index = 0; index < Device::kPixelFormatCount; ++index) {
+        const auto format = static_cast<Device::PixelFormat>(index);
+        if (!ImageInfo::isCompressed(format)) {
+            continue;
+        }
+
+        const ImageInfo::Block block = ImageInfo::getBlock(format);
+        EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.width = block.width, .height = block.height, .format = format, .kind = Device::ImageKind::RenderTarget}); }), gpu::ContractError::Rule::Image) << index;
+        EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.type = Device::TextureType::Volume, .width = block.width, .height = block.height, .format = format, .levels = levels}); }), gpu::ContractError::Rule::Image) << index;
+        EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.width = block.width + 1, .height = block.height, .format = format, .levels = levels}); }), gpu::ContractError::Rule::Image) << index;
+        if (!capabilities().getFormat(format).sample) {
+            const std::span<const std::byte> one(blocks.data(), ImageInfo::getRegionBytes(format, block.width, block.height));
+            const std::array<std::span<const std::byte>, 1> level{one};
+            EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.width = block.width, .height = block.height, .format = format, .levels = level}); }), gpu::ContractError::Rule::Image) << index;
+        }
+    }
+}
+
+// Every color format that the device marks filterable blends its texels with a linear filter. A row of an empty texel and a texel of the color, drawn four pixels wide, takes three quarters of the color at its third pixel, while the channels the format lacks keep their defaults.
+TEST_P(GpuTextureTest, FiltersEveryFormatTheDeviceFilters) {
+    ASSERT_TRUE(capabilities().getFormat(Device::PixelFormat::Rgba8).filter) << "Every device filters the format Rgba8, which the capabilities must mark.";
+    const Device::Sampler sampler = makeSampler({});
+    for (const Device::PixelFormat format : kColorFormats) {
+        if (!capabilities().getFormat(format).filter) {
+            continue;
+        }
+
+        std::vector<std::byte> texels(ImageInfo::getRowBytes(format, 1));
         const std::vector<std::byte> texel = encode(format);
         texels.insert(texels.end(), texel.begin(), texel.end());
         const std::array<std::span<const std::byte>, 1> levels{texels};
@@ -210,7 +277,7 @@ TEST_P(GpuTextureTest, FiltersEveryFormatTheDeviceFilters) {
             full = {math::ColorSpace::decodeSrgb(full.r), math::ColorSpace::decodeSrgb(full.g), math::ColorSpace::decodeSrgb(full.b), full.a};
         }
 
-        const math::Color empty = sampledColor(format) == storedColor(format) ? math::Color::transparent() : math::Color{0.0F, 0.0F, 0.0F, 1.0F};
+        const math::Color empty = hasAlpha(format) ? math::Color::transparent() : math::Color{0.0F, 0.0F, 0.0F, 1.0F};
         const math::Color expected{empty.r + (full.r - empty.r) * 0.75F, empty.g + (full.g - empty.g) * 0.75F, empty.b + (full.b - empty.b) * 0.75F, empty.a + (full.a - empty.a) * 0.75F};
         const Pixels pixels = sample("textured", texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F}, 4, 1);
         EXPECT_TRUE(isNear(pixels.at(2, 0), expected, 3)) << static_cast<int>(format);
@@ -219,11 +286,11 @@ TEST_P(GpuTextureTest, FiltersEveryFormatTheDeviceFilters) {
 
 // Every color format that the device renders and samples takes the clear of a pass, which a draw samples back.
 TEST_P(GpuTextureTest, RendersIntoEveryFormatTheDeviceRenders) {
-    ASSERT_TRUE(capabilities().renderFormats[static_cast<std::size_t>(Device::PixelFormat::Rgba8)]) << "Every device renders into the format Rgba8, which the capabilities must mark.";
+    ASSERT_TRUE(capabilities().getFormat(Device::PixelFormat::Rgba8).render) << "Every device renders into the format Rgba8, which the capabilities must mark.";
     const Device::Sampler sampler = makeSampler(kNearest);
     for (const Device::PixelFormat format : kColorFormats) {
         const auto index = static_cast<std::size_t>(format);
-        if (!capabilities().renderFormats[index] || !capabilities().textureFormats[index]) {
+        if (!capabilities().formats[index].render || !capabilities().formats[index].sample) {
             continue;
         }
 
@@ -240,7 +307,7 @@ TEST_P(GpuTextureTest, RendersIntoEveryFormatTheDeviceRenders) {
 TEST_P(GpuTextureTest, ReadsBackEveryFormatTheDeviceRenders) {
     for (const Device::PixelFormat format : kColorFormats) {
         const auto index = static_cast<std::size_t>(format);
-        if (!capabilities().renderFormats[index] || format == Device::PixelFormat::Rgba8Srgb) {
+        if (!capabilities().formats[index].render || format == Device::PixelFormat::Rgba8Srgb) {
             continue;
         }
 
@@ -258,12 +325,12 @@ TEST_P(GpuTextureTest, ResolvesEveryFormatWithTheSampleCountsTheDeviceReports) {
     const Device::Sampler sampler = makeSampler(kNearest);
     for (const Device::PixelFormat format : kColorFormats) {
         const auto index = static_cast<std::size_t>(format);
-        if (!capabilities().textureFormats[index]) {
+        if (!capabilities().formats[index].sample) {
             continue;
         }
 
         for (const int samples : {2, 4, 8}) {
-            if ((capabilities().sampleCounts[index] & static_cast<unsigned>(samples)) == 0) {
+            if ((capabilities().formats[index].sampleCounts & static_cast<unsigned>(samples)) == 0) {
                 continue;
             }
 
@@ -288,11 +355,11 @@ TEST_P(GpuTextureTest, RefusesImagesBeyondTheCapabilities) {
     EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.type = Device::TextureType::Cube, .width = cube, .height = cube, .layers = 6, .kind = Device::ImageKind::RenderTarget}); }), gpu::ContractError::Rule::Image);
     EXPECT_EQ(test::ContractRule::of([&] { (void)device().makeImage({.type = Device::TextureType::Cube, .width = 4, .height = 8, .layers = 6, .kind = Device::ImageKind::RenderTarget}); }), gpu::ContractError::Rule::Image);
 
-    for (std::size_t index = 0; index < limits.sampleCounts.size(); ++index) {
+    for (std::size_t index = 0; index < limits.formats.size(); ++index) {
         const auto format = static_cast<Device::PixelFormat>(index);
         const Device::ImageKind kind = ImageInfo::isDepth(format) ? Device::ImageKind::DepthStencil : Device::ImageKind::RenderTarget;
         for (const int samples : {2, 4, 8}) {
-            if (!limits.renderFormats[index] || (limits.sampleCounts[index] & static_cast<unsigned>(samples)) != 0) {
+            if (!limits.formats[index].render || (limits.formats[index].sampleCounts & static_cast<unsigned>(samples)) != 0) {
                 continue;
             }
 
@@ -423,7 +490,7 @@ TEST_P(GpuTextureTest, RefusesNewPixelsForImagesThatAreNotDynamic) {
 TEST_P(GpuTextureTest, SamplesEveryFormatThatDynamicImagesWrite) {
     const Device::Sampler sampler = makeSampler(kNearest);
     for (const Device::PixelFormat format : kColorFormats) {
-        if (!capabilities().textureFormats[static_cast<std::size_t>(format)]) {
+        if (!capabilities().getFormat(format).sample) {
             continue;
         }
 

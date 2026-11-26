@@ -15,19 +15,23 @@ class GraphicsBinding final {
   private:
     static constexpr std::array<std::string_view, 3> kTextureContentFields{"fill", "pixels", "dynamic"};
     static constexpr std::array<std::string_view, 1> kImageTextureFields{"dynamic"};
+    static constexpr std::array<std::string_view, 2> kTextureDataFields{"format", "levels"};
     static constexpr std::array<std::string_view, 1> kUpdateFields{"region"};
 
     static int newRenderTarget(lua_State* L);
     static int newTexture(lua_State* L);
+    static void pushDataTexture(lua_State* L, int width, int height);
+    [[nodiscard]] static bool hasField(lua_State* L, int index, const char* name);
 
     // Pushes the texture of the image file whose bytes lie at index 1, with the options at index 2.
     static void pushImageTexture(lua_State* L);
     static int updateTexture(lua_State* L);
     static int maxTextureSize(lua_State* L);
     static int trim(lua_State* L);
-    static int maxVolumeSize(lua_State* L);
-    static int maxCubeSize(lua_State* L);
-    static int sampleCounts(lua_State* L);
+    static void setField(lua_State* L, const char* name, int value);
+    static void setField(lua_State* L, const char* name, bool value);
+    static int capabilities(lua_State* L);
+    static int formatSupport(lua_State* L);
     static int depthRange(lua_State* L);
     static int whiteTexture(lua_State* L);
     static int apiName(lua_State* L);
@@ -37,6 +41,7 @@ class GraphicsBinding final {
     static int textureFilter(lua_State* L);
     static int textureWrap(lua_State* L);
     static int textureMipmaps(lua_State* L);
+    static int textureFormat(lua_State* L);
 
     static int targetTexture(lua_State* L);
     static int targetWidth(lua_State* L);

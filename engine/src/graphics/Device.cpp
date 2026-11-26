@@ -1,10 +1,13 @@
 #include "haylen/graphics/Device.hpp"
 
 #include <algorithm>
+#include <cstddef>
+#include <format>
 #include <memory>
 #include <stdexcept>
 #include <utility>
 
+#include "gpu/ImageInfo.hpp"
 #include "graphics/DeviceState.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/JobSystem.hpp"
@@ -65,6 +68,75 @@ Texture Device::createTexture(const Image& image, Texture::Options options) {
     resource->options = options;
     resource->graveyard = state->graveyard;
     return Texture(std::move(resource));
+}
+
+// A texture takes the levels of its data from the largest down, and keeps only the first one when it keeps no mipmaps.
+Texture Device::createTexture(const TextureData& data, Texture::Options options) {
+    validateData(data, options);
+    options.mipmaps = options.mipmaps.value_or(data.levels.size() > 1);
+    const std::span<const std::span<const std::byte>> levels = *options.mipmaps ? data.levels : data.levels.first(1);
+
+    std::size_t bytes = 0;
+    for (const std::span<const std::byte> level : levels) {
+        bytes += level.size();
+    }
+
+    auto resource = std::make_shared<TextureResource>();
+    resource->image = state->gpu->makeImage({.width = data.width, .height = data.height, .mipLevels = static_cast<int>(levels.size()), .format = data.format, .kind = gpu::Device::ImageKind::Texture, .levels = levels, .label = "haylen-texture"});
+    resource->tracked.setBytes(bytes);
+    resource->sampler = state->getSampler(options);
+    resource->width = data.width;
+    resource->height = data.height;
+    resource->id = state->nextTextureId++;
+    resource->options = options;
+    resource->format = data.format;
+    resource->graveyard = state->graveyard;
+    return Texture(std::move(resource));
+}
+
+// The data of a texture fits the device before any of it reaches the GPU: a color format that the device samples and filters, sides of whole blocks within the largest texture, and a level of the right size for each mip level it brings.
+void Device::validateData(const TextureData& data, Texture::Options options) const {
+    validateSize(data.width, data.height, getMaxTextureSize());
+    const std::string_view format = getFormatName(data.format);
+    if (gpu::ImageInfo::isDepth(data.format)) {
+        throw std::invalid_argument(std::format("The format \"{}\" belongs to depth attachments, so no texture is made in it.", format));
+    }
+
+    const gpu::Device::FormatSupport& support = state->gpu->getCapabilities().getFormat(data.format);
+    if (!support.sample) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device samples no texture of the format \"{}\". Make the texture in a format that the device samples, as its format support tells.", getApiName(), format));
+    }
+
+    if (!support.filter) {
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of this device samples the format \"{}\" only without filtering, and textures filter. Make the texture in a format that the device filters, as its format support tells.", getApiName(), format));
+    }
+
+    const gpu::ImageInfo::Block block = gpu::ImageInfo::getBlock(data.format);
+    if (data.width % block.width != 0 || data.height % block.height != 0) {
+        throw std::invalid_argument(std::format("A texture of the format \"{}\" has sides of whole blocks of {} by {} pixels, which {} by {} pixels are not.", format, block.width, block.height, data.width, data.height));
+    }
+
+    const gpu::Device::ImageDesc shape{.width = data.width, .height = data.height, .format = data.format};
+    const int most = gpu::ImageInfo::getMaxMipLevels(shape);
+    if (data.levels.empty() || static_cast<int>(data.levels.size()) > most) {
+        throw std::invalid_argument(std::format("A texture of {} by {} pixels brings from 1 to {} levels, not {}.", data.width, data.height, most, data.levels.size()));
+    }
+
+    if (options.mipmaps.value_or(false) && data.levels.size() == 1) {
+        throw std::invalid_argument("A texture made from its levels keeps mipmaps only when it brings more than one level.");
+    }
+
+    for (std::size_t level = 0; level < data.levels.size(); ++level) {
+        const std::size_t expected = gpu::ImageInfo::getLevelBytes(shape, static_cast<int>(level));
+        if (data.levels[level].size() != expected) {
+            throw std::invalid_argument(std::format("The level {} of a texture of {} by {} pixels of the format \"{}\" holds {} bytes, and it needs {}.", level + 1, data.width, data.height, format, data.levels[level].size(), expected));
+        }
+    }
+}
+
+std::string_view Device::getFormatName(gpu::Device::PixelFormat format) noexcept {
+    const auto found = std::ranges::find(gpu::Device::kPixelFormatNames, format, &std::pair<std::string_view, gpu::Device::PixelFormat>::second);
+    return found->first;
 }
 
 Texture Device::createTexture(int width, int height, math::Color fill, Texture::Options options) {

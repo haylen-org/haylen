@@ -12,6 +12,7 @@ set(haylen_gpu_test_sources
   "${haylen_tests_dir}/gpu/ShaderPackageTests.cpp"
   "${haylen_tests_dir}/gpu/SurfaceTests.cpp"
   "${haylen_tests_dir}/gpu/TextureTests.cpp"
+  "${haylen_tests_dir}/gpu/support/CompressedBlocks.cpp"
   "${haylen_tests_dir}/gpu/support/GpuFixture.cpp"
   "${haylen_tests_dir}/gpu/support/ImageComparison.cpp"
   "${haylen_tests_dir}/gpu/support/LoggedErrors.cpp"

@@ -3,8 +3,8 @@
 #include <stdexcept>
 #include <utility>
 
-#include "gpu/direct3d/Formats.hpp"
-#include "gpu/direct3d/PixelConverter.hpp"
+#include "gpu/ImageInfo.hpp"
+#include "gpu/PixelConverter.hpp"
 
 namespace haylen::gpu::d3d11 {
 
@@ -25,11 +25,11 @@ std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
         throw std::runtime_error("The GPU could not hand over the pixels of a render target.");
     }
 
-    const std::size_t rowBytes = static_cast<std::size_t>(width) * direct3d::Formats::getBytesPerPixel(format);
+    const std::size_t rowBytes = ImageInfo::getRowBytes(format, width);
     std::vector<std::uint8_t> pixels(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4);
     for (int row = 0; row < height; ++row) {
         const auto* source = static_cast<const std::byte*>(mapped.pData) + static_cast<std::size_t>(row) * mapped.RowPitch;
-        direct3d::PixelConverter::convertRow(format, {source, rowBytes}, std::span(pixels).subspan(static_cast<std::size_t>(row) * static_cast<std::size_t>(width) * 4, static_cast<std::size_t>(width) * 4));
+        PixelConverter::convertRow(format, {source, rowBytes}, std::span(pixels).subspan(static_cast<std::size_t>(row) * static_cast<std::size_t>(width) * 4, static_cast<std::size_t>(width) * 4));
     }
 
     context->Unmap(staging.Get(), 0);

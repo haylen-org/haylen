@@ -47,6 +47,10 @@ Texture::Options Texture::getOptions() const noexcept {
     return resource ? resource->options : Options{};
 }
 
+gpu::Device::PixelFormat Texture::getFormat() const noexcept {
+    return resource ? resource->format : gpu::Device::PixelFormat::Rgba8;
+}
+
 std::string_view Texture::getLabel() const noexcept {
     return resource ? std::string_view(resource->label) : std::string_view();
 }

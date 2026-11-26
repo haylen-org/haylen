@@ -22,15 +22,19 @@ std::optional<std::vector<std::uint8_t>> NullDevice::NullReadback::poll() {
 
 Device::Capabilities NullDevice::getDefaultCapabilities() noexcept {
     Capabilities capabilities{.maxImageSize = kMaxImageSize, .maxArrayLayers = kMaxArrayLayers, .maxVolumeSize = kMaxVolumeSize, .maxCubeSize = kMaxImageSize, .originTopLeft = true, .independentBlend = false, .gpuTiming = false};
-    capabilities.textureFormats.fill(true);
-    capabilities.renderFormats.fill(true);
-
-    for (std::size_t format = 0; format < capabilities.blendableFormats.size(); ++format) {
+    for (std::size_t format = 0; format < capabilities.formats.size(); ++format) {
         const auto pixelFormat = static_cast<PixelFormat>(format);
         const bool wide = pixelFormat == PixelFormat::R32Float || pixelFormat == PixelFormat::Rg32Float || pixelFormat == PixelFormat::Rgba32Float;
-        capabilities.blendableFormats[format] = !wide && !ImageInfo::isDepth(pixelFormat);
-        capabilities.filterableFormats[format] = !wide && !ImageInfo::isDepth(pixelFormat);
-        capabilities.sampleCounts[format] = kSampleCounts;
+        const bool depth = ImageInfo::isDepth(pixelFormat);
+        const bool compressed = ImageInfo::isCompressed(pixelFormat);
+        const bool color = !depth && !compressed;
+        FormatSupport& support = capabilities.formats[format];
+        support.sample = true;
+        support.filter = !wide && !depth;
+        support.render = !compressed;
+        support.blend = color && !wide;
+        support.storage = color && pixelFormat != PixelFormat::Rgba8Srgb && pixelFormat != PixelFormat::Bgra8;
+        support.sampleCounts = compressed ? std::uint8_t{0} : kSampleCounts;
     }
 
     return capabilities;
@@ -158,11 +162,11 @@ void NullDevice::checkColorTargets(const PipelineDesc& desc) const {
             continue;
         }
 
-        if (ImageInfo::isDepth(color.format) || !features.renderFormats[static_cast<std::size_t>(color.format)]) {
+        if (ImageInfo::isDepth(color.format) || !features.getFormat(color.format).render) {
             throw ContractError(ContractError::Rule::Pipeline);
         }
 
-        if (color.blend.enabled && !features.blendableFormats[static_cast<std::size_t>(color.format)]) {
+        if (color.blend.enabled && !features.getFormat(color.format).blend) {
             throw ContractError(ContractError::Rule::Pipeline);
         }
     }
@@ -263,7 +267,7 @@ void NullDevice::destroy(Image image) noexcept {
     const auto found = images.find(image.id);
     if (found != images.end()) {
         const ImageDesc& desc = found->second;
-        spare += static_cast<std::size_t>(desc.width) * static_cast<std::size_t>(desc.height) * static_cast<std::size_t>(desc.layers) * ImageInfo::getBytesPerPixel(desc.format);
+        spare += ImageInfo::getRegionBytes(desc.format, desc.width, desc.height) * static_cast<std::size_t>(desc.layers);
         images.erase(found);
     }
 }
@@ -386,7 +390,7 @@ void NullDevice::writeImages(std::span<const ImageWrite> writes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
 
-        const std::size_t bytes = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * ImageInfo::getBytesPerPixel(image.format);
+        const std::size_t bytes = ImageInfo::getRegionBytes(image.format, region.width, region.height);
         if (write->pixels.size() != bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
@@ -615,7 +619,7 @@ void NullDevice::checkTexture(const TextureBinding& binding, Image image) const 
         throw ContractError(ContractError::Rule::Bindings);
     }
 
-    if (binding.sampleType == SampleType::Float && !features.filterableFormats[static_cast<std::size_t>(desc.format)]) {
+    if (binding.sampleType == SampleType::Float && !features.getFormat(desc.format).filter) {
         throw ContractError(ContractError::Rule::Bindings);
     }
 

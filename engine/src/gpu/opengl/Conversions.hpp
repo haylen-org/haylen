@@ -15,11 +15,12 @@ class Conversions final {
         Gl::Enum internalFormat = Gl::kRgba8;
         Gl::Enum format = Gl::kRgba;
         Gl::Enum type = Gl::kUnsignedByte;
-        std::size_t bytes = 4;
         bool depth = false;
         bool stencil = false;
         bool floating = false;
         bool halfFloating = false;
+        bool packedFloating = false;
+        bool compressed = false;
         bool srgb = false;
         bool swapsRedBlue = false;
     };

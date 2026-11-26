@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "gpu/ImageInfo.hpp"
 #include "gpu/ImageRules.hpp"
 #include "gpu/d3d12/ImageReadback.hpp"
 #include "gpu/d3d12/StateDescriptions.hpp"
@@ -153,28 +154,34 @@ void Device::readCapabilities() {
     capabilities.gpuTiming = true;
 
     // Images sample through the view of their format, depth images draw through the view of their depth, and a format takes a sample count where the GPU draws into it with that many samples and, for a color, resolves it.
-    for (std::size_t index = 0; index < Formats::kPixelFormatCount; ++index) {
+    for (std::size_t index = 0; index < capabilities.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
-        const bool depth = Formats::isDepth(format);
+        const bool depth = ImageInfo::isDepth(format);
+        // Direct3D has no ETC2, EAC or ASTC format, so those formats stay unsupported.
+        if (Formats::getViewFormat(format) == DXGI_FORMAT_UNKNOWN) {
+            continue;
+        }
+
         D3D12_FEATURE_DATA_FORMAT_SUPPORT view{.Format = Formats::getViewFormat(format), .Support1 = D3D12_FORMAT_SUPPORT1_NONE, .Support2 = D3D12_FORMAT_SUPPORT2_NONE};
         D3D12_FEATURE_DATA_FORMAT_SUPPORT target{.Format = depth ? Formats::getDepthFormat(format) : Formats::getViewFormat(format), .Support1 = D3D12_FORMAT_SUPPORT1_NONE, .Support2 = D3D12_FORMAT_SUPPORT2_NONE};
         static_cast<void>(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &view, sizeof(view)));
         static_cast<void>(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &target, sizeof(target)));
-        capabilities.textureFormats[index] = (view.Support1 & (D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE | D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE_COMPARISON)) != 0;
-        capabilities.renderFormats[index] = (target.Support1 & (depth ? D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL : D3D12_FORMAT_SUPPORT1_RENDER_TARGET)) != 0;
-        capabilities.blendableFormats[index] = !depth && capabilities.renderFormats[index] && (target.Support1 & D3D12_FORMAT_SUPPORT1_BLENDABLE) != 0;
-        capabilities.filterableFormats[index] = !depth && (view.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
-        capabilities.sampleCounts[index] = capabilities.renderFormats[index] ? std::uint8_t{1} : std::uint8_t{0};
+        capabilities.formats[index].sample = (view.Support1 & (D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE | D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE_COMPARISON)) != 0;
+        capabilities.formats[index].render = (target.Support1 & (depth ? D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL : D3D12_FORMAT_SUPPORT1_RENDER_TARGET)) != 0;
+        capabilities.formats[index].blend = !depth && capabilities.formats[index].render && (target.Support1 & D3D12_FORMAT_SUPPORT1_BLENDABLE) != 0;
+        capabilities.formats[index].filter = !depth && (view.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
+        capabilities.formats[index].storage = !depth && (view.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) != 0;
+        capabilities.formats[index].sampleCounts = capabilities.formats[index].render ? std::uint8_t{1} : std::uint8_t{0};
 
         const D3D12_FORMAT_SUPPORT1 multisampled = depth ? D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RENDERTARGET : D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RENDERTARGET | D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RESOLVE;
-        if (!capabilities.renderFormats[index] || (target.Support1 & multisampled) != multisampled) {
+        if (!capabilities.formats[index].render || (target.Support1 & multisampled) != multisampled) {
             continue;
         }
 
         for (const UINT count : {2U, 4U, 8U}) {
             D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS levels{.Format = target.Format, .SampleCount = count, .Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE, .NumQualityLevels = 0};
             if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &levels, sizeof(levels))) && levels.NumQualityLevels > 0) {
-                capabilities.sampleCounts[index] |= static_cast<std::uint8_t>(count);
+                capabilities.formats[index].sampleCounts |= static_cast<std::uint8_t>(count);
             }
         }
     }
@@ -492,8 +499,8 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
             const std::byte* source = levels[index].data() + (volume ? 0 : layer * level.sliceBytes);
             const std::size_t slices = volume ? level.layers : 1;
             for (std::size_t slice = 0; slice < slices; ++slice) {
-                for (std::size_t row = 0; row < level.height; ++row) {
-                    std::byte* target = staged.data + footprint.Offset + (slice * level.height + row) * footprint.Footprint.RowPitch;
+                for (std::size_t row = 0; row < level.rows; ++row) {
+                    std::byte* target = staged.data + footprint.Offset + (slice * level.rows + row) * footprint.Footprint.RowPitch;
                     std::memcpy(target, source + slice * level.sliceBytes + row * level.rowBytes, level.rowBytes);
                 }
             }
@@ -511,7 +518,7 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
 
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     ImageRules::check(desc, capabilities);
-    const bool depth = Formats::isDepth(desc.format);
+    const bool depth = ImageInfo::isDepth(desc.format);
 
     reserveGarbage();
     D3D12_RESOURCE_DESC made{};
@@ -713,7 +720,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
 
         const Region& region = write.region;
         const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
-        const std::size_t bytes = static_cast<std::size_t>(region.width) * static_cast<std::size_t>(region.height) * Formats::getBytesPerPixel(image.format);
+        const std::size_t bytes = ImageInfo::getRegionBytes(image.format, region.width, region.height);
         if (!inside || write.pixels.size() != bytes) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }
@@ -733,7 +740,7 @@ void Device::stageRegion(const ImageRecord& image, const Region& region, std::sp
     UINT64 total = 0;
     device->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total);
 
-    const std::size_t rowBytes = static_cast<std::size_t>(region.width) * Formats::getBytesPerPixel(image.format);
+    const std::size_t rowBytes = ImageInfo::getRowBytes(image.format, region.width);
     const UploadAllocator::Allocation staged = uploads->allocate(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
     for (int row = 0; row < region.height; ++row) {
         std::memcpy(staged.data + static_cast<std::size_t>(row) * footprint.Footprint.RowPitch, pixels.data() + static_cast<std::size_t>(row) * rowBytes, rowBytes);
@@ -980,7 +987,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
 
         const auto access = [](Load load) { return load == Load::Clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : (load == Load::Keep ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD); };
         const auto ending = [](Store store) { return store == Store::Store ? D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD; };
-        const bool stencil = Formats::hasStencil(image.format);
+        const bool stencil = ImageInfo::hasStencil(image.format);
         const D3D12_CLEAR_VALUE clear{.Format = Formats::getDepthFormat(image.format), .DepthStencil = {.Depth = attachment.clearDepth, .Stencil = attachment.clearStencil}};
         depth.cpuDescriptor = getAttachment(image, 0, 0);
         depth.DepthBeginningAccess.Type = access(attachment.depthLoad);
@@ -1423,7 +1430,7 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
         throw ContractError(ContractError::Rule::Readback);
     }
 
-    const UINT rowBytes = static_cast<UINT>(width) * static_cast<UINT>(Formats::getBytesPerPixel(record.format));
+    const auto rowBytes = static_cast<UINT>(ImageInfo::getRowBytes(record.format, width));
     const UINT pitch = (rowBytes + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1) / D3D12_TEXTURE_DATA_PITCH_ALIGNMENT * D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     ComPtr<ID3D12Resource> buffer = makeBufferResource(D3D12_HEAP_TYPE_READBACK, static_cast<UINT64>(pitch) * static_cast<UINT64>(height), D3D12_RESOURCE_STATE_COPY_DEST, "haylen-readback");
 

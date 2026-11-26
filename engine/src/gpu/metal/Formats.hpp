@@ -2,8 +2,6 @@
 
 #import <Metal/Metal.h>
 
-#include <cstddef>
-
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::gpu::metal {
@@ -15,9 +13,9 @@ class Formats final {
 
     // The format of the image, where `Depth24Stencil8` takes `Depth32FloatStencil8`, the depth and stencil format of every Metal GPU.
     [[nodiscard]] static MTLPixelFormat toPixelFormat(gpu::Device::PixelFormat format) noexcept;
-    [[nodiscard]] static std::size_t getBytesPerPixel(gpu::Device::PixelFormat format) noexcept;
-    [[nodiscard]] static bool isDepth(gpu::Device::PixelFormat format) noexcept;
-    [[nodiscard]] static bool hasStencil(gpu::Device::PixelFormat format) noexcept;
+
+    // The formats of the BC family, which Metal has on iOS and tvOS from 16.4 on.
+    [[nodiscard]] static MTLPixelFormat toBcPixelFormat(gpu::Device::PixelFormat format) noexcept API_AVAILABLE(macos(11.0), ios(16.4), tvos(16.4));
 
     [[nodiscard]] static MTLVertexFormat toVertexFormat(gpu::Device::VertexFormat format) noexcept;
     [[nodiscard]] static MTLPrimitiveType toPrimitiveType(gpu::Device::Primitive primitive) noexcept;

@@ -7,6 +7,7 @@
 #include <string_view>
 #include <utility>
 
+#include "haylen/gpu/Device.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::graphics {
@@ -59,6 +60,9 @@ class Texture final {
     [[nodiscard]] math::Vec2 getSize() const noexcept;
     [[nodiscard]] std::uint32_t getId() const noexcept;
     [[nodiscard]] Options getOptions() const noexcept;
+
+    // The pixel format of the texture on the GPU, such as `Rgba8` for the textures of images and a compressed format for a texture made from its blocks.
+    [[nodiscard]] gpu::Device::PixelFormat getFormat() const noexcept;
 
     // The path of a texture that the assets loaded from the package, or an empty text for a texture made at run time.
     [[nodiscard]] std::string_view getLabel() const noexcept;

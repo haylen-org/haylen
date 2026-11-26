@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "gpu/direct3d/Formats.hpp"
+#include "gpu/ImageInfo.hpp"
 
 namespace haylen::gpu::direct3d {
 
@@ -11,8 +11,9 @@ MipLevels::Level MipLevels::describe(Device::TextureType type, int width, int he
     described.width = static_cast<std::size_t>(std::max(1, width >> level));
     described.height = static_cast<std::size_t>(std::max(1, height >> level));
     described.layers = static_cast<std::size_t>(type == Device::TextureType::Volume ? std::max(1, layers >> level) : layers);
-    described.rowBytes = described.width * Formats::getBytesPerPixel(format);
-    described.sliceBytes = described.rowBytes * described.height;
+    described.rows = static_cast<std::size_t>(ImageInfo::getRowCount(format, static_cast<int>(described.height)));
+    described.rowBytes = ImageInfo::getRowBytes(format, static_cast<int>(described.width));
+    described.sliceBytes = described.rowBytes * described.rows;
     return described;
 }
 

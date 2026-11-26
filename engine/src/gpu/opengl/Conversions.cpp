@@ -6,9 +6,9 @@ Conversions::Pixel Conversions::getPixel(Device::PixelFormat format, bool deskto
     using Format = Device::PixelFormat;
     switch (format) {
     case Format::R8:
-        return {.internalFormat = Gl::kR8, .format = Gl::kRed, .bytes = 1};
+        return {.internalFormat = Gl::kR8, .format = Gl::kRed};
     case Format::Rg8:
-        return {.internalFormat = Gl::kRg8, .format = Gl::kRg, .bytes = 2};
+        return {.internalFormat = Gl::kRg8, .format = Gl::kRg};
     case Format::Rgba8:
         return {};
     case Format::Rgba8Srgb:
@@ -17,26 +17,146 @@ Conversions::Pixel Conversions::getPixel(Device::PixelFormat format, bool deskto
         return {.format = desktop ? Gl::kBgra : Gl::kRgba, .swapsRedBlue = !desktop};
     case Format::Rgb10A2:
         return {.internalFormat = Gl::kRgb10A2, .type = Gl::kUnsignedInt2101010Rev};
+    case Format::Rg11B10Float:
+        return {.internalFormat = Gl::kR11fG11fB10f, .format = Gl::kRgb, .type = Gl::kUnsignedInt10f11f11fRev, .packedFloating = true};
     case Format::R16Float:
-        return {.internalFormat = Gl::kR16f, .format = Gl::kRed, .type = Gl::kHalfFloat, .bytes = 2, .halfFloating = true};
+        return {.internalFormat = Gl::kR16f, .format = Gl::kRed, .type = Gl::kHalfFloat, .halfFloating = true};
     case Format::Rg16Float:
-        return {.internalFormat = Gl::kRg16f, .format = Gl::kRg, .type = Gl::kHalfFloat, .bytes = 4, .halfFloating = true};
+        return {.internalFormat = Gl::kRg16f, .format = Gl::kRg, .type = Gl::kHalfFloat, .halfFloating = true};
     case Format::Rgba16Float:
-        return {.internalFormat = Gl::kRgba16f, .type = Gl::kHalfFloat, .bytes = 8, .halfFloating = true};
+        return {.internalFormat = Gl::kRgba16f, .type = Gl::kHalfFloat, .halfFloating = true};
     case Format::R32Float:
-        return {.internalFormat = Gl::kR32f, .format = Gl::kRed, .type = Gl::kFloat, .bytes = 4, .floating = true};
+        return {.internalFormat = Gl::kR32f, .format = Gl::kRed, .type = Gl::kFloat, .floating = true};
     case Format::Rg32Float:
-        return {.internalFormat = Gl::kRg32f, .format = Gl::kRg, .type = Gl::kFloat, .bytes = 8, .floating = true};
+        return {.internalFormat = Gl::kRg32f, .format = Gl::kRg, .type = Gl::kFloat, .floating = true};
     case Format::Rgba32Float:
-        return {.internalFormat = Gl::kRgba32f, .type = Gl::kFloat, .bytes = 16, .floating = true};
+        return {.internalFormat = Gl::kRgba32f, .type = Gl::kFloat, .floating = true};
     case Format::Depth16:
-        return {.internalFormat = Gl::kDepthComponent16, .format = Gl::kDepthComponent, .type = Gl::kUnsignedShort, .bytes = 2, .depth = true};
+        return {.internalFormat = Gl::kDepthComponent16, .format = Gl::kDepthComponent, .type = Gl::kUnsignedShort, .depth = true};
     case Format::Depth32Float:
-        return {.internalFormat = Gl::kDepthComponent32f, .format = Gl::kDepthComponent, .type = Gl::kFloat, .bytes = 4, .depth = true};
+        return {.internalFormat = Gl::kDepthComponent32f, .format = Gl::kDepthComponent, .type = Gl::kFloat, .depth = true};
     case Format::Depth24Stencil8:
-        return {.internalFormat = Gl::kDepth24Stencil8, .format = Gl::kDepthStencil, .type = Gl::kUnsignedInt248, .bytes = 4, .depth = true, .stencil = true};
+        return {.internalFormat = Gl::kDepth24Stencil8, .format = Gl::kDepthStencil, .type = Gl::kUnsignedInt248, .depth = true, .stencil = true};
     case Format::Depth32FloatStencil8:
-        return {.internalFormat = Gl::kDepth32fStencil8, .format = Gl::kDepthStencil, .type = Gl::kFloat32UnsignedInt248Rev, .bytes = 8, .depth = true, .stencil = true};
+        return {.internalFormat = Gl::kDepth32fStencil8, .format = Gl::kDepthStencil, .type = Gl::kFloat32UnsignedInt248Rev, .depth = true, .stencil = true};
+    case Format::Bc1:
+        return {.internalFormat = Gl::kCompressedRgbaS3tcDxt1, .compressed = true};
+    case Format::Bc1Srgb:
+        return {.internalFormat = Gl::kCompressedSrgbAlphaS3tcDxt1, .compressed = true, .srgb = true};
+    case Format::Bc2:
+        return {.internalFormat = Gl::kCompressedRgbaS3tcDxt3, .compressed = true};
+    case Format::Bc2Srgb:
+        return {.internalFormat = Gl::kCompressedSrgbAlphaS3tcDxt3, .compressed = true, .srgb = true};
+    case Format::Bc3:
+        return {.internalFormat = Gl::kCompressedRgbaS3tcDxt5, .compressed = true};
+    case Format::Bc3Srgb:
+        return {.internalFormat = Gl::kCompressedSrgbAlphaS3tcDxt5, .compressed = true, .srgb = true};
+    case Format::Bc4:
+        return {.internalFormat = Gl::kCompressedRedRgtc1, .compressed = true};
+    case Format::Bc4Snorm:
+        return {.internalFormat = Gl::kCompressedSignedRedRgtc1, .compressed = true};
+    case Format::Bc5:
+        return {.internalFormat = Gl::kCompressedRgRgtc2, .compressed = true};
+    case Format::Bc5Snorm:
+        return {.internalFormat = Gl::kCompressedSignedRgRgtc2, .compressed = true};
+    case Format::Bc6hUfloat:
+        return {.internalFormat = Gl::kCompressedRgbBptcUnsignedFloat, .compressed = true};
+    case Format::Bc6hFloat:
+        return {.internalFormat = Gl::kCompressedRgbBptcSignedFloat, .compressed = true};
+    case Format::Bc7:
+        return {.internalFormat = Gl::kCompressedRgbaBptcUnorm, .compressed = true};
+    case Format::Bc7Srgb:
+        return {.internalFormat = Gl::kCompressedSrgbAlphaBptcUnorm, .compressed = true, .srgb = true};
+    case Format::Etc2Rgb8:
+        return {.internalFormat = Gl::kCompressedRgb8Etc2, .compressed = true};
+    case Format::Etc2Rgb8Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Etc2, .compressed = true, .srgb = true};
+    case Format::Etc2Rgb8A1:
+        return {.internalFormat = Gl::kCompressedRgb8PunchthroughAlpha1Etc2, .compressed = true};
+    case Format::Etc2Rgb8A1Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8PunchthroughAlpha1Etc2, .compressed = true, .srgb = true};
+    case Format::Etc2Rgba8:
+        return {.internalFormat = Gl::kCompressedRgba8Etc2Eac, .compressed = true};
+    case Format::Etc2Rgba8Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8Etc2Eac, .compressed = true, .srgb = true};
+    case Format::EacR11:
+        return {.internalFormat = Gl::kCompressedR11Eac, .compressed = true};
+    case Format::EacR11Snorm:
+        return {.internalFormat = Gl::kCompressedSignedR11Eac, .compressed = true};
+    case Format::EacRg11:
+        return {.internalFormat = Gl::kCompressedRg11Eac, .compressed = true};
+    case Format::EacRg11Snorm:
+        return {.internalFormat = Gl::kCompressedSignedRg11Eac, .compressed = true};
+    case Format::Astc4x4:
+    case Format::Astc4x4Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 0, .compressed = true};
+    case Format::Astc4x4Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 0, .compressed = true, .srgb = true};
+    case Format::Astc5x4:
+    case Format::Astc5x4Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 1, .compressed = true};
+    case Format::Astc5x4Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 1, .compressed = true, .srgb = true};
+    case Format::Astc5x5:
+    case Format::Astc5x5Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 2, .compressed = true};
+    case Format::Astc5x5Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 2, .compressed = true, .srgb = true};
+    case Format::Astc6x5:
+    case Format::Astc6x5Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 3, .compressed = true};
+    case Format::Astc6x5Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 3, .compressed = true, .srgb = true};
+    case Format::Astc6x6:
+    case Format::Astc6x6Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 4, .compressed = true};
+    case Format::Astc6x6Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 4, .compressed = true, .srgb = true};
+    case Format::Astc8x5:
+    case Format::Astc8x5Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 5, .compressed = true};
+    case Format::Astc8x5Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 5, .compressed = true, .srgb = true};
+    case Format::Astc8x6:
+    case Format::Astc8x6Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 6, .compressed = true};
+    case Format::Astc8x6Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 6, .compressed = true, .srgb = true};
+    case Format::Astc8x8:
+    case Format::Astc8x8Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 7, .compressed = true};
+    case Format::Astc8x8Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 7, .compressed = true, .srgb = true};
+    case Format::Astc10x5:
+    case Format::Astc10x5Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 8, .compressed = true};
+    case Format::Astc10x5Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 8, .compressed = true, .srgb = true};
+    case Format::Astc10x6:
+    case Format::Astc10x6Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 9, .compressed = true};
+    case Format::Astc10x6Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 9, .compressed = true, .srgb = true};
+    case Format::Astc10x8:
+    case Format::Astc10x8Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 10, .compressed = true};
+    case Format::Astc10x8Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 10, .compressed = true, .srgb = true};
+    case Format::Astc10x10:
+    case Format::Astc10x10Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 11, .compressed = true};
+    case Format::Astc10x10Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 11, .compressed = true, .srgb = true};
+    case Format::Astc12x10:
+    case Format::Astc12x10Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 12, .compressed = true};
+    case Format::Astc12x10Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 12, .compressed = true, .srgb = true};
+    case Format::Astc12x12:
+    case Format::Astc12x12Hdr:
+        return {.internalFormat = Gl::kCompressedRgbaAstcFirst + 13, .compressed = true};
+    case Format::Astc12x12Srgb:
+        return {.internalFormat = Gl::kCompressedSrgb8Alpha8AstcFirst + 13, .compressed = true, .srgb = true};
     }
 
     return {};

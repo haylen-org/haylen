@@ -13,6 +13,7 @@
 
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
+#include "gpu/ImageInfo.hpp"
 #include "gpu/opengl/Context.hpp"
 #include "gpu/opengl/Conversions.hpp"
 #include "gpu/opengl/DebugOutput.hpp"
@@ -177,6 +178,8 @@ class Device final : public gpu::Device {
     void applyDriverIssues();
     void readCapabilities();
     [[nodiscard]] bool isRenderable(const Conversions::Pixel& pixel) const noexcept;
+    [[nodiscard]] bool isSampled(PixelFormat format) const noexcept;
+    [[nodiscard]] bool isStorage(PixelFormat format) const noexcept;
     [[nodiscard]] std::uint8_t getSampleCounts(const Conversions::Pixel& pixel) const;
     [[nodiscard]] Gl::Uint makeRenderbuffer(const ImageDesc& desc, const Conversions::Pixel& pixel);
     [[nodiscard]] Gl::Uint makeTexture(const ImageDesc& desc, const Conversions::Pixel& pixel, Gl::Enum target);
@@ -185,6 +188,7 @@ class Device final : public gpu::Device {
     void uploadImagesFromMemory(std::span<const ImageWrite> writes);
     void uploadImagesThroughRing(std::span<const ImageWrite> writes, std::size_t total);
     void uploadLevel(const ImageRecord& record, int level, std::uintptr_t source);
+    void uploadLayers(const ImageRecord& record, Gl::Enum target, int level, const ImageInfo::Extent& extent, std::uintptr_t source);
     void uploadRegion(const ImageRecord& record, const Region& region, std::uintptr_t source);
     [[nodiscard]] std::size_t getLevelBytes(const ImageRecord& record, int level) const noexcept;
     [[nodiscard]] FramebufferCache::Attachment toAttachment(Image image, int mipLevel, int layer);

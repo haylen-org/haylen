@@ -18,6 +18,7 @@
 
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/HandleTable.hpp"
+#include "gpu/ImageInfo.hpp"
 #include "gpu/webgpu/BindGroupCache.hpp"
 #include "gpu/webgpu/Connection.hpp"
 #include "gpu/webgpu/FrameTimer.hpp"
@@ -215,6 +216,7 @@ class Device final : public gpu::Device {
     };
 
     [[nodiscard]] static Capabilities describeCapabilities(const Connection& connection);
+    [[nodiscard]] static bool hasCompression(const Connection& connection, ImageInfo::Compression compression) noexcept;
     [[nodiscard]] static std::uint64_t alignTo(std::uint64_t value, std::uint64_t alignment) noexcept;
 
     void writeLevel(WGPUTexture texture, int level, int width, int height, int depth, PixelFormat format, std::span<const std::byte> pixels);

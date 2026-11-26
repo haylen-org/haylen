@@ -76,7 +76,7 @@ Device::~Device() {
     }
 }
 
-// WebGPU renders and samples every color format of the RHI, while 32-bit floats filter and blend only with their features, and the depth format with a 32-bit float and stencil exists only with its own. Its attachments take one or four samples, except the 32-bit floats, which WebGPU resolves into no image, so they take one. A cube takes faces as large as a flat image.
+// WebGPU renders and samples every uncompressed color format of the RHI, while 32-bit floats filter and blend only with their features, `Rg11B10Float` renders only with its own, and the depth format with a 32-bit float and stencil exists only with its own. Each family of compressed formats samples with its feature, and WebGPU has no HDR profile of ASTC. Shaders write the storage formats of its core as storage images. Its attachments take one or four samples, except the 32-bit floats, which WebGPU resolves into no image, so they take one. A cube takes faces as large as a flat image.
 gpu::Device::Capabilities Device::describeCapabilities(const Connection& connection) {
     const WGPULimits& limits = connection.getLimits();
     Capabilities result;
@@ -91,18 +91,45 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
     const bool floatBlending = connection.hasFeature(WGPUFeatureName_Float32Blendable);
     const bool floatFiltering = connection.hasFeature(WGPUFeatureName_Float32Filterable);
     const bool depthStencil32 = connection.hasFeature(WGPUFeatureName_Depth32FloatStencil8);
-    for (std::size_t index = 0; index < result.textureFormats.size(); ++index) {
+    const bool packedRenders = connection.hasFeature(WGPUFeatureName_RG11B10UfloatRenderable);
+    for (std::size_t index = 0; index < result.formats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
+        FormatSupport& support = result.formats[index];
+        if (ImageInfo::isCompressed(format)) {
+            support.sample = hasCompression(connection, ImageInfo::getCompression(format));
+            support.filter = support.sample;
+            continue;
+        }
+
         const bool exists = format != PixelFormat::Depth32FloatStencil8 || depthStencil32;
+        const bool renders = exists && (format != PixelFormat::Rg11B10Float || packedRenders);
         const bool wideFloat = format == PixelFormat::R32Float || format == PixelFormat::Rg32Float || format == PixelFormat::Rgba32Float;
-        result.textureFormats[index] = exists;
-        result.renderFormats[index] = exists;
-        result.blendableFormats[index] = !ImageInfo::isDepth(format) && (!wideFloat || floatBlending);
-        result.filterableFormats[index] = !ImageInfo::isDepth(format) && (!wideFloat || floatFiltering);
-        result.sampleCounts[index] = !exists ? std::uint8_t{0} : (wideFloat ? std::uint8_t{1} : std::uint8_t{1 | 4});
+        const bool storage = format == PixelFormat::Rgba8 || format == PixelFormat::Rgba16Float || format == PixelFormat::R32Float || format == PixelFormat::Rg32Float || format == PixelFormat::Rgba32Float;
+        support.sample = exists;
+        support.render = renders;
+        support.blend = renders && !ImageInfo::isDepth(format) && (!wideFloat || floatBlending);
+        support.filter = !ImageInfo::isDepth(format) && (!wideFloat || floatFiltering);
+        support.storage = storage;
+        support.sampleCounts = !renders ? std::uint8_t{0} : (wideFloat ? std::uint8_t{1} : std::uint8_t{1 | 4});
     }
 
     return result;
+}
+
+bool Device::hasCompression(const Connection& connection, ImageInfo::Compression compression) noexcept {
+    switch (compression) {
+    case ImageInfo::Compression::Bc:
+        return connection.hasFeature(WGPUFeatureName_TextureCompressionBC);
+    case ImageInfo::Compression::Etc2:
+        return connection.hasFeature(WGPUFeatureName_TextureCompressionETC2);
+    case ImageInfo::Compression::Astc:
+        return connection.hasFeature(WGPUFeatureName_TextureCompressionASTC);
+    case ImageInfo::Compression::None:
+    case ImageInfo::Compression::AstcHdr:
+        return false;
+    }
+
+    return false;
 }
 
 std::uint64_t Device::alignTo(std::uint64_t value, std::uint64_t alignment) noexcept {
@@ -170,16 +197,22 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     return {buffers.add({.buffer = buffer, .size = static_cast<std::size_t>(descriptor.size)})};
 }
 
+// A compressed level copies whole blocks, so its extent reaches the edge of its last block.
 void Device::writeLevel(WGPUTexture texture, int level, int width, int height, int depth, PixelFormat format, std::span<const std::byte> pixels) {
-    const std::size_t rowBytes = static_cast<std::size_t>(width) * ImageInfo::getBytesPerPixel(format);
-    const std::size_t bytes = rowBytes * static_cast<std::size_t>(height) * static_cast<std::size_t>(depth);
+    const ImageInfo::Block block = ImageInfo::getBlock(format);
+    const std::size_t rowBytes = ImageInfo::getRowBytes(format, width);
+    const int rows = ImageInfo::getRowCount(format, height);
+    const std::size_t bytes = rowBytes * static_cast<std::size_t>(rows) * static_cast<std::size_t>(depth);
     WGPUTexelCopyTextureInfo destination = WGPU_TEXEL_COPY_TEXTURE_INFO_INIT;
     destination.texture = texture;
     destination.mipLevel = static_cast<std::uint32_t>(level);
     WGPUTexelCopyBufferLayout layout = WGPU_TEXEL_COPY_BUFFER_LAYOUT_INIT;
     layout.bytesPerRow = static_cast<std::uint32_t>(rowBytes);
-    layout.rowsPerImage = static_cast<std::uint32_t>(height);
-    const WGPUExtent3D extent{.width = static_cast<std::uint32_t>(width), .height = static_cast<std::uint32_t>(height), .depthOrArrayLayers = static_cast<std::uint32_t>(depth)};
+    layout.rowsPerImage = static_cast<std::uint32_t>(rows);
+    const auto blockWidth = static_cast<std::uint32_t>(block.width);
+    const auto blockHeight = static_cast<std::uint32_t>(block.height);
+    const auto columns = static_cast<std::uint32_t>((width + block.width - 1) / block.width);
+    const WGPUExtent3D extent{.width = columns * blockWidth, .height = static_cast<std::uint32_t>(rows) * blockHeight, .depthOrArrayLayers = static_cast<std::uint32_t>(depth)};
     wgpuQueueWriteTexture(queue, &destination, pixels.data(), bytes, &layout, &extent);
 }
 
@@ -637,7 +670,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
 
         const Region& region = write.region;
         const bool inside = region.x >= 0 && region.y >= 0 && region.width > 0 && region.height > 0 && region.x + region.width <= image.width && region.y + region.height <= image.height;
-        const std::size_t rowBytes = static_cast<std::size_t>(region.width) * ImageInfo::getBytesPerPixel(image.format);
+        const std::size_t rowBytes = ImageInfo::getRowBytes(image.format, region.width);
         if (!inside || write.pixels.size() != rowBytes * static_cast<std::size_t>(region.height)) {
             throw ContractError(ContractError::Rule::ImageWrite);
         }

@@ -2,8 +2,6 @@
 
 #include <dxgiformat.h>
 
-#include <cstddef>
-
 #include "haylen/gpu/Device.hpp"
 
 namespace haylen::gpu::direct3d {
@@ -17,14 +15,12 @@ class Formats final {
     static constexpr DXGI_FORMAT kSwapchainColor = DXGI_FORMAT_B8G8R8A8_UNORM;
     static constexpr PixelFormat kSwapchainColorFormat = PixelFormat::Bgra8;
     static constexpr PixelFormat kSwapchainDepthFormat = PixelFormat::Depth24Stencil8;
-    static constexpr std::size_t kPixelFormatCount = 16;
 
     [[nodiscard]] static DXGI_FORMAT getResourceFormat(PixelFormat format) noexcept;
+
+    // The format that samples the image, which is `DXGI_FORMAT_UNKNOWN` for the ETC2, EAC and ASTC formats that Direct3D has none of, so the devices of Direct3D report them unsupported.
     [[nodiscard]] static DXGI_FORMAT getViewFormat(PixelFormat format) noexcept;
     [[nodiscard]] static DXGI_FORMAT getDepthFormat(PixelFormat format) noexcept;
-    [[nodiscard]] static std::size_t getBytesPerPixel(PixelFormat format) noexcept;
-    [[nodiscard]] static bool isDepth(PixelFormat format) noexcept;
-    [[nodiscard]] static bool hasStencil(PixelFormat format) noexcept;
     [[nodiscard]] static DXGI_FORMAT getVertexFormat(Device::VertexFormat format) noexcept;
     [[nodiscard]] static DXGI_FORMAT getIndexFormat(Device::IndexType type) noexcept;
 };

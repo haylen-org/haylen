@@ -195,8 +195,8 @@ TEST_F(NullDeviceTest, ChecksTheShapeLevelsAndFormatOfImages) {
 // An image, a pipeline and a window take only the sample counts that the capabilities give their formats, and a volume and a cube only the sizes of their own limits.
 TEST_F(NullDeviceTest, ChecksTheSampleCountsAndTheSizesOfEachKindOfImage) {
     Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
-    capabilities.sampleCounts[static_cast<std::size_t>(Device::PixelFormat::R32Float)] = 1;
-    capabilities.sampleCounts[static_cast<std::size_t>(Device::PixelFormat::Depth24Stencil8)] = 1 | 4;
+    capabilities.getFormat(Device::PixelFormat::R32Float).sampleCounts = 1;
+    capabilities.getFormat(Device::PixelFormat::Depth24Stencil8).sampleCounts = 1 | 4;
     capabilities.maxVolumeSize = 16;
     capabilities.maxCubeSize = 32;
     NullDevice device(Device::Language::None, capabilities);
@@ -309,10 +309,39 @@ TEST_F(NullDeviceTest, SamplesNoImageThatThePassResolvesInto) {
     device.commit();
 }
 
+// A block compressed format makes only textures whose sides hold whole blocks and whose levels hold their rows of blocks, never an attachment or a volume, and only on a device that samples it.
+TEST_F(NullDeviceTest, MakesCompressedTexturesOfWholeBlocks) {
+    Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
+    capabilities.getFormat(Device::PixelFormat::Astc6x6).sample = false;
+    NullDevice device(Device::Language::None, capabilities);
+
+    // A level of 8 by 8 pixels holds four blocks of BC7, and its second level of 4 by 4 pixels one block.
+    const std::vector<std::byte> large(64);
+    const std::vector<std::byte> small(16);
+    const std::array<std::span<const std::byte>, 2> levels{large, small};
+    EXPECT_NO_THROW((void)device.makeImage({.width = 8, .height = 8, .mipLevels = 2, .format = Device::PixelFormat::Bc7, .levels = levels, .label = "blocks"}));
+
+    // The levels of an image of ASTC 5x4 round up to whole blocks, down to one block for the levels smaller than a block.
+    const std::vector<std::byte> astc(4 * 16);
+    const std::vector<std::byte> block(16);
+    const std::array<std::span<const std::byte>, 3> astcLevels{astc, block, block};
+    EXPECT_NO_THROW((void)device.makeImage({.width = 10, .height = 8, .mipLevels = 3, .format = Device::PixelFormat::Astc5x4, .levels = astcLevels, .label = "astc"}));
+
+    const std::array<std::span<const std::byte>, 1> one{small};
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 6, .height = 4, .format = Device::PixelFormat::Bc1, .levels = one, .label = "partial"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Bc7, .kind = Device::ImageKind::RenderTarget, .label = "target"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Bc7, .kind = Device::ImageKind::Dynamic, .label = "dynamic"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.type = Device::TextureType::Volume, .width = 4, .height = 4, .format = Device::PixelFormat::Bc7, .levels = one, .label = "volume"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Bc1, .levels = one, .label = "short"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 6, .height = 6, .format = Device::PixelFormat::Astc6x6, .levels = one, .label = "unsupported"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_FALSE(device.getCapabilities().getFormat(Device::PixelFormat::Bc7).render);
+    EXPECT_EQ(device.getCapabilities().getFormat(Device::PixelFormat::Bc7).sampleCounts, 0);
+}
+
 // A slot that filters takes only images of the formats the device filters, and a sampler slot that does not filter takes no sampler with a linear filter, as WebGPU requires.
 TEST_F(NullDeviceTest, FiltersOnlyTheFormatsTheDeviceFilters) {
     NullDevice device;
-    EXPECT_FALSE(device.getCapabilities().filterableFormats[static_cast<std::size_t>(Device::PixelFormat::R32Float)]);
+    EXPECT_FALSE(device.getCapabilities().getFormat(Device::PixelFormat::R32Float).filter);
     const std::array<Device::TextureBinding, 1> filtered{{{.slot = 0}}};
     const std::array<Device::TextureBinding, 1> unfiltered{{{.slot = 0, .sampleType = Device::SampleType::UnfilterableFloat}}};
     const std::array<Device::SamplerBinding, 1> filtering{{{.slot = 0}}};

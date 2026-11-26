@@ -322,6 +322,7 @@ class Device final : public gpu::Device {
     void createFrames();
     [[nodiscard]] void* getRenderDocDevice() const noexcept;
     void fillCapabilities();
+    [[nodiscard]] bool isFeatureEnabled(PixelFormat format) const noexcept;
     [[nodiscard]] std::uint8_t getSampleCounts(VkFormat format, bool depth) const;
     void readDriverIssues();
     void shutdown() noexcept;

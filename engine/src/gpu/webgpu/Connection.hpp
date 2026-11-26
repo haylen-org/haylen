@@ -51,11 +51,8 @@ class Connection final {
 
   private:
     // The optional features that the device turns on where the adapter has them: timing the GPU, filtering and blending 32-bit float images, and the depth format with a 32-bit float and stencil.
-    static constexpr std::array<WGPUFeatureName, 4> kOptionalFeatures{
-        WGPUFeatureName_TimestampQuery,
-        WGPUFeatureName_Float32Filterable,
-        WGPUFeatureName_Float32Blendable,
-        WGPUFeatureName_Depth32FloatStencil8,
+    static constexpr std::array<WGPUFeatureName, 8> kOptionalFeatures{
+        WGPUFeatureName_TimestampQuery, WGPUFeatureName_Float32Filterable, WGPUFeatureName_Float32Blendable, WGPUFeatureName_Depth32FloatStencil8, WGPUFeatureName_RG11B10UfloatRenderable, WGPUFeatureName_TextureCompressionBC, WGPUFeatureName_TextureCompressionETC2, WGPUFeatureName_TextureCompressionASTC,
     };
 
     static std::unique_ptr<Connection> pending;

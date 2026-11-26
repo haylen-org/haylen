@@ -71,6 +71,11 @@ class Context final {
         return dynamicRendering;
     }
 
+    // Whether the device samples the formats of the HDR profile of ASTC.
+    [[nodiscard]] bool hasAstcHdr() const noexcept {
+        return astcHdr;
+    }
+
     [[nodiscard]] bool hasSwapchain() const noexcept {
         return swapchain;
     }
@@ -138,6 +143,7 @@ class Context final {
     std::uint32_t timestampBits = 0;
     VkFormat depthStencilFormat = VK_FORMAT_D24_UNORM_S8_UINT;
     bool dynamicRendering = false;
+    bool astcHdr = false;
     bool swapchain = false;
     bool memoryBudget = false;
     bool debugUtils = false;

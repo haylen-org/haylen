@@ -1,16 +1,17 @@
-#include "gpu/direct3d/PixelConverter.hpp"
+#include "gpu/PixelConverter.hpp"
 
 #include <algorithm>
 #include <bit>
 #include <cmath>
 #include <cstring>
+#include <limits>
 
-#include "gpu/direct3d/Formats.hpp"
+#include "gpu/ImageInfo.hpp"
 
-namespace haylen::gpu::direct3d {
+namespace haylen::gpu {
 
 void PixelConverter::convertRow(Device::PixelFormat format, std::span<const std::byte> row, std::span<std::uint8_t> pixels) noexcept {
-    const std::size_t size = Formats::getBytesPerPixel(format);
+    const std::size_t size = ImageInfo::getRowBytes(format, 1);
     const std::size_t count = std::min(row.size() / size, pixels.size() / 4);
 
     // The formats of 8-bit channels in the order of the result copy whole rows.
@@ -42,6 +43,11 @@ PixelConverter::Channels PixelConverter::read(Device::PixelFormat format, const 
         std::uint32_t packed = 0;
         std::memcpy(&packed, pixel, sizeof(packed));
         return {static_cast<float>(packed & 0x3FFU) / 1023.0F, static_cast<float>((packed >> 10U) & 0x3FFU) / 1023.0F, static_cast<float>((packed >> 20U) & 0x3FFU) / 1023.0F, static_cast<float>(packed >> 30U) / 3.0F};
+    }
+    case PixelFormat::Rg11B10Float: {
+        std::uint32_t packed = 0;
+        std::memcpy(&packed, pixel, sizeof(packed));
+        return {readSmallFloat(packed & 0x7FFU, 6), readSmallFloat((packed >> 11U) & 0x7FFU, 6), readSmallFloat(packed >> 22U, 5), 1.0F};
     }
     case PixelFormat::R16Float:
         return {readHalf(pixel), 0.0F, 0.0F, 1.0F};
@@ -80,6 +86,21 @@ float PixelConverter::readHalf(const std::byte* bytes) noexcept {
     return std::bit_cast<float>(sign | ((exponent + 112U) << 23U) | (fraction << 13U));
 }
 
+// The channels of `Rg11B10Float` are floats without a sign, with five bits of exponent and six or five bits of fraction, which widen like the half floats.
+float PixelConverter::readSmallFloat(std::uint32_t bits, int fractionBits) noexcept {
+    const std::uint32_t exponent = bits >> static_cast<unsigned>(fractionBits);
+    const std::uint32_t fraction = bits & ((1U << static_cast<unsigned>(fractionBits)) - 1U);
+    if (exponent == 0) {
+        return std::ldexp(static_cast<float>(fraction), -14 - fractionBits);
+    }
+
+    if (exponent == 0x1FU) {
+        return fraction == 0 ? std::numeric_limits<float>::infinity() : std::numeric_limits<float>::quiet_NaN();
+    }
+
+    return std::ldexp(1.0F + static_cast<float>(fraction) / static_cast<float>(1U << static_cast<unsigned>(fractionBits)), static_cast<int>(exponent) - 15);
+}
+
 float PixelConverter::readFloat(const std::byte* bytes) noexcept {
     float value = 0.0F;
     std::memcpy(&value, bytes, sizeof(value));
@@ -94,4 +115,4 @@ std::uint8_t PixelConverter::toByte(float value) noexcept {
     return static_cast<std::uint8_t>(std::lround(std::min(value, 1.0F) * 255.0F));
 }
 
-} // namespace haylen::gpu::direct3d
+} // namespace haylen::gpu

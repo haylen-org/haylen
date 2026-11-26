@@ -83,7 +83,7 @@ class Device {
         {"pix", CaptureTool::Pix},
     }};
 
-    // The formats of images. The depth formats belong to depth and stencil attachments, and a device that lacks `Depth24Stencil8` gives `Depth32FloatStencil8` its place.
+    // The formats of images. The depth formats belong to depth and stencil attachments, and a device that lacks `Depth24Stencil8` gives `Depth32FloatStencil8` its place. The block compressed formats of the BC, ETC2, EAC and ASTC families hold blocks of pixels that a device samples as they are, which images take only as textures and never as attachments, and the `Hdr` formats of ASTC hold the blocks of its HDR profile.
     enum class PixelFormat : std::uint8_t {
         R8,
         Rg8,
@@ -91,6 +91,7 @@ class Device {
         Rgba8Srgb,
         Bgra8,
         Rgb10A2,
+        Rg11B10Float,
         R16Float,
         Rg16Float,
         Rgba16Float,
@@ -101,25 +102,78 @@ class Device {
         Depth32Float,
         Depth24Stencil8,
         Depth32FloatStencil8,
+        Bc1,
+        Bc1Srgb,
+        Bc2,
+        Bc2Srgb,
+        Bc3,
+        Bc3Srgb,
+        Bc4,
+        Bc4Snorm,
+        Bc5,
+        Bc5Snorm,
+        Bc6hUfloat,
+        Bc6hFloat,
+        Bc7,
+        Bc7Srgb,
+        Etc2Rgb8,
+        Etc2Rgb8Srgb,
+        Etc2Rgb8A1,
+        Etc2Rgb8A1Srgb,
+        Etc2Rgba8,
+        Etc2Rgba8Srgb,
+        EacR11,
+        EacR11Snorm,
+        EacRg11,
+        EacRg11Snorm,
+        Astc4x4,
+        Astc4x4Srgb,
+        Astc4x4Hdr,
+        Astc5x4,
+        Astc5x4Srgb,
+        Astc5x4Hdr,
+        Astc5x5,
+        Astc5x5Srgb,
+        Astc5x5Hdr,
+        Astc6x5,
+        Astc6x5Srgb,
+        Astc6x5Hdr,
+        Astc6x6,
+        Astc6x6Srgb,
+        Astc6x6Hdr,
+        Astc8x5,
+        Astc8x5Srgb,
+        Astc8x5Hdr,
+        Astc8x6,
+        Astc8x6Srgb,
+        Astc8x6Hdr,
+        Astc8x8,
+        Astc8x8Srgb,
+        Astc8x8Hdr,
+        Astc10x5,
+        Astc10x5Srgb,
+        Astc10x5Hdr,
+        Astc10x6,
+        Astc10x6Srgb,
+        Astc10x6Hdr,
+        Astc10x8,
+        Astc10x8Srgb,
+        Astc10x8Hdr,
+        Astc10x10,
+        Astc10x10Srgb,
+        Astc10x10Hdr,
+        Astc12x10,
+        Astc12x10Srgb,
+        Astc12x10Hdr,
+        Astc12x12,
+        Astc12x12Srgb,
+        Astc12x12Hdr,
     };
 
-    static constexpr std::array<std::pair<std::string_view, PixelFormat>, 16> kPixelFormatNames{{
-        {"r8", PixelFormat::R8},
-        {"rg8", PixelFormat::Rg8},
-        {"rgba8", PixelFormat::Rgba8},
-        {"rgba8Srgb", PixelFormat::Rgba8Srgb},
-        {"bgra8", PixelFormat::Bgra8},
-        {"rgb10A2", PixelFormat::Rgb10A2},
-        {"r16Float", PixelFormat::R16Float},
-        {"rg16Float", PixelFormat::Rg16Float},
-        {"rgba16Float", PixelFormat::Rgba16Float},
-        {"r32Float", PixelFormat::R32Float},
-        {"rg32Float", PixelFormat::Rg32Float},
-        {"rgba32Float", PixelFormat::Rgba32Float},
-        {"depth16", PixelFormat::Depth16},
-        {"depth32Float", PixelFormat::Depth32Float},
-        {"depth24Stencil8", PixelFormat::Depth24Stencil8},
-        {"depth32FloatStencil8", PixelFormat::Depth32FloatStencil8},
+    static constexpr std::size_t kPixelFormatCount = 83;
+
+    static constexpr std::array<std::pair<std::string_view, PixelFormat>, kPixelFormatCount> kPixelFormatNames{{
+        {"r8", PixelFormat::R8}, {"rg8", PixelFormat::Rg8}, {"rgba8", PixelFormat::Rgba8}, {"rgba8Srgb", PixelFormat::Rgba8Srgb}, {"bgra8", PixelFormat::Bgra8}, {"rgb10A2", PixelFormat::Rgb10A2}, {"rg11B10Float", PixelFormat::Rg11B10Float}, {"r16Float", PixelFormat::R16Float}, {"rg16Float", PixelFormat::Rg16Float}, {"rgba16Float", PixelFormat::Rgba16Float}, {"r32Float", PixelFormat::R32Float}, {"rg32Float", PixelFormat::Rg32Float}, {"rgba32Float", PixelFormat::Rgba32Float}, {"depth16", PixelFormat::Depth16}, {"depth32Float", PixelFormat::Depth32Float}, {"depth24Stencil8", PixelFormat::Depth24Stencil8}, {"depth32FloatStencil8", PixelFormat::Depth32FloatStencil8}, {"bc1", PixelFormat::Bc1}, {"bc1Srgb", PixelFormat::Bc1Srgb}, {"bc2", PixelFormat::Bc2}, {"bc2Srgb", PixelFormat::Bc2Srgb}, {"bc3", PixelFormat::Bc3}, {"bc3Srgb", PixelFormat::Bc3Srgb}, {"bc4", PixelFormat::Bc4}, {"bc4Snorm", PixelFormat::Bc4Snorm}, {"bc5", PixelFormat::Bc5}, {"bc5Snorm", PixelFormat::Bc5Snorm}, {"bc6hUfloat", PixelFormat::Bc6hUfloat}, {"bc6hFloat", PixelFormat::Bc6hFloat}, {"bc7", PixelFormat::Bc7}, {"bc7Srgb", PixelFormat::Bc7Srgb}, {"etc2Rgb8", PixelFormat::Etc2Rgb8}, {"etc2Rgb8Srgb", PixelFormat::Etc2Rgb8Srgb}, {"etc2Rgb8A1", PixelFormat::Etc2Rgb8A1}, {"etc2Rgb8A1Srgb", PixelFormat::Etc2Rgb8A1Srgb}, {"etc2Rgba8", PixelFormat::Etc2Rgba8}, {"etc2Rgba8Srgb", PixelFormat::Etc2Rgba8Srgb}, {"eacR11", PixelFormat::EacR11}, {"eacR11Snorm", PixelFormat::EacR11Snorm}, {"eacRg11", PixelFormat::EacRg11}, {"eacRg11Snorm", PixelFormat::EacRg11Snorm}, {"astc4x4", PixelFormat::Astc4x4}, {"astc4x4Srgb", PixelFormat::Astc4x4Srgb}, {"astc4x4Hdr", PixelFormat::Astc4x4Hdr}, {"astc5x4", PixelFormat::Astc5x4}, {"astc5x4Srgb", PixelFormat::Astc5x4Srgb}, {"astc5x4Hdr", PixelFormat::Astc5x4Hdr}, {"astc5x5", PixelFormat::Astc5x5}, {"astc5x5Srgb", PixelFormat::Astc5x5Srgb}, {"astc5x5Hdr", PixelFormat::Astc5x5Hdr}, {"astc6x5", PixelFormat::Astc6x5}, {"astc6x5Srgb", PixelFormat::Astc6x5Srgb}, {"astc6x5Hdr", PixelFormat::Astc6x5Hdr}, {"astc6x6", PixelFormat::Astc6x6}, {"astc6x6Srgb", PixelFormat::Astc6x6Srgb}, {"astc6x6Hdr", PixelFormat::Astc6x6Hdr}, {"astc8x5", PixelFormat::Astc8x5}, {"astc8x5Srgb", PixelFormat::Astc8x5Srgb}, {"astc8x5Hdr", PixelFormat::Astc8x5Hdr}, {"astc8x6", PixelFormat::Astc8x6}, {"astc8x6Srgb", PixelFormat::Astc8x6Srgb}, {"astc8x6Hdr", PixelFormat::Astc8x6Hdr}, {"astc8x8", PixelFormat::Astc8x8}, {"astc8x8Srgb", PixelFormat::Astc8x8Srgb}, {"astc8x8Hdr", PixelFormat::Astc8x8Hdr}, {"astc10x5", PixelFormat::Astc10x5}, {"astc10x5Srgb", PixelFormat::Astc10x5Srgb}, {"astc10x5Hdr", PixelFormat::Astc10x5Hdr}, {"astc10x6", PixelFormat::Astc10x6}, {"astc10x6Srgb", PixelFormat::Astc10x6Srgb}, {"astc10x6Hdr", PixelFormat::Astc10x6Hdr}, {"astc10x8", PixelFormat::Astc10x8}, {"astc10x8Srgb", PixelFormat::Astc10x8Srgb}, {"astc10x8Hdr", PixelFormat::Astc10x8Hdr}, {"astc10x10", PixelFormat::Astc10x10}, {"astc10x10Srgb", PixelFormat::Astc10x10Srgb}, {"astc10x10Hdr", PixelFormat::Astc10x10Hdr}, {"astc12x10", PixelFormat::Astc12x10}, {"astc12x10Srgb", PixelFormat::Astc12x10Srgb}, {"astc12x10Hdr", PixelFormat::Astc12x10Hdr}, {"astc12x12", PixelFormat::Astc12x12}, {"astc12x12Srgb", PixelFormat::Astc12x12Srgb}, {"astc12x12Hdr", PixelFormat::Astc12x12Hdr},
     }};
 
     // The formats of vertex attributes. The normalized and float formats feed float inputs of the shader, and `UByte4`, `Short2` and `UInt` feed integer inputs.
@@ -331,6 +385,16 @@ class Device {
     static constexpr std::size_t kMaxSamplers = 12;
     static constexpr std::size_t kMaxAttributes = 16;
 
+    // What a device does with one pixel format. A texture of the format is made and sampled with `sample`, filtered linearly through texture slots of the type `SampleType::Float` with `filter`, while the others are sampled only through slots of `SampleType::UnfilterableFloat` with samplers of `SamplerType::NonFiltering`, drawn into as a render target or a depth stencil image with `render`, blended into with `blend`, and written by shaders as a storage image with `storage`. The sample counts that its attachments take are bits whose values are the counts, so 5 holds one sample and four, and a multisampled color format also resolves into an image of one sample, while a format that the device does not draw into takes none.
+    struct FormatSupport {
+        bool sample = false;
+        bool filter = false;
+        bool render = false;
+        bool blend = false;
+        bool storage = false;
+        std::uint8_t sampleCounts = 0;
+    };
+
     // What the device and its graphics API can do, which the renderers read instead of the API. A capability that a device lacks is never used by the engine.
     struct Capabilities {
         // The largest side of a flat image and of the layers of an array, the most layers of an array, the largest side and the most slices of a volume, and the largest side of the faces of a cube, in pixels.
@@ -351,20 +415,15 @@ class Device {
         // Whether the device measures the time the GPU takes for each frame.
         bool gpuTiming = false;
 
-        // The formats that images can be made in and sampled, by `PixelFormat`.
-        std::array<bool, 16> textureFormats{};
+        // What the device does with each pixel format, by `PixelFormat`.
+        std::array<FormatSupport, kPixelFormatCount> formats{};
 
-        // The formats that render targets and depth stencil images can be made in and drawn into.
-        std::array<bool, 16> renderFormats{};
-
-        // The color formats that render targets can be drawn into with blending.
-        std::array<bool, 16> blendableFormats{};
-
-        // The color formats that draws can sample with linear filters, through texture slots of the type `SampleType::Float`. The others are sampled only through slots of `SampleType::UnfilterableFloat` with samplers of `SamplerType::NonFiltering`.
-        std::array<bool, 16> filterableFormats{};
-
-        // The sample counts that render targets and depth stencil images of each format take, by `PixelFormat`, as bits whose values are the counts, so 5 holds one sample and four. A multisampled color format also resolves into an image of one sample, and a format that the device does not draw into takes none.
-        std::array<std::uint8_t, 16> sampleCounts{};
+        [[nodiscard]] constexpr const FormatSupport& getFormat(PixelFormat format) const noexcept {
+            return formats[static_cast<std::size_t>(format)];
+        }
+        [[nodiscard]] constexpr FormatSupport& getFormat(PixelFormat format) noexcept {
+            return formats[static_cast<std::size_t>(format)];
+        }
     };
 
     struct BufferDesc {

@@ -1,6 +1,5 @@
 #include "gpu/ImageRules.hpp"
 
-#include <array>
 #include <bit>
 #include <cstddef>
 
@@ -23,7 +22,7 @@ bool ImageRules::takesSamples(const Device::Capabilities& capabilities, Device::
         return false;
     }
 
-    return (capabilities.sampleCounts[static_cast<std::size_t>(format)] & static_cast<unsigned>(sampleCount)) != 0;
+    return (capabilities.getFormat(format).sampleCounts & static_cast<unsigned>(sampleCount)) != 0;
 }
 
 // A flat image and the layers of an array take the largest image, a volume the largest volume along its width, height and slices, and a cube six square faces of the largest cube.
@@ -59,10 +58,17 @@ void ImageRules::checkShape(const Device::ImageDesc& desc, const Device::Capabil
     }
 }
 
-// Depth formats belong to depth stencil images alone, only textures come with pixels, only attachments take samples, a dynamic image is flat with one level, and the format is one the device makes images of that kind in.
+// Depth formats belong to depth stencil images alone, block compressed formats to textures that are no volume and whose sides hold whole blocks, only textures come with pixels, only attachments take samples, a dynamic image is flat with one level, and the format is one the device makes images of that kind in.
 void ImageRules::checkKind(const Device::ImageDesc& desc, const Device::Capabilities& capabilities) {
     if (ImageInfo::isDepth(desc.format) != (desc.kind == Device::ImageKind::DepthStencil)) {
         throw ContractError(ContractError::Rule::Image);
+    }
+
+    if (ImageInfo::isCompressed(desc.format)) {
+        const ImageInfo::Block block = ImageInfo::getBlock(desc.format);
+        if (desc.kind != Device::ImageKind::Texture || desc.type == Device::TextureType::Volume || desc.width % block.width != 0 || desc.height % block.height != 0) {
+            throw ContractError(ContractError::Rule::Image);
+        }
     }
 
     if (desc.kind != Device::ImageKind::Texture && !desc.levels.empty()) {
@@ -78,8 +84,8 @@ void ImageRules::checkKind(const Device::ImageDesc& desc, const Device::Capabili
     }
 
     const bool renders = desc.kind == Device::ImageKind::RenderTarget || desc.kind == Device::ImageKind::DepthStencil;
-    const std::array<bool, 16>& supported = renders ? capabilities.renderFormats : capabilities.textureFormats;
-    if (!supported[static_cast<std::size_t>(desc.format)]) {
+    const Device::FormatSupport& support = capabilities.getFormat(desc.format);
+    if (!(renders ? support.render : support.sample)) {
         throw ContractError(ContractError::Rule::Image);
     }
 }
