@@ -85,6 +85,13 @@ class ExecutionBudget final : public haylen::core::Engine::EntryObserver {
     static inline ExecutionBudget* current = nullptr;
 
     static void onHook(lua_State* L, lua_Debug* ar);
+
+    // Adds the count of the budget to the hooks of the coroutine, or gives it the hook of the budget alone where it has none.
+    static void watch(lua_State* thread);
+
+    // Makes every coroutine of the state look at the budget on every instruction once it ran out, so a coroutine that waited meanwhile raises the error before it runs code of the cancelled app.
+    void watchEveryInstruction(lua_State* L) noexcept;
+    static int watchCoroutines(lua_State* L);
     static int callGuarded(lua_State* L);
     static int finishGuarded(lua_State* L, int status, lua_KContext context);
     static int handleGuarded(lua_State* L);
@@ -125,6 +132,7 @@ class ExecutionBudget final : public haylen::core::Engine::EntryObserver {
     std::string_view entryStage;
     int entries = 0;
     bool exhausted = false;
+    bool walking = false;
     std::string message;
 };
 

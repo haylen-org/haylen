@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <exception>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -14,6 +15,7 @@
 #include "debug/ExecutionBudget.hpp"
 #include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EventBus.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/platform/DevelopmentSession.hpp"
@@ -97,6 +99,39 @@ TEST_F(ExecutionBudgetTest, CannotBeCaughtByProtectedCallsOrCoroutines) {
         runUntilCancelled();
         EXPECT_EQ(error().getCode(), haylen::core::AppError::Code::ExecutionBudget);
     }
+}
+
+// A coroutine that waited while the budget ran out in another one raises the error before its next instruction, so no code of the cancelled app runs in it. The listener is the function of `coroutine.wrap`, which the engine calls without running an instruction of the app first, and which hands the error of the coroutine to the emit.
+TEST_F(ExecutionBudgetTest, StopsTheCoroutinesThatWaitedWhileItRanOut) {
+    // clang-format off
+    start(R"(
+local events = require('haylen.events')
+local resume = coroutine.wrap(function()
+    while true do
+        print('The waiting coroutine ran.')
+        coroutine.yield()
+    end
+end)
+resume()
+events.on('ping', resume)
+require('haylen.scene').push({update = function() while true do end end})
+)");
+    // clang-format on
+    runUntilCancelled();
+
+    std::vector<std::string> lines;
+    const std::uint64_t listener = haylen::core::Log::addListener([&lines](haylen::core::Log::Level, std::string_view line) { lines.emplace_back(line); });
+    std::string raised;
+    try {
+        fixture->engine().getEvents().emit("ping");
+    } catch (const std::exception& failure) {
+        raised = failure.what();
+    }
+    haylen::core::Log::removeListener(listener);
+
+    EXPECT_TRUE(std::ranges::none_of(lines, [](const std::string& line) { return line.find("The waiting coroutine ran.") != std::string::npos; })) << ::testing::PrintToString(lines);
+    EXPECT_NE(raised.find("ran for more than 100 ms in \"update\""), std::string::npos) << raised;
+    EXPECT_EQ(error().getCode(), haylen::core::AppError::Code::ExecutionBudget);
 }
 
 // Lua runs a finalizer with the hooks of its thread off, so the budget runs it in a coroutine of its own, whatever set the metatable and whatever triggers the collection.

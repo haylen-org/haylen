@@ -56,25 +56,14 @@ void ExecutionBudget::attach(lua_State* L, Limits value, Cancel cancel, StageRea
     baseAllocator = lua_getallocf(L, &baseData);
     lua_setallocf(L, &allocate, this);
 
-    // clang-format off
-    const auto add = [](lua_State* thread) {
-        lua_Hook existing = lua_gethook(thread);
-        if (existing == nullptr) {
-            hook(thread);
-            return;
-        }
-
-        lua_sethook(thread, existing, lua_gethookmask(thread) | LUA_MASKCOUNT, kCheckInstructions);
-    };
-    // clang-format on
     lua_State* main = lua::Runtime::getMainThread(L);
-    add(main);
+    watch(main);
 
     if (L != main) {
-        add(L);
+        watch(L);
     }
 
-    ThreadWalk::run(L, add);
+    ThreadWalk::run(L, &watch);
 }
 
 void ExecutionBudget::detach() noexcept {
@@ -113,7 +102,7 @@ void* ExecutionBudget::allocate(void* data, void* block, std::size_t oldSize, st
         budget.refusal.reset();
     }
 
-    if (grows && budget.used - previous + newSize > budget.limits.memory) {
+    if (grows && !budget.walking && budget.used - previous + newSize > budget.limits.memory) {
         if (budget.cancelApp && !budget.memoryExhausted) {
             budget.memoryExhausted = true;
             budget.memoryStage = budget.readCurrentStage();
@@ -155,6 +144,35 @@ void ExecutionBudget::hook(lua_State* L) {
     }
 
     lua_sethook(L, &onHook, LUA_MASKCOUNT, getCount());
+}
+
+void ExecutionBudget::watch(lua_State* thread) {
+    lua_Hook existing = lua_gethook(thread);
+    if (existing == nullptr) {
+        hook(thread);
+        return;
+    }
+
+    lua_sethook(thread, existing, lua_gethookmask(thread) | LUA_MASKCOUNT, getCount());
+}
+
+// The walk takes its memory outside the budget, since that memory belongs to the engine and goes away when the walk ends, so a budget whose memory ran out still reaches every coroutine.
+void ExecutionBudget::watchEveryInstruction(lua_State* L) noexcept {
+    walking = true;
+    lua_pushcfunction(L, &watchCoroutines);
+    const int status = lua_pcall(L, 0, 0, 0);
+    walking = false;
+
+    if (status != LUA_OK) {
+        haylen::core::Log::error("The coroutines of the app whose budget ran out could not all be stopped: {}", lua_tostring(L, -1));
+        lua_pop(L, 1);
+    }
+}
+
+int ExecutionBudget::watchCoroutines(lua_State* L) {
+    watch(lua::Runtime::getMainThread(L));
+    ThreadWalk::run(L, &watch);
+    return 0;
 }
 
 void ExecutionBudget::onHook(lua_State* L, lua_Debug* ar) {
@@ -328,6 +346,8 @@ void ExecutionBudget::cancelForMemory() noexcept {
     } catch (const std::exception& failure) {
         haylen::core::Log::error("The app that ran out of memory could not be cancelled: {}", failure.what());
     }
+
+    watchEveryInstruction(state);
 }
 
 void ExecutionBudget::exhaust(lua_State* L, const std::string& reason, haylen::core::AppError::Code code) {
@@ -348,6 +368,8 @@ void ExecutionBudget::exhaust(lua_State* L, const std::string& reason, haylen::c
     } catch (const std::exception& failure) {
         haylen::core::Log::error("The app whose code ran too long could not be cancelled: {}", failure.what());
     }
+
+    watchEveryInstruction(L);
 }
 
 } // namespace haylen::lua::debug
