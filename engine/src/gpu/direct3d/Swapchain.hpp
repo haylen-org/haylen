@@ -5,7 +5,10 @@
 #include <wrl/client.h>
 #include <wrl/wrappers/corewrappers.h>
 
+#include <array>
+#include <cstddef>
 #include <memory>
+#include <optional>
 #include <type_traits>
 
 #include "haylen/gpu/Surface.hpp"
@@ -28,11 +31,21 @@ class Swapchain final {
     Swapchain(const Swapchain&) = delete;
     Swapchain& operator=(const Swapchain&) = delete;
 
-    // Shows the buffer drawn last, with the result of DXGI, which a lost device fails.
+    // Shows the buffer drawn last, with the result of DXGI, which a lost device fails, and keeps the count of the present with the moment its frame read its input.
     [[nodiscard]] HRESULT present();
 
     // Waits until the display can take another frame, which the device calls once each frame presented, so the next frame reads its input as late as the display allows.
     void waitForFrame() const noexcept;
+
+    // Notes the moment the next frame reads its input, which the device calls as the wait for the display ends.
+    void markInput() noexcept;
+
+    // Reads from the statistics of DXGI when the display showed the frame that it showed last, which gives the age of the input of that frame where the swapchain still keeps its present.
+    void readStatistics() noexcept;
+
+    [[nodiscard]] std::optional<double> getInputAge() const noexcept {
+        return inputAge;
+    }
 
     // Gives the buffers the size of the drawable and shows them at the size of the window, once the device let go of every reference to them.
     [[nodiscard]] HRESULT resize(const Surface::Size& value);
@@ -47,6 +60,15 @@ class Swapchain final {
 
   private:
     using CreateComposition = HRESULT(WINAPI*)(IUnknown*, REFIID, void**);
+
+    // A present by its count, with the ticks of the performance counter when its frame read its input.
+    struct Present {
+        UINT count = 0;
+        LONGLONG inputTicks = 0;
+    };
+
+    // The presents the swapchain keeps, more than the frames that DXGI queues before the display shows them.
+    static constexpr std::size_t kKeptPresents = 8;
 
     // Frees DirectComposition once the objects it made went before it, also when the swapchain fails to compose.
     struct LibraryRelease {
@@ -68,6 +90,11 @@ class Swapchain final {
     bool vsync = true;
     bool tearing = false;
     Surface::Size size;
+    std::array<Present, kKeptPresents> presents{};
+    std::size_t nextPresent = 0;
+    LONGLONG inputTicks = 0;
+    LONGLONG ticksPerSecond = 1;
+    std::optional<double> inputAge;
 };
 
 } // namespace haylen::gpu::direct3d

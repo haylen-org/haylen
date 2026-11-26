@@ -48,6 +48,11 @@ class Swapchain final {
         return drawable;
     }
 
+    // Whether a pass of the frame that records drew the drawable, which its commit then presents.
+    [[nodiscard]] bool isDrawn() const noexcept {
+        return drawn;
+    }
+
     [[nodiscard]] id<MTLTexture> getMultisampleTexture() const noexcept {
         return multisample;
     }

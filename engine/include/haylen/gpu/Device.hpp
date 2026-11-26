@@ -758,6 +758,9 @@ class Device {
     // The seconds the GPU took for the last frame it finished, where the API measures it.
     [[nodiscard]] virtual std::optional<double> getGpuFrameSeconds() const noexcept = 0;
 
+    // The seconds from the moment the platform read the input of the last frame that the window showed, when the wait for the display before that frame returned, until the display showed it, where the graphics API reports when its frames reach the display.
+    [[nodiscard]] virtual std::optional<double> getInputAge() const noexcept = 0;
+
     // Fills `pools` with the pools of the device in the storage it holds, so a reader that keeps the vector allocates nothing once it grew.
     virtual void readPools(std::vector<Pool>& pools) const = 0;
 

@@ -145,7 +145,7 @@ Returns a snapshot of the statistics of the engine as a table. The numbers of re
 
 | Field | Contents |
 | --- | --- |
-| `frame` | `fps`, the frames per second over the recent frames, from the intervals at which the display showed them. The work of the frames in milliseconds: `milliseconds` of the last frame, and `average`, `minimum`, `maximum` and `onePercentLow`, the average of the slowest one percent, over the recent frames. And `fixedSteps` of the current frame. |
+| `frame` | `fps`, the frames per second over the recent frames, from the intervals at which the display showed them. The work of the frames in milliseconds: `milliseconds` of the last frame, and `average`, `minimum`, `maximum` and `onePercentLow`, the average of the slowest one percent, over the recent frames. And `fixedSteps` of the current frame. Where the GPU device reports when the display showed a frame, `inputAge` holds the milliseconds from the moment the platform read the input of the last frame that the window showed until the display showed it, and elsewhere the field is `nil`, as [frame pacing](../graphics/rhi.md#frame-pacing) lists. |
 | `eventLoop` | The last poll of the event loop of Varn: its `budget` in milliseconds, which is a quarter of the frame time between 1 and 8. Then `ran`, whether any job, timer or socket callback ran, and `pending`, whether work remains. And `idle`, the milliseconds that the loop can wait before it has work of its own, which is `0` when the budget ended the poll with work still ready, and `-1` when only sockets, workers or the platform can bring work. |
 | `rendering` | `drawCalls`, `passes`, `canvases`, `sprites`, `instances`, `vertices`, `indices`, `lights`, `occluders`, `shadows`, `textureSwitches` and `uploadedBytes`. |
 | `memory` | Bytes of `lua`, the Lua heap. Estimated bytes of `textures`, of `targets` for render targets, of `batches` for the GPU instance buffers of static sprite batches, of `buffers` for the vertex, index and instance buffers through which the renderer streams sprites, shapes, text and batches every frame, and of `sounds`. And `gpuSpare`, the bytes of memory that the GPU device holds for later beyond what its objects take, such as empty memory blocks and the parts of its upload memory that the last frames left empty, which [`graphics.trim`](graphics.md#graphicstrim) gives back. |
@@ -161,6 +161,9 @@ local timer = require('haylen.timer')
 timer.every(5, function()
     local stats = debug.stats()
     print(string.format('%.0f FPS, 1%% low %.2f ms, Lua %.1f MB', stats.frame.fps, stats.frame.onePercentLow, stats.memory.lua / 1048576))
+    if stats.frame.inputAge then
+        print(string.format('Input reaches the screen after %.1f ms.', stats.frame.inputAge))
+    end
     print(stats.rendering.drawCalls .. ' draw calls, ' .. stats.pools.images.used .. ' of ' .. stats.pools.images.size .. ' images')
     if stats.eventLoop.idle == 0 then
         print(string.format('The event loop left work for the next frame after its budget of %.2f ms.', stats.eventLoop.budget))

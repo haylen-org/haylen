@@ -551,6 +551,10 @@ std::optional<double> Device::getGpuFrameSeconds() const noexcept {
     return state->gpu->getGpuFrameSeconds();
 }
 
+std::optional<double> Device::getInputAge() const noexcept {
+    return state->gpu->getInputAge();
+}
+
 std::string Device::getAdapterName() const {
     return state->gpu->getAdapterName();
 }

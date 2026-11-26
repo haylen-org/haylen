@@ -495,16 +495,36 @@ void Device::commit() {
     Context::check(failure, "present the swapchain of a surface");
 }
 
-// A device whose presents carry ids waits until the display showed the frames that presented, and any other one until the GPU finished the frame before the last, the frame whose slot the next frame takes, so one frame stays on the GPU while the next one records.
+// The swapchains note the moment the wait ends, when the next frame reads its input, for the age of that input.
 void Device::waitForDisplay() {
     if (pass.open) {
         throw ContractError(ContractError::Rule::PassOrder);
     }
 
-    if (!std::exchange(presentedSinceWait, false) || lost) {
-        return;
+    if (std::exchange(presentedSinceWait, false) && !lost) {
+        waitForSurfaces();
     }
 
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain != nullptr && chain->swapchain) {
+            chain->swapchain->readTimings();
+            chain->swapchain->markInput();
+        }
+    }
+}
+
+// The age of the input is the one of the window, whose frames the input of the app reaches.
+std::optional<double> Device::getInputAge() const noexcept {
+    const std::unique_ptr<SurfaceChain>& window = chains.front();
+    if (window == nullptr || !window->swapchain) {
+        return std::nullopt;
+    }
+
+    return window->swapchain->getInputAge();
+}
+
+// A device whose presents carry ids waits until the display showed the frames that presented, and any other one until the GPU finished the frame before the last, the frame whose slot the next frame takes, so one frame stays on the GPU while the next one records.
+void Device::waitForSurfaces() {
     if (context->hasPresentWait()) {
         waitForPresents();
         return;

@@ -11,6 +11,10 @@ namespace haylen::gpu::direct3d {
 using Microsoft::WRL::ComPtr;
 
 Swapchain::Swapchain(IDXGIFactory6& factory, IUnknown& presenter, const Surface& surface) : vsync(surface.vsync), size(surface.size) {
+    LARGE_INTEGER frequency{};
+    QueryPerformanceFrequency(&frequency);
+    ticksPerSecond = frequency.QuadPart;
+
     if (surface.kind != Surface::Kind::Win32 || surface.window == nullptr) {
         throw std::runtime_error("Direct3D draws only into the window of a surface of Windows.");
     }
@@ -88,7 +92,35 @@ void Swapchain::scaleVisual() {
 }
 
 HRESULT Swapchain::present() {
-    return swapchain->Present(vsync ? 1 : 0, !vsync && tearing ? DXGI_PRESENT_ALLOW_TEARING : 0);
+    const HRESULT result = swapchain->Present(vsync ? 1 : 0, !vsync && tearing ? DXGI_PRESENT_ALLOW_TEARING : 0);
+    UINT count = 0;
+    if (SUCCEEDED(result) && SUCCEEDED(swapchain->GetLastPresentCount(&count))) {
+        presents[nextPresent % kKeptPresents] = {.count = count, .inputTicks = inputTicks};
+        ++nextPresent;
+    }
+
+    return result;
+}
+
+void Swapchain::markInput() noexcept {
+    LARGE_INTEGER now{};
+    QueryPerformanceCounter(&now);
+    inputTicks = now.QuadPart;
+}
+
+// DXGI reports no statistics while it shows nothing of the window, such as while the window is minimized, and the age stays the one the display showed last. A present whose frame read no input after a wait for the display gives no age.
+void Swapchain::readStatistics() noexcept {
+    DXGI_FRAME_STATISTICS statistics{};
+    if (FAILED(swapchain->GetFrameStatistics(&statistics))) {
+        return;
+    }
+
+    for (const Present& kept : presents) {
+        if (kept.count == statistics.PresentCount && kept.inputTicks != 0) {
+            inputAge = static_cast<double>(statistics.SyncQPCTime.QuadPart - kept.inputTicks) / static_cast<double>(ticksPerSecond);
+            return;
+        }
+    }
 }
 
 // A wait that runs out lets the frame go on, and the next frame waits again.

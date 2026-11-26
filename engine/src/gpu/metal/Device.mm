@@ -1,6 +1,7 @@
 #include "gpu/metal/Device.hpp"
 
 #import <Metal/Metal.h>
+#import <QuartzCore/CABase.h>
 #import <QuartzCore/CAMetalLayer.h>
 
 #include <algorithm>
@@ -131,6 +132,7 @@ struct Device::Native {
         dispatch_semaphore_t semaphore = dispatch_semaphore_create(kFramesInFlight);
         std::atomic<std::uint64_t> completed = 0;
         std::atomic<double> gpuSeconds = 0.0;
+        std::atomic<double> inputAge = 0.0;
         std::atomic<bool> lost = false;
         std::mutex mutex;
         std::vector<std::string> errors;
@@ -206,9 +208,10 @@ struct Device::Native {
     std::size_t frameSlot = 0;
     bool frameOpen = false;
 
-    // Whether the wait for the display claimed the slot of the next frame, and whether a frame presented since the last wait.
+    // Whether the wait for the display claimed the slot of the next frame, whether a frame presented since the last wait, and the host time in seconds when the last wait returned, when the next frame reads its input.
     bool slotClaimed = false;
     bool presentedSinceWait = false;
+    CFTimeInterval inputTime = 0.0;
     int passes = 0;
     bool imagesWritten = false;
     id<MTLCommandBuffer> commands = nil;
@@ -703,6 +706,11 @@ std::string Device::getAdapterName() const {
 
 std::optional<double> Device::getGpuFrameSeconds() const noexcept {
     const double seconds = native->signals->gpuSeconds.load(std::memory_order_relaxed);
+    return seconds > 0.0 ? std::optional<double>(seconds) : std::nullopt;
+}
+
+std::optional<double> Device::getInputAge() const noexcept {
+    const double seconds = native->signals->inputAge.load(std::memory_order_relaxed);
     return seconds > 0.0 ? std::optional<double>(seconds) : std::nullopt;
 }
 
@@ -1587,6 +1595,24 @@ void Device::commit() {
 
     endPendingPass();
     closeDebugGroups(Native::kCommandBufferGroup);
+
+    // The drawable of the window tells when the display showed it, a time of the same clock as the moment the frame read its input, and a drawable that the display never showed has no time. The drawables of the simulators tell nothing of it.
+#if TARGET_OS_SIMULATOR
+    native->inputTime = 0.0;
+#else
+    const CFTimeInterval input = std::exchange(native->inputTime, 0.0);
+    const std::shared_ptr<Native::Signals> shown = native->signals;
+    if (native->swapchain.isDrawn() && input > 0.0) {
+        // clang-format off
+        [native->swapchain.getDrawable() addPresentedHandler:^(id<MTLDrawable> drawable) {
+            if (drawable.presentedTime > 0.0) {
+                shown->inputAge.store(drawable.presentedTime - input, std::memory_order_relaxed);
+            }
+        }];
+        // clang-format on
+    }
+#endif
+
     native->presentedSinceWait = native->swapchain.present(native->commands) || native->presentedSinceWait;
 
     for (const std::unique_ptr<Swapchain>& chain : native->surfaces) {
@@ -1620,16 +1646,16 @@ void Device::waitForDisplay() {
         native->slotClaimed = true;
     }
 
-    if (!std::exchange(native->presentedSinceWait, false)) {
-        return;
-    }
-
-    native->swapchain.prepare();
-    for (const std::unique_ptr<Swapchain>& chain : native->surfaces) {
-        if (chain != nullptr) {
-            chain->prepare();
+    if (std::exchange(native->presentedSinceWait, false)) {
+        native->swapchain.prepare();
+        for (const std::unique_ptr<Swapchain>& chain : native->surfaces) {
+            if (chain != nullptr) {
+                chain->prepare();
+            }
         }
     }
+
+    native->inputTime = CACurrentMediaTime();
 }
 
 // The objects that wait for frames go once the GPU finished those frames, and all of them once every committed frame finished between frames, since no command buffer records them then.

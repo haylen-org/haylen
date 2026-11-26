@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -20,7 +21,7 @@ namespace haylen::debug {
 // A snapshot of what the engine is doing, which the debug overlay shows and `haylen.debug.stats` returns.
 class Stats final {
   public:
-    // Frame times in milliseconds over the recent frames, where the one percent low is the average of the slowest one percent of them.
+    // Frame times in milliseconds over the recent frames, where the one percent low is the average of the slowest one percent of them, and the age of the input of the last frame that the window showed, where the GPU device reports it.
     struct Frame {
         double fps = 0.0;
         double milliseconds = 0.0;
@@ -29,6 +30,7 @@ class Stats final {
         double maximum = 0.0;
         double onePercentLow = 0.0;
         std::uint32_t fixedSteps = 0;
+        std::optional<double> inputAge;
     };
 
     // Bytes of Lua memory and estimated bytes of GPU and audio memory, where `batches` holds the instance buffers of static sprite batches and `buffers` the vertex, index and instance buffers the renderer streams its batches through every frame.

@@ -83,6 +83,15 @@ class NullDevice final : public Device {
     [[nodiscard]] const Capabilities& getCapabilities() const noexcept override;
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
+
+    // The age of the input that a test sets, since the headless host shows no frame.
+    [[nodiscard]] std::optional<double> getInputAge() const noexcept override {
+        return inputAge;
+    }
+
+    void setInputAge(std::optional<double> seconds) noexcept {
+        inputAge = seconds;
+    }
     void readPools(std::vector<Pool>& pools) const override;
     [[nodiscard]] std::size_t getSpareBytes() const noexcept override {
         return spare;
@@ -299,6 +308,7 @@ class NullDevice final : public Device {
     bool interruptedSincePass = false;
 
     bool lost = false;
+    std::optional<double> inputAge;
 
     // Whether a frame presented since the last wait for the display, and the waits so far.
     bool presentedSinceWait = false;

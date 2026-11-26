@@ -62,6 +62,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] const Capabilities& getCapabilities() const noexcept override;
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
+    [[nodiscard]] std::optional<double> getInputAge() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
     [[nodiscard]] std::size_t getSpareBytes() const noexcept override;
     [[nodiscard]] bool isLost() const noexcept override;
@@ -339,6 +340,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] bool ensureFrame();
     void completeFrame(Frame& frame);
     void pollFrames();
+    void waitForSurfaces();
     void waitForPresents();
     void waitForNextFrame();
     void markLost(VkResult result);

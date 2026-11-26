@@ -49,6 +49,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] const Capabilities& getCapabilities() const noexcept override;
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
+    [[nodiscard]] std::optional<double> getInputAge() const noexcept override;
     void readPools(std::vector<Pool>& pools) const override;
 
     // The rings keep their size, and the copies of their buffers that the driver hands out as they start over belong to the driver, which `trim` asks to give them back, so the device itself holds no spare bytes.

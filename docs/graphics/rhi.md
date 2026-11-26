@@ -161,7 +161,16 @@ The input of a frame reaches the screen as soon as the display allows when the f
 | OpenGL and OpenGL ES | The fence of the frame before the last, since OpenGL tells nothing of when a display shows a frame. |
 | WebGL2 and WebGPU | Nothing. The browser paces the frames of a page by its animation frames, and a page may not wait for the GPU. |
 
-The null device counts the waits, and how many of them followed frames that presented, for the engine tests. The GPU tests measure the age of the input in frames on every device that waits: frames whose GPU work takes far longer than their recording on the CPU present a surface, and once the wait after a frame returns, the GPU finished the frame before it.
+The moment the wait ends is the moment the next frame reads its input, so a device whose graphics API reports when the display showed a frame measures the age of that input on the screen, which `getInputAge` gives for the window and [`debug.stats`](../lua-api/debug.md#debugstats) shows as `frame.inputAge`:
+
+| Device | When the display showed a frame |
+| --- | --- |
+| Metal | The `presentedTime` of the drawable of the window, which its presented handler reads. The drawables of the simulators have no presented handler, so the age is unknown there. |
+| Direct3D 12 and Direct3D 11 | The `SyncQPCTime` of the frame statistics of DXGI, for the present whose count they name. |
+| Vulkan with `VK_GOOGLE_display_timing` on Linux and Android | The `actualPresentTime` of the past presentation timing of the swapchain, on the monotonic clock. |
+| OpenGL, OpenGL ES, WebGL2, WebGPU and Vulkan without it | Unknown, so the age is unknown too. |
+
+The null device counts the waits, and how many of them followed frames that presented, for the engine tests, and takes the age of the input that a test sets with `setInputAge`. The GPU tests measure the age of the input in frames on every device that waits: frames whose GPU work takes far longer than their recording on the CPU present a surface, and once the wait after a frame returns, the GPU finished the frame before it.
 
 `destroy` never frees an object that a frame on the GPU may still use. Metal, Direct3D 12 and Vulkan keep it until the frames that may use it finished. Direct3D 11, OpenGL and WebGPU hand it to their API, which keeps it alive while queued commands use it. The engine itself destroys objects only between frames, through the graveyard of `graphics::Device`, and only on the frame thread.
 

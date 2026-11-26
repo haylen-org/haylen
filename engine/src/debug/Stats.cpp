@@ -4,6 +4,7 @@
 #include <chrono>
 #include <functional>
 #include <numeric>
+#include <optional>
 
 #include "haylen/assets/Manager.hpp"
 #include "haylen/audio/Mixer.hpp"
@@ -26,7 +27,8 @@ const ObjectCounter::Snapshot* Stats::findObject(std::string_view name) const no
 // The slowest frames come first, so the one percent low averages the head of the list.
 void Stats::measureFrames(core::Engine& engine) {
     const Profiler& profiler = engine.getProfiler();
-    frame = {.milliseconds = profiler.getLastFrameMilliseconds(), .fixedSteps = engine.getClock().getFixedStepCount()};
+    const std::optional<double> inputAge = engine.getGraphics().getInputAge();
+    frame = {.milliseconds = profiler.getLastFrameMilliseconds(), .fixedSteps = engine.getClock().getFixedStepCount(), .inputAge = inputAge ? std::optional<double>(*inputAge * 1000.0) : std::nullopt};
     profiler.readFrameHistory(frameTimes);
     if (frameTimes.empty()) {
         return;

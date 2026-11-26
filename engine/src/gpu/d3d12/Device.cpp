@@ -1510,7 +1510,17 @@ void Device::commit() {
     HResult::check(failedPresent, "present the swapchain of a window");
 }
 
-// Every surface that presented waits on its frame latency waitable object, so the platform reads the input of the next frame only once the displays took the frames before it.
+// The age of the input is the one of the window, whose frames the input of the app reaches.
+std::optional<double> Device::getInputAge() const noexcept {
+    const std::unique_ptr<SurfaceChain>& window = chains.front();
+    if (window == nullptr || !window->swapchain) {
+        return std::nullopt;
+    }
+
+    return window->swapchain->getInputAge();
+}
+
+// Every surface that presented waits on its frame latency waitable object, so the platform reads the input of the next frame only once the displays took the frames before it, and the swapchains note that moment for the age of the input.
 void Device::waitForDisplay() {
     if (passOpen) {
         throw ContractError(ContractError::Rule::PassOrder);
@@ -1522,6 +1532,13 @@ void Device::waitForDisplay() {
         }
 
         chain->swapchain->waitForFrame();
+    }
+
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain != nullptr && chain->swapchain) {
+            chain->swapchain->readStatistics();
+            chain->swapchain->markInput();
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <stdexcept>
 #include <utility>
 
@@ -325,18 +326,63 @@ VkResult Swapchain::acquire(std::size_t frame, std::uint64_t timeout, std::uint3
     return context->getFunctions().vkAcquireNextImageKHR(context->getDevice(), handle, timeout, acquired[frame], VK_NULL_HANDLE, &index);
 }
 
+// The id of a present that the device waits for and the id of a present that the display timing follows ride on the present as the extensions of its info.
 VkResult Swapchain::present(std::uint32_t index) {
     VkPresentInfoKHR info{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, .pNext = nullptr, .waitSemaphoreCount = 1, .pWaitSemaphores = &images[index].finished, .swapchainCount = 1, .pSwapchains = &handle, .pImageIndices = &index, .pResults = nullptr};
-    if (!context->hasPresentWait()) {
-        return context->getFunctions().vkQueuePresentKHR(context->getQueue(), &info);
+
+    const bool waits = context->hasPresentWait();
+    if (waits) {
+        ++presentId;
     }
 
-    ++presentId;
     const VkPresentIdKHR id{.sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR, .pNext = nullptr, .swapchainCount = 1, .pPresentIds = &presentId};
-    info.pNext = &id;
+    if (waits) {
+        info.pNext = &id;
+    }
+
+    const bool timed = context->hasDisplayTiming() && inputNanoseconds != 0;
+    if (timed) {
+        ++timingId;
+        timedPresents[timingId % kTimedPresents] = {.id = timingId, .inputNanoseconds = std::exchange(inputNanoseconds, 0)};
+    }
+
+    const VkPresentTimeGOOGLE time{.presentID = timingId, .desiredPresentTime = 0};
+    const VkPresentTimesInfoGOOGLE times{.sType = VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE, .pNext = info.pNext, .swapchainCount = 1, .pTimes = &time};
+    if (timed) {
+        info.pNext = &times;
+    }
+
     const VkResult result = context->getFunctions().vkQueuePresentKHR(context->getQueue(), &info);
-    pendingPresent = result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR ? presentId : 0;
+    const bool queued = result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR;
+    pendingPresent = waits && queued ? presentId : 0;
     return result;
+}
+
+void Swapchain::markInput() noexcept {
+    const auto now = std::chrono::steady_clock::now().time_since_epoch();
+    inputNanoseconds = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(now).count());
+}
+
+// The swapchain hands over only the timings of presents that the display showed since the last read, and those beyond the ones the array holds stay for the next read.
+void Swapchain::readTimings() {
+    if (handle == VK_NULL_HANDLE || !context->hasDisplayTiming()) {
+        return;
+    }
+
+    auto count = static_cast<std::uint32_t>(timings.size());
+    const VkResult read = context->getFunctions().vkGetPastPresentationTimingGOOGLE(context->getDevice(), handle, &count, timings.data());
+    // A swapchain that reports nothing, such as one out of date, keeps the age it had, and its next acquire or present reports what happened to it.
+    if (read != VK_SUCCESS && read != VK_INCOMPLETE) {
+        return;
+    }
+
+    for (std::uint32_t index = 0; index < count; ++index) {
+        const VkPastPresentationTimingGOOGLE& timing = timings[index];
+        const TimedPresent& kept = timedPresents[timing.presentID % kTimedPresents];
+        if (kept.id == timing.presentID && timing.actualPresentTime > kept.inputNanoseconds) {
+            inputAge = static_cast<double>(timing.actualPresentTime - kept.inputNanoseconds) / 1.0e9;
+        }
+    }
 }
 
 VkResult Swapchain::waitForDisplay(std::uint64_t timeout) {

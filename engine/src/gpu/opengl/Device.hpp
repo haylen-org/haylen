@@ -49,6 +49,11 @@ class Device final : public gpu::Device {
     [[nodiscard]] const Capabilities& getCapabilities() const noexcept override;
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
+
+    // OpenGL, OpenGL ES and WebGL2 tell nothing of when a display shows a frame, so the device knows no age of the input.
+    [[nodiscard]] std::optional<double> getInputAge() const noexcept override {
+        return std::nullopt;
+    }
     void readPools(std::vector<Pool>& pools) const override;
     [[nodiscard]] std::size_t getSpareBytes() const noexcept override;
     [[nodiscard]] bool isLost() const noexcept override;

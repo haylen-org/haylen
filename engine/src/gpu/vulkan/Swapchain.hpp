@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -50,6 +52,16 @@ class Swapchain final {
 
     // Waits at most `timeout` nanoseconds until the display shows the image that the swapchain presented last, where the device waits for presents, and gives `VK_TIMEOUT` when the display took longer. A swapchain that presented nothing since the last wait waits for nothing.
     [[nodiscard]] VkResult waitForDisplay(std::uint64_t timeout);
+
+    // Notes the moment the next frame reads its input, on the steady clock, which the device calls as the wait for the display ends.
+    void markInput() noexcept;
+
+    // Reads when the display showed the presents that it showed since the last read, where the swapchain reports it, which gives the age of the input of the last of them.
+    void readTimings();
+
+    [[nodiscard]] std::optional<double> getInputAge() const noexcept {
+        return inputAge;
+    }
 
     [[nodiscard]] VkSemaphore getAcquired(std::size_t frame) const noexcept {
         return acquired[frame];
@@ -180,9 +192,25 @@ class Swapchain final {
     Attachment depth;
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
+    // A present that the display timing follows, with the nanoseconds of the steady clock when its frame read its input.
+    struct TimedPresent {
+        std::uint32_t id = 0;
+        std::uint64_t inputNanoseconds = 0;
+    };
+
+    // The presents that the display timing follows at once, more than the images of any swapchain.
+    static constexpr std::size_t kTimedPresents = 8;
+
     // The id of the last present, which grows with every present of the surface, and the id that the next wait waits for, or 0 when no present waits.
     std::uint64_t presentId = 0;
     std::uint64_t pendingPresent = 0;
+
+    // The presents that the display timing follows, the moment the next frame reads its input and the age of the input of the last present that the display showed.
+    std::array<TimedPresent, kTimedPresents> timedPresents{};
+    std::array<VkPastPresentationTimingGOOGLE, kTimedPresents> timings{};
+    std::uint32_t timingId = 0;
+    std::uint64_t inputNanoseconds = 0;
+    std::optional<double> inputAge;
     int turns = 0;
     bool warnedOpaque = false;
     bool warnedVsync = false;

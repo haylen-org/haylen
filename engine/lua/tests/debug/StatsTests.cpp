@@ -353,6 +353,17 @@ TEST(StatsTest, ReturnsStatisticsToLua) {
     // clang-format on
 }
 
+// The age of the input reaches Lua in milliseconds where the GPU device reports when the display showed a frame, and stays out of the statistics elsewhere.
+TEST(StatsTest, ReturnsTheAgeOfTheInputWhereTheDeviceReportsIt) {
+    test::LuaFixture fixture;
+    fixture.runLua("debugging = require('haylen.debug')");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(debugging.stats().frame.inputAge)"), "nil");
+
+    fixture.host().getGpu().setInputAge(0.0125);
+    EXPECT_EQ(fixture.lua("return string.format('%.1f', debugging.stats().frame.inputAge)"), "12.5");
+}
+
 TEST(StatsTest, PublishesObjectEventsWhenAsked) {
     test::LuaFixture fixture;
     // clang-format off

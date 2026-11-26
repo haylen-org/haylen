@@ -111,6 +111,9 @@ class Device final {
     // The seconds the GPU took for the last frame that it finished, which lags the frame that runs by a frame or two, or nothing where the graphics API does not measure it. Metal measures it, and the other APIs do not.
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept;
 
+    // The seconds from the moment the platform read the input of the last frame that the window showed until the display showed it, or nothing where the graphics API does not report when its frames reach the display. Metal, Direct3D 12, Direct3D 11 and Vulkan with `VK_GOOGLE_display_timing` report it.
+    [[nodiscard]] std::optional<double> getInputAge() const noexcept;
+
     // The name of the GPU the device runs on, as its graphics API reports it: the name of the Metal device, the description of the DXGI adapter behind Direct3D 11, the `GL_RENDERER` string of OpenGL and WebGL 2, and the adapter info of WebGPU. It is empty where the API reports none, such as on the headless host of tests.
     [[nodiscard]] std::string getAdapterName() const;
     [[nodiscard]] int getMaxTextureSize() const noexcept;

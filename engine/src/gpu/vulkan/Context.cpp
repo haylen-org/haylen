@@ -139,6 +139,14 @@ void Context::createDevice() {
         }
     }
 
+    // The display timing of a swapchain tells when the display showed each present on the monotonic clock, which is the steady clock of the engine on Linux and Android alone.
+#if defined(__linux__)
+    displayTiming = swapchain && has(VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME);
+    if (displayTiming) {
+        extensions.push_back(VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME);
+    }
+#endif
+
     memoryBudget = has(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     if (memoryBudget) {
         extensions.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);

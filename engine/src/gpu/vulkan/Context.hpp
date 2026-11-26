@@ -85,6 +85,11 @@ class Context final {
         return presentWait;
     }
 
+    // Whether swapchains report when the display showed each present, through `VK_GOOGLE_display_timing`.
+    [[nodiscard]] bool hasDisplayTiming() const noexcept {
+        return displayTiming;
+    }
+
     // How many bits of a timestamp of the queue count, or none where the queue measures no time.
     [[nodiscard]] std::uint32_t getTimestampBits() const noexcept {
         return timestampBits;
@@ -151,6 +156,7 @@ class Context final {
     bool astcHdr = false;
     bool swapchain = false;
     bool presentWait = false;
+    bool displayTiming = false;
     bool memoryBudget = false;
     bool debugUtils = false;
     // The text of the last name given to an object, kept so naming never allocates once it holds the longest name.

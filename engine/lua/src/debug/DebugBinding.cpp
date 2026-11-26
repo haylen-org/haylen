@@ -182,7 +182,7 @@ int DebugBinding::objectEvents(lua_State* L) {
 void DebugBinding::pushStats(lua_State* L, const haylen::debug::Stats& snapshot) {
     lua_createtable(L, 0, 8);
 
-    lua_createtable(L, 0, 7);
+    lua_createtable(L, 0, 8);
     lua::Stack::push(L, snapshot.frame.fps);
     lua_setfield(L, -2, "fps");
     lua::Stack::push(L, snapshot.frame.milliseconds);
@@ -197,6 +197,11 @@ void DebugBinding::pushStats(lua_State* L, const haylen::debug::Stats& snapshot)
     lua_setfield(L, -2, "onePercentLow");
     lua::Stack::push(L, snapshot.frame.fixedSteps);
     lua_setfield(L, -2, "fixedSteps");
+    if (snapshot.frame.inputAge) {
+        lua::Stack::push(L, *snapshot.frame.inputAge);
+        lua_setfield(L, -2, "inputAge");
+    }
+
     lua_setfield(L, -2, "frame");
 
     lua_createtable(L, 0, 4);

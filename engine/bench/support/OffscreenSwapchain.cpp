@@ -32,6 +32,10 @@ std::optional<double> OffscreenSwapchain::getGpuFrameSeconds() const noexcept {
     return device->getGpuFrameSeconds();
 }
 
+std::optional<double> OffscreenSwapchain::getInputAge() const noexcept {
+    return device->getInputAge();
+}
+
 void OffscreenSwapchain::readPools(std::vector<Pool>& pools) const {
     device->readPools(pools);
 }
