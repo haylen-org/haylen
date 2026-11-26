@@ -1028,7 +1028,18 @@ Ordem do trabalho e dependências entre as fases: primeiro a estabilização do 
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 8
-- **Progress:** Começou no trabalho das convenções e da matemática do 3D, em paralelo com o fim da estabilização, porque é uma adição que não mexe na RHI.
+- **Progress:** A auditoria achou quase tudo pronto, com testes C++, Lua e documentação:
+  - `Vec3`, `Vec4`, `Mat3` e `Mat4`;
+  - `Quat`, com `slerp` e `nlerp`, e `DualQuat`;
+  - `Plane`, `Sphere`, `Ray3D`, `Frustum` e `Transform3D`;
+  - `Box`, `Obb`, `Capsule` e `Triangle`;
+  - as projeções com profundidade invertida e `math::Mat4::DepthRange`.
+
+Nenhuma conversão de convenção fica fora do seu dono. Faltam quatro coisas:
+  - o raio de picking a partir da visão, `Ray3D::fromView`, com o plano distante no infinito;
+  - a tabela de unidades em `docs/3d/coordinates.md`, com a gravidade de 9,81 m/s²;
+  - um teste de que uma matriz espelhada inverte a ordem dos vértices;
+  - a gravidade padrão num lugar só, porque hoje ela se repete em três lugares da engine.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
