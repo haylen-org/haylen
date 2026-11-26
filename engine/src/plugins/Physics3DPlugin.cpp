@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <utility>
 
 #include "3d/physics/jolt/Backend.hpp"
 #include "haylen/core/AppConfig.hpp"
@@ -27,6 +28,16 @@ std::shared_ptr<physics3d::World> Physics3DPlugin::createWorld(const physics3d::
     const std::shared_ptr<physics3d::World> world = std::make_shared<physics3d::World>(settings, backends.getSelected(), &running->getJobs());
     worlds.add(world);
     return world;
+}
+
+std::shared_ptr<const physics3d::Shape> Physics3DPlugin::createShape(const physics3d::Shape::Settings& settings) const {
+    return backends.getSelected().createShape(settings);
+}
+
+// The pools of the engine stop before its plugins, so the backend outlives every shape that builds on them.
+void Physics3DPlugin::createShapeAsync(physics3d::Shape::Settings settings, ShapeCompletion completion) const {
+    const physics3d::Backend& backend = backends.getSelected();
+    running->getJobs().run([&backend, settings = std::move(settings)] { return backend.createShape(settings); }, std::move(completion));
 }
 
 bool Physics3DPlugin::isAnimating() const {

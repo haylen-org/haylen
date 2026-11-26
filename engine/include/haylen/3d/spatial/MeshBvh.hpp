@@ -50,6 +50,14 @@ class MeshBvh final {
         return tree.getDepth();
     }
 
+    // The positions and indices the tree was made with, which other parts of the engine build their own data from, such as the collision shapes of 3D physics.
+    [[nodiscard]] const std::vector<float>& getPositions() const noexcept {
+        return positions;
+    }
+    [[nodiscard]] const std::vector<std::uint32_t>& getIndices() const noexcept {
+        return indices;
+    }
+
     // Returns the box that holds every triangle, or nothing for a mesh without triangles.
     [[nodiscard]] std::optional<math::Box> getBounds() const noexcept {
         return tree.getBounds();

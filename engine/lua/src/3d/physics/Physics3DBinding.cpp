@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "3d/physics/ShapeBinding.hpp"
 #include "3d/physics/WorldBinding.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
@@ -75,11 +76,13 @@ int Physics3DBinding::open(lua_State* L) {
         {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
+    ShapeBinding::addFunctions(L);
     return 1;
 }
 
 void Physics3DBinding::install(lua_State* L) {
     WorldBinding::install(L);
+    ShapeBinding::install(L);
     lua::Binding::preload(L, "haylen.physics3d", &open);
 }
 

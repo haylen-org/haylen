@@ -39,6 +39,11 @@ class BackendRegistryTest : public ::testing::Test {
             return std::make_unique<RecordingSimulation>(record);
         }
 
+      protected:
+        [[nodiscard]] std::shared_ptr<const Shape> buildShape(const Shape::Settings&) const override {
+            throw std::logic_error("The recording backend makes no shapes.");
+        }
+
       private:
         class RecordingSimulation final : public Simulation {
           public:

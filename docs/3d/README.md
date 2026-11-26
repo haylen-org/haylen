@@ -17,5 +17,5 @@ The 3D block holds what builds 3D games and apps, starting with the conventions 
 | Name | Description | Link |
 | --- | --- | --- |
 | `haylen.gltf` | Reading glTF 2.0 files into a read-only document whose objects form one graph of tables, accessors read as float buffers and lists of integers, and images decoded on the frame thread or the task pool. | [`lua-api/gltf.md`](../lua-api/gltf.md) |
-| `haylen.physics3d` | 3D physics worlds in meters with their settings, steps, statistics, state hashes, owners and backends. | [`lua-api/physics3d.md`](../lua-api/physics3d.md) |
+| `haylen.physics3d` | 3D physics worlds in meters with their settings, steps, statistics, state hashes, owners and backends, and the collision shapes of their bodies. | [`lua-api/physics3d.md`](../lua-api/physics3d.md) |
 | `haylen.spatial3d` | Spatial hashes, loose octrees, dynamic AABB trees, bounding volume hierarchies and k-d trees with box, sphere, point, frustum, ray and nearest queries and batches of many objects, the bounding volume hierarchy of a mesh for exact ray casts and closest points, and the walk of the cells of a voxel grid. | [`lua-api/spatial3d.md`](../lua-api/spatial3d.md) |

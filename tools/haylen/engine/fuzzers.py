@@ -18,6 +18,7 @@ class Fuzzers:
         "haylen-font-fuzzer",
         "haylen-gltf-fuzzer",
         "haylen-bitmap-font-fuzzer",
+        "haylen-physics-shape-fuzzer",
     )
     # The folders of test files of the repository that seed the corpus of a fuzzer, which libFuzzer reads without writing to them.
     SEEDS = {"haylen-gltf-fuzzer": ("engine", "tests", "data", "gltf", "content")}

@@ -17,15 +17,6 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 
-namespace haylen::lua {
-
-template <> struct Type<lua::spatial3d::ScriptedMesh> {
-    static constexpr const char* name = "haylen.MeshBvh";
-    using Storage = lua::spatial3d::ScriptedMesh;
-};
-
-} // namespace haylen::lua
-
 namespace haylen::lua::spatial3d {
 
 std::vector<float> MeshBvhBinding::readPositions(lua_State* L, int index) {

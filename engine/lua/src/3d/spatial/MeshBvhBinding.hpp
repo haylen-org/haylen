@@ -6,7 +6,18 @@
 #include <cstdint>
 #include <vector>
 
+#include "3d/spatial/ScriptedMesh.hpp"
 #include "haylen/3d/spatial/MeshBvh.hpp"
+#include "haylen/lua/Type.hpp"
+
+namespace haylen::lua {
+
+template <> struct Type<lua::spatial3d::ScriptedMesh> {
+    static constexpr const char* name = "haylen.MeshBvh";
+    using Storage = lua::spatial3d::ScriptedMesh;
+};
+
+} // namespace haylen::lua
 
 namespace haylen::lua::spatial3d {
 
@@ -18,12 +29,15 @@ class MeshBvhBinding final {
     // Sets `newMeshBvh` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
+    // Reads the positions at the stack index, from a float buffer of three numbers for each vertex or a list of `Vec3` values, which the collision meshes of 3D physics read the same way.
+    [[nodiscard]] static std::vector<float> readPositions(lua_State* L, int index);
+
+    // Reads the optional list of one-based vertices at the stack index, three for each triangle, and returns them counted from zero.
+    [[nodiscard]] static std::vector<std::uint32_t> readIndices(lua_State* L, int index, std::size_t vertexCount);
+
   private:
     // Creates a hierarchy with `newMeshBvh(positions[, indices])`, from a float buffer or a list of `Vec3` values and an optional list of vertices, three for each triangle.
     static int newMeshBvh(lua_State* L);
-    [[nodiscard]] static std::vector<float> readPositions(lua_State* L, int index);
-    // Reads the optional list of one-based vertices at the stack index, three for each triangle, and returns them counted from zero.
-    [[nodiscard]] static std::vector<std::uint32_t> readIndices(lua_State* L, int index, std::size_t vertexCount);
 
     // Reads the one-based triangle at the stack index and returns it counted from zero.
     [[nodiscard]] static std::uint32_t checkTriangle(lua_State* L, const haylen::spatial3d::MeshBvh& mesh, int index);

@@ -1,6 +1,6 @@
 # 🪨 3D physics
 
-This guide explains how 3D physics works in Haylen: what a world is, how it steps, how it uses threads and memory, what its limits do, how a world shows that two runs match, and how a plugin puts another physics engine behind the same API. The [reference of `haylen.physics3d`](../lua-api/physics3d.md) lists every function, option and property.
+This guide explains how 3D physics works in Haylen: what a world is, how it steps, how it uses threads and memory, what its limits do, how a world shows that two runs match, which shapes bodies collide with, and how a plugin puts another physics engine behind the same API. The [reference of `haylen.physics3d`](../lua-api/physics3d.md) lists every function, option and property.
 
 ## Worlds
 
@@ -78,6 +78,77 @@ local hash = world:stateHash()
 ```
 
 Different platforms and builds round some numbers differently, so the hashes of a desktop and a phone may differ. Games that need the same result on every platform send the inputs and the state between the players instead of the inputs alone.
+
+## Shapes
+
+A shape is the form that a body collides with. It is separate from what the app draws, so a detailed model of a crate collides as a plain box and costs little. A shape never changes once it is made. Many bodies share one shape, so a thousand crates hold one box, and a shape lives while a body or a compound holds it.
+
+```lua
+local crate = physics3d.newBox({1, 1, 1})
+local ball = physics3d.newSphere(0.11)
+```
+
+### Choosing a shape
+
+Simple shapes collide the fastest and the steadiest. Pick the simplest shape that fits the object.
+
+| Shape | Suits |
+| --- | --- |
+| Sphere | Balls, marbles, round projectiles. |
+| Box | Crates, walls, floors, buildings seen from far. |
+| Capsule | Characters, which slide over steps and edges, and limbs. |
+| Tapered capsule | Limbs that are thicker at one end, such as the arm of a ragdoll. |
+| Cylinder and tapered cylinder | Barrels, wheels, pillars, buckets. |
+| Convex hull | Rocks, bottles, the simplified form of any convex model. |
+| Triangle mesh | The level, the terrain of a model, buildings that never move. |
+| Heightfield | Terrain made of a grid of heights. |
+| Plane | An endless floor or water level. |
+| Compound | Objects made of parts, such as a chair of boxes or a car of a box and wheels. |
+
+Round shapes stand along `y` around their middle. A body turns its shape, so a wheel is a cylinder on a body turned on its side.
+
+### Solid shapes and surfaces
+
+A sphere, a box, a capsule, a cylinder, a hull and a compound of them have a volume. They take a mass from their density, so a dynamic body moves them by real forces. The density is in kilograms per cubic meter, `1000` by default, the density of water. Wood is about `600`, stone about `2500` and steel about `7800`.
+
+```lua
+local stone = physics3d.newSphere(0.2, {density = 2500})
+print(stone.mass) -- 83.8 kilograms
+```
+
+A triangle mesh, a heightfield and a plane are surfaces without a volume, so they have no mass, and only static and kinematic bodies take them. A dynamic object of a concave form, such as a bowl or a chair, is a compound of convex shapes.
+
+The edges of a box, a cylinder and a hull are rounded by a small convex radius inside their size, `0.05` meters by default, or less for a thin box, such as a wall of two centimeters. The rounding makes their collisions faster and steadier and never grows the shape. A convex radius of 0 keeps the edges sharp.
+
+### Meshes and terrain
+
+A triangle mesh takes its positions and triangles from a `FloatBuffer`, from lists or from a [`MeshBvh`](../lua-api/spatial3d.md) that the app already built for its ray casts. The corners of a triangle run counter-clockwise on its front. Triangles without area are left out, so a mesh exported with a few broken triangles still works.
+
+A heightfield takes a square grid of heights, with the meters between samples and the factor of the heights in its scale. It stores the heights in less memory than a mesh of the same terrain and collides faster. The holes of a heightfield are samples without collision, such as the mouth of a cave.
+
+```lua
+local terrain = physics3d.newHeightField(heights, 129, {scale = {2, 40, 2}, offset = {-128, 0, -128}})
+```
+
+A large mesh or terrain takes time to build. The functions that end in `Async` build it on the task pool and return a promise, so the frames go on while it builds.
+
+```lua
+async.spawn(function()
+    local level = physics3d.newMeshAsync(positions, indices):await()
+end)
+```
+
+### Compounds
+
+A compound joins shapes into one, each child with its position and rotation in the space of the compound. A static compound builds its tree once and suits objects whose parts never change. A mutable compound gives each body that takes it a copy of its own, whose children the body adds, removes and moves while it lives, such as a ship that gains parts.
+
+A scaled shape reuses one shape at another size, and an offset center of mass moves the point a body turns around without moving the shape, such as the low center of mass that keeps a car on its wheels.
+
+```lua
+local car = physics3d.newOffsetCenterOfMass(physics3d.newBox({1.8, 1.2, 4.2}), {0, -0.4, 0})
+```
+
+A shape belongs to the backend that made it, the one that new worlds take, and only the worlds of that backend take it.
 
 ## Backends
 

@@ -220,12 +220,16 @@ set(HAYLEN_ENGINE_SOURCES
   src/3d/gltf/Node.cpp
   src/3d/gltf/Reader.cpp
   src/3d/gltf/UriResolver.cpp
+  src/3d/physics/Backend.cpp
   src/3d/physics/BackendRegistry.cpp
+  src/3d/physics/Shape.cpp
   src/3d/physics/World.cpp
   src/3d/physics/WorldSettings.cpp
   src/3d/physics/jolt/Backend.cpp
   src/3d/physics/jolt/Layers.cpp
   src/3d/physics/jolt/Library.cpp
+  src/3d/physics/jolt/Shape.cpp
+  src/3d/physics/jolt/ShapeBuilder.cpp
   src/3d/physics/jolt/Simulation.cpp
   src/3d/physics/jolt/StateHasher.cpp
   src/3d/physics/jolt/StepAllocator.cpp

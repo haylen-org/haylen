@@ -1,12 +1,15 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string_view>
 
 #include "haylen/3d/physics/BackendRegistry.hpp"
+#include "haylen/3d/physics/Shape.hpp"
 #include "haylen/3d/physics/World.hpp"
 #include "haylen/3d/physics/WorldSettings.hpp"
 #include "haylen/core/Connection.hpp"
+#include "haylen/core/JobSystem.hpp"
 #include "haylen/plugins/LiveObjects.hpp"
 #include "haylen/plugins/Plugin.hpp"
 
@@ -53,6 +56,13 @@ class Physics3DPlugin final : public Plugin {
 
     // Makes a world with the selected backend on the job system of the engine, which the plugin follows while it lives. Throws as `physics3d::World` does.
     [[nodiscard]] std::shared_ptr<physics3d::World> createWorld(const physics3d::WorldSettings& settings);
+
+    // Makes a shape with the selected backend. Throws as `physics3d::Backend::createShape` does.
+    [[nodiscard]] std::shared_ptr<const physics3d::Shape> createShape(const physics3d::Shape::Settings& settings) const;
+
+    // Makes a shape with the selected backend on the task pool, which suits meshes, hulls and heightfields, and hands the shape or the sentence of its failure to the completion on the frame thread.
+    using ShapeCompletion = std::function<void(core::JobSystem::Result<std::shared_ptr<const physics3d::Shape>>)>;
+    void createShapeAsync(physics3d::Shape::Settings settings, ShapeCompletion completion) const;
 
   private:
     core::Engine* running = nullptr;

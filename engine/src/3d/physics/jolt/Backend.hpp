@@ -16,6 +16,9 @@ class Backend final : public physics3d::Backend {
         return kName;
     }
     [[nodiscard]] std::unique_ptr<physics3d::Simulation> createSimulation(const WorldSettings& settings, core::JobSystem* jobs) override;
+
+  protected:
+    [[nodiscard]] std::shared_ptr<const physics3d::Shape> buildShape(const physics3d::Shape::Settings& settings) const override;
 };
 
 } // namespace haylen::physics3d::jolt

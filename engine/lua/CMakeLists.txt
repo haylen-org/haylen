@@ -57,6 +57,7 @@ set(HAYLEN_LUA_SOURCES
   src/2d/tiled/TiledBinding.cpp
   src/3d/gltf/GltfBinding.cpp
   src/3d/physics/Physics3DBinding.cpp
+  src/3d/physics/ShapeBinding.cpp
   src/3d/physics/WorldBinding.cpp
   src/3d/spatial/MeshBvhBinding.cpp
   src/3d/spatial/Spatial3DBinding.cpp
