@@ -9230,8 +9230,6 @@ O KB-343 deixou fixos os nomes de todos os testes parametrizados no CTest. As su
 
 O teste `Navigation3DLuaTest.BakesInTheBackground` falha com o sanitizer de threads do GCC. Um job escreve o `std::unique_ptr` do estado da navmesh em `NavMesh::State::deliverBake` (`engine/src/3d/navigation/NavMeshState.cpp:146`), e outro job lê o mesmo ponteiro em `indexBake` (linha 114). O estado de um bake precisa ter um dono de cada vez, ou passar pela conclusão do job na thread de frame, como dizem as regras de threads do `AGENTS.md`.
 
-Entregue em `cdaeb29de`: o lote 6 passou com clang, GCC e os sanitizers de endereços e de threads, e o teste com o código antigo mostrou a corrida no sanitizer de threads.
-
 #### Acceptance criteria
 
 - [x] A causa é corrigida na raiz, sem uma trava que só esconda a corrida.
