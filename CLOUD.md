@@ -10,7 +10,7 @@
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 08:10 UTC
+Last updated: 2026-11-27 07:35 UTC
 
 ## 🏃 Running Now
 
@@ -88,13 +88,13 @@ Next cloud Mac day: not planned. Card KB-346 prepares it.
 | 🟢 | 🤖 Android | 2026-11-27 03:30 | batch3, the emulator image of CI | KB-055 `304b884d8` | ✅ GPU tests on Vulkan and OpenGL ES | |
 | 🟢 | 🌐 Web | 2026-11-27 03:00 | batch3, headless browsers | KB-055 `304b884d8` | ✅ WebGPU and WebGL2, ✅ web SDK | |
 | 🟢 | 🎮 GPU on Linux | 2026-11-27 03:00 | batch3, lavapipe and llvmpipe | KB-055 `304b884d8` | ✅ Vulkan, ✅ OpenGL | |
-| 🟢 | 🎮 GPU on Windows | 2026-11-27 08:00 | Azure AMD V620, desktop session | KB-350 `fe7b5cf3c` | ✅ Direct3D 11 177, Direct3D 12 178, WARP 177 and 178, none failed | |
+| 🟢 | 🎮 GPU on Windows | 2026-11-27 07:30 | Azure AMD V620, desktop session | KB-350 `fe7b5cf3c` | ✅ Direct3D 11 177, Direct3D 12 178, WARP 177 and 178, none failed | |
 
 ## 📜 Batch Log
 
 | Status | Date (UTC) | Session | Service | Platforms | Machine or devices | Duration | Cost | Jobs and results | Cache hit rate | Deleted and proven |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | 2026-11-27 08:00 | windows-kb355-kb350 | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 97 min over five starts | US$1.05 (estimate) | ✅ KB-355 MSVC with warnings as errors, 3417 tests, paths only of the new folder, ✅ KB-350 Direct3D 11 and 12 on the GPU and WARP with its regression, ✅ KB-356 fix five of five, while main never failed in five runs | 96.1 % | ✅ deallocated, IP and rule removed |
+| 🟢 | 2026-11-27 07:30 | windows-kb355-kb350 | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 97 min over five starts | US$1.05 (estimate) | ✅ KB-355 MSVC with warnings as errors, 3417 tests, paths only of the new folder, ✅ KB-350 Direct3D 11 and 12 on the GPU and WARP with its regression, ✅ KB-356 fix five of five, while main never failed in five runs | 96.1 % | ✅ deallocated, IP and rule removed |
 | 🟢 | 2026-11-27 05:30 | windows-varn-repin | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 55 min over four starts | US$0.60 (estimate) | ✅ gpu-build with the Varn package cache, ✅ Direct3D 11, ✅ Direct3D 12, ✅ Vulkan, ✅ OpenGL, ✅ WARP | | ✅ deallocated, IP and rule removed |
 | 🔴 | 2026-11-27 05:40 | batch5 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 10 min, reclaimed by AWS | US$0.11 (estimate) | ⏳ lost: physics3d and the animation3d node components, rerun on demand in batch5b | | ✅ |
 | 🔴 | 2026-11-27 04:16 | batch4 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 65 min, reclaimed by AWS | US$0.73 (estimate) | ✅ physics3d commits 1 to 7 (clang and gcc), ❌ navigation3d: its new regression test fails on all 32 bakes (clang, gcc, asan), ⏳ lost: physics3d commit 8 and heads, navigation3d tsan, animation3d node components | | ✅ |
