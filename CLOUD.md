@@ -4,7 +4,7 @@ Only the coordinator writes this file. The title and the section titles stay exa
 
 Times are UTC. Each cost says `estimate` (price seen × time) until the billing data arrives, and then `billed`. This file never holds sensitive data: no credentials, keys, tokens, passwords, connection strings, IP addresses, host names, presigned URLs, device serials or UDIDs, personal or customer data, e-mail addresses, account or subscription ids, or private absolute paths. Devices are named by role, accounts by provider and credentials by variable name.
 
-Last updated: 2026-11-27 04:50 UTC
+Last updated: 2026-11-27 05:15 UTC
 
 ## 🚦 Legend
 
@@ -64,7 +64,7 @@ The latest result of each platform, so a broken platform shows even when nothing
 
 | Status | Session | Platform | Machine type | Market | Zone | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | batch4 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | spot | us-east-1c | 2026-11-27 04:16 | 2026-11-27 10:16 | physics3d (8 commits with clang and GCC, sanitizers, fuzzers, web, bench) and the navigation3d bake fix `9bfd40dd1` (clang, GCC, both sanitizers) | US$0.67 | US$0.20 (estimate) |
+| 🟢 | batch4 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | spot | us-east-1c | 2026-11-27 04:16 | 2026-11-27 10:16 | physics3d (8 commits with clang and GCC, sanitizers, fuzzers, web, bench), the navigation3d bake fix `9bfd40dd1` (clang, GCC, both sanitizers) and the animation3d node components `a514fc298` (3 commits with clang and GCC, sanitizers, web SDK), attached 05:14 | US$0.67 | US$0.65 (estimate) |
 
 Market is spot, on-demand or dedicated host. "Ends at" is the shutdown timer, or for a cloud Mac the planned host release (at least 24 hours after allocation).
 
