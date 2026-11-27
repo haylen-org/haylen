@@ -9474,13 +9474,15 @@ Desenho:
 
 Achados cobertos: T-022 (sem as linhas do 3D), T-025 (sem o `.clang-tidy`, que o [KB-375](#kb-375) liga), T-027 e S-036 (o `lateUpdate`), a parte do `lateUpdate` de T-019, F-010, F-027 (sem a categoria `varn`, que vai para o [KB-401](#kb-401)), a parte do README de T-024, P20 e a seção "Weak tests" das regras, e as linhas 7, 8, 9, 11 a 14, 22, 24, 26, 44, 64, 66, 86, 92 a 95, 99, 102 a 105, 114, 117, 123, 125, 126, 130 e 137 das regras.
 
+Andamento: as guardas, os fatos e os docs estão no `main` em `fe0a57b40`, com o lote Linux verde (clang, GCC, format e pytest). Faltam o `REVISAO-GERAL.md`, a sua linha em `.git/info/exclude`, o `__pycache__/` da raiz e a pasta vazia `engine/platform/android/haylen/src/main/kotlin/`, que ficam fora do Git na pasta principal e esperam o dono apagar.
+
 #### Acceptance criteria
 
-- [ ] O `AGENTS.md` e os docs não citam nada que não existe e listam tudo o que existe nos lugares que descrevem.
-- [ ] As guardas novas passam, e os testes de regra mais fortes pegam cada forma da violação num teste do próprio checador.
+- [x] O `AGENTS.md` e os docs não citam nada que não existe e listam tudo o que existe nos lugares que descrevem.
+- [x] As guardas novas passam, e os testes de regra mais fortes pegam cada forma da violação num teste do próprio checador.
 - [ ] O código antigo saiu: o `REVISAO-GERAL.md`, as linhas mortas, o `__pycache__/` e a pasta vazia.
-- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
-- [ ] Um teste do repositório falha em cada regra guardada por este cartão.
+- [x] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [x] Um teste do repositório falha em cada regra guardada por este cartão.
 
 #### Attachments
 
