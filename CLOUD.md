@@ -4,13 +4,13 @@
 
 | Status | Service | Running now | This month | Share | Cost status |
 | --- | --- | --- | --- | --- | --- |
-| 🟢 | 🔶 AWS EC2 | batch5b and batch6 (on-demand) | US$29.30 (estimate) | US$110 | 🟢 |
-| 🟡 | 🔷 Azure | windows-kb355-shared | US$5.65 (estimate) | US$10 | 🟡 |
+| ⚪ | 🔶 AWS EC2 | None | US$43.48 (estimate) | US$110 | 🟢 |
+| ⚪ | 🔷 Azure | None | US$8.07 (maximum estimate) | US$10 | 🟠 |
 | 🟢 | 🏠 Own Machines | The Mac, with the web checks of KB-362 and the full tests of the 3D renderer | No cost | No cost | 🟢 |
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 08:15 UTC
+Last updated: 2026-11-27 11:45 UTC
 
 ## 🏃 Running Now
 
@@ -18,14 +18,13 @@ Last updated: 2026-11-27 08:15 UTC
 
 | Status | Session | Platform | Machine type | Market | Zone | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 12:59, extended for the first wave of the organization cards | physics3d (8 commits, sanitizers, fuzzers, web, bench), the animation3d node components `932f18af5`, the first 3D renderer commits `cd753af65`, the rerun of the shared cache step of KB-355, the first commit of KB-360, the full rerun of KB-355 and KB-356 at `a4ca5b8e3`, KB-361 `24cd1dca1` and the second group of KB-363 `23e0be552` | US$1.50 | US$1.65 (estimate) |
-| 🟠 | batch6 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand | us-east-1 | 2026-11-27 06:05 | 2026-11-27 16:18, extended for the physics3d sweep, now about US$15 instead of the US$10.50 of its estimate | KB-345 and KB-347: Clang, thin LTO and lld on Linux, path maps in every object, about 14 builds without the cache and the link memory measurements, KB-350 `fe7b5cf3c`, the 3D navigation `10f67d769`, the first commit of KB-364 `691dc67bc`, the first commit of KB-363 `31a5762a0` and the physics3d vocabulary sweep with KB-173 and KB-176 to KB-178 (12 commits to `379e678a3`) | US$1.50 | US$1.90 (estimate) |
+| ⚪ | None | | | | | | | | | |
 
 ### 🔷 Azure
 
 | Status | Session | Platform | Machine type | Market | Region | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟡 | windows-kb355-shared | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 (AMD V620) | regular, deallocated between batches | eastus2 | 2026-11-27 07:50 | Within 2 hours | The regression of KB-355 under MSVC in two trees with one cache, the new commits `819ba2dc2` and `a4ca5b8e3` and Direct3D 11 at the head | US$0.64 | starting |
+| ⚪ | None | | | | | | | | | |
 
 ### 🏠 Own Machines
 
@@ -58,12 +57,12 @@ Monthly limit: US$120. Month: 2026-11. Days left in the month: 4.
 
 | Cost status | Service | Share | Spent this month | Figure from | Left | Daily allowance | Projected month end |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | 🔶 AWS EC2 | US$110 (Linux batches US$75, the monthly cloud Mac day US$30, the image US$5) | US$29.10 | Billing data of 2026-11-26 (US$23.85), plus estimates after it | US$80.90 | US$20.20 | US$50 |
-| 🟡 | 🔷 Azure | US$10 | US$5.65 | Estimate, since the usage listing of this subscription returns nothing | US$4.35 | US$1.10 | US$7 |
+| 🟢 | 🔶 AWS EC2 | US$110 (Linux batches US$75, the monthly cloud Mac day US$30, the image US$5) | US$43.28 | Billing data of 2026-11-26 (US$23.85), plus estimates after it | US$66.72 | US$16.68 | US$64.18 |
+| 🟠 | 🔷 Azure | US$10 | US$8.07 (maximum estimate) | Estimate, since the usage listing of this subscription returns nothing | US$1.93 | US$0.48 | US$8.07 |
 | 🟢 | 📱 AWS Device Farm | US$0, any run needs a go | US$0 | | | | US$0 |
 | 🟢 | ⚙️ CI | Public repository | Not measured | | | | |
 | 🟢 | Cache bucket | Inside the shares above | Not measured | | | | |
-| 🟢 | **Total** | US$120 | US$32.80 | | US$87.20 | US$21.80 | US$57 |
+| 🟢 | **Total** | US$120 | US$49.40 | | US$70.60 | US$17.65 | US$73.60 |
 
 ## 🗓️ Planned
 
@@ -94,6 +93,9 @@ Next cloud Mac day: not planned. Card KB-346 prepares it.
 
 | Status | Date (UTC) | Session | Service | Platforms | Machine or devices | Duration | Cost | Jobs and results | Cache hit rate | Deleted and proven |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 🔴 | 2026-11-27 11:42 | batch5b | 🔶 AWS EC2 | 🐧 Linux, 🌐 Web | c8i.8xlarge on-demand | 6 h 8 min | US$9.20 (estimate) | Stopped at the owner's request before the remaining results were collected | | ✅ terminated, no tagged resources left |
+| 🔴 | 2026-11-27 11:42 | batch6 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge on-demand | 5 h 41 min | US$8.53 (estimate) | Stopped at the owner's request before the remaining results were collected | | ✅ terminated, no tagged resources left |
+| 🔴 | 2026-11-27 11:39 | windows-kb355-shared | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 3 h 49 min at most | US$2.42 (maximum estimate) | Stopped at the owner's request before results were collected | | ✅ deallocated, no session IP or rule |
 | 🟢 | 2026-11-27 07:30 | windows-kb355-kb350 | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 97 min over five starts | US$1.05 (estimate) | ✅ KB-355 MSVC with warnings as errors, 3417 tests, paths only of the new folder, ✅ KB-350 Direct3D 11 and 12 on the GPU and WARP with its regression, ✅ KB-356 fix five of five, while main never failed in five runs | 96.1 % | ✅ deallocated, IP and rule removed |
 | 🟢 | 2026-11-27 05:30 | windows-varn-repin | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 55 min over four starts | US$0.60 (estimate) | ✅ gpu-build with the Varn package cache, ✅ Direct3D 11, ✅ Direct3D 12, ✅ Vulkan, ✅ OpenGL, ✅ WARP | | ✅ deallocated, IP and rule removed |
 | 🔴 | 2026-11-27 05:40 | batch5 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 10 min, reclaimed by AWS | US$0.11 (estimate) | ⏳ lost: physics3d and the animation3d node components, rerun on demand in batch5b | | ✅ |
@@ -111,7 +113,7 @@ Next cloud Mac day: not planned. Card KB-346 prepares it.
 | Status | Service | Resource | Kind | Region | Why it is kept | Monthly cost |
 | --- | --- | --- | --- | --- | --- | --- |
 | ⚪ | 🔶 AWS EC2 | haylen-batch-linux-20261126-2037 and its snapshot | Prepared image | us-east-1 | The Linux batch machines start warm from it | US$1 |
-| 🟢 | 🔷 Azure | haylen-batch-windows with its OS disk, NIC, NSG and VNet | Deallocated VM | eastus2 | The Windows GPU batch machine with its toolchains | US$5.90 (the disk) |
+| ⚪ | 🔷 Azure | haylen-batch-windows with its OS disk, NIC, NSG and VNet | Deallocated VM | eastus2 | The Windows GPU batch machine with its toolchains | US$5.90 (the disk) |
 | ⚪ | Cache bucket | haylen-ci on Cloudflare R2 | Bucket | ENAM | The compiler cache and the dependency caches, objects expire after 30 days | Storage plus operations |
 
 ## 📏 Quotas
