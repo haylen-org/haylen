@@ -1,9 +1,9 @@
+import datetime
+import functools
 import json
-import math
 import plistlib
 import re
 import subprocess
-import time
 import zipfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -23,6 +23,7 @@ from haylen.core.tooling_context import ToolingContext
 from haylen.engine.android_ui_tests import AndroidUiTests
 from haylen.engine.device_farm_ui_tests import DeviceFarmUiTests
 from haylen.engine.mac_keyboard import MacKeyboard
+from haylen.engine.ui_test_results import UiTestResults
 from haylen.engine.ui_test_run import UiTestRun
 from haylen.engine.unified_log import UnifiedLog
 from haylen.engine.windows_ui_tests import WindowsUiTests
@@ -35,7 +36,7 @@ from haylen.toolchains.xcodegen import XcodeGen
 
 
 class UiTests:
-    """Runs the UI tests of an app on an iOS, tvOS or visionOS simulator or device, on this Mac as a macOS or a Mac Catalyst app, on Android through `AndroidUiTests`, or on this Windows machine through `WindowsUiTests`: the app builds through the pipeline for the target, and the XCUITest runner of `engine/tests/ui/apple/project.yml` builds with the Swift tests of the folder `ui-tests` of the app and drives the app, taps, clicks, keys, the remote and the system UI included. The runner of the Mac launches the app from the bundle that the run built, since a Mac installs no app for the tests. The run fails on a failed test, and on a simulator also on an error that the engine logged meanwhile. It uninstalls the app and the runner, and shuts down a simulator that it booted."""
+    """Runs the UI tests of an app on an iOS, tvOS or visionOS simulator or device, on this Mac as a macOS or a Mac Catalyst app, on Android through `AndroidUiTests`, or on this Windows machine through `WindowsUiTests`: the app builds through the pipeline for the target, and the XCUITest runner of `engine/tests/ui/apple/project.yml` builds with the Swift tests of the folder `ui-tests` of the app and drives the app, taps, clicks, keys, the remote and the system UI included. The runner of the Mac launches the app from the bundle that the run built, since a Mac installs no app for the tests. The run fails on a failed test, and on a simulator also on an error that the engine logged meanwhile, and a run that fails keeps its results through `UiTestResults`, with the diagnostics of a simulator and a sample of the app at each failure there. It uninstalls the app and the runner, and shuts down a simulator that it booted."""
 
     PROJECT = Repository.ENGINE / "tests" / "ui" / "apple"
     FOLDER = "ui-tests"
@@ -49,6 +50,7 @@ class UiTests:
     # The targets of the apps of this Mac, which the runner of the Mac drives, since a Mac Catalyst app is an app of the Mac too.
     MACS = ("macos", "catalyst")
     MAC_SCHEME = "macOS"
+    MAC_NAME = "this Mac"
     INPUT_SOURCE_FILE = "input-source"
     # The longest that one UI test runs before xcodebuild stops it, so a gesture that the system never finishes fails the test instead of the run waiting forever.
     TEST_SECONDS = 600
@@ -58,8 +60,10 @@ class UiTests:
     ATTACHMENT_NAME = re.compile(r"^(?P<name>.+)_\d+_[0-9A-F-]{36}(?P<extension>\.png)$")
     # The development team in the signature of an app, as "codesign" describes it.
     TEAM = re.compile(r"^TeamIdentifier=(\w+)$", re.MULTILINE)
-    # The file of the unified log of a simulator during a failed run, next to the result bundles of the run.
-    SIMULATOR_LOG = "simulator.log"
+    # The label of the job of an app inside a simulator, which its identifier follows.
+    APP_JOB = "UIKitApplication:"
+    # The seconds that the run samples the app for as a test fails.
+    SAMPLE_SECONDS = 3
     # The preference of the keyboard of an iOS simulator that the run turns off while the tests run and gives back afterwards: that the keyboard of the system shrinks to its bar while a hardware keyboard is attached, since a simulator reports the keyboard of the Mac it runs on as one and the tests type as a person does on a phone.
     KEYBOARD_DOMAIN = "com.apple.keyboard.preferences"
     KEYBOARD_MINIMIZATION = "AutomaticMinimizationEnabled"
@@ -182,34 +186,80 @@ class UiTests:
         return {"app": str(folder), "target": platform, "device": name, "screenshots": str(output)}
 
     def run_on_simulator(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
+        """Runs the tests on a simulator, which keeps the results of a failed run with the diagnostics of the simulator and a sample of the app at each failure."""
         info = plistlib.loads((product.path / "Info.plist").read_bytes())
         scheme, family = UiTests.PLATFORMS[platform]
-        with AppleSimulators(self.context).booted(family, device, IosDevices.of(product.prepared.product.app)) as simulator:
-            udid = simulator["udid"]
-            project = (runner / "HaylenUITests.xcodeproj", scheme, f"id={udid}", runner / "derived")
-            self.context.terminal.step("Building the UI test runner")
-            self.context.process.run(UiTests.command("build-for-testing", *project))
-            self.context.process.run(["xcrun", "simctl", "install", udid, product.path])
-            self.context.terminal.step(f'Running the UI tests on the simulator "{simulator["name"]}"')
-            phone = family == "iOS"
-            minimization = self.keyboard_minimization(udid) if phone else None
+        simulators = AppleSimulators(self.context)
+        simulator = simulators.find(family, device, IosDevices.of(product.prepared.product.app))
+        results = UiTestResults(runner, platform, simulator["name"], classes, datetime.datetime.now())
+        try:
+            with simulators.use(simulator, family, results.folder):
+                self.run_tests_on_simulator(product, info, simulator, scheme, runner, results, classes)
+        except BuildFailed as error:
+            results.keep(error, self.context.terminal)
+            raise
+        results.discard()
+        return simulator["name"]
+
+    def run_tests_on_simulator(self, product: BuildProduct, info: dict, simulator: dict, scheme: str, runner: Path, results: UiTestResults, classes: Sequence[str]) -> None:
+        udid = simulator["udid"]
+        project = (runner / "HaylenUITests.xcodeproj", scheme, f"id={udid}", runner / "derived")
+        self.context.terminal.step("Building the UI test runner")
+        self.context.process.run(UiTests.command("build-for-testing", *project))
+        self.context.process.run(["xcrun", "simctl", "install", udid, product.path])
+        self.context.terminal.step(f'Running the UI tests on the simulator "{simulator["name"]}"')
+        phone = scheme == "iOS"
+        minimization = self.keyboard_minimization(udid) if phone else None
+        if phone:
+            self.set_keyboard_minimization(udid, False)
+
+        answer = functools.partial(self.answer_on_simulator, results, udid, info["CFBundleIdentifier"])
+        try:
+            with UnifiedLog(self.context.terminal, info["CFBundleExecutable"], ["xcrun", "simctl", "spawn", udid]) as errors:
+                UiTestRun(self.context.terminal, answer=answer).run(UiTests.command("test-without-building", *project, classes, results.bundle), self.context.environment)
+        finally:
             if phone:
-                self.set_keyboard_minimization(udid, False)
-            started = time.monotonic()
-            try:
-                with UnifiedLog(self.context.terminal, info["CFBundleExecutable"], ["xcrun", "simctl", "spawn", udid]) as errors:
-                    UiTestRun(self.context.terminal).run(UiTests.command("test-without-building", *project, classes), self.context.environment)
-            except BuildFailed:
-                self.keep_simulator_log(udid, time.monotonic() - started, runner / "derived" / "Logs" / "Test")
-                raise
-            finally:
-                if phone:
-                    self.set_keyboard_minimization(udid, minimization)
-                for identifier in (info["CFBundleIdentifier"], UiTests.RUNNER):
-                    subprocess.run(["xcrun", "simctl", "uninstall", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+                self.set_keyboard_minimization(udid, minimization)
+            for identifier in (info["CFBundleIdentifier"], UiTests.RUNNER):
+                subprocess.run(["xcrun", "simctl", "uninstall", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         if errors:
             raise BuildFailed(f"The UI tests passed, but the engine logged {len(errors)} errors meanwhile, the first being: {errors[0]}")
-        return simulator["name"]
+
+    def answer_on_simulator(self, results: UiTestResults, udid: str, identifier: str, line: str) -> None:
+        """Keeps the test that a line of the run ends as failed, and samples the app when a line reports a failure as it happens."""
+        results.record(line)
+        if UiTestResults.FAILURE.search(line):
+            self.sample_app(udid, identifier, results.folder)
+
+    @staticmethod
+    def answer_on_mac(results: UiTestResults, keyboard: MacKeyboard, line: str) -> None:
+        """Keeps the test that a line of the run ends as failed, and answers the requests of the tests for the keyboard of the Mac."""
+        results.record(line)
+        keyboard.answer(line)
+
+    @staticmethod
+    def app_process(listing: str, identifier: str) -> int | None:
+        """The process of an app in what "launchctl list" writes inside a simulator, where the job of an app takes a label that starts with its identifier, or None when the app does not run."""
+        for line in listing.splitlines():
+            fields = line.split("\t")
+            if len(fields) == 3 and fields[0].isdigit() and fields[2].startswith(f"{UiTests.APP_JOB}{identifier}["):
+                return int(fields[0])
+        return None
+
+    def sample_app(self, udid: str, identifier: str, folder: Path) -> None:
+        """Samples the threads of the app on a simulator as a test fails, while the app is still in the state that failed it, so a frame thread that stopped shows where it waits. The processes of a simulator run on the Mac, which samples them."""
+        _, listing = self.context.process.attempt(["xcrun", "simctl", "spawn", udid, "launchctl", "list"])
+        pid = UiTests.app_process(listing.decode("utf-8", errors="replace"), identifier)
+        if pid is None:
+            self.context.terminal.info("The app was not running when the test failed, so the run took no sample of it.")
+            return
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f"sample-{len(list(folder.glob('sample-*.txt'))) + 1}.txt"
+        code, _ = self.context.process.attempt(["sample", str(pid), str(UiTests.SAMPLE_SECONDS), "-file", str(path)])
+        if code != 0:
+            self.context.terminal.warning(f'The app could not be sampled as the test failed, since "sample" failed with exit code {code}.')
+            return
+        self.context.terminal.info(f"The sample of the app as the test failed is in `{Repository.shown(path)}`.")
 
     def keyboard_minimization(self, udid: str) -> bool | None:
         """The value of the preference that shrinks the keyboard of an iOS simulator while a hardware keyboard is attached, or None when the simulator has none."""
@@ -226,20 +276,6 @@ class UiTests:
             command += ["write", UiTests.KEYBOARD_DOMAIN, UiTests.KEYBOARD_MINIMIZATION, "-bool", "YES" if value else "NO"]
         self.context.process.run(command)
 
-    @staticmethod
-    def log_command(udid: str, seconds: float) -> list[str]:
-        """The command that writes the unified log of a simulator over the last whole minutes that cover a run of that many seconds."""
-        minutes = math.ceil(seconds / 60) + 1
-        return ["xcrun", "simctl", "spawn", udid, "log", "show", "--last", f"{minutes}m", "--style", "compact"]
-
-    def keep_simulator_log(self, udid: str, seconds: float, folder: Path) -> None:
-        """Keeps the unified log of the simulator during a failed run next to the result bundles of the run, so a run on a machine that nobody watches, such as continuous integration, tells what the system did meanwhile, such as an answer of a daemon that never came."""
-        folder.mkdir(parents=True, exist_ok=True)
-        path = folder / UiTests.SIMULATOR_LOG
-        with path.open("w", encoding="utf-8") as output:
-            subprocess.run(UiTests.log_command(udid, seconds), stdout=output, stderr=subprocess.STDOUT, check=False)
-        self.context.terminal.info(f"The log of the simulator during the UI tests is in `{Repository.shown(path)}`.")
-
     def run_on_mac(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
         """Runs the tests on this Mac. The runner launches the app from the bundle that the run built and ends it after each test, so nothing installs or stays. Its clicks and keys reach the app in front, so the Mac runs nothing else meanwhile, such as on a runner of continuous integration, and the run holds the keys and selects the input sources that a test asks for through `MacKeyboard`, and gives the Mac back its input sources as the run ends. The runner of the Mac runs in a sandbox that writes nowhere outside its container, so its screenshots are attachments of the result bundle of the run, which the run exports into the folder of the screenshots, also when the tests failed."""
         if device is not None:
@@ -248,18 +284,22 @@ class UiTests:
         self.context.terminal.step("Building the UI test runner of the Mac")
         self.context.process.run(UiTests.command("build-for-testing", *project))
         self.context.terminal.step(f'Running the UI tests of "{product.prepared.product.app.name}" on this Mac')
-        results = runner / "derived" / "Logs" / "Test" / f"{platform}.xcresult"
-        Folders.remove(results)
+        results = UiTestResults(runner, platform, UiTests.MAC_NAME, classes, datetime.datetime.now())
         attachments = runner / "attachments"
         keyboard = MacKeyboard(UiTests.input_source_file(runner))
+
+        answer = functools.partial(UiTests.answer_on_mac, results, keyboard)
         try:
-            UiTestRun(self.context.terminal, answer=keyboard.answer).run(UiTests.command("test-without-building", *project, classes, results), self.context.environment)
-        except BaseException:
-            self.clean_up_failed_mac_run(keyboard, results, attachments, output)
+            UiTestRun(self.context.terminal, answer=answer).run(UiTests.command("test-without-building", *project, classes, results.bundle), self.context.environment)
+        except BaseException as error:
+            self.clean_up_failed_mac_run(keyboard, results.bundle, attachments, output)
+            if isinstance(error, BuildFailed):
+                results.keep(error, self.context.terminal)
             raise
         keyboard.restore()
-        self.export_screenshots(results, attachments, output)
-        return "this Mac"
+        self.export_screenshots(results.bundle, attachments, output)
+        results.discard()
+        return UiTests.MAC_NAME
 
     def clean_up_failed_mac_run(self, keyboard: MacKeyboard, results: Path, attachments: Path, output: Path) -> None:
         """Gives the Mac back its input sources and exports the screenshots of a run that failed or stopped, the screenshots only when the runner wrote a result bundle. What fails here only warns, so the failure of the run stays its error, and the screenshots stay in the result bundle."""
@@ -305,13 +345,18 @@ class UiTests:
         self.context.terminal.step(f'Installing the app on "{target.name}"')
         self.context.process.run([*devicectl, "install", "app", "--device", target.identifier, product.path])
         self.context.terminal.step(f'Running the UI tests on "{target.name}"')
+        results = UiTestResults(runner, platform, target.name, classes, datetime.datetime.now())
         try:
-            UiTestRun(self.context.terminal).run(UiTests.command("test-without-building", *project, classes), self.context.environment)
+            UiTestRun(self.context.terminal, answer=results.record).run(UiTests.command("test-without-building", *project, classes, results.bundle), self.context.environment)
+        except BuildFailed as error:
+            results.keep(error, self.context.terminal)
+            raise
         finally:
             copy = [*devicectl, "copy", "from", "--device", target.identifier, "--domain-type", "appDataContainer", "--domain-identifier", UiTests.RUNNER]
             subprocess.run([*copy, "--source", UiTests.DEVICE_OUTPUT, "--destination", str(output)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
             for identifier in (info["CFBundleIdentifier"], UiTests.RUNNER):
                 subprocess.run([*devicectl, "uninstall", "app", "--device", target.identifier, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        results.discard()
         return target.name
 
     def run_on_farm(self, product: BuildProduct, runner: Path, devices: Sequence[str], output: Path) -> dict[str, object]:

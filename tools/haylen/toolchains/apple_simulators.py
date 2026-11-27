@@ -3,11 +3,13 @@ import json
 import math
 import time
 from collections.abc import Iterator
+from pathlib import Path
 
 from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.tooling_context import ToolingContext
 from haylen.platforms.apple.ios_devices import IosDevices
+from haylen.toolchains.simulator_diagnostics import SimulatorDiagnostics
 
 
 class AppleSimulators:
@@ -59,11 +61,22 @@ class AppleSimulators:
         first = [device for device in fitting if AppleSimulators.device_kind(device) == devices[0]]
         return ([device for device in booted if device in fitting] or first or candidates)[0]
 
+    def state(self, udid: str) -> str | None:
+        """The state of a simulator, such as "Booted" or "Shutdown", or None when the Mac no longer lists it."""
+        devices = json.loads(self.context.process.capture(["xcrun", "simctl", "list", "devices", "--json"]))["devices"]
+        return next((device["state"] for entries in devices.values() for device in entries if device["udid"] == udid), None)
+
     @contextlib.contextmanager
     def booted(self, family: str, requested: str | None, devices: tuple[str, ...] = IosDevices.DEFAULT) -> Iterator[dict]:
-        """Yields a simulator of the devices of the app that runs: one that was booted already, or one that it boots without a window and shuts down afterwards. An iOS simulator that it boots is ready once its notification center loaded its apps."""
-        simulator = self.find(family, requested, devices)
+        """Yields a simulator of the devices of the app that runs, as `use` does with the simulator that `find` picks."""
+        with self.use(self.find(family, requested, devices), family) as simulator:
+            yield simulator
+
+    @contextlib.contextmanager
+    def use(self, simulator: dict, family: str, diagnostics: Path | None = None) -> Iterator[dict]:
+        """Yields a simulator that was booted already, or one that it boots without a window and shuts down afterwards unless it stopped meanwhile. An iOS simulator that it boots is ready once its notification center loaded its apps. A run that fails while it boots, waits or runs keeps the diagnostics of the simulator in the folder that `diagnostics` names."""
         booted = simulator["state"] == "Booted"
+        kept = SimulatorDiagnostics(self.context, simulator)
         started = time.monotonic()
         if not booted:
             self.context.terminal.step(f'Booting the simulator "{simulator["name"]}" without a window')
@@ -75,8 +88,13 @@ class AppleSimulators:
                 if family == "iOS":
                     self.wait_for_notification_center(simulator, started)
             yield simulator
+        except BuildFailed:
+            if diagnostics is not None:
+                kept.keep(diagnostics, self.state(simulator["udid"]))
+            raise
         finally:
-            if not booted:
+            # A simulator that stopped on its own is not shut down again, so the failure that its stop caused stays the error of the run.
+            if not booted and self.state(simulator["udid"]) not in (None, "Shutdown"):
                 self.context.process.run(["xcrun", "simctl", "shutdown", simulator["udid"]])
 
     @staticmethod
@@ -86,12 +104,30 @@ class AppleSimulators:
         return ["xcrun", "simctl", "spawn", udid, "log", "show", "--last", f"{minutes}m", "--style", "compact", "--predicate", AppleSimulators.NOTIFICATION_SOURCES]
 
     def wait_for_notification_center(self, simulator: dict, started: float) -> None:
-        """Waits until the notification center of an iOS simulator that just booted loaded its apps, so the apps that install afterwards become apps that it shows notifications of."""
+        """Waits until the notification center of an iOS simulator that just booted loaded its apps, so the apps that install afterwards become apps that it shows notifications of. A wait that ends before says why, with the state of the simulator."""
         self.context.terminal.step(f'Waiting for the notification center of "{simulator["name"]}"')
+        name = simulator["name"]
         deadline = started + AppleSimulators.NOTIFICATION_SECONDS
-        while "initialLoad=1" not in self.context.process.capture(AppleSimulators.log_command(simulator["udid"], time.monotonic() - started)):
+        while True:
+            try:
+                report = self.context.process.capture(AppleSimulators.log_command(simulator["udid"], time.monotonic() - started))
+            except BuildFailed as error:
+                waited = round(time.monotonic() - started)
+                state = self.state(simulator["udid"])
+                if state != "Booted":
+                    listed = "the Mac no longer lists it" if state is None else f'the Mac lists it as "{state}"'
+                    raise BuildFailed(
+                        f'The simulator "{name}" stopped {waited} seconds after its boot, while the run waited for its notification center, and {listed}. Run the command again, which boots it again.',
+                        details=error.details,
+                    ) from error
+                raise BuildFailed(
+                    f'The unified log of the simulator "{name}" could not be read {waited} seconds after its boot, while the run waited for its notification center, and the simulator is "{state}".',
+                    details=error.details,
+                ) from error
+            if "initialLoad=1" in report:
+                return
             if time.monotonic() > deadline:
                 raise BuildFailed(
-                    f'The notification center of the simulator "{simulator["name"]}" did not load its apps within {AppleSimulators.NOTIFICATION_SECONDS // 60} minutes of the boot, so an app that installs now would never show a notification. Restart the simulator and run the command again.'
+                    f'The notification center of the simulator "{name}" did not load its apps within {AppleSimulators.NOTIFICATION_SECONDS // 60} minutes of the boot, so an app that installs now would never show a notification. The simulator is "{self.state(simulator["udid"])}". Restart the simulator and run the command again.'
                 )
             time.sleep(AppleSimulators.POLL_SECONDS)

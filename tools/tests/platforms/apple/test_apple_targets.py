@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +13,7 @@ from haylen.platforms.apple.apple_targets import AppleTargets
 from haylen.platforms.apple.splash_catalog import SplashCatalog
 from haylen.toolchains.apple_sdk import AppleSdk
 from haylen.toolchains.apple_simulators import AppleSimulators
+from haylen.toolchains.simulator_diagnostics import SimulatorDiagnostics
 from tests.platforms.apple.apple_fixture import AppleFixture
 from tests.support.recorded_commands import RecordedCommands
 
@@ -65,27 +67,44 @@ class AppleTargetsTest:
         with pytest.raises(UnsupportedTarget, match='"xcodebuild -downloadPlatform visionOS"'):
             AppleSimulators(recorded.context).find("xrOS", None)
 
-    def test_a_simulator_that_is_off_boots_then_waits_and_shuts_down_afterwards(self, tmp_path):
+    @staticmethod
+    def simulator(tmp_path, monkeypatch, report: str, stops: bool = False, stopped: dict[str, bool] | None = None) -> RecordedCommands:
+        """Commands of a phone simulator that is off until it boots, and with `stops` shuts down by itself after its boot, so reading its log fails, as a runner of CI showed, or shuts down once `stopped` says so. The diagnostics of the simulator read the folders of this test instead of those of the Mac."""
+        monkeypatch.setattr(SimulatorDiagnostics, "SERVICE_LOG", tmp_path / "CoreSimulator.log")
+        monkeypatch.setattr(SimulatorDiagnostics, "CRASH_REPORTS", tmp_path / "DiagnosticReports")
+        recorded: RecordedCommands | None = None
+
+        def answer(command):
+            running = ["xcrun", "simctl", "boot", "PHONE"] in recorded.commands and not stops and not (stopped or {}).get("now", False)
+            if command[0] == "log":
+                return "The log of the store of the simulator."
+            if "log" in command:
+                if not running:
+                    raise BuildFailed('The command "xcrun" failed with exit code 149.', details="Unable to lookup in current state: Shutdown")
+                return report
+            phone = {"udid": "PHONE", "name": "iPhone 18 Pro", "state": "Booted" if running else "Shutdown", "dataPath": str(tmp_path / "data")}
+            return json.dumps({"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-27-2": [phone]}})
+
+        recorded = RecordedCommands(tmp_path, answer=answer)
+        return recorded
+
+    def test_a_simulator_that_is_off_boots_then_waits_and_shuts_down_afterwards(self, tmp_path, monkeypatch):
         # The flag of `bootstatus` that boots fails with "Invalid argument" on the foldable iPhone, so booting and waiting are two commands.
-        duo = {"udid": "DUO", "name": "iPhone Duo", "state": "Shutdown"}
-        listing = json.dumps({"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-27-2": [duo]}})
         report = "2026-11-19 21:38:13.506 Df SpringBoard[14233:b04a] [com.apple.UserNotifications:DataProviderFactory] notificationSourcesDidInstall: 99 sources, initialLoad=1"
-        recorded = RecordedCommands(tmp_path, answer=lambda command: report if "log" in command else listing)
-        with AppleSimulators(recorded.context).booted("iOS", "DUO"):
+        recorded = AppleTargetsTest.simulator(tmp_path, monkeypatch, report)
+        with AppleSimulators(recorded.context).booted("iOS", "PHONE"):
             pass
-        boot = [["xcrun", "simctl", "boot", "DUO"], ["xcrun", "simctl", "bootstatus", "DUO"]]
+        boot = [["xcrun", "simctl", "boot", "PHONE"], ["xcrun", "simctl", "bootstatus", "PHONE"]]
         assert recorded.commands[1:3] == boot
-        assert recorded.commands[3][:6] == ["xcrun", "simctl", "spawn", "DUO", "log", "show"]
+        assert recorded.commands[3][:6] == ["xcrun", "simctl", "spawn", "PHONE", "log", "show"]
         assert recorded.commands[3][-1] == AppleSimulators.NOTIFICATION_SOURCES
-        assert recorded.commands[4:] == [["xcrun", "simctl", "shutdown", "DUO"]]
+        assert recorded.commands[-1] == ["xcrun", "simctl", "shutdown", "PHONE"]
 
     def test_a_booted_ios_simulator_waits_for_its_notification_center_and_shuts_down_when_it_never_loads(self, tmp_path, monkeypatch):
         # An app that installs before the notification center loaded its apps never shows a notification, which a runner of CI that builds while the simulator boots showed for minutes.
-        phone = {"udid": "PHONE", "name": "iPhone 18 Pro", "state": "Shutdown"}
-        listing = json.dumps({"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-27-0": [phone]}})
-        recorded = RecordedCommands(tmp_path, answer=lambda command: "" if "log" in command else listing)
+        recorded = AppleTargetsTest.simulator(tmp_path, monkeypatch, "")
         monkeypatch.setattr(AppleSimulators, "NOTIFICATION_SECONDS", 0)
-        with pytest.raises(BuildFailed, match="did not load its apps"), AppleSimulators(recorded.context).booted("iOS", "PHONE"):
+        with pytest.raises(BuildFailed, match=r'did not load its apps .* The simulator is "Booted"'), AppleSimulators(recorded.context).booted("iOS", "PHONE"):
             pass
         assert recorded.commands[-1] == ["xcrun", "simctl", "shutdown", "PHONE"]
         tvs = {"udid": "TV", "name": "Apple TV", "state": "Shutdown"}
@@ -93,6 +112,43 @@ class AppleTargetsTest:
         with AppleSimulators(recorded.context).booted("tvOS", "TV"):
             pass
         assert not any("log" in command for command in recorded.commands)
+
+    def test_a_simulator_that_stops_during_the_wait_says_so_keeps_its_logs_and_is_not_shut_down_again(self, tmp_path, monkeypatch):
+        # A runner of CI shut the simulator down during the wait, and shutting it down again failed with "Unable to shutdown device in current state: Shutdown", which hid why the wait ended.
+        recorded = AppleTargetsTest.simulator(tmp_path, monkeypatch, "", stops=True)
+        (tmp_path / "CoreSimulator.log").write_text("Before the run.\n", encoding="utf-8")
+        simulators = AppleSimulators(recorded.context)
+        simulator = simulators.find("iOS", "PHONE")
+        kept = tmp_path / "results"
+        with pytest.raises(BuildFailed, match=r'"iPhone 18 Pro" stopped \d+ seconds after its boot, .* the Mac lists it as "Shutdown"') as failure, simulators.use(simulator, "iOS", kept):
+            pass
+        assert failure.value.details == "Unable to lookup in current state: Shutdown"
+        assert ["xcrun", "simctl", "shutdown", "PHONE"] not in recorded.commands
+        assert json.loads((kept / SimulatorDiagnostics.SIMULATOR_FILE).read_text(encoding="utf-8"))["stateAtTheEnd"] == "Shutdown"
+        log = next(command for command in recorded.commands if command[:2] == ["log", "show"])
+        assert log[:4] == ["log", "show", "-D", str(tmp_path / "data" / "var" / "db" / "diagnostics")]
+        assert (kept / SimulatorDiagnostics.LOG_FILE).read_text(encoding="utf-8") == "The log of the store of the simulator."
+        assert (kept / SimulatorDiagnostics.SERVICE_FILE).read_bytes() == b""
+
+    def test_a_failure_of_a_simulator_that_stopped_stays_the_error_of_the_run(self, tmp_path, monkeypatch):
+        stopped = {"now": False}
+        recorded = AppleTargetsTest.simulator(tmp_path, monkeypatch, "initialLoad=1", stopped=stopped)
+        simulators = AppleSimulators(recorded.context)
+        with pytest.raises(BuildFailed, match=r"The UI tests failed\.$"), simulators.use(simulators.find("iOS", "PHONE"), "iOS"):
+            stopped["now"] = True
+            raise BuildFailed("The UI tests failed.")
+        assert ["xcrun", "simctl", "shutdown", "PHONE"] not in recorded.commands
+
+    def test_the_diagnostics_keep_what_the_service_wrote_during_the_run_and_the_crash_reports_of_the_simulator(self, tmp_path):
+        assert SimulatorDiagnostics.service_log(b"before\nduring\n", 7) == b"during\n"
+        assert SimulatorDiagnostics.service_log(b"new log\n", 100) == b"new log\n"
+        reports = tmp_path / "reports"
+        reports.mkdir()
+        (reports / "SpringBoard.ips").write_text("/Devices/PHONE/data/Containers", encoding="utf-8")
+        (reports / "Other.ips").write_text("/Devices/OTHER/data/Containers", encoding="utf-8")
+        assert [path.name for path in SimulatorDiagnostics.crash_reports(reports, "PHONE", 0.0)] == ["SpringBoard.ips"]
+        assert SimulatorDiagnostics.crash_reports(reports, "PHONE", 4102444800.0) == []
+        assert SimulatorDiagnostics.log_command(Path("/data"), 1764190000.4) == ["log", "show", "-D", "/data/var/db/diagnostics", "--start", "@1764190000", "--style", "compact"]
 
     def test_the_template_holds_no_generated_project(self):
         files = [path.relative_to(AppleProject.TEMPLATE).as_posix() for path in AppleProject.TEMPLATE.rglob("*") if path.is_file()]

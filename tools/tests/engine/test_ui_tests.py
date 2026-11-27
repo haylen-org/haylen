@@ -1,3 +1,4 @@
+import datetime
 import io
 import json
 import re
@@ -10,6 +11,7 @@ from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.engine.android_ui_tests import AndroidUiTests
 from haylen.engine.mac_keyboard import MacKeyboard
+from haylen.engine.ui_test_results import UiTestResults
 from haylen.engine.ui_tests import UiTests
 from haylen.engine.unified_log import UnifiedLog
 from haylen.engine.windows_ui_tests import WindowsUiTests
@@ -18,7 +20,7 @@ from tests.support.recorded_commands import RecordedCommands
 
 
 class UiTestsTest:
-    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, or on this Mac with the bundle of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, the Windows runner runs pytest on the Python tests of the app, both run the classes that the run names alone, the Android run turns the emulator when a test asks, the Android run and an iOS simulator run give every setting they changed its value back, each runner takes the tests of its own folder, a simulator run fails on the errors that the engine logs meanwhile, and a failed simulator run keeps the log of the simulator over the whole run."""
+    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, or on this Mac with the bundle of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, the Windows runner runs pytest on the Python tests of the app, both run the classes that the run names alone, the Android run turns the emulator when a test asks, the Android run and an iOS simulator run give every setting they changed its value back, each runner takes the tests of its own folder, a simulator run fails on the errors that the engine logs meanwhile, a failed run keeps its results in a folder of its own, and a failure on a simulator samples the app."""
 
     def test_the_runner_runs_the_scheme_of_the_platform_and_its_info_names_the_app(self):
         project = (Path("/build/HaylenUITests.xcodeproj"), "visionOS", "id=SIMULATOR-ID", Path("/build/derived"))
@@ -44,8 +46,8 @@ class UiTestsTest:
 
     def test_the_runner_of_the_mac_keeps_its_screenshots_in_its_result_bundle_under_the_names_of_the_tests(self, tmp_path):
         project = (Path("/build/HaylenUITests.xcodeproj"), "macOS", "platform=macOS,arch=arm64", Path("/build/derived"))
-        command = UiTests.command("test-without-building", *project, ["MacTextInputTests"], Path("/build/derived/Logs/Test/macos.xcresult"))
-        assert [str(part) for part in command[-2:]] == ["-resultBundlePath", "/build/derived/Logs/Test/macos.xcresult"]
+        command = UiTests.command("test-without-building", *project, ["MacTextInputTests"], Path("/build/results/macos/tests.xcresult"))
+        assert [str(part) for part in command[-2:]] == ["-resultBundlePath", "/build/results/macos/tests.xcresult"]
         assert UiTests.attachment_name("mac-text-typed_0_F94D26F7-1A0F-4684-8E9F-28323BDE0082.png") == "mac-text-typed.png"
         assert UiTests.attachment_name("Screenshot at failure.png") is None
         assert UiTests.attachment_name("Debug description for `Any (First Match)`_0_673AA5DB-655A-4A79-AA1E-C275192DDF41.txt") is None
@@ -88,10 +90,45 @@ class UiTestsTest:
         assert "could not be exported" in recorded.output.getvalue()
         UiTests(recorded.context, None).clean_up_failed_mac_run(MacKeyboard(tmp_path / "input-source"), tmp_path / "missing.xcresult", tmp_path / "attachments", tmp_path)
 
-    def test_the_log_of_a_failed_simulator_run_covers_the_whole_run(self):
-        show = ["xcrun", "simctl", "spawn", "SIMULATOR-ID", "log", "show", "--last"]
-        assert UiTests.log_command("SIMULATOR-ID", 59.0) == [*show, "2m", "--style", "compact"]
-        assert UiTests.log_command("SIMULATOR-ID", 61.0) == [*show, "3m", "--style", "compact"]
+    def test_a_failed_run_keeps_its_results_in_a_folder_of_its_own_that_names_the_device_and_the_tests(self, tmp_path):
+        # A run that failed lost its result bundle and the log of its simulator to the runs that came after it, so the cause of a stop of the app at its start could not be read.
+        started = datetime.datetime(2026, 11, 27, 3, 4, 5)
+        results = UiTestResults(tmp_path, "tvos-simulator", "Apple TV 4K (3rd generation)", ["RemoteTextInputTests"], started)
+        assert results.folder == tmp_path / "results" / "2026-11-27-03-04-05-apple-tv-4k-3rd-generation"
+        assert results.bundle == results.folder / "tests.xcresult"
+        command = UiTests.command("test-without-building", Path("/runner.xcodeproj"), "tvOS", "id=TV", Path("/derived"), ["RemoteTextInputTests"], results.bundle)
+        assert [str(part) for part in command[-2:]] == ["-resultBundlePath", str(results.bundle)]
+        failure = "/tests/HaylenUITestCase.swift:83: error: -[HaylenUITests.RemoteTextInputTests testTheKeyboardOfTheSystemTypesIntoTheSearch] : Failed to get matching snapshots: Timed out while evaluating UI query."
+        assert UiTestResults.FAILURE.search(failure)
+        assert not UiTestResults.FAILURE.search("Test Case '-[HaylenUITests.RemoteTextInputTests testTheKeyboardOfTheSystemTypesIntoTheSearch]' started.")
+        for line in (
+            "Test Case '-[HaylenUITests.MenuTests testTheMenuOpens]' passed (3.1 seconds).",
+            "Test Case '-[HaylenUITests.RemoteTextInputTests testTheKeyboardOfTheSystemTypesIntoTheSearch]' failed (99.697 seconds).",
+        ):
+            results.record(line)
+        output = io.StringIO()
+        results.keep(BuildFailed('The command "xcodebuild" failed with exit code 65.'), Terminal(output, output, {}, tmp_path / "test.log"))
+        run = json.loads((results.folder / "run.json").read_text(encoding="utf-8"))
+        assert run == {
+            "target": "tvos-simulator",
+            "device": "Apple TV 4K (3rd generation)",
+            "classes": ["RemoteTextInputTests"],
+            "failed": ["RemoteTextInputTests.testTheKeyboardOfTheSystemTypesIntoTheSearch"],
+            "error": 'The command "xcodebuild" failed with exit code 65.',
+        }
+        later = UiTestResults(tmp_path, "tvos-simulator", "Apple TV 4K (3rd generation)", [], started + datetime.timedelta(minutes=3))
+        later.folder.mkdir(parents=True)
+        later.discard()
+        assert [path.name for path in (tmp_path / "results").iterdir()] == [results.folder.name]
+
+    def test_a_failure_on_a_simulator_samples_the_app_that_runs_there(self, tmp_path):
+        listing = "PID\tStatus\tLabel\n412\t0\tcom.apple.SpringBoard\n977\t0\tUIKitApplication:com.haylen.tests[6c1d][rb-legacy]\n-\t0\tUIKitApplication:com.haylen.other[1a2b][rb-legacy]\n"
+        assert UiTests.app_process(listing, "com.haylen.tests") == 977
+        assert UiTests.app_process(listing, "com.haylen.other") is None
+        assert UiTests.app_process(listing, "com.haylen") is None
+        recorded = RecordedCommands(tmp_path, answer=lambda command: listing)
+        UiTests(recorded.context, None).sample_app("TV", "com.haylen.tests", tmp_path / "run")
+        assert recorded.commands == [["xcrun", "simctl", "spawn", "TV", "launchctl", "list"], ["sample", "977", "3", "-file", str(tmp_path / "run" / "sample-1.txt")]]
 
     def test_the_runner_of_a_device_is_signed_for_the_team_that_signed_the_app(self):
         description = "Executable=/build/App.app/App\nAuthority=Apple Development: Someone (ABCDE12345)\nTeamIdentifier=FGHIJ67890\n"
