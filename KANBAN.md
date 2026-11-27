@@ -4,19 +4,19 @@
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30 days) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-055 · Render targets completos em graphics::RenderTarget (hoje só cor)](#kb-055)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-344 · Os testes não deixam pastas temporárias para trás e não engolem o erro de apagá-las](#kb-344)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-107 · O núcleo do glTF 2.0 inteiro, sem nada para depois](#kb-107)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-343 · Os testes parametrizados têm nomes estáveis no CTest](#kb-343)**<br>🟡 medium · `bug` · 2/10 |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-170 · Formas](#kb-170)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-342 · Dois testes do Lua falham quando a máquina está carregada](#kb-342)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-335 · O teste do corpo grande pelo TLS do Varn falha às vezes no Windows arm64](#kb-335)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | — | — | — | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-334 · O `haylen app verify` de um produto da Apple acha o projeto do último build](#kb-334)**<br>🟠 high · `bug` · 2/10 |
-| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | — | — | — | **[KB-340 · Máquinas de lote prontas para cada plataforma: Windows, Linux com GPU e Android](#kb-340)**<br>🟠 high · `improvement` · 5/10 | **[KB-333 · No Android, o campo levantado não cai e sobe de novo quando o aparelho gira com o teclado aberto](#kb-333)**<br>🟡 medium · `bug` · 4/10 |
-| **[KB-341 · Achar a causa da parada de 90 s do quadro na abertura de um app no simulador do iOS](#kb-341)**<br>🟠 high · `bug` · 5/10 | — | — | — | **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-348 · Todo tipo de uma dimensão leva 2D ou 3D no nome, no C++ e no Lua](#kb-348)**<br>🟠 high · `refactor` · 8/10 | — | — | — | — | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 |
-| **[KB-349 · Os testes de UI do iOS na CI dizem por que o simulador parou, em vez de falhar ao desligá-lo](#kb-349)**<br>🟠 high · `bug` · 3/10 | — | — | — | — | **[KB-330 · No Android, o teclado fecha às vezes quando o aparelho gira com um campo editando](#kb-330)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 |
-| **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 |
+| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-352 · A navegação 3D tem uma corrida entre threads ao assar a navmesh em segundo plano](#kb-352)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-344 · Os testes não deixam pastas temporárias para trás e não engolem o erro de apagá-las](#kb-344)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-055 · Render targets completos em graphics::RenderTarget (hoje só cor)](#kb-055)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-343 · Os testes parametrizados têm nomes estáveis no CTest](#kb-343)**<br>🟡 medium · `bug` · 2/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-107 · O núcleo do glTF 2.0 inteiro, sem nada para depois](#kb-107)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-342 · Dois testes do Lua falham quando a máquina está carregada](#kb-342)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-143 · Árvore de nós 3D em haylen::nodes3d (engine/src/3d/nodes/, Lua haylen.nodes3d)](#kb-143)**<br>🟡 medium · `feature` · 7/10 | — | — | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-335 · O teste do corpo grande pelo TLS do Varn falha às vezes no Windows arm64](#kb-335)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-144 · Componentes de nós 3D](#kb-144)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-334 · O `haylen app verify` de um produto da Apple acha o projeto do último build](#kb-334)**<br>🟠 high · `bug` · 2/10 |
+| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-156 · Clipes e trilhas em haylen::animation3d (engine/src/3d/animation/, Lua haylen.animation3d)](#kb-156)**<br>🟡 medium · `feature` · 7/10 | — | — | **[KB-340 · Máquinas de lote prontas para cada plataforma: Windows, Linux com GPU e Android](#kb-340)**<br>🟠 high · `improvement` · 5/10 | **[KB-333 · No Android, o campo levantado não cai e sobe de novo quando o aparelho gira com o teclado aberto](#kb-333)**<br>🟡 medium · `bug` · 4/10 |
+| **[KB-341 · Achar a causa da parada de 90 s do quadro na abertura de um app no simulador do iOS](#kb-341)**<br>🟠 high · `bug` · 5/10 | **[KB-157 · Esqueletos e skin](#kb-157)**<br>🟡 medium · `feature` · 7/10 | — | — | **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-348 · Todo tipo de uma dimensão leva 2D ou 3D no nome, no C++ e no Lua](#kb-348)**<br>🟠 high · `refactor` · 8/10 | **[KB-158 · Alvos de morph](#kb-158)**<br>🟡 medium · `feature` · 3/10 | — | — | — | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 |
+| **[KB-349 · Os testes de UI do iOS na CI dizem por que o simulador parou, em vez de falhar ao desligá-lo](#kb-349)**<br>🟠 high · `bug` · 3/10 | **[KB-170 · Formas](#kb-170)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-330 · No Android, o teclado fecha às vezes quando o aparelho gira com um campo editando](#kb-330)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-173 · Personagem](#kb-173)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | **[KB-176 · Consultas](#kb-176)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | **[KB-177 · Eventos de contato](#kb-177)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 |
+| **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | **[KB-178 · Ganchos de passo e ajudantes em C++](#kb-178)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 |
 | **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-323 · Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU](#kb-323)**<br>🟠 high · `fix` · 6/10 |
 | **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-322 · Corrigir os defeitos confirmados da revisão da RHI no Direct3D](#kb-322)**<br>🟠 high · `fix` · 6/10 |
 | **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 |
@@ -114,8 +114,6 @@
 | **[KB-140 · Neblina](#kb-140)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-141 · Céu e atmosfera](#kb-141)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-142 · Qualidade e orçamentos de luz e sombra](#kb-142)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-143 · Árvore de nós 3D em haylen::nodes3d (engine/src/3d/nodes/, Lua haylen.nodes3d)](#kb-143)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
-| **[KB-144 · Componentes de nós 3D](#kb-144)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-145 · Comportamentos em Lua presos a nós](#kb-145)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-146 · Cenas e prefabs 3D](#kb-146)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-147 · Integração com as cenas de hoje (core::Scene)](#kb-147)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -127,9 +125,6 @@
 | **[KB-153 · Inspetor 3D no desenvolvimento](#kb-153)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-154 · Caminhos, marcadores e anexos](#kb-154)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-155 · Interpolação de desenho no passo fixo](#kb-155)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
-| **[KB-156 · Clipes e trilhas em haylen::animation3d (engine/src/3d/animation/, Lua haylen.animation3d)](#kb-156)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
-| **[KB-157 · Esqueletos e skin](#kb-157)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
-| **[KB-158 · Alvos de morph](#kb-158)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-159 · Animador com camadas](#kb-159)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-160 · Árvores de mistura e máquinas de estado](#kb-160)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-161 · Redirecionamento de animações](#kb-161)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
@@ -139,12 +134,8 @@
 | **[KB-165 · Opções de animação na preparação de modelos](#kb-165)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-166 · Texturas de animação de vértices](#kb-166)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-167 · Física 3D pela Jolt Physics, como dependência fixada no CMake da engine, com o mesmo cuidado da física 2D](#kb-167)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-173 · Personagem](#kb-173)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-174 · Veículos](#kb-174)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-175 · Corpos moles](#kb-175)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
-| **[KB-176 · Consultas](#kb-176)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-177 · Eventos de contato](#kb-177)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-178 · Ganchos de passo e ajudantes em C++](#kb-178)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-179 · Ligação entre física e nós 3D](#kb-179)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-180 · Gravar e restaurar o estado do mundo para rollback em rede, repetição e testes, com o hash de estado](#kb-180)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-181 · Fratura 3D](#kb-181)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
@@ -1647,7 +1638,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
-- **Progress:** O desenho foi aprovado. O `graphics::RenderTarget` passa a ter até 4 cores, profundidade com ou sem stencil, amostras, resolve de profundidade e anexos transitórios, que no Apple usam memória sem armazenamento e no Vulkan memória alocada sob demanda. O renderer 2D desenha em qualquer target completo. Entram também `graphics.capabilities()` e `graphics.formatSupport(format)`.
+- **Progress:** Os dois commits (a correção da chave de pipeline do 2D e os render targets completos, com o contrato de port 20) passaram em tudo no Linux. Isso inclui clang e GCC, o Vulkan no lavapipe com o novo teste de resolve de profundidade por render pass, o OpenGL, o WebGPU e o WebGL2, o SDK web, o emulador Android e o teste de regressão da chave. No notebook Windows passaram o MSVC e o Direct3D 11 e 12 em três GPUs. O stream está fazendo o rebase e o push. Falta o teste de leitura de 4 por 4 da superfície numa sessão de desktop da Azure.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -3873,10 +3864,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-143
 
 - **Title:** Árvore de nós 3D em haylen::nodes3d (engine/src/3d/nodes/, Lua haylen.nodes3d)
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
+- **Progress:** A árvore de nós 3D, o late update dos plugins e os componentes estão em quatro commits no branch do stream. O `lookAt` agora recusa um alvo na posição do próprio nó com uma tolerância fixa, que dá o mesmo resultado em toda máquina. O lote 3 do Linux passou nos commits 1 a 3 com clang e GCC e roda os passos finais.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -3898,10 +3890,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-144
 
 - **Title:** Componentes de nós 3D
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** Os componentes de nós 3D estão no quarto commit do branch do nodes3d, que roda no lote 3 do Linux. Os componentes prontos de corpo, agente e obstáculo vêm depois.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4200,10 +4193,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-156
 
 - **Title:** Clipes e trilhas em haylen::animation3d (engine/src/3d/animation/, Lua haylen.animation3d)
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
+- **Progress:** Pronto no branch do stream e verde no lote 3 do Linux: os cinco commits com clang e GCC, o sanitizer de endereços, o fuzzer de glTF, o build web e o benchmark. O sanitizer de threads achou uma corrida na navegação 3D que já está na `main` (KB-352), não no código de animação. O stream está fazendo o rebase e o push.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4227,10 +4221,11 @@ Este cartão traz também o componente de nós 3D de animador, registrado pela A
 ### KB-157
 
 - **Title:** Esqueletos e skin
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
+- **Progress:** Esqueletos e skin estão no mesmo branch do KB-156, verdes no lote 3. O nome de um osso dos dados de teste, trocado por engano na renomeação, voltou a ser `Skeleton`. O stream está fazendo o rebase e o push.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4254,10 +4249,11 @@ Este cartão traz também o componente de nós 3D de malha com skin e anexo a um
 ### KB-158
 
 - **Title:** Alvos de morph
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 3
+- **Progress:** Alvos de morph estão no mesmo branch do KB-156, verdes no lote 3. O stream está fazendo o rebase e o push.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4648,10 +4644,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-173
 
 - **Title:** Personagem
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** O personagem virtual está no branch do physics3d. Ele sobe rampas em velocidade total, como no 2D, e a regra da borda que a cápsula vence está no guia. Os testes do personagem, que antes não compilavam, agora rodam, e uma regra do repositório pega um arquivo de teste fora das listas do CMake. Em commits locais, fora do lote 4: o corpo do personagem, ligado por padrão, e o `RigidCharacter3D`. Falta o componente de nó, que espera o KB-179, e a entrada no projeto de testes, que espera o renderer 3D.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4729,10 +4726,11 @@ Vento sobre corpos moles: o campo de força de vento de `physics3d.newForceField
 ### KB-176
 
 - **Title:** Consultas
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** As consultas estão no branch do physics3d. Uma corrida em `raycastBatchAsync` foi corrigida: ler os resultados enquanto os raios rodam agora é recusado com uma frase. O lote 4 do Linux confirma o branch.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4754,10 +4752,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-177
 
 - **Title:** Eventos de contato
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** Os eventos de contato estão no branch do physics3d. O contato continua enquanto um corpo dorme, a `speed` lê a velocidade do começo do passo como no 2D, e as listas de eventos não alocam depois do aquecimento. O lote 4 do Linux confirma o branch.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4779,10 +4778,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 ### KB-178
 
 - **Title:** Ganchos de passo e ajudantes em C++
-- **Status:** todo
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Progress:** Os ganchos de passo e os ajudantes estão no branch do physics3d. Campos de força e a água empurram um corpo acordado sem acordá-lo, com a opção `wake` em 3D e em 2D. O `StepHooks3D` tem a sua seção na referência. O lote 4 do Linux confirma o branch.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -9170,6 +9170,29 @@ O KB-343 deixou fixos os nomes de todos os testes parametrizados no CTest. As su
 
 - None
 
+### KB-352
+
+- **Title:** A navegação 3D tem uma corrida entre threads ao assar a navmesh em segundo plano
+- **Status:** doing
+- **Type:** bug
+- **Priority:** high
+- **Complexity:** 3
+- **Progress:** O sanitizer de threads do GCC achou a corrida no lote 3 do Linux. O stream da navegação 3D está corrigindo a causa, com um teste de regressão.
+
+#### Description
+
+O teste `Navigation3DLuaTest.BakesInTheBackground` falha com o sanitizer de threads do GCC. Um job escreve o `std::unique_ptr` do estado da navmesh em `NavMesh::State::deliverBake` (`engine/src/3d/navigation/NavMeshState.cpp:146`), e outro job lê o mesmo ponteiro em `indexBake` (linha 114). O estado de um bake precisa ter um dono de cada vez, ou passar pela conclusão do job na thread de frame, como dizem as regras de threads do `AGENTS.md`.
+
+#### Acceptance criteria
+
+- [ ] A causa é corrigida na raiz, sem uma trava que só esconda a corrida.
+- [ ] Um teste de regressão falha com o sanitizer de threads no código antigo e passa no novo.
+- [ ] O commit passa no Linux com clang, com GCC e com os sanitizers de threads e de endereços.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -9188,11 +9211,13 @@ O KB-343 deixou fixos os nomes de todos os testes parametrizados no CTest. As su
 - **Idioma:** o texto dos cartões é em português, para o dono, e os marcadores, as chaves dos campos e os valores de status, tipo e prioridade ficam em inglês.
 - **Version control:** versionado a pedido do dono. O `KANBAN.md` faz parte do repositório, como o `AGENTS.md` diz, porque os streams leem os cartões nas suas worktrees e os testes do repositório conferem o quadro.
 - **Passado:** nenhum cartão registra como algo era antes. Cada cartão descreve o que falta e, quando termina, o que existe.
+- **Updates:** o coordenador atualiza o cartão e a célula dele logo depois de cada mudança do trabalho (começo, passo substancial, bloqueio, revisão ou teste, fim, retirada), antes de relatar e antes da próxima tarefa, sem juntar mudanças para depois.
+- **Sensitive data:** o quadro nunca guarda credenciais, chaves, tokens, senhas, endereços IP, nomes de máquinas pessoais, URLs assinadas, e-mails, IDs de conta ou caminhos absolutos privados. Uma coisa sensível é nomeada pelo papel ou pelo nome da variável.
 
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-352. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-353. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
