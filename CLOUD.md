@@ -2,7 +2,7 @@
 
 This file tracks the rented machines of the batch line, the persistent cloud resources, the budget, the quotas and the batches, and the coordinator keeps it current at every launch, extension, finish and deletion. Times are UTC. Costs are estimates (price seen at launch × hours) until the billing data arrives, and then they are marked as billed. This file never holds a credential, a key, an IP address or a presigned URL.
 
-Last updated: 2026-11-27 03:25 UTC
+Last updated: 2026-11-27 04:25 UTC
 
 ## Running now
 
@@ -10,7 +10,8 @@ Last updated: 2026-11-27 03:25 UTC
 
 | Session | Machine type | Market | Region or zone | Started (UTC) | Shuts down at (UTC) | What it runs | Price per hour | Cost so far | State |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| batch3 | c8i.8xlarge (32 vCPU, 64 GB) | on-demand (the spot quota was full, see Quotas) | us-east-1d | 2026-11-27 01:32 | 2026-11-27 07:32 (timer) | animation3d (5 commits, sanitizers), KB-055 (2 commits, GPU tests, Android emulator), nodes3d (4 commits, heads), physics3d (old bundle, heads) | US$1.50 | about US$2.90 (estimate) | running, deleted when its jobs end |
+| batch3 | c8i.8xlarge (32 vCPU, 64 GB) | on-demand (the spot quota was full when it started) | us-east-1d | 2026-11-27 01:32 | 2026-11-27 07:32 (timer) | nodes3d (heads); animation3d, KB-055 and the old physics3d bundle ended | US$1.50 | about US$4.20 (estimate) | running, deleted when its jobs end |
+| batch4 | c8i.8xlarge (32 vCPU, 64 GB) | spot | us-east-1c | 2026-11-27 04:25 | 2026-11-27 10:25 (timer) | physics3d (8 commits with clang and GCC, sanitizers, fuzzers, web, bench); the navigation3d fix joins when ready | about US$0.67 | starting | running, deleted when its last run ends |
 
 ### Azure
 
@@ -88,6 +89,6 @@ Market is spot, on-demand, deallocated or own. "What it runs" names the lines of
 
 | Batch | Machine | Jobs | Estimated duration | Estimated cost | Planned for |
 | --- | --- | --- | --- | --- | --- |
-| batch4 | c8i.8xlarge spot | physics3d (8 commits), plus the fixes that batch3 asks for | about 3 to 4 h | about US$2.50 spot, or about US$6 on-demand | after batch3 ends |
+| None | | | | | |
 
 Next cloud Mac day: not planned. Card KB-346 prepares it.
