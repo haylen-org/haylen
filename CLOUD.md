@@ -5,12 +5,12 @@
 | Status | Service | Running now | This month | Share | Cost status |
 | --- | --- | --- | --- | --- | --- |
 | 🟢 | 🔶 AWS EC2 | batch5b and batch6 (on-demand) | US$29.30 (estimate) | US$110 | 🟢 |
-| ⚪ | 🔷 Azure | None | US$5.30 (estimate) | US$10 | 🟡 |
+| 🟢 | 🔷 Azure | windows-kb355-kb350 | US$5.60 (estimate) | US$10 | 🟡 |
 | 🟢 | 🏠 Own Machines | The Mac, with incremental test builds of physics3d | No cost | No cost | 🟢 |
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 06:06 UTC
+Last updated: 2026-11-27 06:45 UTC
 
 ## 🏃 Running Now
 
@@ -25,7 +25,7 @@ Last updated: 2026-11-27 06:06 UTC
 
 | Status | Session | Platform | Machine type | Market | Region | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ⚪ | None | | | | | | | | | |
+| 🟢 | windows-kb355-kb350 | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 (AMD V620) | regular, deallocated between batches | eastus2 | 2026-11-27 06:15 | Within 2 hours in all | KB-355 (MSVC in a new folder with the shared cache), KB-356 (five runs on main and on the fix with the shader caches cleared) and KB-350 (Direct3D 11 and 12 on the GPU and WARP, with its regression) | US$0.64 | US$0.30 (estimate) |
 
 ### 🏠 Own Machines
 
@@ -110,7 +110,7 @@ Next cloud Mac day: not planned. Card KB-346 prepares it.
 | Status | Service | Resource | Kind | Region | Why it is kept | Monthly cost |
 | --- | --- | --- | --- | --- | --- | --- |
 | ⚪ | 🔶 AWS EC2 | haylen-batch-linux-20261126-2037 and its snapshot | Prepared image | us-east-1 | The Linux batch machines start warm from it | US$1 |
-| ⚪ | 🔷 Azure | haylen-batch-windows with its OS disk, NIC, NSG and VNet | Deallocated VM | eastus2 | The Windows GPU batch machine with its toolchains | US$5.90 (the disk) |
+| 🟢 | 🔷 Azure | haylen-batch-windows with its OS disk, NIC, NSG and VNet | Deallocated VM | eastus2 | The Windows GPU batch machine with its toolchains | US$5.90 (the disk) |
 | ⚪ | Cache bucket | haylen-ci on Cloudflare R2 | Bucket | ENAM | The compiler cache and the dependency caches, objects expire after 30 days | Storage plus operations |
 
 ## 📏 Quotas
