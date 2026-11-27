@@ -4,13 +4,13 @@
 
 | Status | Service | Running now | This month | Share | Cost status |
 | --- | --- | --- | --- | --- | --- |
-| 🟠 | 🔶 AWS EC2 | batch5b (on-demand) | US$29.30 (estimate) | US$110 | 🟢 |
+| 🟢 | 🔶 AWS EC2 | batch5b and batch6 (on-demand) | US$29.30 (estimate) | US$110 | 🟢 |
 | ⚪ | 🔷 Azure | None | US$5.30 (estimate) | US$10 | 🟡 |
 | 🟢 | 🏠 Own Machines | The Mac, with incremental test builds of physics3d | No cost | No cost | 🟢 |
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 06:35 UTC
+Last updated: 2026-11-27 06:06 UTC
 
 ## 🏃 Running Now
 
@@ -18,7 +18,8 @@ Last updated: 2026-11-27 06:35 UTC
 
 | Status | Session | Platform | Machine type | Market | Zone | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟠 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 10:55 | physics3d (8 commits, sanitizers, fuzzers, web, bench) and the animation3d node components `a514fc298` | US$1.50 | starting |
+| 🟠 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 10:55 | physics3d (8 commits, sanitizers, fuzzers, web, bench) the animation3d node components `932f18af5` and KB-355 with KB-356 `a81e8cc18` | US$1.50 | starting |
+| 🟢 | batch6 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand | us-east-1 | 2026-11-27 06:05 | 2026-11-27 13:05 | KB-345 and KB-347: Clang, thin LTO and lld on Linux, path maps in every object, about 14 builds without the cache and the link memory measurements | US$1.50 | starting |
 
 ### 🔷 Azure
 
