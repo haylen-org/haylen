@@ -9334,7 +9334,7 @@ Na VM Windows da Azure com a GPU AMD, no primeiro run depois do boot e com o cac
 - **Next ID:** KB-357. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
-- **Column counts:** Each column header shows its number of cards on the board, such as `TODO (3 tasks)`, `TODO (1 task)` or `TODO (0 tasks)`. DONE also shows the window, such as `DONE (12 tasks, 30 days)`. Archived cards are not counted. Every edit that changes a column updates its count in the same edit.
+- **Column counts:** Each column header shows its number of cards on the board, such as `TODO (3 tasks)`, `TODO (1 task)` or `TODO (0 tasks)`. DONE also shows the window, such as `DONE (12 tasks, 30 days)`, or only the count with `Done window: all`. Archived cards are not counted. Every edit that changes a column updates its count in the same edit.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
 - **Terms:** Types use common work-item words such as feature, bug, fix or hotfix. Common status and priority words map to the six statuses and four priorities. Canceled or duplicate work is a withdrawal, not done. A word never blocks an edit.
 - **Progress:** Started work may carry a `Progress` field with its current state in one or two sentences, rewritten at each substantial step and never appended.
@@ -9343,7 +9343,7 @@ Na VM Windows da Azure com a GPU AMD, no primeiro run depois do boot e com o cac
 - **Unblock:** A blocked card returns to the column in its Blocked from field, and its blocked fields are removed.
 - **Moves:** Only the affected columns change, with their header counts, plus done-window archiving. Cells below a departing card move up one row, and cells below an inserted card move down one row.
 - **Done window:** 30 calendar days, shown in the DONE header. A card finished on 2026-10-25 stays through 2026-11-24. The first edit on or after 2026-11-25 archives it. Check the window on every edit. An older done card gets `Archived` with the date, loses its cell and moves to the end of the archive. A shorter window archives more cards at once. A longer one does not restore archived cards.
-- **Finished:** Required on every done card, with the actual completion date or `unknown`. A completion reported or observed today uses today's date. Unknown dates keep the card on the board, at the bottom of DONE.
+- **Finished:** Required on every done card, with the actual completion date or `unknown`. A completion reported or observed today uses today's date, unless the person gives an earlier actual date. Unknown dates keep the card on the board, at the bottom of DONE.
 - **Priority change:** Move the cell to its new priority position within its column. A done card keeps its place.
 - **Reopen:** Remove Finished and any Archived field, move an archived record back to Cards, record why and place the cell by its new column's rule.
 - **Priority labels:** 🔴 critical, 🟠 high, 🟡 medium, 🟢 low.
