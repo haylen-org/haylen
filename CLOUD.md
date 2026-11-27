@@ -56,7 +56,7 @@ Market is spot, on-demand, deallocated or own. "What it runs" names the lines of
 
 | Provider | Quota (family and region) | Current limit | Pending request | Requested on |
 | --- | --- | --- | --- | --- |
-| AWS | All Standard Spot Instance Requests, us-east-1 | 32 vCPU (one c8i.8xlarge) | none, to ask: 64 | |
+| AWS | All Standard Spot Instance Requests, us-east-1 | 32 vCPU (one c8i.8xlarge) | 64 vCPU, pending | 2026-11-27 |
 | AWS | Running On-Demand Standard instances, us-east-1 | 1848 vCPU | none | |
 | AWS | Mac dedicated hosts, mac-m4, us-east-1 | 1 host | approved | 2026-11-26 |
 | Azure | StandardNGADSV620v1Family, eastus2 | 8 vCPU (one VM) | none | |
