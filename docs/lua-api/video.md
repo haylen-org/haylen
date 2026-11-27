@@ -235,9 +235,11 @@ end)
 
 ## C++
 
-The class `graphics::Video` plays a `platform::VideoDecoder`. That is the interface that the decoder of each platform implements, and that a project implements for a format of its own. A decoder reads frames and sound ahead of the playback and seeks, and a decoder with a clock of its own plays by itself and reports its time. The `video` plugin creates videos of the package with `VideoPlugin::create`, which opens the file through `Host::openVideo`, and updates them at the start of every frame.
+The class `graphics::Video` plays a video into its texture, with the `platform::VideoDecoder` that the platform opens for its file. The `video` plugin creates the videos of the package with `VideoPlugin::create`, which opens the file through `Host::openVideo` on a worker of the I/O pool, keeps each video current at the start of every frame and stops it with `VideoPlugin::release`. The signals `ready`, `ended` and `failed` of a video run on the frame thread.
 
 ```cpp
 std::shared_ptr<haylen::graphics::Video> video = engine.getPlugin<haylen::plugins::VideoPlugin>().create(engine, "videos/intro.mp4", {.autoplay = true});
-video->ended.connect([] { showMenu(); });
+const haylen::core::Connection ended = video->ended.connect([] { haylen::core::Log::info("The intro video ended."); });
 ```
+
+The decoder of a platform is its `port::VideoService`, which the runtime of the platform installs in the `video` field of its `port::Services`, as [the services of a port](../platform/ports.md#the-services-of-a-port) describe. Its `openVideo` returns a `platform::VideoDecoder` for the file that a package reader reads, and throws `std::runtime_error` for a file that the platform cannot decode. A platform without the service, such as Linux, fails every video with the code `unsupported`, as [Platforms](#platforms) lists, so a port brings the decoder of its own platform through this service.

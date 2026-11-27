@@ -8,6 +8,18 @@ local debug = require('haylen.debug')
 
 The name `debug` hides the standard Lua library `debug` in the file that requires the module. Pick another local name, such as `debugging`, in a file that also needs the standard one.
 
+## Shortcuts
+
+The keys of the keyboard of the app reach three tools. The keys of the statistics and the drawings work in every build, development and release alike, so a shipped app turns them off with `debug.setToggleKey(nil)` and `debug.setDrawKey(nil)` unless it wants them. The key of the inspector works only while the console is on, which a development run or `"debug": {"console": true}` in `haylen.json` decides, as [`debug.consoleEnabled`](#debugconsoleenabled) reports.
+
+| Key | Tool | Builds where it works | Function that changes it |
+| --- | --- | --- | --- |
+| F3 | Cycles the [statistics](#statistics). | Every build. | [`debug.setToggleKey`](#debugsettogglekeykey) |
+| F4 | Switches the [drawings](#drawings). | Every build. | [`debug.setDrawKey`](#debugsetdrawkeykey) |
+| F2 | Shows or hides the [inspector](#inspector). | Development runs, and any run with `debug.console`. | [`debug.setInspectorKey`](#debugsetinspectorkeykey) |
+
+When two of them share a key, the statistics take it first and then the inspector. The keys of the terminal of `haylen app run`, such as `s`, `p` and `i`, reach only an app in a development run, since they travel through its development connection.
+
 ## Statistics
 
 The engine shows its statistics in one of three modes:
@@ -115,7 +127,7 @@ print(table.concat(debug.statsItems(), ', ')) -- frameRate, drawCalls, physics
 
 ### debug.setToggleKey(key)
 
-Picks the key that cycles the statistics through `off`, `compact` and `full`, by the [key names](input.md#key-names) of `haylen.input`, such as `'f3'`, `'f5'` or `'graveAccent'`. The default key is `'f3'`. The value `nil` turns the shortcut off, which suits release builds. An unknown name raises an error that ends with `(unknown value '<name>')`.
+Picks the key that cycles the statistics through `off`, `compact` and `full`, by the [key names](input.md#key-names) of `haylen.input`, such as `'f3'`, `'f5'` or `'graveAccent'`. The default key is `'f3'`. The value `nil` turns the shortcut off, which suits release builds, since the shortcut works in every build. An unknown name raises an error that ends with `(unknown value '<name>')`.
 
 ```lua
 local debug = require('haylen.debug')
