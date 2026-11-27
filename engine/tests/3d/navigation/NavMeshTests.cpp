@@ -368,6 +368,27 @@ TEST_F(NavMesh3DTest, BakesTheSameMeshInJobsAsOnOneThread) {
     EXPECT_EQ(result->value->encode(), serial);
 }
 
+TEST_F(NavMesh3DTest, BakesInJobsMeshesWhoseOnlyColumnFinishesBeforeTheJobThatPostedIt) {
+    // A mesh of one column hands its state over as soon as its one column bakes, often before the job that posted the column returns, which must not read the state again. The floor is 6 meters on a side, so what stays walkable once the bake drops its ledges and the radius of the agent is larger than the smallest region that the bake keeps, and every bake makes its one tile.
+    test::EngineFixture fixture;
+    auto source = std::make_shared<SourceGeometry>();
+    addFloor(*source, 6.0F);
+    const std::shared_ptr<const SourceGeometry> floor = source;
+
+    constexpr std::size_t kBakes = 32;
+    std::vector<std::string> outcomes;
+    for (std::size_t bake = 0; bake < kBakes; ++bake) {
+        // clang-format off
+        NavMesh::buildAsync(fixture.engine().getJobs(), floor, settings(), [&outcomes](core::JobSystem::Result<NavMesh> value) {
+            outcomes.push_back(value.isOk() ? std::to_string(value.value->getTileCount()) + " tiles" : value.error);
+        });
+        // clang-format on
+    }
+
+    ASSERT_TRUE(fixture.frameUntil([&outcomes] { return outcomes.size() == kBakes; }));
+    EXPECT_EQ(outcomes, std::vector<std::string>(kBakes, "1 tiles"));
+}
+
 TEST_F(NavMesh3DTest, CarvesTheMeshAroundAnObstacleAndOpensItAgainWhenItMoves) {
     BuildSettings carved = settings();
     carved.obstacles = true;

@@ -110,8 +110,10 @@ void NavMesh::State::indexBake(const std::shared_ptr<Bake>& bake) {
         return;
     }
 
-    bake->remaining = bake->state->columns.size();
-    for (std::size_t column = 0; column < bake->state->columns.size(); ++column) {
+    // The job of the last column takes the state away, so the loop counts the columns before it posts the first job and never reads the state again.
+    const std::size_t columnCount = bake->state->columns.size();
+    bake->remaining = columnCount;
+    for (std::size_t column = 0; column < columnCount; ++column) {
         bake->jobs->post([bake, column] { bakeColumn(bake, column); });
     }
 }
