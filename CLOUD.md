@@ -10,7 +10,7 @@
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 06:45 UTC
+Last updated: 2026-11-27 07:00 UTC
 
 ## 🏃 Running Now
 
@@ -18,8 +18,8 @@ Last updated: 2026-11-27 06:45 UTC
 
 | Status | Session | Platform | Machine type | Market | Zone | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟠 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 10:55 | physics3d (8 commits, sanitizers, fuzzers, web, bench) the animation3d node components `932f18af5` and KB-355 with KB-356 `a81e8cc18` | US$1.50 | starting |
-| 🟢 | batch6 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand | us-east-1 | 2026-11-27 06:05 | 2026-11-27 13:05 | KB-345 and KB-347: Clang, thin LTO and lld on Linux, path maps in every object, about 14 builds without the cache and the link memory measurements | US$1.50 | starting |
+| 🟢 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 10:55 | physics3d (8 commits, sanitizers, fuzzers, web, bench), the animation3d node components `932f18af5`, the first 3D renderer commits `cd753af65`, and the rerun of the shared cache step of KB-355 with KB-356 `a81e8cc18` | US$1.50 | US$1.65 (estimate) |
+| 🟢 | batch6 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand | us-east-1 | 2026-11-27 06:05 | 2026-11-27 13:05 | KB-345 and KB-347: Clang, thin LTO and lld on Linux, path maps in every object, about 14 builds without the cache and the link memory measurements, KB-350 `fe7b5cf3c`, the 3D navigation `10f67d769`, the first commit of KB-364 `691dc67bc` and the first commit of KB-363 `31a5762a0` | US$1.50 | US$1.40 (estimate) |
 
 ### 🔷 Azure
 
