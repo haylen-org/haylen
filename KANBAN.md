@@ -10136,6 +10136,7 @@ Desenho:
 - Cada subsistema é um plugin que dá o seu serviço: `InputPlugin`, `AudioPlugin` (dono do mixer e de toda a saída), `AssetsPlugin`, `ScenesPlugin`, `TimersPlugin` (timers e tweens) e `StoragePlugin`, ao lado do `Graphics2DPlugin` da fronteira do renderizador. Telas, saídas, acessibilidade e o sistema chegam pelos serviços da plataforma.
 - A área segura, a dobra, os recortes, as simulações e a barra de status vão para `platform::ScreenArea`. Os getters do `Engine` saem, e o código pede o serviço.
 - O `DebugPlugin` se divide em `DebugDrawPlugin`, `ConsolePlugin` (`debug::Commands`), `InspectorPlugin` (com o provedor nativo do registro de tipos, o picking por provedor de cada renderizador e os gizmos), `ProfilerPlugin` (traços e `debug::GpuCaptures`) e `CrashReportPlugin` (`debug::CrashReports`). O `PlatformPlugin` se divide pelo que liga.
+- As teclas das ferramentas de depuração (F2, F3 e F4) valem só numa execução de desenvolvimento ou quando a seção `debug` do `haylen.json` as liga, como o `debug.console` faz com o console, então um app publicado não abre nada por uma tecla. Hoje o F3 e o F4 valem em todo build.
 - `debug::Stats` é o único retrato do quadro, com `toJson`, que a página web e a binding Lua leem.
 - Um autoload é um plugin com um modo de processo, e o autoload do Lua é um `ScriptedPlugin` no mesmo contrato.
 - A ordem do quadro do [KB-036](#kb-036) sai dos estágios deste núcleo, e o [KB-030](#kb-030) usa o inspetor dividido.
@@ -10146,6 +10147,7 @@ Achados cobertos: S-002, L-005 (camadas), L-023 (sem as partes da UI e do texto)
 
 - [ ] Cada subsistema embutido é um plugin que um app troca pelo `configurePlugins`, com um teste de troca de pelo menos a entrada, o áudio e os assets.
 - [ ] Um app C++ guarda o console sem o inspetor e troca os relatórios de crash sem perder o console, com testes.
+- [ ] Um app publicado não mostra estatísticas, desenhos nem o inspetor por uma tecla, a menos que o `haylen.json` ligue, com testes.
 - [ ] A ordem do quadro está escrita no `architecture.md` e conferida por um teste, sem alocação nem perda de desempenho nos benchmarks.
 - [ ] O código antigo saiu: os getters do `Engine`, os campos dos subsistemas no `EngineState`, o `DebugPlugin` inteiro e as estatísticas montadas fora do `debug::Stats`.
 - [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
