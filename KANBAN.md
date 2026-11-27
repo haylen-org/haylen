@@ -251,6 +251,7 @@
 | **[KB-346 · Um dia de Mac na nuvem por mês roda de uma vez todo o lote pesado da Apple](#kb-346)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | — | — |
 | **[KB-347 · As informações de debug guardam caminhos relativos, como os nomes de arquivo das macros](#kb-347)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | — | — |
 | **[KB-350 · A leitura de um render target de volume segue o mesmo contrato em todo dispositivo de GPU](#kb-350)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
+| **[KB-353 · Plugin de webview, que mostra páginas web e roda JavaScript dentro da app](#kb-353)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -9194,6 +9195,46 @@ O teste `Navigation3DLuaTest.BakesInTheBackground` falha com o sanitizer de thre
 
 - None
 
+### KB-353
+
+- **Title:** Plugin de webview, que mostra páginas web e roda JavaScript dentro da app
+- **Status:** todo
+- **Type:** feature
+- **Priority:** medium
+- **Complexity:** 7
+- **Dependencies:** [KB-282](#kb-282), pelos pontos de extensão que um plugin de webview precisa da engine.
+
+#### Description
+
+Pedido do dono: um plugin nativo de webview no repositório irmão de plugins, para a app mostrar uma página web ou um jogo HTML5, notícias, telas de login, páginas de suporte e conteúdo da loja, e rodar JavaScript nessa página, com troca de mensagens nos dois sentidos entre o JavaScript da página e o Lua da app.
+
+Antes de desenhar, o stream estuda o código fonte dos plugins de webview das engines líderes e das bibliotecas abertas mais usadas, o que cada uma faz bem e onde falha, e o plugin da Haylen tem que ser mais completo e mais natural de usar que todos eles. Nos desktops, a base preferida é a biblioteca C++ de código aberto que embrulha a webview do próprio sistema (WebView2 no Windows, WKWebView no macOS e WebKitGTK no Linux), sem embutir um navegador. No iOS, iPadOS, Mac Catalyst e visionOS o plugin usa `WKWebView`, no Android `android.webkit.WebView`, e na web um `iframe` com as restrições do navegador. O tvOS não tem webview, e a chamada falha com `unsupported` e uma frase.
+
+O plugin cobre:
+- abrir uma vista por URL ou por HTML local do pacote, num retângulo da tela que segue o layout, a área segura e a rotação, ou em tela cheia;
+- mostrar, esconder, fechar, navegar para trás e para frente e recarregar;
+- os eventos de carregamento, de erro e de mudança de URL, e a recusa de URLs fora de uma lista que a app define;
+- rodar JavaScript e receber o resultado numa promise;
+- mensagens do JavaScript para o Lua e do Lua para o JavaScript;
+- cookies e dados limpos a pedido;
+- fundo transparente;
+- o foco, o teclado do sistema e o botão voltar do Android;
+- abrir os links externos no navegador do sistema.
+
+Tudo assíncrono, com `owner`, como a política de API pede. Ele usa só o contrato de plugins e as APIs públicas da engine, e qualquer falta da engine vira um ponto de extensão, pelo KB-282.
+
+#### Acceptance criteria
+
+- [ ] O estudo dos plugins de webview das engines líderes e das bibliotecas abertas está registrado no repositório de plugins, com o que o plugin da Haylen faz melhor.
+- [ ] O plugin funciona com a mesma API Lua no Windows, macOS, Linux, iOS, iPadOS, Mac Catalyst, visionOS, Android e web, e o tvOS falha com `unsupported`.
+- [ ] O JavaScript da página e o Lua trocam mensagens nos dois sentidos, e o resultado de um script volta numa promise.
+- [ ] Um sample e testes de UI automáticos em cada plataforma mostram uma página local, uma página remota, uma mensagem em cada sentido e o voltar do Android.
+- [ ] O README do plugin traz a API Lua completa e a configuração de cada plataforma.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -9218,7 +9259,7 @@ O teste `Navigation3DLuaTest.BakesInTheBackground` falha com o sanitizer de thre
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-353. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-354. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
