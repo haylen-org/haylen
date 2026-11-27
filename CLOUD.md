@@ -5,12 +5,12 @@
 | Status | Service | Running now | This month | Share | Cost status |
 | --- | --- | --- | --- | --- | --- |
 | 🟢 | 🔶 AWS EC2 | batch5b and batch6 (on-demand) | US$29.30 (estimate) | US$110 | 🟢 |
-| ⚪ | 🔷 Azure | None, the VM is deallocated | US$5.65 (estimate) | US$10 | 🟡 |
+| 🟡 | 🔷 Azure | windows-kb355-shared | US$5.65 (estimate) | US$10 | 🟡 |
 | 🟢 | 🏠 Own Machines | The Mac, with the web checks of KB-362 and the full tests of the 3D renderer | No cost | No cost | 🟢 |
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 07:35 UTC
+Last updated: 2026-11-27 07:50 UTC
 
 ## 🏃 Running Now
 
@@ -18,14 +18,14 @@ Last updated: 2026-11-27 07:35 UTC
 
 | Status | Session | Platform | Machine type | Market | Zone | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 10:55 | physics3d (8 commits, sanitizers, fuzzers, web, bench), the animation3d node components `932f18af5`, the first 3D renderer commits `cd753af65`, and the rerun of the shared cache step of KB-355 with KB-356 `a81e8cc18` | US$1.50 | US$1.65 (estimate) |
+| 🟢 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 10:55 | physics3d (8 commits, sanitizers, fuzzers, web, bench), the animation3d node components `932f18af5`, the first 3D renderer commits `cd753af65`, the rerun of the shared cache step of KB-355, the first commit of KB-360 and the full rerun of KB-355 and KB-356 at `a4ca5b8e3` | US$1.50 | US$1.65 (estimate) |
 | 🟠 | batch6 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand | us-east-1 | 2026-11-27 06:05 | 2026-11-27 16:18, extended for the physics3d sweep, now about US$15 instead of the US$10.50 of its estimate | KB-345 and KB-347: Clang, thin LTO and lld on Linux, path maps in every object, about 14 builds without the cache and the link memory measurements, KB-350 `fe7b5cf3c`, the 3D navigation `10f67d769`, the first commit of KB-364 `691dc67bc`, the first commit of KB-363 `31a5762a0` and the physics3d vocabulary sweep with KB-173 and KB-176 to KB-178 (12 commits to `379e678a3`) | US$1.50 | US$1.90 (estimate) |
 
 ### 🔷 Azure
 
 | Status | Session | Platform | Machine type | Market | Region | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ⚪ | None | | | | | | | | | |
+| 🟡 | windows-kb355-shared | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 (AMD V620) | regular, deallocated between batches | eastus2 | 2026-11-27 07:50 | Within 2 hours | The regression of KB-355 under MSVC in two trees with one cache, the new commits `819ba2dc2` and `a4ca5b8e3` and Direct3D 11 at the head | US$0.64 | starting |
 
 ### 🏠 Own Machines
 
