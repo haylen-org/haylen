@@ -5,12 +5,12 @@
 | Status | Service | Running now | This month | Share | Cost status |
 | --- | --- | --- | --- | --- | --- |
 | 🟠 | 🔶 AWS EC2 | batch5b (on-demand) | US$29.30 (estimate) | US$110 | 🟢 |
-| 🟢 | 🔷 Azure | windows-varn-repin | US$5.00 (estimate) | US$10 | 🟡 |
+| ⚪ | 🔷 Azure | None | US$5.30 (estimate) | US$10 | 🟡 |
 | 🟢 | 🏠 Own Machines | The Mac, with incremental test builds of physics3d | No cost | No cost | 🟢 |
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 05:58 UTC
+Last updated: 2026-11-27 06:35 UTC
 
 ## 🏃 Running Now
 
@@ -24,7 +24,7 @@ Last updated: 2026-11-27 05:58 UTC
 
 | Status | Session | Platform | Machine type | Market | Region | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | windows-varn-repin | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 (AMD V620) | regular, deallocated between batches | eastus2 | 2026-11-27 05:10 | Auto-shutdown within 2 hours | The Varn repin `34736647f` with the package cache on (KB-354), and KB-055 again on all five APIs in one tree folder | US$0.64 | US$0.10 (estimate) |
+| ⚪ | None | | | | | | | | | |
 
 ### 🏠 Own Machines
 
@@ -87,12 +87,13 @@ Next cloud Mac day: not planned. Card KB-346 prepares it.
 | 🟢 | 🤖 Android | 2026-11-27 03:30 | batch3, the emulator image of CI | KB-055 `304b884d8` | ✅ GPU tests on Vulkan and OpenGL ES | |
 | 🟢 | 🌐 Web | 2026-11-27 03:00 | batch3, headless browsers | KB-055 `304b884d8` | ✅ WebGPU and WebGL2, ✅ web SDK | |
 | 🟢 | 🎮 GPU on Linux | 2026-11-27 03:00 | batch3, lavapipe and llvmpipe | KB-055 `304b884d8` | ✅ Vulkan, ✅ OpenGL | |
-| 🟡 | 🎮 GPU on Windows | 2026-11-26 | Windows laptop | KB-055 `189417281` | ✅ Direct3D 11 and 12 on three GPUs over SSH, ⏭️ the surface readback test, which needs a desktop session | The Azure desktop run waits for a batch that builds OpenSSL in the tree (KB-354) |
+| 🟢 | 🎮 GPU on Windows | 2026-11-27 06:30 | Azure AMD V620, desktop session | main `cd8aa5777` | ✅ Direct3D 11 176, Direct3D 12 177, Vulkan 177, OpenGL 176, WARP 177, none failed | The package cache of Varn on |
 
 ## 📜 Batch Log
 
 | Status | Date (UTC) | Session | Service | Platforms | Machine or devices | Duration | Cost | Jobs and results | Cache hit rate | Deleted and proven |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 🟢 | 2026-11-27 05:30 | windows-varn-repin | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 55 min over four starts | US$0.60 (estimate) | ✅ gpu-build with the Varn package cache, ✅ Direct3D 11, ✅ Direct3D 12, ✅ Vulkan, ✅ OpenGL, ✅ WARP | | ✅ deallocated, IP and rule removed |
 | 🔴 | 2026-11-27 05:40 | batch5 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 10 min, reclaimed by AWS | US$0.11 (estimate) | ⏳ lost: physics3d and the animation3d node components, rerun on demand in batch5b | | ✅ |
 | 🔴 | 2026-11-27 04:16 | batch4 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 65 min, reclaimed by AWS | US$0.73 (estimate) | ✅ physics3d commits 1 to 7 (clang and gcc), ❌ navigation3d: its new regression test fails on all 32 bakes (clang, gcc, asan), ⏳ lost: physics3d commit 8 and heads, navigation3d tsan, animation3d node components | | ✅ |
 | 🟠 | 2026-11-27 05:10 | windows-kb055-2 | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 25 min | US$0.27 (estimate) | ✅ GpuSurfaceTest.ReadsTheInputOfAFrameBehindOneFrameAtMost on Direct3D 11, Direct3D 12, WARP, Vulkan and OpenGL, ❌ 11 reference scenes per API (a cached object with another job's data path, KB-355), ❌ one OpenGL readback on the first run after boot (KB-356) | | ✅ deallocated, IP and rule removed |
@@ -108,7 +109,7 @@ Next cloud Mac day: not planned. Card KB-346 prepares it.
 | Status | Service | Resource | Kind | Region | Why it is kept | Monthly cost |
 | --- | --- | --- | --- | --- | --- | --- |
 | ⚪ | 🔶 AWS EC2 | haylen-batch-linux-20261126-2037 and its snapshot | Prepared image | us-east-1 | The Linux batch machines start warm from it | US$1 |
-| 🟢 | 🔷 Azure | haylen-batch-windows with its OS disk, NIC, NSG and VNet | Deallocated VM | eastus2 | The Windows GPU batch machine with its toolchains | US$5.90 (the disk) |
+| ⚪ | 🔷 Azure | haylen-batch-windows with its OS disk, NIC, NSG and VNet | Deallocated VM | eastus2 | The Windows GPU batch machine with its toolchains | US$5.90 (the disk) |
 | ⚪ | Cache bucket | haylen-ci on Cloudflare R2 | Bucket | ENAM | The compiler cache and the dependency caches, objects expire after 30 days | Storage plus operations |
 
 ## 📏 Quotas
