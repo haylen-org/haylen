@@ -4,13 +4,13 @@
 
 | Status | Service | Running now | This month | Share | Cost status |
 | --- | --- | --- | --- | --- | --- |
-| ⚪ | 🔶 AWS EC2 | None | US$29.10 (estimate) | US$110 | 🟢 |
+| 🟠 | 🔶 AWS EC2 | batch5b (on-demand) | US$29.30 (estimate) | US$110 | 🟢 |
 | 🟢 | 🔷 Azure | windows-varn-repin | US$5.00 (estimate) | US$10 | 🟡 |
 | 🟢 | 🏠 Own Machines | The Mac, with incremental test builds of physics3d | No cost | No cost | 🟢 |
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 05:30 UTC
+Last updated: 2026-11-27 05:58 UTC
 
 ## 🏃 Running Now
 
@@ -18,7 +18,7 @@ Last updated: 2026-11-27 05:30 UTC
 
 | Status | Session | Platform | Machine type | Market | Zone | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ⚪ | None | | | | | | | | | |
+| 🟠 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 10:55 | physics3d (8 commits, sanitizers, fuzzers, web, bench) and the animation3d node components `a514fc298` | US$1.50 | starting |
 
 ### 🔷 Azure
 
@@ -93,6 +93,7 @@ Next cloud Mac day: not planned. Card KB-346 prepares it.
 
 | Status | Date (UTC) | Session | Service | Platforms | Machine or devices | Duration | Cost | Jobs and results | Cache hit rate | Deleted and proven |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 🔴 | 2026-11-27 05:40 | batch5 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 10 min, reclaimed by AWS | US$0.11 (estimate) | ⏳ lost: physics3d and the animation3d node components, rerun on demand in batch5b | | ✅ |
 | 🔴 | 2026-11-27 04:16 | batch4 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 65 min, reclaimed by AWS | US$0.73 (estimate) | ✅ physics3d commits 1 to 7 (clang and gcc), ❌ navigation3d: its new regression test fails on all 32 bakes (clang, gcc, asan), ⏳ lost: physics3d commit 8 and heads, navigation3d tsan, animation3d node components | | ✅ |
 | 🟠 | 2026-11-27 05:10 | windows-kb055-2 | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 25 min | US$0.27 (estimate) | ✅ GpuSurfaceTest.ReadsTheInputOfAFrameBehindOneFrameAtMost on Direct3D 11, Direct3D 12, WARP, Vulkan and OpenGL, ❌ 11 reference scenes per API (a cached object with another job's data path, KB-355), ❌ one OpenGL readback on the first run after boot (KB-356) | | ✅ deallocated, IP and rule removed |
 | 🟢 | 2026-11-27 04:33 | windows-diagnosis | 🔷 Azure | 🪟 Windows | Standard_NG8ads_V620_v1 | 10 min | US$0.11 (estimate) | ✅ Diagnosis: the prebuilt OpenSSL package of Varn is not found by `find_package` under MSVC (KB-354), proven with a probe project | | ✅ deallocated, IP and rule removed |
