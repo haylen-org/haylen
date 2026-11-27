@@ -2,85 +2,119 @@
 
 <!-- KANBAN:BOARD:START -->
 
-| TODO (251 tasks) | DOING (18 tasks) | BLOCKED (1 task) | REVIEW (0 tasks) | TESTING (8 tasks) | DONE (77 tasks, 30 days) |
+| TODO (296 tasks) | DOING (18 tasks) | BLOCKED (1 task) | REVIEW (0 tasks) | TESTING (8 tasks) | DONE (77 tasks, 30 days) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)**<br>🔴 critical · `epic` · 10/10 | **[KB-144 · Componentes de nós 3D](#kb-144)**<br>🟡 medium · `feature` · 5/10 | — | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-354 · O pacote pronto do OpenSSL que o Varn importa é achado pelo `find_package` no Windows](#kb-354)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-341 · Achar a causa da parada de 90 s do quadro na abertura de um app no simulador do iOS](#kb-341)**<br>🟠 high · `bug` · 5/10 | — | — | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-143 · Árvore de nós 3D em haylen::nodes3d (engine/src/3d/nodes/, Lua haylen.nodes3d)](#kb-143)**<br>🟡 medium · `feature` · 7/10 |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-352 · A navegação 3D tem uma corrida entre threads ao assar a navmesh em segundo plano](#kb-352)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-055 · Render targets completos em graphics::RenderTarget (hoje só cor)](#kb-055)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-357 · Uma arquitetura de nós só para o 2D e o 3D, com um núcleo comum e componentes abertos](#kb-357)**<br>🟠 high · `refactor` · 9/10 | — | — | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-344 · Os testes não deixam pastas temporárias para trás e não engolem o erro de apagá-las](#kb-344)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-076 · Núcleo do graphics3d::Renderer em engine/src/3d/graphics/](#kb-076)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-343 · Os testes parametrizados têm nomes estáveis no CTest](#kb-343)**<br>🟡 medium · `bug` · 2/10 |
-| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-078 · Câmeras graphics3d::Camera](#kb-078)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-340 · Máquinas de lote prontas para cada plataforma: Windows, Linux com GPU e Android](#kb-340)**<br>🟠 high · `improvement` · 5/10 | **[KB-342 · Dois testes do Lua falham quando a máquina está carregada](#kb-342)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-348 · Todo tipo de uma dimensão leva 2D ou 3D no nome, no C++ e no Lua](#kb-348)**<br>🟠 high · `refactor` · 8/10 | **[KB-080 · Malhas](#kb-080)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-349 · Os testes de UI do iOS na CI dizem por que o simulador parou, em vez de falhar ao desligá-lo](#kb-349)**<br>🟠 high · `bug` · 3/10 | **[KB-335 · O teste do corpo grande pelo TLS do Varn falha às vezes no Windows arm64](#kb-335)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-355 · Nenhum objeto compilado guarda um caminho absoluto da árvore, para o cache do compilador valer entre pastas](#kb-355)**<br>🟠 high · `bug` · 4/10 | **[KB-107 · O núcleo do glTF 2.0 inteiro, sem nada para depois](#kb-107)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | **[KB-334 · O `haylen app verify` de um produto da Apple acha o projeto do último build](#kb-334)**<br>🟠 high · `bug` · 2/10 |
-| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-156 · Clipes e trilhas em haylen::animation3d (engine/src/3d/animation/, Lua haylen.animation3d)](#kb-156)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-333 · No Android, o campo levantado não cai e sobe de novo quando o aparelho gira com o teclado aberto](#kb-333)**<br>🟡 medium · `bug` · 4/10 |
-| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | **[KB-157 · Esqueletos e skin](#kb-157)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | **[KB-158 · Alvos de morph](#kb-158)**<br>🟡 medium · `feature` · 3/10 | — | — | — | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 |
-| **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | **[KB-170 · Formas](#kb-170)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-330 · No Android, o teclado fecha às vezes quando o aparelho gira com um campo editando](#kb-330)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | **[KB-173 · Personagem](#kb-173)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | **[KB-176 · Consultas](#kb-176)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | **[KB-177 · Eventos de contato](#kb-177)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 |
-| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | **[KB-178 · Ganchos de passo e ajudantes em C++](#kb-178)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 |
-| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | **[KB-345 · Os builds de Linux linkam com o lld, que usa muito menos memória que o ld do GNU](#kb-345)**<br>🟡 medium · `improvement` · 4/10 | — | — | — | **[KB-323 · Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU](#kb-323)**<br>🟠 high · `fix` · 6/10 |
-| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | **[KB-347 · As informações de debug guardam caminhos relativos, como os nomes de arquivo das macros](#kb-347)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | **[KB-322 · Corrigir os defeitos confirmados da revisão da RHI no Direct3D](#kb-322)**<br>🟠 high · `fix` · 6/10 |
-| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 |
-| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 |
-| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 |
-| **[KB-048 · Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno](#kb-048)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 |
-| **[KB-049 · Barreiras e hazards](#kb-049)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-050 · Draws indiretos](#kb-050)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 |
-| **[KB-054 · Renderização em várias camadas num pass (multiview)](#kb-054)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 |
-| **[KB-056 · Consultas de GPU](#kb-056)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 |
-| **[KB-057 · Formatos de vértice e topologias para 3D](#kb-057)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-058 · Texturas externas para XR](#kb-058)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-230 · Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake](#kb-230)**<br>🟡 medium · `feature` · 7/10 |
-| **[KB-059 · Cache de pipelines](#kb-059)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-190 · Estruturas espaciais em haylen::spatial3d (engine/src/3d/spatial/, Lua haylen.spatial3d)](#kb-190)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-060 · Envio e memória de GPU para 3D](#kb-060)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-061 · Grafo de render em graphics::RenderGraph (engine/include/haylen/graphics/RenderGraph.hpp, comum a 2D, 3D e XR)](#kb-061)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-184 · Obstáculos e ligações](#kb-184)**<br>🟡 medium · `feature` · 3/10 |
-| **[KB-062 · O renderizador 2D monta seus passes no grafo de render](#kb-062)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-183 · Malha de navegação 3D em haylen::navigation3d pela Recast e Detour](#kb-183)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-063 · Composição de 2D, 3D, UI, saídas e XR no mesmo quadro](#kb-063)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-172 · Restrições](#kb-172)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-064 · Marcadores de depuração de GPU por pass e grupo em todas as APIs, com os nomes dos passes do grafo, para que…](#kb-064)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-171 · Camadas de colisão](#kb-171)**<br>🟡 medium · `feature` · 3/10 |
-| **[KB-065 · A tabela de capacidades por API e plataforma em docs/graphics/rhi.md cobre cada recurso novo e o estado de…](#kb-065)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | **[KB-169 · Corpos physics3d::Body](#kb-169)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-066 · Estágio de compute no haylen-shaderc](#kb-066)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-168 · Mundo physics3d::World (engine/src/3d/physics/)](#kb-168)**<br>🟡 medium · `feature` · 7/10 |
-| **[KB-067 · Buffers e imagens de storage no compilador](#kb-067)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-114 · Imagens WebP](#kb-114)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-068 · Reflexão 3D no compilador](#kb-068)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-106 · Leitor de glTF 2.0 em haylen::gltf (engine/src/3d/gltf/)](#kb-106)**<br>🟡 medium · `feature` · 7/10 |
-| **[KB-069 · Variantes de shader sem explosão](#kb-069)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-053 · Samplers completos](#kb-053)**<br>🟡 medium · `feature` · 3/10 |
-| **[KB-070 · Formato do pacote .shader com programas de compute, recursos de storage, variantes, recursos exigidos e…](#kb-070)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-052 · Formatos de pixel novos com tabelas de capacidade por API (filtrável, renderizável, mesclável e de storage)](#kb-052)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-071 · Bibliotecas Metal pré-compiladas também para os programas do renderizador 3D, para que o dispositivo Metal…](#kb-071)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-045 · Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)](#kb-045)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-072 · Biblioteca de shaders 3D em engine/shaders/include/haylen/3d/](#kb-072)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 |
-| **[KB-073 · Contrato de superfície para shaders 3D de apps e plugins](#kb-073)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 |
-| **[KB-074 · Grafos de material no compilador](#kb-074)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
-| **[KB-075 · Recarga de shaders e materiais 3D no desenvolvimento](#kb-075)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-077 · Planos de recorte e cortes de seção](#kb-077)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-079 · Controles de câmera prontos em graphics3d, com mouse, toque, teclado, gamepad e controle remoto de TV](#kb-079)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-081 · Primitivas e geradores de geometria](#kb-081)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
-| **[KB-082 · Utilitários de malha em graphics3d::MeshTools, que trabalham sobre MeshData em jobs sem Lua, com versão…](#kb-082)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-083 · Linhas e pontos 3D](#kb-083)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-084 · Instanciação e lotes](#kb-084)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-085 · Caminhos de render avançados, medidos antes de entrar](#kb-085)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 |
-| **[KB-086 · Traçado de caminhos progressivo no nível moderno](#kb-086)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-087 · Culling](#kb-087)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 |
-| **[KB-088 · Níveis de detalhe](#kb-088)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-089 · Transparência](#kb-089)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-090 · Várias visões e alvos](#kb-090)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-091 · Antisserrilhado](#kb-091)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-293 · Modo do mouse da janela: normal, oculto, travado, preso e preso oculto](#kb-293)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-092 · Escala de resolução](#kb-092)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-093 · Pipeline HDR e cor](#kb-093)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-094 · Saída HDR em telas HDR onde a plataforma oferece, com o pico de brilho da tela lido pela API do sistema, o…](#kb-094)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 |
-| **[KB-095 · Bloom, brilho e luz](#kb-095)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-096 · Efeitos de espaço de tela](#kb-096)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-097 · Efeitos de câmera](#kb-097)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
-| **[KB-098 · Efeitos estilizados de pós](#kb-098)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-099 · Pós por visão em Lua e C++](#kb-099)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-100 · Visões de depuração e estatísticas do 3D](#kb-100)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-101 · Desenho de depuração 3D](#kb-101)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-102 · Billboards, sprites e texto no mundo](#kb-102)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-103 · GUIs no mundo](#kb-103)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-104 · Rótulos e marcadores presos ao mundo](#kb-104)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-105 · Picking](#kb-105)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-108 · Extensões de material e de textura do glTF, todas as ratificadas no registro do Khronos e na mesma fase do…](#kb-108)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
-| **[KB-109 · Extensões de geometria, cena e comportamento do glTF, todas as ratificadas no registro do Khronos e na mesma…](#kb-109)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
-| **[KB-110 · Conformidade com o glTF 2.0, a prova do suporte de 100%](#kb-110)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-111 · Asset de modelo](#kb-111)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
-| **[KB-112 · KTX2 e Basis Universal](#kb-112)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-365 · Contrato de plugins v2: serviços por interface, estágios com nome e o app que troca ou tira um plugin embutido](#kb-365)**<br>🔴 critical · `refactor` · 9/10 | **[KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)**<br>🔴 critical · `epic` · 10/10 | **[KB-144 · Componentes de nós 3D](#kb-144)**<br>🟡 medium · `feature` · 5/10 | — | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-354 · O pacote pronto do OpenSSL que o Varn importa é achado pelo `find_package` no Windows](#kb-354)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-376 · Um contrato de host só: as plataformas da engine usam o `port::Host` e o `port::Player`, como um port](#kb-376)**<br>🔴 critical · `refactor` · 9/10 | **[KB-341 · Achar a causa da parada de 90 s do quadro na abertura de um app no simulador do iOS](#kb-341)**<br>🟠 high · `bug` · 5/10 | — | — | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-143 · Árvore de nós 3D em haylen::nodes3d (engine/src/3d/nodes/, Lua haylen.nodes3d)](#kb-143)**<br>🟡 medium · `feature` · 7/10 |
+| **[KB-378 · O `core::Engine` vira um núcleo, e cada subsistema vira um plugin que dá o seu serviço](#kb-378)**<br>🔴 critical · `refactor` · 10/10 | **[KB-352 · A navegação 3D tem uma corrida entre threads ao assar a navmesh em segundo plano](#kb-352)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-055 · Render targets completos em graphics::RenderTarget (hoje só cor)](#kb-055)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-357 · Uma arquitetura de nós só para o 2D e o 3D, com um núcleo comum e componentes abertos](#kb-357)**<br>🟠 high · `refactor` · 9/10 | — | — | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-344 · Os testes não deixam pastas temporárias para trás e não engolem o erro de apagá-las](#kb-344)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-076 · Núcleo do graphics3d::Renderer em engine/src/3d/graphics/](#kb-076)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-343 · Os testes parametrizados têm nomes estáveis no CTest](#kb-343)**<br>🟡 medium · `bug` · 2/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-078 · Câmeras graphics3d::Camera](#kb-078)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-340 · Máquinas de lote prontas para cada plataforma: Windows, Linux com GPU e Android](#kb-340)**<br>🟠 high · `improvement` · 5/10 | **[KB-342 · Dois testes do Lua falham quando a máquina está carregada](#kb-342)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-080 · Malhas](#kb-080)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-349 · Os testes de UI do iOS na CI dizem por que o simulador parou, em vez de falhar ao desligá-lo](#kb-349)**<br>🟠 high · `bug` · 3/10 | **[KB-335 · O teste do corpo grande pelo TLS do Varn falha às vezes no Windows arm64](#kb-335)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-107 · O núcleo do glTF 2.0 inteiro, sem nada para depois](#kb-107)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | **[KB-334 · O `haylen app verify` de um produto da Apple acha o projeto do último build](#kb-334)**<br>🟠 high · `bug` · 2/10 |
+| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-156 · Clipes e trilhas em haylen::animation3d (engine/src/3d/animation/, Lua haylen.animation3d)](#kb-156)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-333 · No Android, o campo levantado não cai e sobe de novo quando o aparelho gira com o teclado aberto](#kb-333)**<br>🟡 medium · `bug` · 4/10 |
+| **[KB-348 · Todo tipo de uma dimensão leva 2D ou 3D no nome, no C++ e no Lua](#kb-348)**<br>🟠 high · `refactor` · 8/10 | **[KB-157 · Esqueletos e skin](#kb-157)**<br>🟡 medium · `feature` · 7/10 | — | — | — | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-355 · Nenhum objeto compilado guarda um caminho absoluto da árvore, para o cache do compilador valer entre pastas](#kb-355)**<br>🟠 high · `bug` · 4/10 | **[KB-158 · Alvos de morph](#kb-158)**<br>🟡 medium · `feature` · 3/10 | — | — | — | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 |
+| **[KB-360 · O repositório diz só o que existe, sem sobras, e as regras que já valem ganham guarda](#kb-360)**<br>🟠 high · `task` · 4/10 | **[KB-170 · Formas](#kb-170)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-330 · No Android, o teclado fecha às vezes quando o aparelho gira com um campo editando](#kb-330)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-361 · A árvore de docs tem um bloco de referência dos manifestos e da linha de comando, e cada assunto numa página só](#kb-361)**<br>🟠 high · `task` · 5/10 | **[KB-173 · Personagem](#kb-173)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-362 · O JavaScript da web em classes, sem nome escrito pelos dois lados, e um splash só](#kb-362)**<br>🟠 high · `refactor` · 7/10 | **[KB-176 · Consultas](#kb-176)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-363 · Um registro de tipos em C++ e eventos tipados num barramento só](#kb-363)**<br>🟠 high · `refactor` · 8/10 | **[KB-177 · Eventos de contato](#kb-177)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 |
+| **[KB-364 · Um `core::Lifetime` para tudo que registra, e tarefas com dependências no job system](#kb-364)**<br>🟠 high · `refactor` · 7/10 | **[KB-178 · Ganchos de passo e ajudantes em C++](#kb-178)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 |
+| **[KB-366 · A camada Lua organizada em `toolkit/`, `runtime/`, `development/` e `debug/`, com um `lua::Module` por módulo e o `haylen.bridge`](#kb-366)**<br>🟠 high · `refactor` · 7/10 | **[KB-345 · Os builds de Linux linkam com o lld, que usa muito menos memória que o ld do GNU](#kb-345)**<br>🟡 medium · `improvement` · 4/10 | — | — | — | **[KB-323 · Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU](#kb-323)**<br>🟠 high · `fix` · 6/10 |
+| **[KB-367 · Os contextos do 2D em camadas, sem ciclos, como os do 3D](#kb-367)**<br>🟠 high · `refactor` · 7/10 | **[KB-347 · As informações de debug guardam caminhos relativos, como os nomes de arquivo das macros](#kb-347)**<br>🟡 medium · `improvement` · 5/10 | — | — | — | **[KB-322 · Corrigir os defeitos confirmados da revisão da RHI no Direct3D](#kb-322)**<br>🟠 high · `fix` · 6/10 |
+| **[KB-369 · Toda entrada vinda de outra linguagem passa por um só guarda de erros](#kb-369)**<br>🟠 high · `bug` · 5/10 | — | — | — | — | **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 |
+| **[KB-372 · Os dispositivos de GPU dividem as regras do contrato e as peças que não dependem da API](#kb-372)**<br>🟠 high · `refactor` · 8/10 | — | — | — | — | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 |
+| **[KB-373 · Uma tabela de nomes por enum, `core::EnumTable`, com o `EnumNames` ao lado de cada enum no núcleo](#kb-373)**<br>🟠 high · `refactor` · 6/10 | — | — | — | — | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 |
+| **[KB-374 · A física 2D com o vocabulário, o modelo de formas e os pontos de extensão da física 3D, e o `Character2D`](#kb-374)**<br>🟠 high · `refactor` · 9/10 | — | — | — | — | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 |
+| **[KB-375 · Nada silenciado, nenhuma mensagem fora do padrão e o clang-tidy ligado, em todo canal e em toda linguagem](#kb-375)**<br>🟠 high · `refactor` · 8/10 | — | — | — | — | **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-379 · Uma pilha de rede só, no laço do Varn, com uma API pública em C++, e o Poco sai](#kb-379)**<br>🟠 high · `refactor` · 7/10 | — | — | — | — | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 |
+| **[KB-380 · A engine recebe a janela e os serviços da plataforma separados, por capacidade, e toda plataforma relata pela API de port](#kb-380)**<br>🟠 high · `refactor` · 9/10 | — | — | — | — | **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 |
+| **[KB-383 · Um `input::InputSystem` com dispositivos registrados por caminho de controle, uma ordem de entrada e ações completas](#kb-383)**<br>🟠 high · `refactor` · 9/10 | — | — | — | — | **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 |
+| **[KB-384 · O áudio com um dono só, decodificadores registrados e um `audio::Spatializer` com o ouvinte 3D](#kb-384)**<br>🟠 high · `refactor` · 7/10 | — | — | — | — | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 |
+| **[KB-385 · Assets tipados, registrados pelo plugin dono do tipo, e todo arquivo do pacote como um asset](#kb-385)**<br>🟠 high · `refactor` · 8/10 | — | — | — | — | **[KB-230 · Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake](#kb-230)**<br>🟡 medium · `feature` · 7/10 |
+| **[KB-386 · Toda chamada que devolve uma promise termina em `Async`, com o cancelamento nas opções, uma forma de erro e um tempo só para as esperas](#kb-386)**<br>🟠 high · `refactor` · 6/10 | — | — | — | — | **[KB-190 · Estruturas espaciais em haylen::spatial3d (engine/src/3d/spatial/, Lua haylen.spatial3d)](#kb-190)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-387 · A camada SDL só com o SDL, a janela da página web numa classe e um desktop Wayland nativo no Linux](#kb-387)**<br>🟠 high · `refactor` · 8/10 | — | — | — | — | **[KB-185 · Consultas e agentes](#kb-185)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-388 · O headless é um port de verdade, com serviços de teste, e o lançamento de apps tem uma pilha só](#kb-388)**<br>🟠 high · `refactor` · 6/10 | — | — | — | — | **[KB-184 · Obstáculos e ligações](#kb-184)**<br>🟡 medium · `feature` · 3/10 |
+| **[KB-389 · Uma só linguagem de animação: esqueleto e pose, clipe, animador, e a máquina de estados sem dimensão](#kb-389)**<br>🟠 high · `refactor` · 8/10 | — | — | — | — | **[KB-183 · Malha de navegação 3D em haylen::navigation3d pela Recast e Detour](#kb-183)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-391 · Uma cena é dona de um `nodes::World`, com as árvores e os subsistemas do seu mundo](#kb-391)**<br>🟠 high · `refactor` · 7/10 | — | — | — | — | **[KB-172 · Restrições](#kb-172)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-393 · O vocabulário da API Lua: handles, um verbo para criar e um para acabar, um jeito de ouvir, `save` e `restore`](#kb-393)**<br>🟠 high · `refactor` · 9/10 | — | — | — | — | **[KB-171 · Camadas de colisão](#kb-171)**<br>🟡 medium · `feature` · 3/10 |
+| **[KB-394 · Cada capacidade de cada plataforma é uma instância com o seu estado, com as mesmas palavras em toda plataforma](#kb-394)**<br>🟠 high · `refactor` · 9/10 | — | — | — | — | **[KB-169 · Corpos physics3d::Body](#kb-169)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-395 · A UI com um runtime próprio da engine, com superfícies, propriedades tipadas e acessibilidade por provedores, e o ImGui só como camada de ferramentas](#kb-395)**<br>🟠 high · `refactor` · 10/10 | — | — | — | — | **[KB-168 · Mundo physics3d::World (engine/src/3d/physics/)](#kb-168)**<br>🟡 medium · `feature` · 7/10 |
+| **[KB-397 · Tudo numa classe e num namespace em toda linguagem, com a regra de cada linguagem e o seu teste](#kb-397)**<br>🟠 high · `refactor` · 7/10 | — | — | — | — | **[KB-114 · Imagens WebP](#kb-114)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-399 · As pastas, os alvos e os namespaces da plataforma: um namespace por pasta, o runtime numa pasta própria e cada variante ao lado do seu cabeçalho](#kb-399)**<br>🟠 high · `refactor` · 8/10 | — | — | — | — | **[KB-106 · Leitor de glTF 2.0 em haylen::gltf (engine/src/3d/gltf/)](#kb-106)**<br>🟡 medium · `feature` · 7/10 |
+| **[KB-400 · Cada tipo tem um nome único na engine, igual em C++ e em Lua, com a dimensão, e o teste que o guarda](#kb-400)**<br>🟠 high · `refactor` · 9/10 | — | — | — | — | **[KB-053 · Samplers completos](#kb-053)**<br>🟡 medium · `feature` · 3/10 |
+| **[KB-401 · O projeto de testes com as categorias por dimensão, uma categoria para cada módulo 3D e as regras das amostras guardadas](#kb-401)**<br>🟠 high · `test` · 7/10 | — | — | — | — | **[KB-052 · Formatos de pixel novos com tabelas de capacidade por API (filtrável, renderizável, mesclável e de storage)](#kb-052)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-402 · A API Lua completa: os pontos de extensão do C++ em Lua, a prova da exportação e a referência conferida na hora de rodar](#kb-402)**<br>🟠 high · `test` · 7/10 | — | — | — | — | **[KB-045 · Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)](#kb-045)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-403 · O `AGENTS.md` descreve a organização final, e toda regra que um programa enxerga tem o seu teste](#kb-403)**<br>🟠 high · `task` · 5/10 | — | — | — | — | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 |
+| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 |
+| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 |
+| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
+| **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
+| **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 |
+| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 |
+| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-048 · Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno](#kb-048)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-049 · Barreiras e hazards](#kb-049)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-050 · Draws indiretos](#kb-050)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-293 · Modo do mouse da janela: normal, oculto, travado, preso e preso oculto](#kb-293)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-054 · Renderização em várias camadas num pass (multiview)](#kb-054)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-056 · Consultas de GPU](#kb-056)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-057 · Formatos de vértice e topologias para 3D](#kb-057)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 |
+| **[KB-058 · Texturas externas para XR](#kb-058)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-059 · Cache de pipelines](#kb-059)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-060 · Envio e memória de GPU para 3D](#kb-060)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
+| **[KB-061 · Grafo de render em graphics::RenderGraph (engine/include/haylen/graphics/RenderGraph.hpp, comum a 2D, 3D e XR)](#kb-061)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-062 · O renderizador 2D monta seus passes no grafo de render](#kb-062)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-063 · Composição de 2D, 3D, UI, saídas e XR no mesmo quadro](#kb-063)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-064 · Marcadores de depuração de GPU por pass e grupo em todas as APIs, com os nomes dos passes do grafo, para que…](#kb-064)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-065 · A tabela de capacidades por API e plataforma em docs/graphics/rhi.md cobre cada recurso novo e o estado de…](#kb-065)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-066 · Estágio de compute no haylen-shaderc](#kb-066)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-067 · Buffers e imagens de storage no compilador](#kb-067)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-068 · Reflexão 3D no compilador](#kb-068)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-069 · Variantes de shader sem explosão](#kb-069)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
+| **[KB-070 · Formato do pacote .shader com programas de compute, recursos de storage, variantes, recursos exigidos e…](#kb-070)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
+| **[KB-071 · Bibliotecas Metal pré-compiladas também para os programas do renderizador 3D, para que o dispositivo Metal…](#kb-071)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-072 · Biblioteca de shaders 3D em engine/shaders/include/haylen/3d/](#kb-072)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
+| **[KB-073 · Contrato de superfície para shaders 3D de apps e plugins](#kb-073)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-074 · Grafos de material no compilador](#kb-074)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-075 · Recarga de shaders e materiais 3D no desenvolvimento](#kb-075)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-077 · Planos de recorte e cortes de seção](#kb-077)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-079 · Controles de câmera prontos em graphics3d, com mouse, toque, teclado, gamepad e controle remoto de TV](#kb-079)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-081 · Primitivas e geradores de geometria](#kb-081)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-082 · Utilitários de malha em graphics3d::MeshTools, que trabalham sobre MeshData em jobs sem Lua, com versão…](#kb-082)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
+| **[KB-083 · Linhas e pontos 3D](#kb-083)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-084 · Instanciação e lotes](#kb-084)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-085 · Caminhos de render avançados, medidos antes de entrar](#kb-085)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-086 · Traçado de caminhos progressivo no nível moderno](#kb-086)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-087 · Culling](#kb-087)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-088 · Níveis de detalhe](#kb-088)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-089 · Transparência](#kb-089)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-090 · Várias visões e alvos](#kb-090)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-091 · Antisserrilhado](#kb-091)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-092 · Escala de resolução](#kb-092)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-093 · Pipeline HDR e cor](#kb-093)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-094 · Saída HDR em telas HDR onde a plataforma oferece, com o pico de brilho da tela lido pela API do sistema, o…](#kb-094)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-095 · Bloom, brilho e luz](#kb-095)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-096 · Efeitos de espaço de tela](#kb-096)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-097 · Efeitos de câmera](#kb-097)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-098 · Efeitos estilizados de pós](#kb-098)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-099 · Pós por visão em Lua e C++](#kb-099)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-100 · Visões de depuração e estatísticas do 3D](#kb-100)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-101 · Desenho de depuração 3D](#kb-101)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-102 · Billboards, sprites e texto no mundo](#kb-102)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-103 · GUIs no mundo](#kb-103)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-104 · Rótulos e marcadores presos ao mundo](#kb-104)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-105 · Picking](#kb-105)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-108 · Extensões de material e de textura do glTF, todas as ratificadas no registro do Khronos e na mesma fase do…](#kb-108)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-109 · Extensões de geometria, cena e comportamento do glTF, todas as ratificadas no registro do Khronos e na mesma…](#kb-109)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
+| **[KB-110 · Conformidade com o glTF 2.0, a prova do suporte de 100%](#kb-110)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-111 · Asset de modelo](#kb-111)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
+| **[KB-112 · KTX2 e Basis Universal](#kb-112)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-113 · Imagens HDR e EXR](#kb-113)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-115 · Perfis de compressão de texturas](#kb-115)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-116 · Preparação de modelos glTF no build](#kb-116)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
@@ -247,6 +281,17 @@
 | **[KB-350 · A leitura de um render target de volume segue o mesmo contrato em todo dispositivo de GPU](#kb-350)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-353 · Plugin de webview, que mostra páginas web e roda JavaScript dentro da app](#kb-353)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-356 · A leitura de um render target que o contexto do OpenGL não entrega falha com a frase certa também no primeiro uso da GPU](#kb-356)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
+| **[KB-359 · Todo Python do repositório segue as regras do código, com o Ruff e o `ArchitectureTest`](#kb-359)**<br>🟡 medium · `refactor` · 5/10 | — | — | — | — | — |
+| **[KB-368 · As ajudas que se repetem ficam num lugar só: FNV-1a, UTF-8, UTF-16 e a leitura de JSON](#kb-368)**<br>🟡 medium · `refactor` · 5/10 | — | — | — | — | — |
+| **[KB-370 · O contrato de plugins com as mesmas palavras em toda linguagem, e o código nativo do app como um plugin local](#kb-370)**<br>🟡 medium · `refactor` · 6/10 | — | — | — | — | — |
+| **[KB-371 · O tooling em camadas: um executor de processos, um relógio, um leitor de ELF, backends com o mesmo desenho e testes que espelham o pacote](#kb-371)**<br>🟡 medium · `refactor` · 8/10 | — | — | — | — | — |
+| **[KB-377 · A linha de comando com `engine test`, `app test` e `app check` como capacidades dos backends, e a CI com todo passo nomeado](#kb-377)**<br>🟡 medium · `refactor` · 7/10 | — | — | — | — | — |
+| **[KB-381 · Um dono só das fontes, texto em glyph runs e as telas da engine pelo canvas de tela](#kb-381)**<br>🟡 medium · `refactor` · 7/10 | — | — | — | — | — |
+| **[KB-382 · O armazenamento com seções que cada subsistema registra, e salvar em C++ sem bloquear a thread de quadro](#kb-382)**<br>🟡 medium · `refactor` · 5/10 | — | — | — | — | — |
+| **[KB-390 · A navegação e as estruturas espaciais com a mesma forma nas duas dimensões, e o algoritmo escrito uma vez](#kb-390)**<br>🟡 medium · `refactor` · 7/10 | — | — | — | — | — |
+| **[KB-392 · A formatação de números, datas e listas vem do sistema, por um serviço de formatação](#kb-392)**<br>🟡 medium · `refactor` · 5/10 | — | — | — | — | — |
+| **[KB-396 · Ids estáveis de assets e um cache de importação no desenvolvimento](#kb-396)**<br>🟡 medium · `feature` · 6/10 | — | — | — | — | — |
+| **[KB-398 · Os testes da engine espelham o código, com um nome só para os arquivos de teste e os executores de aparelho numa pasta própria](#kb-398)**<br>🟡 medium · `refactor` · 5/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -9313,7 +9358,7 @@ Na VM Windows da Azure com a GPU AMD, no primeiro run depois do boot e com o cac
 - **Priority:** high
 - **Complexity:** 9
 - **Progress:** O desenho está aprovado. Um núcleo sem dimensão em `haylen::nodes` guarda a hierarquia, os handles, nomes e caminhos, etiquetas, eventos, modos de processo, os componentes com o passo de cópia, as descrições em JSON e os prefabs. O 2D e o 3D só acrescentam a sua transformação, a propagação em paralelo e os seus componentes. O conteúdo do 2D vira componentes de graphics2d, particles2d e physics2d, com um desenhável por nó. Haverá um só asset `.prefab` com a chave `dimension`, e a API Lua terá a mesma forma nas duas dimensões. A implementação começa quando o passo de cópia estiver na `main`.
-- **Dependencies:** [KB-156](#kb-156) e [KB-157](#kb-157), pelos componentes de nó e pelo passo de cópia que estão no lote 5.
+- **Dependencies:** [KB-156](#kb-156) e [KB-157](#kb-157), pelo passo de cópia de componentes; a fronteira do quadro do [KB-076](#kb-076); [KB-363](#kb-363), [KB-364](#kb-364), [KB-365](#kb-365) e [KB-368](#kb-368); e, para o componente de corpo do 2D, [KB-367](#kb-367) e [KB-374](#kb-374).
 
 #### Description
 
@@ -9347,7 +9392,7 @@ Todo tipo das duas dimensões leva `2D` ou `3D`, como o [KB-348](#kb-348) pede. 
 - **Type:** epic
 - **Priority:** critical
 - **Complexity:** 10
-- **Progress:** Cinco revisões em paralelo, só de leitura: pastas e namespaces, simetria entre 2D e 3D, camadas do núcleo, camada Lua e API, e tooling e docs. Os achados viram cartões de refatoração, cada um com o desenho certo.
+- **Progress:** As oito revisões terminaram, e os seus achados estão nos cartões [KB-359](#kb-359) a [KB-403](#kb-403), em dez ondas que não mexem no mesmo código ao mesmo tempo. Os achados da fronteira do quadro ficam com o stream do renderer 3D, e os da física 3D com o branch do physics3d. Os 223 achados e as 137 regras checáveis do `AGENTS.md` estão todos ligados a um cartão ou a um stream.
 
 #### Description
 
@@ -9367,6 +9412,1611 @@ O [KB-357](#kb-357), da arquitetura de nós, e o [KB-348](#kb-348), dos sufixos 
 - [ ] Cada achado das cinco revisões tem um cartão com o arquivo e a linha, o motivo e o desenho certo.
 - [ ] Os cartões de refatoração estão em ordem, sem conflito com o trabalho aberto, e cada um termina com o código antigo removido.
 - [ ] O `AGENTS.md` descreve a organização final e tem as regras e os testes do repositório que impedem a divergência de voltar.
+
+#### Attachments
+
+- None
+
+### KB-359
+
+- **Title:** Todo Python do repositório segue as regras do código, com o Ruff e o `ArchitectureTest`
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 5
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O Ruff e o `ArchitectureTest` só olham `tools/haylen` e `tools/tests`. Os 33 scripts de `samples/*/tools`, o pacote `testport` e o `report.py` de `.github/actions/compiler-cache` ficam de fora, com funções livres, variáveis de módulo, `from __future__`, 36 `# noqa` depois de um `sys.path.insert` e a mesma lógica de imagem copiada em seis scripts. O `pyproject.toml` ignora `E501`, `N818` e `RUF012` no projeto inteiro. Há dois ports de teste e dois apps de port, com faixas de `uv_build` que não batem com a da raiz, e nada formata o C++ e o Objective-C que o `plugin new` escreve.
+
+Desenho:
+- Cada script é uma classe com um `main` estático, chamado da guarda `__main__`.
+- As ajudas de arte viram o pacote `tools/art/`: os codecs de PNG e JPEG, os quadros de sprite, a classe `PaintedSheet` (chave magenta, cobertura, corte, limites e escala), os dois checadores com as suas listas e o escritor de glTF. Os scripts rodam com `uv run python -m`, sem `sys.path` e sem `noqa`. O `tile-strip.py` vai para `samples/tests/tools/`.
+- A lista de regras ignoradas do Ruff fica vazia: os erros levam o sufixo `Error`, as constantes de classe levam `ClassVar`, e o tamanho da linha é do formatador.
+- Um só port de teste em `engine/tests/data/port`, com um pacote Python que registra o engine port e o backend, e um só app, usado por `haylen test --port` e por `tools/tests/extensions`, com uma faixa de `uv_build`.
+- Um pytest gera um plugin com o `PluginScaffold` numa pasta temporária e roda a checagem de formato no resultado.
+- Todo `raise` usa um erro de `haylen.core.errors`, e nenhuma função fica aninhada, também em `tools/tests`.
+
+Achados cobertos: T-013, T-014, T-015, T-028, L-003 (pastas), P9b (regras) e as linhas 3 (a parte do Python) e 118 a 121 das regras.
+
+#### Acceptance criteria
+
+- [ ] O Ruff e o `ArchitectureTest` cobrem todo `.py` rastreado, e o `pyproject.toml` não ignora nenhuma regra.
+- [ ] Os scripts das amostras são classes que usam `tools/art/`, e geram os mesmos arquivos byte a byte.
+- [ ] Um só port de teste e um só app de port servem o `haylen test --port` e o `tools/tests/extensions`.
+- [ ] O código que o `plugin new` gera passa na checagem de formato num pytest.
+- [ ] O código antigo saiu, sem `sys.path`, `noqa` ou script duplicado.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num `.py` rastreado fora das regras ou numa regra ignorada do Ruff.
+
+#### Attachments
+
+- None
+
+### KB-360
+
+- **Title:** O repositório diz só o que existe, sem sobras, e as regras que já valem ganham guarda
+- **Status:** todo
+- **Type:** task
+- **Priority:** high
+- **Complexity:** 4
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `AGENTS.md` e os docs dizem coisas que não existem e calam coisas que existem: a lista de ganchos de plugin não tem o `lateUpdate`, o `engine/src/xr/` aparece como se existisse, o `build.md` fala de "uma dependência" do pacote, o layout não lista `engine/platform/windows/`, o executor de testes de UI do Windows nem os módulos do topo de `tools/haylen`. Na raiz sobram o `REVISAO-GERAL.md` (com as linhas mortas de `.git/info/exclude`) e um `__pycache__/` de scripts que não existem. Muitas regras do `AGENTS.md` valem hoje sem um teste que as guarde, e vários testes de regra deixam formas da violação passar.
+
+Desenho:
+- O `REVISAO-GERAL.md` sai, porque os seus itens abertos são os cartões do [KB-358](#kb-358), com as linhas de `.git/info/exclude` e o `__pycache__/` da raiz.
+- O `AGENTS.md` e os docs dizem só o que existe: o `lateUpdate`, a pasta `engine/platform/windows/`, o executor do Windows, os módulos do topo do tooling e as contagens certas. As linhas que descrevem o renderizador 3D futuro são trocadas pelo stream do renderizador.
+- `NativeLibraries.hpp` vai para `engine/include/haylen/platform/native/`, e as fontes de `CollectionDiff` e `CollectionIds` vão para `engine/src/ui/`, ao lado dos cabeçalhos.
+- A pasta vazia de Kotlin da biblioteca Android sai, `sdk.schema.json` vira `haylen-sdk.schema.json`, e `samples/cpp/embedding` ganha o seu `README.md`.
+- Guardas novas, que passam hoje (P20): licença ao lado de cada fonte, URLs dos repositórios irmãos só onde são descritos, nenhum arquivo privado rastreado, pastas em minúsculas, camadas dos templates sem caminho repetido, `.clang-format` dos templates igual ao da raiz, a engine sem caminho de `samples/` ou `templates/`, apps só com cabeçalhos públicos, nenhum cabeçalho de sistema em código portátil, hashes do CPM, o nlohmann antes do Varn, patches documentados e com chave, nenhuma biblioteca de terceiros nos plugins das amostras, `#define` só para configurar dependências, o quadro do `KANBAN.md` coerente, as strings de Lua e JSON de várias linhas dos testes entre os marcadores do `clang-format` (59 lugares) e a guarda das chamadas `lua_callk`.
+- Testes de regra mais fortes: o `NoHistoryTest` pega "renamed to", "is now", "was replaced by" e "the new name", o `WritingTest` lê `/* */`, docstrings, YAML, shell, HTML, CSS, XML e `.pro` e não aceita mais uma continuação falsa, o `CMakeNameTest` lê a linha seguinte e o `OUTPUT_NAME`, o `SystemMacrosTest` pega cabeçalhos de sistema e `__has_include`, o `LuaLayerTest` lê também `engine/include`, o `EngineBoundaryTest` ganha as APIs de localização, câmera, Bluetooth, compartilhamento, seletores e vibração, o `VersionTest` falha numa cópia da versão, o `ToolScriptTest` falha em vez de lançar `IndexError`, e uma guarda falha numa classe de teste do pytest sem o sufixo `Test`.
+
+Achados cobertos: T-022 (sem as linhas do 3D), T-025 (sem o `.clang-tidy`, que o [KB-375](#kb-375) liga), T-027 e S-036 (o `lateUpdate`), a parte do `lateUpdate` de T-019, F-010, F-027 (sem a categoria `varn`, que vai para o [KB-401](#kb-401)), a parte do README de T-024, P20 e a seção "Weak tests" das regras, e as linhas 7, 8, 9, 11 a 14, 22, 24, 26, 44, 64, 66, 86, 92 a 95, 99, 102 a 105, 114, 117, 123, 125, 126, 130 e 137 das regras.
+
+#### Acceptance criteria
+
+- [ ] O `AGENTS.md` e os docs não citam nada que não existe e listam tudo o que existe nos lugares que descrevem.
+- [ ] As guardas novas passam, e os testes de regra mais fortes pegam cada forma da violação num teste do próprio checador.
+- [ ] O código antigo saiu: o `REVISAO-GERAL.md`, as linhas mortas, o `__pycache__/` e a pasta vazia.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha em cada regra guardada por este cartão.
+
+#### Attachments
+
+- None
+
+### KB-361
+
+- **Title:** A árvore de docs tem um bloco de referência dos manifestos e da linha de comando, e cada assunto numa página só
+- **Status:** todo
+- **Type:** task
+- **Priority:** high
+- **Complexity:** 5
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `haylen.json`, o primeiro arquivo que todo app escreve, não tem uma página: as chaves estão espalhadas pelo `haylen.md`, pelo `distribution.md`, pelo `core/lua.md` e pelo `plugins.md`. O `plugin.json` e o `haylen-sdk.json` estão dentro de guias, e o `commands.md` se diz referência numa tabela de guias. Assuntos se repetem em páginas diferentes (`haylen_add_app`, plugins de C++ da engine, SDKs e plataformas). O guia do renderizador 2D está em `docs/graphics/`, a matemática 3D tem guia e a 2D não, o 2D não tem a página das suas convenções, e os pares de referências 2D e 3D não seguem o mesmo esboço. A página `docs/lua-api/hotReload.md` tem letras maiúsculas no nome, e `haylen.ai`, `haylen.conversation`, `haylen.video`, o armazenamento e as ferramentas de desenvolvimento não têm guia.
+
+Desenho:
+- Um bloco `docs/reference/` com `commands.md`, `haylen-json.md`, `plugin-json.md` e `haylen-sdk-json.md`, listado na seção de referência do `docs/README.md`, e os guias passam a apontar para ele.
+- O `haylen_add_app` fica só no `embedding.md`, os plugins de C++ da engine só no `architecture.md`, o `build.md` compila a engine e os SDKs, e o `distribution.md` compila e entrega os apps.
+- `docs/2d/graphics.md` é o guia do renderizador 2D, com a sua linha no índice do 2D, o `graphics/rendering.md` fica com o que as duas dimensões dividem, e o `docs/3d/graphics.md` é do stream do renderizador. Este cartão entra antes de o stream escrever o guia 3D.
+- Um só `docs/core/math.md` com a matemática das duas dimensões, e `docs/2d/coordinates.md` com as convenções do 2D, como o `docs/3d/coordinates.md`.
+- Os pares de referências 2D e 3D seguem um só esboço, com a tabela de funções de três colunas e o sufixo da dimensão nos títulos, e o alias de `haylen.procedural2d` é `procedural2d`.
+- `docs/lua-api/hotReload.md` vira `hot-reload.md`, e o módulo continua `haylen.hotReload`. O teste de nomes de arquivo recusa letras maiúsculas fora dos nomes que as plataformas impõem.
+- Guias novos: `core/ai.md`, `core/conversation.md`, `core/storage.md`, `graphics/video.md` e `tools/developer-tools.md`.
+- Nenhum ponto e vírgula junta frases na prosa (35 lugares).
+- O `DocsTest` confere que os módulos de `Binding::preload` são as páginas de `docs/lua-api`, que cada página está nos dois índices, que cada pasta de `engine/include/haylen/2d` e `3d` tem o seu guia, que cada guia tem um bloco de código e que cada pasta de bindings tem a sua pasta de testes (a de `platform/native` ganha os seus).
+
+Achados cobertos: T-018, T-019 (sem o `lateUpdate`), T-020 (sem a mudança do `api-policy.md`, que continua em `docs/tools/`), T-021, D-031, D-032, a página de A-016, P17 (regras) e as linhas 29, 30, 63, 124 e 133 a 135 das regras.
+
+#### Acceptance criteria
+
+- [ ] O bloco de referência existe, cada chave do `haylen.json`, do `plugin.json` e do `haylen-sdk.json` está numa página só, e os guias apontam para elas.
+- [ ] Nenhum assunto se repete entre páginas, e cada módulo tem o seu guia.
+- [ ] O código antigo saiu: as tabelas de chaves dos guias, as cópias de assuntos e a página com maiúsculas.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa página fora da árvore, num módulo sem página, num nome de arquivo com maiúsculas ou num guia sem exemplo.
+
+#### Attachments
+
+- None
+
+### KB-362
+
+- **Title:** O JavaScript da web em classes, sem nome escrito pelos dois lados, e um splash só
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 7
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `haylen-runtime.js` (1202 linhas) e o `haylen-page.js` (2928 linhas) são uma função anônima cada, com uns 300 fechamentos e nenhuma classe, e os dois escrevem 16 nomes iguais em `Module.haylen`, de modo que quem vence depende do modo e da ordem de carga. O armazenamento de conteúdo guarda estado em variáveis do script, o worker é um handler solto e o `loader.js` é uma variável global com um fechamento. As 13 checagens de navegador de `engine/tests/web` copiam o mesmo driver. Os módulos web dos plugins e dos templates têm funções e estado no nível do módulo. O splash existe duas vezes, no `shell.html` e no template do backend, e as variáveis dos dois já divergem.
+
+Desenho:
+- Cada script tem classes com o prefixo `Haylen` e uma linha de entrada: o lado da engine (`HaylenRuntime`, `HaylenEngineCalls`, `HaylenEditorHost`), o lado da página (`HaylenPage`, `HaylenPageInput`, `HaylenTextFields`, `HaylenOverlays`, `HaylenPageAudio`, `HaylenWorkerBridge`), `HaylenContentStore`, `HaylenWorker` e `HaylenLoader`.
+- Os dois lados conversam por objetos declarados, e cada nome de `Module.haylen` é escrito por um lado só.
+- As checagens de navegador usam a classe `DevtoolsSession` de `engine/tests/web/support/devtools-session.mjs`, e cada checagem é uma classe com um `run` estático.
+- Cada módulo web de plugin exporta uma classe, e a entrada do contrato de plugins só chama essa classe. O `simulations.js` importa o que divide com o módulo principal.
+- O splash vive uma vez na engine, em `engine/platform/web/haylen-splash.css` e `haylen-splash.js` (a classe `HaylenSplash` com `show`, `progress`, `fail` e `hide`), que o SDK instala, o shell do `haylen_add_app` usa e o backend copia. O `loader.css` fica só com as variáveis que um app troca, e o `loader.js` só com o que o backend acrescenta.
+
+Achados cobertos: L-001, L-002 e L-006 (pastas), P-019, P-024, F-028 e a parte de JavaScript da linha 72 das regras.
+
+#### Acceptance criteria
+
+- [ ] Todo script de `engine/platform/web`, do template web, dos módulos de plugin e das checagens de navegador tem só classes e a sua entrada.
+- [ ] Nenhum nome de `Module.haylen` é escrito pelos dois lados, nos dois modos de hospedagem.
+- [ ] O app de um projeto CMake e o site do backend mostram o mesmo splash, com as mesmas variáveis, nas checagens de carregamento da web.
+- [ ] O código antigo saiu: as funções anônimas, as variáveis de script, o driver copiado e o segundo splash.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa declaração de topo de um script fora das entradas que a plataforma impõe.
+
+#### Attachments
+
+- None
+
+### KB-363
+
+- **Title:** Um registro de tipos em C++ e eventos tipados num barramento só
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 8
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+As propriedades de um tipo são descritas quatro ou cinco vezes: nos lambdas de cada trilha de tween, no inspetor (que só o Lua alimenta, então um app C++ não inspeciona nada), no JSON da UI, nos serializadores de nós e no `ClassBuilder` de cada binding. Um mesmo fato chega por três ou quatro caminhos: o sinal `appStateChanged`, os eventos `kAppActive` do `EventBus`, o `Plugin::event` e a fila de eventos das GUIs, com payloads em JSON que alocam e perdem o tipo dentro do C++. O armazenamento salva no evento da plataforma, enquanto o app ouve o evento do barramento.
+
+Desenho:
+- `core::TypeRegistry` guarda o descritor de cada tipo: nome, base, propriedades (tipo do valor, leitura e escrita, marcas `serialize`, `animate`, `inspect` e `readOnly`, faixa, unidade e nomes de enum) e métodos para o console. Cada tipo se registra em C++, ao lado da sua classe, por chamadas explícitas, sem macro.
+- `core::Variant` é o valor pequeno que o quadro-negro da IA, as variáveis das conversas, o inspetor e os componentes de nó dividem.
+- Os primeiros consumidores são o tween por caminho de propriedade, o `debug::Inspector` com um provedor nativo e os payloads do barramento.
+- Dois mecanismos só: sinais pertencem a objetos, e o barramento leva os eventos da engine e do app, cada um um tipo de C++ registrado uma vez com o seu nome e os seus campos. O C++ ouve por tipo, sem JSON, e o JSON existe só na fronteira com o Lua.
+- Os sinais do `Engine` saem, o `Plugin::event` recebe só a entrada crua da plataforma, e cada fato do ciclo de vida chega aos plugins como um evento tipado, numa ordem escrita.
+- Os eventos das GUIs viram eventos tipados no canal da sua GUI ou sinais do seu componente.
+- O desenho é feito com o stream dos nós: o serializador e os valores tipados dos componentes do [KB-357](#kb-357) nascem sobre este registro.
+
+Achados cobertos: S-007, S-011 e S-034.
+
+#### Acceptance criteria
+
+- [ ] Um app C++ inspeciona e anima as propriedades dos seus objetos pelo registro, com testes.
+- [ ] Cada fato do ciclo de vida tem um só evento tipado, que o app, os plugins e o armazenamento ouvem na mesma ordem.
+- [ ] Emitir um evento tipado não aloca, conferido pelo `test::AllocationTracker`.
+- [ ] O código antigo saiu: os sinais do `Engine`, os eventos com JSON dentro do C++ e os valores dinâmicos duplicados.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num evento do barramento emitido com JSON dentro do C++.
+
+#### Attachments
+
+- None
+
+### KB-364
+
+- **Title:** Um `core::Lifetime` para tudo que registra, e tarefas com dependências no job system
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 7
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O C++ tem cinco jeitos de dizer que algo acabou: ids inteiros, `std::shared_ptr`, `core::Connection`, um alvo `const void*` com uma função de vida nos tweens e sete flags `std::shared_ptr<bool>` feitas à mão. O `JobSystem::run` não tem dono nem cancelamento. O job system não tem handles, dependências nem filas em série, então o armazenamento monta a sua fila com mutex e `std::deque`, a física 3D adapta uma barreira própria, e o `parallelFor` só roda na thread de quadro.
+
+Desenho:
+- `core::Lifetime` é um token barato com o estado de fim, que toda API de C++ que registra algo aceita: jobs, retornos de assets, timers, tweens, ouvintes do barramento e de sinais e leituras da GPU. Todo registro devolve uma `core::Connection` que o cancela.
+- O `Lifetime` troca as flags de vida, e `lua::Owners` liga o dono do Lua a um `Lifetime`. As vozes do mixer continuam com `VoiceId`, porque são valores do mixer.
+- `core::TaskHandle` com dependências (`JobSystem::schedule(work, {after})`, `wait`, `isDone` e o cancelamento pelo `Lifetime`), funções pequenas sem alocação para os jobs quentes, `core::SerialQueue` no pool de I/O e o `parallelFor` chamado de qualquer tarefa. Na web tudo continua em linha.
+- O armazenamento e o conteúdo usam a `SerialQueue`. O renderizador 3D, a animação 3D, os nós e a física usam os handles, e o [KB-037](#kb-037) adota o mesmo token.
+
+Achados cobertos: S-009 e S-010.
+
+#### Acceptance criteria
+
+- [ ] Toda API de C++ que registra algo aceita um `Lifetime`, e uma conclusão que chega depois do fim do dono não roda, com testes.
+- [ ] Tarefas com dependências e filas em série funcionam em todas as plataformas, com testes do sanitizer de threads.
+- [ ] O código antigo saiu: as flags de vida, o alvo `const void*` dos tweens e as filas feitas à mão.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num `std::shared_ptr<bool>` de vida ou numa fila com mutex fora do `core::SerialQueue`.
+
+#### Attachments
+
+- None
+
+### KB-365
+
+- **Title:** Contrato de plugins v2: serviços por interface, estágios com nome e o app que troca ou tira um plugin embutido
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** critical
+- **Complexity:** 9
+- **Dependencies:** [KB-076](#kb-076), pelos commits B1 a B9 da fronteira do renderizador, que criam o `Graphics2DPlugin`; [KB-156](#kb-156) e [KB-157](#kb-157), pelos componentes de nó da animação 3D, que acrescentam o `Animation3DPlugin`.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O registro de plugins acha um plugin pelo `typeid` da classe concreta, numa lista fixa, e os plugins do app rodam depois dos embutidos em toda fase. Plugins e contextos se acham pela classe concreta: a UI pega o `TextPlugin` e o `LocalizationPlugin`, a depuração pega a UI, a navegação e o roteador pegam o `StoragePlugin`, as estatísticas pegam o `NetPlugin` e a física 2D pega a depuração. Os cabeçalhos públicos do `VideoPlugin` e do `TextPlugin` recebem o `platform::Host` interno. Assim nenhum plugin troca a UI, o texto, o armazenamento, o áudio ou a depuração, nenhum tira um embutido e nenhum roda antes de um. Os plugins ficam todos em `plugins/`, longe dos seus subsistemas, o que contradiz a regra das pastas `2d` e `3d`. O `Nodes3DPlugin` e o `Animation3DPlugin` não dizem que algo se move, então um app com `window.redraw` em `onChange` congela um animador 3D.
+
+Desenho:
+- Cada plugin tem um descritor: o nome, os serviços que dá (por interface), os serviços de que precisa e o estágio de cada gancho, com `before` e `after`.
+- Os estágios têm nome e estão escritos: `input`, `preUpdate`, `fixedUpdate`, `update`, `lateUpdate`, `prepareRender`, `render`, `ui`, `overlay` e `endFrame`, e os ganchos de hoje caem neles.
+- Plugins e contextos pegam serviços por interface (`engine.getService<T>()`), como `storage::ResumeStore`, `localization::Catalogs`, `text::FontLibrary` e `debug::Drawings`, e nenhuma classe concreta de plugin aparece fora do seu arquivo e dos seus testes. Os cabeçalhos públicos de plugin não recebem o host interno.
+- Os embutidos são o `PluginSet` padrão, e `Application::configurePlugins(PluginSet&)` roda antes de qualquer plugin começar e pode tirar um embutido, trocar quem dá um serviço ou acrescentar plugins em qualquer estágio. Dois que dão o mesmo serviço param a partida com os dois nomes.
+- Cada plugin vive com o seu subsistema, na pasta e no namespace dele, como `physics2d::Physics2DPlugin` em `2d/physics/` e `audio::AudioPlugin` em `audio/`, e todo cabeçalho de plugin é público. `plugins/` guarda só a interface e o registro, e o `LiveObjects` vai para `core/`.
+- O `Nodes3DPlugin` e o `Animation3DPlugin` respondem `isAnimating` pelos tipos de componente e pelos players que seguem, com um teste de regressão.
+- O [KB-357](#kb-357) escreve os plugins dos nós já neste contrato, e a ordem do quadro do [KB-036](#kb-036) é escrita com estes estágios.
+
+Achados cobertos: S-001, S-036 (a lista de ganchos vira a lista de estágios), L-008 (camadas), F-003, D-017 e a linha 74 das regras.
+
+#### Acceptance criteria
+
+- [ ] Um app troca, tira e acrescenta plugins pelo `configurePlugins`, com um teste que troca um embutido por outro que dá o mesmo serviço.
+- [ ] Um plugin roda antes de um embutido num estágio, por `before`, com um teste da ordem.
+- [ ] Um app em `onChange` continua desenhando um animador 3D que toca, num teste que falha sem a correção.
+- [ ] O código antigo saiu: o `getPlugin` por classe concreta fora do seu arquivo e a pasta de plugins com os subsistemas.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num `getPlugin` de classe concreta fora do arquivo do plugin, num contexto que inclui `plugins/` e num plugin fora da pasta do seu subsistema.
+
+#### Attachments
+
+- None
+
+### KB-366
+
+- **Title:** A camada Lua organizada em `toolkit/`, `runtime/`, `development/` e `debug/`, com um `lua::Module` por módulo e o `haylen.bridge`
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 7
+- **Dependencies:** [KB-076](#kb-076), pelo commit do toolkit Lua sem 2D; a varredura de vocabulário do physics3d ([KB-176](#kb-176), [KB-177](#kb-177)), que traz o `lua::ObjectEvents` ao toolkit; [KB-156](#kb-156) e [KB-157](#kb-157), pelos bindings novos da animação 3D.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+`engine/lua/src/runtime/` junta o toolkit público, o runtime dos scripts, as classes `Scripted*` do núcleo e o binding de `haylen.jobs`. `engine/lua/src/debug/` junta os bindings de `haylen.debug` com o depurador e o orçamento de execução, `development/` está no namespace errado e `plugins/` tem só dois plugins. O binding das fontes está em `graphics/` sem uma pasta `text/`. O `CoreModule` instala onze módulos Lua, o `Graphics2DModule` instala o `haylen.graphics` sem dimensão, e 49 módulos Lua têm 31 classes `lua::Module`. O módulo da ponte com o código nativo se chama `haylen.platform`, e o arquivo `LuaPlayer.cpp` repete `Lua` no nome. O traço `Type<T>::name` não segue a regra das constantes.
+
+Desenho:
+- `engine/lua/src/toolkit/` tem as implementações de `engine/lua/include/haylen/lua/`, arquivo por arquivo.
+- `engine/lua/src/runtime/` fica só com o runtime dos scripts.
+- `JobsBinding`, `ScriptedScene`, `ScriptedTransition` e `ScriptedLoadingView` vão para `engine/lua/src/core/`, e o binding das fontes vai para `engine/lua/src/text/`.
+- `engine/lua/src/development/`, em `haylen::lua::development`, tem tudo o que só uma sessão de desenvolvimento tem: a recarga de módulos, o depurador, o orçamento de execução, os seus dois plugins e o `Development`. `engine/lua/src/plugins/` sai, e `debug/` fica só com os bindings de `haylen.debug`.
+- Um `lua::Module` por módulo Lua, com o nome dele (`WindowModule`, `DisplayModule`, `CollectionsModule`, `TimerModule`, `SceneModule`, `SignalModule`, `EventsModule`, `MathModule`, `TweenModule`, `AiModule`, `LogModule`, `ViewportModule`, `GraphicsModule`, `Lighting2DModule`, `SystemModule`, `AccessibilityModule`, `ImGuiModule` e `PreferencesModule`), e o `CoreBinding` se divide em `CoreBinding`, `LogBinding` e `ViewportBinding`.
+- `haylen.platform` vira `haylen.bridge`, com `docs/lua-api/bridge.md`, e o campo `haylen.platform` continua com o nome da plataforma. Os plugins do repositório irmão mudam na mesma janela. Os docs e os templates registram só pelo `haylen.log`.
+- `LuaPlayer.cpp` vira `engine/lua/src/player/ApplicationFactory.cpp`.
+- O traço `Type<T>::name` vira `kName`.
+
+Achados cobertos: F-004, F-011, F-012 (com a pasta `development/`), F-013, F-022, A-002, A-015, A-017, a parte do `kName` de D-001 e a linha 75 das regras.
+
+#### Acceptance criteria
+
+- [ ] Cada pasta da camada Lua tem um papel só e o namespace dela, e as fontes do toolkit espelham os cabeçalhos.
+- [ ] Cada módulo Lua tem exatamente um `lua::Module`, e o `haylen.bridge` funciona em todas as plataformas com os plugins do repositório irmão.
+- [ ] O código antigo saiu: as pastas misturadas, o `CoreModule` de onze módulos, o `haylen.platform` como ponte e o `LuaPlayer.cpp`.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num módulo Lua com zero ou dois `lua::Module`, num arquivo da camada Lua fora do namespace da sua pasta e num `Type<T>::name`.
+
+#### Attachments
+
+- None
+
+### KB-367
+
+- **Title:** Os contextos do 2D em camadas, sem ciclos, como os do 3D
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 7
+- **Dependencies:** [KB-076](#kb-076), pelos commits B1 a B9, que trazem o `debug::DebugDraw`. O commit dos componentes 2D do [KB-357](#kb-357) espera este cartão.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Os contextos do 2D dependem uns dos outros em ciclos: `graphics2d` inclui `lighting2d`, que inclui `physics2d` e `tiled`, que incluem `graphics2d`, e `physics2d` inclui `procedural2d`, que inclui `tiled`, que inclui `physics2d`. `spatial2d` depende do `graphics2d` pelo `ScreenPicker`, e `particles2d` depende da física e das luzes. O 3D forma um grafo limpo. Os ciclos impedem um plugin de trocar um subsistema 2D. O `tiled` lê o formato e também faz corpos e desenha. A câmera 2D segue alvos sozinha, ao lado de um `CameraRig` que também move a câmera. Os shaders da engine são uma pasta plana de programas do 2D.
+
+Desenho:
+- Uma só ordem de camadas para as duas dimensões: `math`, `spatial` e os leitores de formato (`gltf`, `tiled`) embaixo, `graphics` com as luzes como dados de desenho, a simulação (`physics`, `navigation`, `particles`, `animation`) acima de `spatial`, e os componentes de nós e os adaptadores que juntam dois contextos em cima.
+- `lighting2d::Light2D` são dados que o renderizador lê, e os oclusores feitos de corpos vão para `physics2d::BodyOccluders2D`, sem a Box2D fora da física.
+- O desenho de depuração da física passa pelo `debug::DebugDraw`.
+- O `tiled` só lê: `physics2d::TileCollision2D` faz os corpos de um mapa e `graphics2d::TileMapRenderer2D` o desenha. O autotile trabalha sobre uma grade de `procedural2d`, e a ponte com o mapa fica num adaptador em cima. A fratura usa um Voronoi de `math` ou de `spatial2d`.
+- A câmera dá o raio, com `Camera2D::screenRay(point)`, e as estruturas e os mundos recebem o raio ou o ponto. O `ScreenPicker` e as formas `pick(camera, …)` saem.
+- `CameraRig2D` com os tipos `follow`, `zones` e `rail`, feito por `graphics2d.newCameraRig(kind, camera, options)`, e o seguir da câmera vai para o rig `follow`. O [KB-079](#kb-079) usa o mesmo nome no 3D, `CameraRig3D`.
+- Os programas do 2D vão para `engine/shaders/2d/`, os do 3D para `engine/shaders/3d/` e os que todo renderizador divide ficam em `engine/shaders/`.
+
+Achados cobertos: D-003, D-026, a parte de código de D-027, a parte 2D de D-028 e F-023.
+
+#### Acceptance criteria
+
+- [ ] Os contextos do 2D formam um grafo sem ciclos, na mesma ordem de camadas do 3D.
+- [ ] As capturas das categorias de física, luzes, Tiled, partículas e câmera ficam iguais antes e depois.
+- [ ] O código antigo saiu: o `ScreenPicker`, as formas `pick(camera, …)`, o seguir dentro da câmera e os corpos e desenhos dentro do `tiled`.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente, com a regra de que o 2D e o 3D têm as mesmas camadas.
+- [ ] Um teste do repositório falha numa inclusão entre contextos de uma dimensão fora da ordem de camadas.
+
+#### Attachments
+
+- None
+
+### KB-368
+
+- **Title:** As ajudas que se repetem ficam num lugar só: FNV-1a, UTF-8, UTF-16 e a leitura de JSON
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 5
+- **Dependencies:** a varredura de vocabulário do physics3d ([KB-176](#kb-176), [KB-177](#kb-177)), que mexe no `StateHasher`. Os serializadores do [KB-357](#kb-357) usam o leitor de JSON deste cartão.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O FNV-1a está escrito sete vezes, a conversão de UTF-8 para UTF-16 duas vezes (na plataforma do Windows e nos dispositivos do Direct3D), e um `toValidUtf8` vive em `platform::TextHelper`, ao lado do `core::Utf8`. Cada parser lê os valores de JSON à mão, com 107 `readNumber`, 21 `readColor` e 25 `requireObject`, e com mensagens diferentes para o mesmo erro.
+
+Desenho:
+- `core::Fnv1a`, privado e `constexpr`, com `mix` de um inteiro e de bytes, usado pelos sete lugares. O formato do `SaveSlots` no disco fica igual. Este cartão leva o [KB-338](#kb-338) aos sete lugares.
+- Uma classe de texto do Windows que a plataforma e os dispositivos do Direct3D usam, em `engine/src/core/windows/WideText.cpp`, escolhida pelo `HAYLEN_SYSTEM_API`.
+- `core::Utf8::toValid` troca o `platform::TextHelper`.
+- `core::JsonReader` leva o arquivo e o caminho da chave e lê número, inteiro, booleano, texto, cor, `vec2`, `vec3`, objeto e lista, com uma frase por tipo e a linha e a coluna do `core::JsonValidator`. Ele serve o tema, o estilo, a configuração do app, a posição da janela, os efeitos de partículas, os esqueletos e o Tiled, e os nós do [KB-357](#kb-357).
+
+Achados cobertos: F-015 (com o [KB-338](#kb-338)), F-016, F-017 (sem os serializadores de nós, que o [KB-357](#kb-357) escreve sobre o leitor), P-026 e a parte de UTF-8 de L-028 (camadas).
+
+#### Acceptance criteria
+
+- [ ] Um FNV-1a, uma conversão de UTF-16 e uma validação de UTF-8 na engine, com testes dos valores conhecidos.
+- [ ] Todo parser de JSON da engine usa o `core::JsonReader`, e cada erro diz o arquivo, a chave, a linha e a coluna.
+- [ ] O código antigo saiu: as sete cópias, o `TextHelper` e os `read*` privados dos parsers.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa constante do FNV-1a fora do `core::Fnv1a`, num `MultiByteToWideChar` fora do `WideText` e num `readColor`, `readNumber` ou `requireObject` fora do `core::JsonReader`.
+
+#### Attachments
+
+- None
+
+### KB-369
+
+- **Title:** Toda entrada vinda de outra linguagem passa por um só guarda de erros
+- **Status:** todo
+- **Type:** bug
+- **Priority:** high
+- **Complexity:** 5
+- **Dependencies:** o stream do iOS ([KB-341](#kb-341), [KB-349](#kb-349)), que mexe nas entradas da Apple.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Uma exceção de C++ que sai de uma função JNI ou de um bloco de Objective-C encerra o processo sem relatório, enquanto a mesma falha na web vira um erro da engine. A web passa por `WebEntry::guard` e a interface C por `NativeApi::guard`, mas as 50 exportações de JNI e as entradas do UIKit, do AppKit e da ponte de Objective-C não passam por guarda nenhum. Algumas entradas também fazem trabalho em vez de só chamar uma classe, como o `nativeCutouts` do Android e o bloco `extern "C"` de `WebOutputs.cpp`, e o teste de escopo aceita qualquer corpo dentro de `extern "C"`.
+
+Desenho:
+- `platform::BoundaryGuard`, que junta o `WebEntry` e o `NativeApi::guard`, é o único guarda de toda entrada: as exportações de JNI, as entradas de Objective-C no C++, as exportações da página e a interface C.
+- O corpo de uma entrada de linkagem C é uma chamada só, pelo guarda, e a lógica de `nativeCutouts` e de `WebOutputs.cpp` vai para as suas classes.
+- As funções `Java_*` e o `RegisterNatives` ficam só em `AndroidJniExports.cpp`, e as chamadas `->Call*Method` e `->NewObject` só em `JavaBridge.cpp`.
+
+Achados cobertos: P-016, P-017, a parte de `extern "C"` de L-027 (camadas), P18 (regras) e as linhas 41 e 43 das regras.
+
+#### Acceptance criteria
+
+- [ ] Uma exceção lançada dentro de uma entrada de JNI, de Objective-C, da página e da interface C vira um erro da engine com relatório, num teste de cada caminho.
+- [ ] Toda entrada de linkagem C só chama a sua classe pelo guarda.
+- [ ] O código antigo saiu: o `WebEntry`, o `NativeApi::guard` e a lógica dentro das entradas.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa entrada exportada cujo corpo não passa pelo guarda ou faz mais que uma chamada.
+
+#### Attachments
+
+- None
+
+### KB-370
+
+- **Title:** O contrato de plugins com as mesmas palavras em toda linguagem, e o código nativo do app como um plugin local
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 6
+- **Dependencies:** o stream do iOS ([KB-341](#kb-341), [KB-349](#kb-349)).
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O autor de um plugin aprende três vocabulários para um contrato só: `removeHandler:` e `unregister`, `loadWithContext:`, `onLoad` e `load`, `appDidFailWithError:` e `onAppError`, `HaylenOverlayItem` e `HaylenOverlay.Panel`, `openVideoStream` e `videoStream`. O código nativo do app tem um segundo mecanismo ao lado dos plugins: um `+load` de Objective-C que contorna a linguagem, o registro na classe de aplicação do Android e um script da web que escreve no `Module.preRun`. Cada plugin de desktop define a sua macro de exportação. O `HaylenPlugin.h` declara cinco classes e o `HaylenRequirements.h` duas, e o `HaylenBridgeAsync.swift` junta um tipo e três extensões. A biblioteca Android `dev.haylen:haylen-plugins` tem um nome que não diz que é a API dos plugins.
+
+Desenho:
+- Uma tabela do vocabulário do contrato em `docs/platform/plugins.md`, e cada linguagem usa essas palavras na sua grafia.
+- O código nativo do app é um plugin local de id `app`, com o mesmo contrato de todo plugin em toda plataforma. O `AppBridgeLoader.m`, o registro na classe de aplicação e o uso da ponte pelos `scripts` de `platforms.web` saem.
+- O `HaylenNative.h` dá a macro `HAYLEN_NATIVE_EXPORT`.
+- Um cabeçalho por classe: `HaylenPlacement.h`, `HaylenOverlay.h`, `HaylenOverlayItem.h`, `HaylenPluginContext.h`, `HaylenRequirement.h` e `HaylenPlugin.h` com o protocolo, que importa os outros. No Swift, `HaylenFailure.swift` e as extensões em `Tipo+Assunto.swift`.
+- A biblioteca vira `dev.haylen:haylen-plugin-api`, nos módulos Gradle, nos templates, nos docs e nos plugins do repositório irmão, na mesma janela.
+
+Achados cobertos: P-020, P-021, P-022, P-031, a parte da Apple e do Swift de F-014 e a parte do `HaylenBridgeAsync.swift` de L-005 (pastas).
+
+#### Acceptance criteria
+
+- [ ] O contrato usa as mesmas palavras em Objective-C, Swift, Java, Kotlin e JavaScript, e o template de plugin e o plugin de demonstração rodam em toda plataforma.
+- [ ] O código nativo de um app novo é um plugin local e responde o seu método e o seu evento em toda plataforma.
+- [ ] O código antigo saiu: o `+load`, o registro na classe de aplicação, as macros copiadas, os cabeçalhos de várias classes e o nome `haylen-plugins`.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório compara os nomes públicos do contrato nas três plataformas e falha num nome fora da tabela.
+
+#### Attachments
+
+- None
+
+### KB-371
+
+- **Title:** O tooling em camadas: um executor de processos, um relógio, um leitor de ELF, backends com o mesmo desenho e testes que espelham o pacote
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 8
+- **Dependencies:** [KB-345](#kb-345) e [KB-347](#kb-347), que mexem no backend do desktop, nas ferramentas do LLVM e nas árvores de CMake.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Uns 25 lugares chamam o `subprocess` direto, sem o log do comando nem o erro tipado, e o `time.sleep` aparece em dez módulos, ao lado do `clock.py` que existe para os testes moverem o tempo. Há três jeitos de ler um ELF. As ferramentas fixadas moram em dois lugares, e `toolchains/` importa um backend. `terminal.py`, `process.py` e `clock.py` ficam no topo do pacote, sem camada. `assets/` tem um módulo só, e `native/` junta árvores de CMake, bibliotecas nativas e um leitor de ELF. Os backends têm desenhos diferentes para as mesmas peças (o port, o que o backend e o port dividem, as contribuições, a verificação, o lançamento e o template). Os testes não espelham o pacote, e nomes quase se repetem (`protected_release.py` e `protected_releases.py`, dois `app_run.py`).
+
+Desenho:
+- `core/terminal.py`, `core/process.py` e `core/clock.py`. O `Process` ganha um limite de tempo no `capture` e no `attempt` e um `spawn` para filhos longos, e todo módulo passa pelo `ToolingContext.process` e pelo `ToolingContext.clock`.
+- `toolchains/` guarda só as ferramentas que vários alvos dividem, e as do Android, da Apple e do Emscripten vão para as pastas dos seus backends.
+- Um `ElfFile` sobre o pyelftools em `platforms/elf_file.py`, ao lado do `symbol_resolution.py`. O `ElfLibrary` e a chamada do `llvm-readelf` saem.
+- `assets/` vira `shaders/`, as árvores de CMake e as duas árvores da engine vão para `cmake/`, e `native/` fica só com as bibliotecas nativas.
+- Um desenho por backend: `<nome>_backend.py`, `<nome>_port.py` com a classe `<Nome>Port` (como `ApplePort`), `<nome>_platform.py`, `<nome>_contributions.py`, `<nome>_project.py` com `TEMPLATE`, `<nome>_verifier.py`, `<nome>_launcher.py` onde o backend roda apps, e cada formato de pacote no seu módulo.
+- Nomes pelo que guardam, como `ReleaseBuilder` e `LaunchedApp`.
+- `tools/tests/<pacote>/test_<módulo>.py` para cada pacote, com os testes de regra em `repository/`.
+
+Achados cobertos: T-003, T-004, T-005, T-006, T-007, T-008, T-009, T-010 e T-026.
+
+#### Acceptance criteria
+
+- [ ] Nenhum módulo chama o `subprocess` ou o `time.sleep` fora do `Process` e do `Clock`, e cada espera tem limite.
+- [ ] Os quatro backends seguem o mesmo desenho, descrito no `build.md`.
+- [ ] Cada módulo do pacote tem o seu teste na pasta espelhada.
+- [ ] O código antigo saiu: os leitores de ELF extras, os módulos sem camada e os nomes repetidos.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num `import subprocess` ou `time.sleep` fora do seu módulo, numa camada que importa um backend, num backend fora do desenho e num teste fora da pasta do seu pacote.
+
+#### Attachments
+
+- None
+
+### KB-372
+
+- **Title:** Os dispositivos de GPU dividem as regras do contrato e as peças que não dependem da API
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 8
+- **Dependencies:** [KB-356](#kb-356), pela leitura do OpenGL; [KB-350](#kb-350), pela leitura de volumes; [KB-355](#kb-355), pelo CMake dos testes.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Cada dispositivo de GPU reescreve a máquina de estados do contrato, com nomes diferentes para o mesmo estado, e o dispositivo nulo confere regras mais duras que os dispositivos que vão para os apps, sem a `HandleTable` e sem a checagem de geração. As leituras, a destruição adiada por quadro, a memória de envio e a captura pelo RenderDoc estão escritas de novo em quatro a seis dispositivos, com falhas que mudam de um para outro. O que acontece depois de um dispositivo perdido varia por API. O conjunto de dispositivos é uma lista fechada de `#if`, o nome da API tem três buscas com um retorno silencioso, e o Vulkan inclui um cabeçalho da plataforma. As peças iguais têm nomes diferentes em cada pasta.
+
+Desenho:
+- `gpu::FrameRules` acompanha o quadro, o pass, o pipeline, os bindings, os blocos de uniforms, as leituras fora de passes, a ordem das capturas e os grupos de depuração, e todo dispositivo o chama em cada entrada. O `NullDevice` é o `FrameRules` mais a gravação, sobre a `HandleTable`.
+- `gpu::MappedReadback` faz o `poll` uma vez sobre um objeto de staging de cada API, com `PixelConverter::convertImage`, e a falha tem uma frase só.
+- `gpu::RetireQueue<Entry>` e `gpu::FrameArena`, com a parte de cada API pequena.
+- `renderdoc::Capturer` com `getSupport`, `begin` e `end`, e o PIX como primeira escolha no Direct3D 12.
+- Depois de uma perda, toda criação devolve um handle inerte e todo quadro não desenha nada, sem exceção na thread de quadro, e o dispositivo nulo simula uma perda.
+- `gpu::DeviceRegistry`, onde cada pasta de dispositivo registra a sua fábrica, e o dispositivo de um port também, então um plugin acrescenta ou embrulha um dispositivo. O `EnumNames` de `gpu::Device::Api` é a única busca, sem retorno silencioso.
+- A constante do Vulkan vai para `gpu::Surface::kHeldPresentSeconds`.
+- Um nome por papel em toda pasta: `Conversions`, `GpuTimer`, `RetireQueue`, `UploadRing`, `BufferReadback`, `ImageReadback`, `Staging` e `Capturer`, e `kLegacyTextureBindings` vira `kApple2TextureBindings`.
+
+Achados cobertos: L-009, L-010, L-011, L-012, L-013, L-014, L-015, L-016 e L-029 (camadas), F-018 e a linha 40 das regras.
+
+#### Acceptance criteria
+
+- [ ] Todo dispositivo e o dispositivo nulo seguem as mesmas regras do contrato, e os testes de conformidade de GPU passam em toda API.
+- [ ] Uma perda de dispositivo tem o mesmo comportamento em toda API, num teste do dispositivo nulo e nos testes de GPU.
+- [ ] Um plugin registra um dispositivo pelo registro, com um teste.
+- [ ] O código antigo saiu: as máquinas de estado copiadas, as leituras, filas, anéis e capturas repetidos e os nomes diferentes.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num fonte de GPU que inclui `platform/`, num nome de API fora da tabela e num `ContractError` lançado fora do `FrameRules`.
+
+#### Attachments
+
+- None
+
+### KB-373
+
+- **Title:** Uma tabela de nomes por enum, `core::EnumTable`, com o `EnumNames` ao lado de cada enum no núcleo
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 6
+- **Dependencies:** [KB-076](#kb-076), pelo commit do toolkit Lua sem 2D; a varredura de vocabulário do physics3d ([KB-176](#kb-176), [KB-177](#kb-177)); [KB-156](#kb-156) e [KB-157](#kb-157). O [KB-348](#kb-348) mexe nos mesmos cabeçalhos.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Os nomes de enum têm três mecanismos: 140 pares estáticos `xFromName` e `xName` no núcleo, 26 especializações de `core::EnumNames` no núcleo e 62 na camada Lua, cada uma repetindo o mesmo laço de busca, mais o `ParticleEnum` e o `physics3d::Joint::fromName`. Algumas tabelas existem só na camada Lua, então um app C++ ou um arquivo de dados não as usa, e alguns nomes não são enum, como o espaço de cor de um tween, o lado de um analógico, os tipos de efeito de áudio, os efeitos de imagem e os conteúdos dos nós 2D. O `AppConfig` repete a busca do nome da API gráfica.
+
+Desenho:
+- `core::EnumTable`, com `fromName` e `name` sobre um vetor `constexpr` de pares, é a base de toda especialização.
+- Cada enum tem o seu `core::EnumNames` no cabeçalho do núcleo do enum, e toda binding e todo parser de arquivo o usam.
+- Os pares `xFromName` e `xName`, as especializações da camada Lua e os mecanismos paralelos saem.
+- Todo texto que escolhe um valor é um enum com a sua tabela: `audio::Effect::Kind`, `graphics::ImageEffect::Kind`, `input::GamepadStick`, `core::TweenValue::ColorSpace` e os tipos de conteúdo do 2D.
+- As tabelas de formatos de arquivo de fora, como as ordens de desenho do Tiled e os tipos de acessor do glTF, são uma classe própria, porque não são enums da API.
+
+Achados cobertos: A-008, L-024 (camadas), a parte da busca do nome da API de L-015, P3 (regras) e as linhas 58, 73 e 82 das regras.
+
+#### Acceptance criteria
+
+- [ ] Todo enum da API tem um só `core::EnumNames` no núcleo, e nenhuma busca por nome é escrita fora do `core::EnumTable`.
+- [ ] Todo nome que o Lua recebe é o valor do enum com a primeira letra minúscula.
+- [ ] O código antigo saiu: os pares estáticos, as especializações da camada Lua, o `ParticleEnum` e as buscas à mão.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa tabela de nomes fora de um `EnumNames`, numa especialização fora de `engine/include` e `engine/src` e num nome que não segue o valor do enum.
+
+#### Attachments
+
+- None
+
+### KB-374
+
+- **Title:** A física 2D com o vocabulário, o modelo de formas e os pontos de extensão da física 3D, e o `Character2D`
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 9
+- **Dependencies:** a varredura de vocabulário do physics3d ([KB-173](#kb-173), [KB-176](#kb-176), [KB-177](#kb-177)), que fixa as palavras; [KB-367](#kb-367), pelas camadas do 2D; [KB-373](#kb-373), pelas tabelas de enum. O commit dos componentes 2D do [KB-357](#kb-357) espera este cartão, porque o componente de corpo nasce no modelo novo.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+A física 2D usa as palavras da Box2D e a 3D as da Haylen: contatos com `x`, `normalX` e `separation`, impactos com `shape` e `x`, filtros de 64 bits nas formas, juntas `revolute`, `prismatic`, `weld` e `mouse` com `bodyA` e `anchorA`, corpos com `velocity`, `lockX` e `bullet`, e o personagem cinemático se chama `Mover`. Uma forma 2D é uma fixture do corpo, com material e eventos próprios, enquanto a 3D é um valor que vários corpos dividem. Os eventos de contato são propriedades de callback sem dono. As consultas alocam a cada chamada, e os raios moram numa classe `Raycaster` à parte. O 2D não tem backend trocável, ouvinte de contatos em C++, categorias com nome nem seção no `haylen.json`. O dono de um mundo 2D só termina o seu desenho de depuração, e o mundo continua andando. As chamadas Lua recebem números soltos em vez de vetores, raios e círculos.
+
+Desenho:
+- O vocabulário da física 3D: `ContactEvent2D {first, second, normal, speed, points}`, `ContactPoint2D {point, separation, normalImpulse, tangentImpulse}`, `RaycastHit2D` sobre `math::RayHit2D {point, normal, distance, fraction}` com o corpo e a forma, `QueryFilter2D {mask, sensors, ignore, accept}`, categorias de 32 bits e os mesmos acessores de eventos e de corpos que acordam e dormem.
+- Os eventos chegam por `world:on('contactBegin', fn, {owner})` e os outros do 3D, pelo `lua::ObjectEvents`, e as propriedades de callback saem.
+- Formas como valores: `physics2d.newBox`, `newCircle`, `newCapsule`, `newPolygon`, `newChain` e `newCompound` fazem formas imutáveis, um corpo tem uma forma ou um composto, o material, o filtro e o sensor ficam no corpo e em cada filho de um composto, e as plataformas de um lado e as esteiras são opções de um filho. Os eventos dizem o filho.
+- Pontos de extensão: `Backend2D` com `BackendRegistry2D` e a Box2D embutida, escolhidos pelo `Physics2DPlugin`, `ContactListener2D`, `CollisionCategories2D` de `physics2d.categories` e uma seção `physics2d` do `haylen.json` com os padrões do mundo, no esquema.
+- As palavras das juntas, dos corpos e dos mundos do 3D, a junta `target` no lugar da `mouse`, juntas presas ao mundo, `getKey` e os ids de corpos destruídos em 64 bits e `computeStateHash()` do mundo inteiro.
+- Consultas que enchem a memória de quem chama em C++ e uma tabela `results` opcional em Lua. Os raios vão para o mundo (`raycast`, `raycastAny`, `raycastAll`, `castShape`, `overlapShape`, `queryPoint`, `queryCircle`, `queryRect`, `raycastBatch` e `raycastBatchAsync`), e os leques, ricochetes e linhas de visão são ajudas sobre eles.
+- `Character2D` no lugar do `Mover`, criado como o personagem 3D, com as mesmas palavras (`move`, `ground()`, `update`, `slopeLimit`, `stepHeight`, `onGround`), e o `dropThrough` só no 2D. As partes de um mundo nascem com `world:addX`.
+- `PhysicsWorldSettings2D` num arquivo próprio, `Stats` e `Transform` aninhados, `Physics2DPlugin::createWorld` com o dono que termina o mundo, e o `track` sai.
+- O Lua recebe valores de `math`: `body:applyForce(force, point, options)`, `world:raycast(ray, filter)` e `world:queryCircle(circle, filter)`, com números só como propriedades ao lado das de vetor. `first` e `second` nos dois lados de uma junta e de um contato.
+- A regra do `AGENTS.md` fala das físicas das duas dimensões, e os problemas comuns ficam no `docs/2d/physics.md` e, pelo [KB-182](#kb-182), no `docs/3d/physics.md`.
+
+Achados cobertos: o lado 2D de D-008, D-009, D-010, D-011, D-012, D-013 e D-014, D-022, a parte dos mundos de D-023, D-029, D-034, a parte da física 2D de D-007 e as partes da física 2D de A-005 e A-006.
+
+#### Acceptance criteria
+
+- [ ] A física 2D e a 3D usam as mesmas palavras em C++ e em Lua, conferidas por um teste que compara as duas referências.
+- [ ] Um plugin troca o backend da física 2D e ouve contatos em C++, com testes.
+- [ ] Os testes da categoria PHY e o benchmark da física 2D passam sem perder desempenho e sem alocar por quadro nas consultas.
+- [ ] O código antigo saiu: as fixtures, o `Mover`, o `Raycaster`, as propriedades de callback, o `track` e as formas com números soltos.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num campo, junta ou evento da física 2D fora do vocabulário comum.
+
+#### Attachments
+
+- None
+
+### KB-375
+
+- **Title:** Nada silenciado, nenhuma mensagem fora do padrão e o clang-tidy ligado, em todo canal e em toda linguagem
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 8
+- **Dependencies:** [KB-366](#kb-366), que move os arquivos da camada Lua e troca o `Type<T>::name` por `kName`; [KB-355](#kb-355) e [KB-356](#kb-356); o stream do iOS ([KB-341](#kb-341), [KB-349](#kb-349)).
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O código da engine cala avisos com 35 `[[maybe_unused]]` e 13 casts `(void)`, e o Java da engine com 10 `@SuppressWarnings("deprecation")`, nenhum na tabela de dependências do `build.md`. O `EngineMessagesTest` só lê `throw`, `luaL_error` e quatro chamadas do `Log` com texto literal: deixa passar o `luaL_argerror`, as rejeições de promises, as mensagens montadas com `std::format`, os outros `Log`, o Java, o Kotlin, o JavaScript e o Swift da engine, os nomes qualificados como `port::Services` e as frases quebradas. Umas 20 mensagens reais estão fora do padrão, como as do `ModuleGraph.cpp` e do `Warnings.cpp`. As bindings lançam erros de dois jeitos, 249 `luaL_error` e 170 exceções. O `.clang-tidy` existe, mas nada o roda, e o seu filtro de cabeçalhos não acha nenhum arquivo, então as regras de nomes, de `else` depois de `return` e de ponteiros donos não têm checagem.
+
+Desenho:
+- Um parâmetro sem uso fica sem nome, e nenhum `[[maybe_unused]]` ou cast `(void)` cala um aviso. O Java usa a API de cada nível com a checagem de versão, sem calar a depreciação.
+- Nenhuma marca que cala um aviso ou um lint fica fora da tabela de dependências do `build.md`.
+- Uma entrada de binding confere os tipos do Lua com `luaL_check*` e `luaL_argerror`, e toda outra falha lança uma exceção com a frase inteira, que o `Binding::guarded` levanta. Nenhuma binding monta uma frase para o `luaL_error`.
+- O `EngineMessagesTest` lê todos os canais e todas as linguagens da engine e junta as partes de uma chamada antes de conferir a frase. As mensagens montadas por partes passam por uma ajuda que recebe a chave.
+- O `MessagePathsTest` pega nomes de classe nas mensagens do tooling.
+- O clang-tidy roda num job do Linux da matriz completa e pelo `haylen engine tidy`, com o filtro de cabeçalhos certo, os avisos como erros e as regras `readability-identifier-naming`, `readability-else-after-return`, `cppcoreguidelines-owning-memory`, `modernize-use-nullptr` e `cppcoreguidelines-avoid-c-arrays`. Os getters booleanos com `get` viram `is`, `has` ou `can`.
+
+Achados cobertos: P5, P11 e P12 (regras), A-022, a parte do `.clang-tidy` de T-025, as linhas 1, 2, 3 (a parte que não é Python), 15, 32, 48 a 51, 85, 116, 127 e 128 das regras e as partes do `EngineMessagesTest` e do `MessagePathsTest` de "Weak tests".
+
+#### Acceptance criteria
+
+- [ ] Nenhum aviso da engine é calado, em nenhuma linguagem, e os builds passam com os avisos como erros em toda plataforma.
+- [ ] Toda mensagem da engine e do tooling é uma frase completa, sem nomes internos, em todo canal.
+- [ ] O clang-tidy passa sem aviso no código da engine e da camada Lua.
+- [ ] O código antigo saiu: os atributos e casts que calam avisos, as anotações do Java, os `luaL_error` com frases e o `.clang-tidy` morto.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa marca que cala um aviso fora da tabela e numa mensagem fora do padrão, e o job do clang-tidy falha num nome fora das regras.
+
+#### Attachments
+
+- None
+
+### KB-376
+
+- **Title:** Um contrato de host só: as plataformas da engine usam o `port::Host` e o `port::Player`, como um port
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** critical
+- **Complexity:** 9
+- **Dependencies:** [KB-369](#kb-369), pelo guarda das entradas; o stream do iOS ([KB-341](#kb-341), [KB-349](#kb-349)), que mexe no `sdl/Host.cpp` e no `sdl/Runtime.cpp`.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+As camadas de plataforma da engine (SDL, worker e Android) derivam do `platform::NativeHost` interno, enquanto um port usa o `port::Host` público, menor, por um adaptador. Assim um port não tem saídas, ganchos do ciclo de vida do player, a parada do depurador, a janela que fica depois de uma falha, a tela cheia noutra tela nem a lista de telas. O `port::BridgeReplies` não tem nenhum chamador, e o `DeviceRecovery` e o `GraphicsApiFallback` são internos, então cada port escreve os seus. A recuperação do dispositivo está escrita três vezes, o Android tem um segundo fallback de APIs gráficas, e o `port::Player` só repassa chamadas. A partida do processo muda de ordem por plataforma, os pontos de entrada do Windows e do Linux moram na pasta do SDL, e um port nunca instala os crash handlers, então um app de port pede relatórios de crash e nenhum é escrito. Os crash handlers de cada sistema estão em dois arquivos, e o da web é vazio.
+
+Desenho:
+- O `port::Host` é o único contrato de janela e ganha cada gancho que uma plataforma usa. `sdl::Host`, `worker::Host` e o host do Android o implementam como um port, e o headless também, pelo [KB-388](#kb-388).
+- O `NativeHost` vira o único adaptador interno do player, com o nome do que é, como `platform::PlayerHost`, e o `PortHost` sai.
+- Toda plataforma começa por `port::Player::installServices` e `port::Player::create`, e o `platform::Player` é a implementação do `port::Player`, sem repasse.
+- `platform::GraphicsStartup` tenta a ordem das APIs, guarda as falhas e as perdas e dá o único dispositivo de troca, usado por toda plataforma e oferecido aos ports, e o `AndroidGraphicsApis` cai nele. `Player::recoverLostDevice()` é dono do `DeviceRecovery`.
+- `platform::Process` é a partida única: a checagem do processador, os crash handlers, os serviços e a camada de plataforma. Cada pasta de plataforma tem o seu arquivo de entrada (`apple/AppleMain.mm` com `haylen_main` e `main`, `windows/WindowsMain.cpp`, `linux/LinuxMain.cpp`, `web/WebMain.cpp` e `android/AndroidJniExports.cpp`).
+- `port::CrashService` é uma capacidade que os runtimes POSIX e Windows registram e o `port::Player::installServices` instala também num port, e os `platform::Services` respondem uma vez onde ela falta. Um `CrashHandlers.cpp` por pasta de sistema, sem o repasse, e o arquivo vazio da web sai.
+- O comentário do `Host` lista os hosts como são.
+
+Achados cobertos: P-001, L-001 (camadas), L-017, L-030, P-006, P-007, L-025, F-009, a parte dos crash handlers de P-015 e a parte do comentário do `Host` de P-029.
+
+#### Acceptance criteria
+
+- [ ] Toda plataforma da engine e o port de teste passam pelo mesmo `port::Host` e pelo mesmo `port::Player`, e um port mostra saídas e escreve relatórios de crash, com testes no port de teste.
+- [ ] Toda plataforma começa na mesma ordem, a partir do seu arquivo de entrada.
+- [ ] O código antigo saiu: o `PortHost`, os repasses do `port::Player`, o segundo fallback do Android, as recuperações copiadas e os crash handlers vazios ou em dois arquivos.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa classe de uma pasta de plataforma que deriva do `NativeHost` ou do `platform::Host`.
+
+#### Attachments
+
+- None
+
+### KB-377
+
+- **Title:** A linha de comando com `engine test`, `app test` e `app check` como capacidades dos backends, e a CI com todo passo nomeado
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 7
+- **Dependencies:** [KB-371](#kb-371), pelo tooling em camadas; [KB-361](#kb-361), pela página de referência dos comandos; [KB-345](#kb-345), que muda os jobs do Linux; [KB-349](#kb-349), que muda os testes de UI do iOS na CI.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `haylen test` é um comando com nove modos exclusivos, escolhidos por flags, cujas opções mudam de sentido em cada modo, e ele mistura o desenvolvimento da engine com as checagens dos apps. Os testes de UI e as checagens de partida dos apps são código de plataforma dentro de `tools/haylen/engine/`, importando backends concretos, então um port ou um backend de fora não traz os seus. A pasta do app é posicional em uns comandos e `--app` noutros, `haylen new` e `haylen serve` ficam fora do grupo `app`, o `--config` tira as escolhas de três lugares, e o `haylen.json` tem dois escritores. Na CI, uns 87 passos não têm nome, os jobs seguem padrões diferentes, uma checagem da web se esconde no job da Apple, os pacotes do Android repetem pins da tooling e o ninja, o cmake e o clang-format são instalados pelo pip fora do `uv.lock`.
+
+Desenho:
+- O grupo `engine` roda a engine: `engine test` (com `--gpu`, `--graphics-api`, `--sanitizer`, `--shard`, `--target`, `--port` e as bibliotecas do Android), e a checagem do GCC fica em `engine build --compiler gcc`.
+- `app test <app>` roda os testes de UI (`--ui-test`, `--device-farm`) e `app check <app>` as checagens de partida e de saída, como `Capability.UI_TESTS` e `Capability.START_CHECK` do `PlatformBackend`, implementadas por cada backend. O `UnifiedLog` vai para o backend da Apple, e `tools/haylen/engine/` fica só com o desenvolvimento da engine.
+- Os nomes das APIs gráficas vêm de uma tabela só, todo comando que age num app recebe a pasta pelo `Arguments.add_app`, `haylen new` vira `haylen app new`, o `--config` tem uma fonte só, `--sanitizers` vira `--sanitizer`, os argumentos do servidor vão para `cli/` e os grupos do `devices` vêm das descrições das plataformas.
+- Um só `AppManifest.write`, e a camada do tipo de app traz as suas chaves como dados, num fragmento de manifesto que o scaffold junta.
+- Na CI, todo passo tem nome, os jobs seguem um padrão (`<plataforma>-sdk`, `<plataforma>-apps`, `<plataforma>-gpu`, `<plataforma>-ui`), a checagem do WebGPU tem o seu job, cada sistema compila o SDK de desktop de um jeito, os pacotes do Android vêm da tooling e o ninja, o cmake e o clang-format entram no grupo de desenvolvimento travado do `pyproject.toml`.
+- O `format` confere as mensagens dos commits de um push, e o `haylen engine configure` instala o gancho `commit-msg`.
+
+Achados cobertos: T-001, T-002, T-011, T-012, T-016, T-017, P10 e P16 (regras) e as linhas 16 a 21 das regras.
+
+#### Acceptance criteria
+
+- [ ] Cada comando faz uma coisa, os testes de UI e as checagens de partida são capacidades que um backend de fora também declara, e o backend de teste prova isso.
+- [ ] A CI roda com os comandos novos, todo passo e todo job têm nome fixo, e os pins vêm de um lugar só.
+- [ ] O código antigo saiu: o `haylen test`, os módulos de plataforma em `engine/`, os segundos escritores e as instalações pelo pip.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num passo ou job sem nome, num job fora do padrão, num pin repetido, num módulo de `haylen.engine` que importa um backend e numa mensagem de commit fora da regra.
+
+#### Attachments
+
+- None
+
+### KB-378
+
+- **Title:** O `core::Engine` vira um núcleo, e cada subsistema vira um plugin que dá o seu serviço
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** critical
+- **Complexity:** 10
+- **Dependencies:** [KB-365](#kb-365), pelo contrato de plugins v2; [KB-363](#kb-363) e [KB-364](#kb-364); [KB-076](#kb-076), pelos commits B1 a B9; [KB-355](#kb-355), pelos fixtures dos testes.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `EngineState` guarda uns 60 campos, o `Engine` tem uns 40 getters e 1681 linhas, e o quadro chama cada subsistema numa ordem fixa. Entrada, áudio, assets, conteúdo, cenas, timers, tweens e armazenamento não são plugins, então nenhum plugin os troca. O `Engine` guarda também a tela de erro, a máquina de estados do ciclo de vida, o redesenho por mudança, a capa do app, o áudio em segundo plano, a área segura, a simulação de dobra, os recortes, a barra de status e o lançamento de outros apps. O mixer nasce no `Engine` e vive metade num plugin. Os plugins guardam lógica dos seus contextos: o `DebugPlugin` (760 linhas) junta estatísticas, desenhos, console, inspetor, picking, gizmos, traços, capturas de GPU, rastros de crash e eventos, e o `PlatformPlugin` mistura a ponte, as ações dos leitores de tela e as texturas dos streams de vídeo. As estatísticas do quadro são montadas três vezes. Os autoloads existem só no Lua, com ganchos diferentes dos plugins de um app C++.
+
+Desenho:
+- O `core::Engine` é um núcleo: o relógio, o agendador de estágios, o job system, o barramento, o registro de serviços, o registro de tipos, o modelo de erros e fases (`core::AppErrors`), as esperas da partida, a fila do quadro e o profiler.
+- Cada subsistema é um plugin que dá o seu serviço: `InputPlugin`, `AudioPlugin` (dono do mixer e de toda a saída), `AssetsPlugin`, `ScenesPlugin`, `TimersPlugin` (timers e tweens) e `StoragePlugin`, ao lado do `Graphics2DPlugin` da fronteira do renderizador. Telas, saídas, acessibilidade e o sistema chegam pelos serviços da plataforma.
+- A área segura, a dobra, os recortes, as simulações e a barra de status vão para `platform::ScreenArea`. Os getters do `Engine` saem, e o código pede o serviço.
+- O `DebugPlugin` se divide em `DebugDrawPlugin`, `ConsolePlugin` (`debug::Commands`), `InspectorPlugin` (com o provedor nativo do registro de tipos, o picking por provedor de cada renderizador e os gizmos), `ProfilerPlugin` (traços e `debug::GpuCaptures`) e `CrashReportPlugin` (`debug::CrashReports`). O `PlatformPlugin` se divide pelo que liga.
+- `debug::Stats` é o único retrato do quadro, com `toJson`, que a página web e a binding Lua leem.
+- Um autoload é um plugin com um modo de processo, e o autoload do Lua é um `ScriptedPlugin` no mesmo contrato.
+- A ordem do quadro do [KB-036](#kb-036) sai dos estágios deste núcleo, e o [KB-030](#kb-030) usa o inspetor dividido.
+
+Achados cobertos: S-002, L-005 (camadas), L-023 (sem as partes da UI e do texto), S-029, L-022, S-033 e a parte do picking de S-028.
+
+#### Acceptance criteria
+
+- [ ] Cada subsistema embutido é um plugin que um app troca pelo `configurePlugins`, com um teste de troca de pelo menos a entrada, o áudio e os assets.
+- [ ] Um app C++ guarda o console sem o inspetor e troca os relatórios de crash sem perder o console, com testes.
+- [ ] A ordem do quadro está escrita no `architecture.md` e conferida por um teste, sem alocação nem perda de desempenho nos benchmarks.
+- [ ] O código antigo saiu: os getters do `Engine`, os campos dos subsistemas no `EngineState`, o `DebugPlugin` inteiro e as estatísticas montadas fora do `debug::Stats`.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num subsistema guardado no `EngineState` e num getter de subsistema no `Engine`.
+
+#### Attachments
+
+- None
+
+### KB-379
+
+- **Title:** Uma pilha de rede só, no laço do Varn, com uma API pública em C++, e o Poco sai
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 7
+- **Dependencies:** [KB-364](#kb-364), pelos donos e cancelamentos; [KB-345](#kb-345); [KB-354](#kb-354), pelo OpenSSL do Varn.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O WebSocket roda no Poco, com uma thread solta por conexão, enquanto o HTTP, os sockets e os servidores vêm dos módulos `http` e `socket` do Varn, só no Lua. O gerenciador de conteúdo usa o cliente HTTP do Varn em C++, mas um app C++ não tem cliente HTTP, porque não inclui o Varn. São duas pilhas de TLS e de sockets, com dois conjuntos de tempos, proxies, certificados e motivos de bloqueio. O WebSocket do navegador compila dentro da biblioteca do núcleo e é escolhido na hora do link entre três definições.
+
+Desenho:
+- Uma pilha no laço de eventos do Varn, sem thread por conexão, com a API pública `haylen::net` em C++: `HttpClient` (pedido, stream e download), `WebSocket` e `Socket`, com o dono, os tempos e os motivos de bloqueio que o `WebSocket` tem hoje.
+- O transporte do navegador é o serviço da web, `port::WebSocketService` ao lado do `port::NetworkService`, e um port traz o seu.
+- O Lua embrulha as mesmas classes.
+- O Poco sai das dependências, com os seus patches.
+
+Achados cobertos: S-030, a parte do WebSocket de F-005 e de P-025 e a parte dos sockets de L-032 (camadas).
+
+#### Acceptance criteria
+
+- [ ] Um app C++ faz pedidos HTTP, abre WebSockets e sockets pela API pública, com testes em toda plataforma.
+- [ ] Os testes de rede do Lua passam pela mesma pilha, e nenhuma conexão tem thread própria.
+- [ ] O código antigo saiu: o Poco, o transporte escolhido no link e a thread por socket.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num `std::thread` solto em `engine/src/net` e numa dependência do Poco.
+
+#### Attachments
+
+- None
+
+### KB-380
+
+- **Title:** A engine recebe a janela e os serviços da plataforma separados, por capacidade, e toda plataforma relata pela API de port
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 9
+- **Dependencies:** [KB-376](#kb-376), pelo contrato de host; [KB-378](#kb-378), pelo núcleo.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `platform::Host` tem 56 métodos puros mais os 50 da janela, e cada capacidade existe em quatro cópias: no `Host`, no `NativeHost`, na fachada estática `platform::Services` e no serviço do port. As plataformas da engine relatam pelo `SystemState` e por relays internos (`BridgeRelay`, `ScreenRelay`, `LinkRelay`, `AccessibilityRelay`, `MemoryWarning`), com outros nomes que os do `port::SystemReports` e do `port::BridgeReplies` que um port usa. As saídas são métodos de todo host, o SDL as escolhe por macros de sistema, e um port não as tem. Os padrões de uma capacidade que falta estão escritos em cada plataforma, como o pedido de todas as telas e a persistência dos dados do usuário. O tema, a bateria, a economia de energia, o estado térmico, o fuso, as línguas e a acessibilidade são lidos a cada quadro, enquanto a rede, o segundo plano e a memória chegam como eventos. O título, o cursor e as janelas focáveis do Android são vazios que fingem sucesso.
+
+Desenho:
+- A engine recebe a janela, o `port::Host`, e os `port::Services` instalados, separados. Cada contexto pega o serviço que usa por uma fachada por capacidade, como `platform::SystemFonts`, `platform::VideoDecoders` e `platform::Clipboard`, que responde uma vez quando a capacidade falta. O `platform::Host` fica com a janela e o quadro, e a fachada estática e os repasses do `NativeHost` saem.
+- Toda plataforma relata só pelo `port::SystemReports` e pelo `port::BridgeReplies`, e os relays ficam privados do player. As vistas nativas ganham o seu `port::NativeViews`.
+- `port::OutputService` com `open`, `close`, `getReport` e `setExternalDisplays`, registrado pelo desktop do SDL, pela Apple no iPhone e no iPad, pelo Android e pela web, e os métodos de saída saem do `Host`.
+- O pedido de todas as telas e a persistência dos dados do usuário são serviços que só a web registra.
+- `platform::ReportedSystem` guarda cada relato para o próximo app e publica um evento tipado por mudança, e a engine para de ler oito getters a cada quadro.
+- O título, o cursor e as janelas focáveis são capacidades que a janela responde uma vez.
+
+Achados cobertos: L-002, L-018 e L-031 (camadas), P-002, P-003 e P-011.
+
+#### Acceptance criteria
+
+- [ ] Cada capacidade da plataforma tem um só caminho, do serviço ao contexto que o usa, e um port tem saídas pelo serviço, com testes no port de teste.
+- [ ] Nenhuma mudança do sistema é lida a cada quadro, e cada uma chega como um evento.
+- [ ] O código antigo saiu: a fachada estática, os repasses, os relays públicos, os métodos de saída do `Host` e os padrões copiados.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num arquivo de uma pasta de plataforma que inclui um relay ou o `SystemState`.
+
+#### Attachments
+
+- None
+
+### KB-381
+
+- **Title:** Um dono só das fontes, texto em glyph runs e as telas da engine pelo canvas de tela
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 7
+- **Dependencies:** [KB-378](#kb-378), que tira a fonte padrão do `Engine`; [KB-076](#kb-076), pelo `graphics::ScreenCanvas` dos commits B1 a B9.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+As fontes têm cinco donos: o `Engine` faz a fonte padrão, o gerenciador de assets guarda fontes por caminho, o `UiPlugin` guarda nomes, famílias, caminhos e revisões e os passa ao atlas do ImGui, o registro de rich text tem a sua família padrão, e o `TextPlugin` monta as buscas das tags `[font]` e é dono das fontes do sistema. Um nome de fonte quer dizer coisas diferentes num tema, num rich text e numa chamada de desenho, e o texto do ImGui e o da engine se moldam diferente. O texto só chega à tela pelo renderizador 2D. A tela de erro, a de atualização, as estatísticas compactas e o progresso do retorno são quatro layouts pequenos feitos à mão sobre o renderizador 2D.
+
+Desenho:
+- `text::FontLibrary`, um serviço do plugin de texto, guarda as famílias com nome, a família padrão, os fallbacks do sistema (`text::SystemFontLookup`), as revisões e a recarga. A UI, o rich text, os renderizadores 2D e 3D e a camada de ferramentas do ImGui a leem, e o atlas do ImGui é alimentado por ela só para o `haylen.imgui` e as ferramentas de depuração.
+- `text::GlyphRun` é um buffer de quads de glifos com as suas páginas, feito uma vez de um `text::Layout`. O renderizador 2D, o 3D e o `graphics::ScreenCanvas` o desenham com o mesmo material de campo de distância.
+- As telas da engine desenham pelo `ScreenCanvas` com um `ui::FallbackLayout`, que não depende do plugin de UI, porque elas precisam funcionar quando a UI do app falhou.
+
+Achados cobertos: S-021, S-022, S-035 e a parte do texto de L-023 (camadas).
+
+#### Acceptance criteria
+
+- [ ] Um nome de fonte quer dizer a mesma família em todo lugar, e uma recarga ou um fallback do sistema roda uma vez.
+- [ ] O texto 2D, o 3D e o das telas da engine saem dos mesmos glyph runs, com capturas iguais antes e depois no 2D.
+- [ ] O código antigo saiu: os donos extras das fontes e os layouts à mão das telas.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num carregamento de fonte fora da `text::FontLibrary`.
+
+#### Attachments
+
+- None
+
+### KB-382
+
+- **Title:** O armazenamento com seções que cada subsistema registra, e salvar em C++ sem bloquear a thread de quadro
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 5
+- **Dependencies:** [KB-378](#kb-378), que faz do armazenamento um plugin; [KB-364](#kb-364), pela `core::SerialQueue`.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `StoragePlugin` conhece cada subsistema: inclui o mixer e o mapa de ações para salvar os volumes dos barramentos, a tela cheia e as ações, e guarda o estado da navegação, enquanto a UI chama o armazenamento de volta. Cada subsistema novo com preferências precisa mudar o armazenamento. O `UserStorage` e o `SaveSlots` são síncronos e escrevem de forma durável na thread de quadro, e as versões assíncronas existem só na binding Lua, sobre uma fila do plugin.
+
+Desenho:
+- `storage::SettingsStore` com seções que cada subsistema registra e serializa sozinho, e `storage::ResumeState` com as seções que a UI registra para a navegação.
+- O `UserStorage` e o `SaveSlots` ganham métodos assíncronos em C++, que devolvem uma tarefa na `core::SerialQueue`, e a binding Lua só os embrulha.
+
+Achados cobertos: S-027.
+
+#### Acceptance criteria
+
+- [ ] Um subsistema novo registra a sua seção de preferências sem mudar o armazenamento, com um teste.
+- [ ] Um app C++ salva e carrega de forma assíncrona, e nenhuma escrita durável roda na thread de quadro.
+- [ ] O código antigo saiu: as inclusões dos subsistemas no armazenamento e a fila da binding Lua.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num arquivo de `storage` que inclui outro subsistema.
+
+#### Attachments
+
+- None
+
+### KB-383
+
+- **Title:** Um `input::InputSystem` com dispositivos registrados por caminho de controle, uma ordem de entrada e ações completas
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 9
+- **Dependencies:** [KB-378](#kb-378), que faz da entrada um plugin. O [KB-042](#kb-042) entra sobre este modelo de dispositivos.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+A entrada está espalhada pela engine, com um conjunto fechado de dispositivos e controles: teclado, mouse, toques, oito gamepads e inclinação, e as fontes de um binding são um enum fechado. Um plugin não acrescenta um controle de XR, uma caneta, um volante, um controle MIDI, o controle de um port ou um interruptor de acessibilidade. Cada evento passa pela entrada, por todos os plugins e pela cena de cima, sem consumo, e a UI e o jogo dividem os dispositivos por flags e por dois árbitros de gestos com limites diferentes. O mapa de ações não tem gatilhos, modificadores nem prioridade de contexto, e busca as ações por texto. O voltar passa por dois caminhos, o das cenas e o da navegação. O campo de texto nativo tem três donos, e um id é tomado por um truque de bits.
+
+Desenho:
+- O `InputPlugin` dá o `input::InputSystem`. Cada dispositivo implementa `input::Device` e descreve os seus controles por caminho (`<keyboard>/space`, `<gamepad>/buttonSouth`, `<xrController>{left}/grip/pose`), com tipos de controle: botão, eixo, `vector2`, `vector3`, pose e toque. Os dispositivos embutidos estão no mesmo contrato, e as conexões vêm do registro.
+- O ponteiro leva a posição no framebuffer e um provedor de raio para o 3D.
+- Uma ordem de entrada: depuração, apresentações, UI, UI no mundo, jogo e o que ninguém tratou. Cada estágio toma um aperto, que fica com ele até soltar.
+- Uma arena de gestos, dividida pelo `GestureRecognizer` e pelas áreas que rolam da UI, com um conjunto de limites em pontos.
+- Ações com contextos de prioridade, modificadores por binding (zona morta, inverter, escala e troca de eixos) e gatilhos (apertar, soltar, segurar, tocar, tocar duas vezes, acorde e sequência). O `CommandBuffer` vira o gatilho de sequência, e as ações são `input::ActionId`, com nomes só no Lua e no JSON.
+- O voltar passa por uma cadeia de tratadores na ordem de entrada: apresentações, pilhas de navegação, cena e app. O `Engine::setBackLeavesApp` e o `Plugin::isCapturingBack` saem.
+- `platform::TextInput` dá sessões com ids que ele mesmo aloca, e a UI, o campo do app e os plugins abrem cada um a sua. O `AppTextField` sai do `Engine`.
+
+Achados cobertos: S-004, S-005, S-006, a parte do voltar de S-012 e S-032.
+
+#### Acceptance criteria
+
+- [ ] Um plugin registra um dispositivo com os seus controles e o liga às ações, com um teste.
+- [ ] Um aperto fica com o estágio que o tomou, e um toque é decidido pela mesma arena na UI e no jogo, com testes.
+- [ ] Os testes de entrada do projeto de testes passam em toda plataforma, com mouse, toque, teclado, gamepad e controle de TV.
+- [ ] O código antigo saiu: o conjunto fechado de fontes, as flags de captura, o segundo árbitro, o `CommandBuffer`, os dois caminhos do voltar e o id por truque de bits.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa leitura de dispositivo fora do `input::InputSystem`.
+
+#### Attachments
+
+- None
+
+### KB-384
+
+- **Title:** O áudio com um dono só, decodificadores registrados e um `audio::Spatializer` com o ouvinte 3D
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 7
+- **Dependencies:** [KB-378](#kb-378), que faz o `AudioPlugin` dono do mixer; [KB-076](#kb-076), pelo `audio::Listener` em `Vec3` dos commits B1 a B9. O [KB-191](#kb-191) e o [KB-194](#kb-194) constroem o áudio 3D sobre este cartão.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O ciclo de vida da saída de áudio vive em três lugares: o `Engine` faz o mixer e o limitador e o suspende, retoma e silencia, o `AudioPlugin` trata as interrupções e a pausa com a sua própria conexão de estado do app, e o `StoragePlugin` salva os volumes. Um plugin de áudio que troque o mixer não é dono dele. O `audio::Sound` decodifica só WAV, FLAC, MP3 e Ogg Vorbis, sem um registro de decodificadores, e os barramentos são achados por texto a cada chamada. O som posicional não tem orientação do ouvinte, cones, binaural nem oclusão, e nenhum plugin dá um espacializador.
+
+Desenho:
+- O `AudioPlugin` é dono do `audio::Mixer` e de toda a saída, e ouve o estado do app por eventos tipados.
+- `audio::Decoder` é uma interface com um registro por extensão e por cabeçalho, usado pelo asset `sound` e pelo streaming, e um plugin acrescenta um formato como qualquer outro.
+- `audio::BusId` vem de `createBus` ou `findBus` e é guardado, com nomes só no Lua e no JSON. Os volumes dos barramentos são uma seção do armazenamento do [KB-382](#kb-382).
+- `audio::Spatializer` é uma interface com o modelo padrão de pan e distância e backends escolhidos, como os da física 3D. Cada voz tem um `audio::Emitter` (posição, velocidade, cone e abertura), e o ouvinte é o `audio::Listener` em `Vec3` com orientação e velocidade. O 2D põe as suas posições no plano `x` e `y`, com a escala de unidades de cada mundo.
+- O ouvinte que segue uma câmera é um componente de nó, nas duas dimensões.
+
+Achados cobertos: S-003, a parte do espacializador de S-015 e a parte do áudio 3D de D-016.
+
+#### Acceptance criteria
+
+- [ ] Um plugin troca o mixer, acrescenta um decodificador e um espacializador, com testes de cada um.
+- [ ] Os testes de áudio 2D e a categoria AUD tocam o mesmo som antes e depois.
+- [ ] O código antigo saiu: o mixer no `Engine`, os barramentos achados por texto a cada chamada e o ouvinte em `Vec2`.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num arquivo de fora do `audio` e do `AudioPlugin` que controla o dispositivo de áudio.
+
+#### Attachments
+
+- None
+
+### KB-385
+
+- **Title:** Assets tipados, registrados pelo plugin dono do tipo, e todo arquivo do pacote como um asset
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 8
+- **Dependencies:** [KB-378](#kb-378), pelo `AssetsPlugin`; [KB-365](#kb-365). O [KB-111](#kb-111), do asset de modelo, nasce sobre este contrato.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O gerenciador de assets guarda `std::shared_ptr<void>` com nomes de tipo em texto e opções em JSON, tem atalhos para `texture`, `font`, `shader`, `vectorImage` e `json`, inclui graphics e texto e registra quatro tipos dentro de si, enquanto todo outro tipo é registrado pelo seu plugin. Os erros são texto, e trocar um tipo pelo nome acontece em silêncio. Vídeos, temas, fontes da UI, pastas de línguas, a fonte padrão, as imagens do rich text e as rasterizações de SVG carregam fora dos assets, então as regras de entrega, as dependências, as estatísticas e a recarga não valem para eles. Os vídeos de um app e os streams de vídeo dos plugins têm dois caminhos de atualização. O conteúdo e os assets se encontram por dois lambdas no construtor do `Engine`, e o transporte e o armazenamento local não são trocáveis. Os tipos de asset de uma dimensão não levam a dimensão.
+
+Desenho:
+- `assets::Handle<T>`, um handle forte e tipado com estado e erro tipado, e `AssetType<T>` registrado pelo plugin dono de `T`: o de graphics registra `texture`, `image`, `shader` e `vectorImage`, e o de texto registra `font`. Trocar um tipo nomeia o tipo trocado. O gerenciador depende só de `io`, dos jobs e do barramento.
+- Temas, catálogos, vídeos e famílias de fontes são tipos de asset com dependências, como um tema que depende das suas fontes e imagens. A rasterização de SVG numa densidade é uma opção da textura `vectorImage`. O `Plugin::packageChanged` fica só para o estado que nenhum asset guarda.
+- `graphics::ExternalTexture` é um serviço só, atualizado a cada quadro pelos seus produtores: um decodificador de vídeo, um stream nativo e uma câmera de XR.
+- Cada arquivo chega ao Lua pelo `haylen.assets`, e um módulo pode ter um atalho que o chama.
+- `assets::Source` é a interface que o plugin de conteúdo implementa e registra, e `content::Transport` e `content::Store` são interfaces com as classes de hoje como padrão.
+- Os tipos de asset de uma dimensão levam a dimensão, com o nome do tipo Lua: `skeleton2d`, `spriteAtlas2d`, `particles2d`, `navMesh2d` e `navMesh3d`, e o mesmo nos desenhos de depuração (`physics2d`, `physics3d`, `navigation3d`, `bounds2d`, `bounds3d`) e nos itens de estatística. O `prefab` do [KB-357](#kb-357) é do núcleo sem dimensão e leva a chave `dimension`.
+
+Achados cobertos: S-016, S-017, S-018, S-020, A-013 e D-015 (com o `prefab` do [KB-357](#kb-357)).
+
+#### Acceptance criteria
+
+- [ ] Um plugin registra um tipo de asset tipado e troca um embutido nomeando-o, com testes em C++ e em Lua.
+- [ ] Temas, catálogos, vídeos e fontes seguem as regras de entrega e recarregam pelos assets, com testes.
+- [ ] O código antigo saiu: o `shared_ptr<void>`, os atalhos e tipos dentro do gerenciador, os carregadores à parte, os dois caminhos de vídeo e os lambdas do construtor.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num tipo de asset registrado fora do plugin dono e num tipo, desenho ou item de estatística de uma dimensão sem ela.
+
+#### Attachments
+
+- None
+
+### KB-386
+
+- **Title:** Toda chamada que devolve uma promise termina em `Async`, com o cancelamento nas opções, uma forma de erro e um tempo só para as esperas
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 6
+- **Dependencies:** [KB-364](#kb-364), pelo `core::Lifetime` e pelo cancelamento; [KB-373](#kb-373); [KB-385](#kb-385), que mexe nas bindings de assets e de conteúdo.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Umas chamadas que devolvem promises terminam em `Async` e outras não (`graphics.readTarget`, `graphics.captureScreen`, `content.download`, `assets.preload`, `system.clipboard`, `window.setFullscreen`, `scene.preload` e outras), então o nome não diz como o resultado chega. O `PlatformCall` é um segundo tipo que se espera, ao lado das promises do Varn. Há duas formas de falha, e o cancelamento existe só nas chamadas da plataforma, no conteúdo e no `scene.cancelPreload`, cada um do seu jeito. Uma espera com `async.sleep` numa cena que pausa continua durante a pausa e ignora a escala do tempo, enquanto o `timer.after` para.
+
+Desenho:
+- Toda função que devolve uma promise termina em `Async`: `graphics.readTargetAsync`, `graphics.captureScreenAsync`, `vectorImage:rasterizeAsync`, `content.prefetchAsync`, `content.checkAsync`, `content.downloadAsync`, `assets.preloadAsync`, `haylen.packageInfoAsync`, `display.requestEveryScreenAsync`, `system.readClipboardAsync`, `system.writeClipboardAsync`, `window.setFullscreenAsync`, `window.setMouseModeAsync`, `scene.preloadAsync` e `bridge.callAsync`.
+- A promise do Varn é o único tipo que se espera. O cancelamento é um valor que toda chamada assíncrona aceita nas opções, `{cancel = token}`, feito por `haylen.newCancellation()`, com `cancel()`, e uma chamada cancelada rejeita com o código `cancelled`, que nunca para o app. O `PlatformCall` e o `scene.cancelPreload` saem.
+- Uma forma de falha em todo lugar: `{error = message, code = <texto>, data = <tabela ou nil>}` com os campos do módulo, como o terceiro valor do `await`.
+- Os domínios de relógio da engine (com escala, sem escala e fixo) são o único tempo do código da thread de quadro. `timer.wait(seconds, {owner, processMode, unscaled})` devolve uma promise, e os timers do Varn ficam para os limites de tempo de I/O, sem aparecer nos docs dos apps.
+
+Achados cobertos: A-007 e S-008.
+
+#### Acceptance criteria
+
+- [ ] Toda função de promise da API Lua termina em `Async`, aceita o cancelamento nas opções e falha com a forma única, com testes de cada módulo.
+- [ ] Uma espera numa cena pausada para com a pausa e segue a escala do tempo, num teste.
+- [ ] O código antigo saiu: os nomes sem `Async`, o `PlatformCall`, o `scene.cancelPreload` e o `async.sleep` nos docs, nos samples e nos templates.
+- [ ] Os docs, o `api-policy.md` e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do Lua falha numa função que devolve uma promise sem o sufixo `Async`.
+
+#### Attachments
+
+- None
+
+### KB-387
+
+- **Title:** A camada SDL só com o SDL, a janela da página web numa classe e um desktop Wayland nativo no Linux
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 8
+- **Dependencies:** [KB-380](#kb-380), pelo serviço de saídas e pela janela separada dos serviços; [KB-345](#kb-345) e [KB-347](#kb-347), pelo Linux; o stream do iOS ([KB-341](#kb-341), [KB-349](#kb-349)), pelo `sdl/apple`.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `sdl/Host.cpp` tem 101 condições de sistema e inclui as classes da Apple e da web sob `#if`, e o `sdl/Runtime.cpp` tem 80, então o comportamento do iOS, do tvOS, do visionOS, do Mac Catalyst e do navegador se esconde num arquivo de todos. O modo de página e o modo Worker da web repetem o mesmo comportamento do navegador em dois hosts, com a mesma frase escrita duas vezes. Os rótulos dos gamepads da web seguem duas regras, uma em cada modo. No Linux, o serviço de desktop é registrado sempre, mas num Wayland cada chamada (`setFrame`, estilos, `setPassthrough`, arrastar) volta sem fazer nada, e os docs dizem que o Wayland roda pelo XWayland. As partes de Wayland do SDL ficam soltas em `sdl/`, e a bateria do Linux é lida por uma thread solta que dorme para sempre.
+
+Desenho:
+- A camada SDL guarda só o SDL. O que muda por plataforma chega como serviço ou como peça que a entrada de cada plataforma entrega: o texto, o splash, os gamepads, o ponteiro, a área de transferência e as saídas.
+- Uma classe da pasta web guarda o que o navegador faz pela janela de um app nos dois modos (tela cheia, modos do mouse, área de transferência, tela acesa, splash, relatos à página e saídas), e os dois hosts a usam.
+- A tabela de fabricantes e a leitura dos ids da Gamepad API ficam numa classe, usada pelos dois modos.
+- O Linux tem um desktop Wayland próprio: um serviço de desktop do Wayland, cujas chamadas que o compositor recusa respondem `Unsupported` com o motivo, as telas do Wayland dentro do serviço de telas e as peças de Wayland do SDL em `sdl/linux/`. O desktop do X11 continua para as sessões X11, e os docs dizem o que cada um faz.
+- A bateria do Linux segue os sinais de mudança do UPower no laço do GLib.
+
+Achados cobertos: P-004, P-005, P-008, P-027, P-028 e a parte da bateria de L-032 (camadas).
+
+#### Acceptance criteria
+
+- [ ] O `sdl/Host.cpp` e o `sdl/Runtime.cpp` só têm as condições que escolhem recursos do próprio SDL.
+- [ ] Os dois modos da web passam nas mesmas checagens de navegador pela mesma classe.
+- [ ] Num Wayland, cada chamada do desktop funciona ou responde `Unsupported` com o motivo, conferido numa sessão Wayland sem janela.
+- [ ] O código antigo saiu: os `#if` de sistema do SDL, o comportamento da web duplicado, as duas regras dos gamepads e a thread da bateria.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório limita as condições de sistema em `engine/src/platform/sdl/*.cpp` às que escolhem recursos do SDL.
+
+#### Attachments
+
+- None
+
+### KB-388
+
+- **Title:** O headless é um port de verdade, com serviços de teste, e o lançamento de apps tem uma pilha só
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 6
+- **Dependencies:** [KB-376](#kb-376) e [KB-380](#kb-380), pelo contrato de host e pelos serviços; [KB-355](#kb-355), pelo CMake dos testes.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `HeadlessHost` deriva do `platform::Host` direto, com 871 linhas e 106 sobreposições no cabeçalho, e reescreve o que o `NativeHost` faz com outro comportamento, como a densidade de pixels, o estilo, a barra de status e a taxa de quadros. O `haylen-tests`, o `haylen-lua-tests` e o `haylen-headless` rodam sobre essa cópia, então o host que os apps usam só é coberto pelo port de teste. O lançador de apps está escrito duas vezes, no `Player` e no `HeadlessPlayer`.
+
+Desenho:
+- O headless é uma plataforma como as outras: `headless::Host` implementa o `port::Host`, desenha no dispositivo nulo e instala `port::Services` de dublês de teste, pelo mesmo adaptador do player.
+- Os controles que só os testes usam, como `setStatusBarHeight` e `setGamepad`, vão para uma classe de apoio de `engine/tests/support`.
+- `platform::LaunchStack` empilha o lançador com a sua sessão de desenvolvimento, o acesso nativo e os argumentos, e volta a ele. O `HeadlessPlayer` roda o `platform::Player` sobre o host headless, e o seu laço próprio sai.
+
+Achados cobertos: L-003 e L-004 (camadas) e P-023.
+
+#### Acceptance criteria
+
+- [ ] Os dois programas de testes e o `haylen-headless` rodam sobre o mesmo player, os mesmos serviços e a mesma entrada de texto que os apps.
+- [ ] O lançamento e a volta de apps passam por uma só pilha, com testes.
+- [ ] O código antigo saiu: o `HeadlessHost` paralelo e o segundo lançador.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa classe de `engine/src/platform/headless` que deriva do `platform::Host`.
+
+#### Attachments
+
+- None
+
+### KB-389
+
+- **Title:** Uma só linguagem de animação: esqueleto e pose, clipe, animador, e a máquina de estados sem dimensão
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 8
+- **Dependencies:** [KB-156](#kb-156) e [KB-157](#kb-157), pela animação 3D na `main`; [KB-357](#kb-357), que faz do animador 2D um componente. O [KB-160](#kb-160) constrói as árvores de mistura sobre este cartão.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+No 2D, `Skeleton` é a instância com pose e `SkeletonData` é o que se divide, e no 3D `Skeleton3D` é o que se divide e `Pose3D` é a instância, então a mesma palavra diz coisas opostas. "Animator" e "Animation" também mudam de sentido: o animador 2D toca quadros de sprite e é aplicado à mão, a animação 2D é uma lista de quadros, e o animador 3D é um componente de nó que toca clipes. A máquina de estados existe só no 2D, sem nada de 2D na sua lógica. Os modos de laço e os tipos de chave têm dois enums iguais, `stepped` e `step` são duas palavras para uma chave, e há dois resolvedores de Bézier que dão respostas diferentes. Os animadores 2D avisam por propriedades de callback, e os outros objetos de animação por `:on`.
+
+Desenho:
+- `Skeleton2D` e `Skeleton3D` são a hierarquia imutável que se divide, e `Pose2D` e `Pose3D` o estado de cada personagem. O `SkeletonData` do 2D vira `Skeleton2D`, o estado de ossos e slots vira `Pose2D`, e as trilhas com pesos e transições vão para o `Animator2D`. Lua: `animation2d.newSkeleton(description, atlas)` e `animation2d.newPose(skeleton)`.
+- Um clipe é `Clip2D` ou `Clip3D`, feito de trilhas, a sequência de quadros de um sprite é `SpriteAnimation2D`, `ClipPlayer2D` e `ClipPlayer3D` tocam um clipe, e `Animator2D` e `Animator3D` são os componentes de nó com clipes, pose, camadas e transições.
+- O contexto sem dimensão `haylen::animation` guarda `animation::StateGraph` e `animation::StateGraphPlayer`, com os estados que nomeiam clipes, e os animadores das duas dimensões o usam. Lua: `haylen.animation`. Os conjuntos direcionais do 2D viram espaços de mistura do grafo.
+- `animation::Loop` (`loop`, `once`, `pingPong`) e `animation::Interpolation` (`step`, `linear`, `cubicSpline`, `bezier`) servem as duas dimensões, com um resolvedor só, `math::Easing::solveCubicBezierTime`, com o intervalo de segurança.
+- Todo objeto de animação ouve por `:on(event, listener, {owner})`, com os eventos `frame`, `event` e `complete` e a tabela `{name, time, data, frame}`.
+
+Achados cobertos: D-004, D-005, D-018 e D-021, com as partes de animação de A-006.
+
+#### Acceptance criteria
+
+- [ ] As palavras de animação querem dizer a mesma coisa no 2D e no 3D, em C++ e em Lua.
+- [ ] Os animadores 2D e 3D usam a mesma máquina de estados, com testes nas duas dimensões, e as capturas da categoria ANI ficam iguais.
+- [ ] O código antigo saiu: o `SkeletonData`, o `animator:apply`, os enums duplicados, o segundo resolvedor de Bézier e as propriedades de callback.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num enum de laço ou de interpolação fora de `haylen::animation`.
+
+#### Attachments
+
+- None
+
+### KB-390
+
+- **Title:** A navegação e as estruturas espaciais com a mesma forma nas duas dimensões, e o algoritmo escrito uma vez
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 7
+- **Dependencies:** [KB-374](#kb-374), que fixa o padrão dos impactos e das consultas; a varredura de vocabulário do physics3d ([KB-176](#kb-176), [KB-177](#kb-177)), pelo `math::RayHit3D`.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+A navegação 2D e a 3D fazem o mesmo trabalho com outros verbos e outras formas: `navigation2d.newNavMesh` com `mesh:build()` e `findPath(x1, y1, x2, y2, agentRadius)`, que devolve uma vista de um buffer mudado por uma chamada não constante, ao lado de `navigation3d.build`, `buildAsync`, `decode` e `findPath(start, goal, options)`. Os dois `Crowd` dividem o nome e não o sentido: o 2D guia agentes soltos sem malha e o 3D segue caminhos numa malha. O 2D não tem áreas com custo, filtros, ligações, pontos aleatórios, arquivos nem reconstrução por ladrilho. As árvores AABB, as grades de hash e as árvores k-d são o mesmo algoritmo escrito duas vezes, e as consultas espaciais alocam no 2D e enchem a memória de quem chama no 3D. Os impactos de raio do espacial e da navegação têm formas e nomes próprios.
+
+Desenho:
+- `navigationXd.buildNavMesh(source, settings)`, `buildNavMeshAsync`, `decodeNavMesh(bytes, name)`, `newSourceGeometry()`, `newCrowd(mesh, options)` e `newAgent(options)` nas duas dimensões.
+- `NavMesh2D` e `NavMesh3D` com `findPath(start, goal, options)` que devolve `{points, status}`, `findNearest`, `raycast`, `findRandomPoint`, `newFilter`, `addObstacle`, `addLink` e `encode`. `Crowd2D` e `Crowd3D` presos a uma malha, com os mesmos membros e as leituras em lote. O desvio livre do 2D vira `navigation2d::Avoidance2D`, com `newAvoidance`. As consultas de C++ são constantes e devolvem valores.
+- O algoritmo comum vive uma vez num `haylen::spatial` sem dimensão, como modelo de classe sobre os limites de cada dimensão (`spatial::AabbTree<Bounds>`, `spatial::HashGrid<Bounds>`, `spatial::KdTree<Point>`), e `spatial2d::AabbTree2D` e `spatial3d::AabbTree3D` são as classes de cada dimensão, com os mesmos membros, `setAll` e consultas que enchem a memória de quem chama. São dois usuários reais, então o modelo não é especulativo.
+- Os impactos compõem o `math::RayHit2D` ou `RayHit3D` com o que acertaram: `spatial2d::SpatialRayHit2D`, `spatial3d::SpatialRayHit3D` e `navigation3d::NavRayHit3D` num `std::optional`, sem flag de acerto e com `point` no lugar de `position`.
+- O Lua recebe valores de `math` e opções no fim: `structure:queryCircle(circle)`, `structure:raycast(ray, options)`, `mesh:findPath(start, goal, options)` e `crowd:setTarget(id, point)`. A área de uma árvore se chama `bounds` nas duas dimensões.
+
+Achados cobertos: D-019, D-020, a parte do espacial e da navegação de D-013, a parte do `setAll` de D-012, a parte da navegação e do espacial de D-007 e a parte do `bounds` de D-034.
+
+#### Acceptance criteria
+
+- [ ] A navegação e o espacial das duas dimensões têm as mesmas funções, tipos e opções, conferidos por um teste que compara as referências.
+- [ ] Uma correção do algoritmo espacial vale para as duas dimensões, e os benchmarks não perdem desempenho.
+- [ ] O código antigo saiu: as cópias do algoritmo, o `findPath` de números soltos, os verbos diferentes e os impactos próprios.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num tipo de impacto de raio que não compõe o `math::RayHit2D` ou `RayHit3D`.
+
+#### Attachments
+
+- None
+
+### KB-391
+
+- **Title:** Uma cena é dona de um `nodes::World`, com as árvores e os subsistemas do seu mundo
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 7
+- **Dependencies:** [KB-357](#kb-357), pelo núcleo de nós; [KB-378](#kb-378), pelo `ScenesPlugin`; [KB-363](#kb-363), pelos parâmetros tipados. O [KB-147](#kb-147) e o [KB-033](#kb-033) seguem este cartão.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `core::Scene` dá os ganchos, um estado e um `ConnectionScope`, e nada do que desenha ou simula. As árvores de nós, os mundos de física e as árvores 3D pertencem a donos do Lua ou a plugins, então um editor não abre, salva nem roda uma cena, duas cenas não têm mundos de física separados por contrato, e os mundos grandes não têm dono. O `Scene::enter` recebe `const std::any&`.
+
+Desenho:
+- Depois do núcleo do [KB-357](#kb-357), o `core::Scene` é dono de um `nodes::World`: as raízes das suas árvores 2D e 3D e os subsistemas do seu mundo (física, renderização e o ouvinte de áudio), destruídos com a cena.
+- Um asset de cena é um prefab com a chave `dimension` do [KB-357](#kb-357).
+- Os parâmetros são um valor tipado ou JSON pelo registro de tipos do [KB-363](#kb-363).
+
+Achados cobertos: S-013.
+
+#### Acceptance criteria
+
+- [ ] Uma cena carrega, entra, pausa, sai e descarrega com o seu mundo, e tudo o que o mundo criou termina com ela, com testes do Lua e do C++.
+- [ ] Duas cenas empilhadas mantêm mundos de física separados, num teste.
+- [ ] O código antigo saiu: os mundos sem dono e o `std::any` dos parâmetros.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num mundo de física ou numa árvore de nós feito fora de um `nodes::World` nos samples.
+
+#### Attachments
+
+- None
+
+### KB-392
+
+- **Title:** A formatação de números, datas e listas vem do sistema, por um serviço de formatação
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 5
+- **Dependencies:** [KB-380](#kb-380), pelos serviços da plataforma.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O `LocaleData.cpp` tem 632 linhas de tabelas escritas à mão, as línguas fora da tabela escrevem toda data só com números, os resultados diferem da formatação do sistema, e nenhum plugin acrescenta dados de uma língua.
+
+Desenho:
+- `localization::Formatter` é um serviço. O padrão lê os formatadores de cada plataforma pelo host (`NSDateFormatter` e `NSNumberFormatter`, `android.icu`, `Intl` na web, as funções de NLS do Windows e a ICU no Linux), ou dados do CLDR compilados onde a plataforma não tem.
+- As regras de plural ficam na engine, porque são pequenas e completas.
+- Um plugin troca o formatador pelo contrato de plugins.
+
+Achados cobertos: S-031.
+
+#### Acceptance criteria
+
+- [ ] Toda língua que o sistema conhece formata datas, números e listas como o sistema, com testes em toda plataforma.
+- [ ] Um plugin troca o formatador, com um teste.
+- [ ] O código antigo saiu: as tabelas escritas à mão.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa tabela de nomes de meses ou de separadores dentro de `engine/src/localization`.
+
+#### Attachments
+
+- None
+
+### KB-393
+
+- **Title:** O vocabulário da API Lua: handles, um verbo para criar e um para acabar, um jeito de ouvir, `save` e `restore`
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 9
+- **Dependencies:** [KB-357](#kb-357), pelas APIs dos nós; [KB-386](#kb-386), que renomeia as chamadas assíncronas; [KB-373](#kb-373). A física 2D, a animação e a navegação seguem as mesmas regras nos seus cartões ([KB-374](#kb-374), [KB-389](#kb-389), [KB-390](#kb-390)).
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+A mesma ideia tem várias formas na API Lua. O que o app começa e pode parar é um id em `timer.after` e `audio.play` (com umas 20 funções de módulo que recebem a voz), um handle no tween, nada no `scene.spawn` e uma promise sem handle no `jobs.spawn`. Oito verbos terminam as coisas: `destroy`, `close`, `release`, `kill`, `cancel`, `stop`, `unmount`, `free` e `disconnect`. Os objetos nascem com `newX`, `createX`, `new`, fábricas em minúsculas ou funções de módulo que recebem o pai. Há sete jeitos de ouvir, com propriedades de callback sem dono e o dono posicional do `scene.listen`. Um momento tem dois nomes de evento, e o vídeo diz `'ended'` em vez de `'complete'`. O estado salvo usa cinco pares de palavras. Uns irmãos usam métodos onde outros usam propriedades, e as opções extras são posicionais. Cerca de 20 bindings leem o `owner` à mão, cada evento `:on` confere os nomes à mão com oito frases diferentes, e 40 funções leem opções sem conferir as chaves.
+
+Desenho:
+- Tudo o que o app começa e pode acabar cedo devolve um handle: `haylen.Timer` com `cancel()`, `paused` e `active`, `haylen.Voice` com `volume`, `pitch`, `pan`, `position`, `cursor`, `paused`, `active`, `processMode`, `stop(options)` e os efeitos, e um `haylen.Task` de `haylen.spawn(fn, options)` e do `jobs.spawn`. As funções de módulo que recebem um id saem, e o `scene.spawn` também.
+- `destroy()` termina um objeto do app, `close()` uma conexão ou um stream e os contêineres da UI, `cancel()` um trabalho que não terminou (o `tween:kill` vira `tween:cancel`, `killTag` vira `cancelTag` e `onKill` vira `onCancel`), `disconnect()` um ouvinte e `stop()` uma reprodução que pode voltar. O vídeo usa `destroy()`.
+- `module.newX` faz um objeto solto e `parent:addX` uma parte que termina com o pai, como `audio.addBus`. As fábricas em minúsculas ficam só para valores, como `m.vec3`: `signal.newSignal`, `conversation.newConversation`, `m.newSpring`, os filtros, `m.newShuffleBag`, `m.newWeightedChoice`, `ui.newNavigationStack`, `ui.newNavigationTabs`, `ui.newNavigationSplit` e `ui.newRouter`.
+- Um jeito de ouvir um objeto: `obj:on(event, fn, {owner})`, que devolve uma `Connection`, pelo `lua::ObjectEvents` com uma frase só para um evento desconhecido. Os eventos de módulo passam pelo `events.on` e os sinais pelo `sig:connect`. O `ui.onEvent` vira `ui.on('event', …)`, o `scene.listen` sai, e o `debug.addMonitor` e o `debug.addCommand` devolvem uma `Connection`.
+- Um evento de objeto usa a palavra do evento do barramento: o socket diz `'connected'`, `'message'`, `'pong'`, `'error'`, `'disconnected'`, `'reconnecting'` e `'closed'`, e o vídeo diz `'ready'`, `'complete'` e `'error'`.
+- `save()` devolve uma tabela e `restore(saved)` a aplica, `load` lê um arquivo do pacote e `encode` e `decode` viram bytes. Os nós do [KB-357](#kb-357) usam as mesmas palavras.
+- Estado só de leitura é propriedade (`batch.size`, `batch.finished`, `skeleton.bounds`), o estado de um módulo é `name()` com `setName(value)`, e as opções extras vão para a tabela de opções (`voice:stop({fadeOut = 0.5})`).
+- `lua::Owners::readOwner(L, options)` lê o dono em toda binding, e as opções passam por um leitor que recebe os nomes aceitos, com o `Table::readField` privado dele. A linha do `owner` é a mesma em toda referência.
+- O `api-policy.md` ganha a seção `Objects` e as regras de eventos.
+
+Achados cobertos: A-003, A-004, A-005, A-006, A-009, a adoção do `lua::ObjectEvents` de A-010, A-011, A-012, A-019, A-025, P6 (regras) e a linha 84 das regras.
+
+#### Acceptance criteria
+
+- [ ] Toda a API Lua segue as regras novas do `api-policy.md`, com os testes de cada módulo e os samples, os templates e os docs mudados.
+- [ ] Um evento desconhecido e uma opção desconhecida dão a mesma frase em todo tipo, com testes.
+- [ ] O código antigo saiu: os ids, os verbos extras, as fábricas em minúsculas de objetos, as propriedades de callback, o `scene.listen`, o `scene.spawn` e as leituras de dono e de opções à mão.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num `Table::readField` fora do leitor de opções, e um teste do Lua falha num objeto que aceita uma propriedade de callback.
+
+#### Attachments
+
+- None
+
+### KB-394
+
+- **Title:** Cada capacidade de cada plataforma é uma instância com o seu estado, com as mesmas palavras em toda plataforma
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 9
+- **Dependencies:** [KB-380](#kb-380), pelos serviços por capacidade; [KB-387](#kb-387), que mexe na web e no Linux; o stream do iOS ([KB-341](#kb-341), [KB-349](#kb-349)).
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O estado de cada plataforma vive em membros estáticos (33 na Apple, 27 no Android, 29 no Linux, 14 no Windows, 12 na web), enquanto as camadas de plataforma têm instâncias, e os objetos de serviço só repassam para classes estáticas. Há estáticos dentro de funções que guardam estado, dois padrões de singleton e 16 campos estáticos mutáveis no Java. Os serviços de cada plataforma têm três formas, os monitores começam em lugares diferentes, e acompanhar o sistema usa cinco formas e várias palavras (`observe`, `watch`, `report`, `start`). As portas de cada linguagem têm escopos diferentes: o `JavaBridge` e o `WebPage` (com 70 métodos estáticos) juntam tudo, o `AppleBridge` só a ponte, e as exportações da web estão espalhadas. O `HaylenActivity` guarda a maior parte das capacidades do Android. O cursor e os modos do mouse do Android, que o sistema oferece, são vazios ou recusados sem motivo. Há três formas de avisar uma vez.
+
+Desenho:
+- Cada capacidade é uma instância que guarda o seu estado e implementa o seu serviço de `port::`, e as chamadas do sistema (JNI, notificações, delegates) chegam a ela pelo serviço que o runtime instalou. Classes estáticas ficam só para conversões sem estado.
+- Uma classe por capacidade em toda plataforma, com o nome do serviço, e um `Services::create` pequeno por plataforma. Os monitores começam no `PlatformService::initialize`.
+- Acompanhar o sistema tem as mesmas palavras em toda plataforma: uma classe por relato com o nome do tipo público (`Battery`, `PowerSaving`, `ThermalState`, `TimeZone`, `Languages`, `Theme`, `AccessibilitySettings`), com `observe` e `stop`, e conversores `<Tipo>Reader`.
+- A ponte dos plugins é `apple::Bridge`, `android::Bridge` e `web::Bridge`, com o mesmo escopo e o `setAppRunning` no contrato. As peças do JNI ficam numa classe `android::Jni`, as exportações da página em `web/WebExports.cpp`, o `WebPage` se divide em `web::Page`, `web::Editor`, `web::SystemReports`, `web::Bridge` e `web::Streams`, e o `AppleRuntime` sai.
+- Uma classe Java por capacidade, a mesma da classe C++ que a chama, e o `HaylenActivity` fica com o seu ciclo de vida, as suas vistas e a sua entrada. O estado do processo no Java fica numa classe só, que diz por que vive mais que a activity.
+- O Android mostra o cursor pelo `PointerIcon` e captura o ponteiro pelo `requestPointerCapture`, ou responde `Unsupported` com o motivo escrito.
+- Um padrão só de objeto que vive o processo inteiro, um membro estático feito com `*new T()`, sem estáticos mutáveis dentro de funções, e um aviso de uma vez por um membro de cada mensagem.
+
+Achados cobertos: P-009, P-010, P-012, P-018, P-030, P-032, L-021, L-026, a parte dos estáticos de L-027, a parte do aviso de uma vez de L-028 (camadas) e a parte do `AppleRuntime` de P-029.
+
+#### Acceptance criteria
+
+- [ ] Cada capacidade de cada plataforma é uma instância com o mesmo nome em toda plataforma, e o comportamento fica igual nos testes de UI e de plataforma.
+- [ ] O Android mostra o cursor e captura o ponteiro, ou responde `Unsupported` com o motivo, com testes no emulador.
+- [ ] O código antigo saiu: os estáticos com estado, os repasses, as portas que juntam tudo e o `AppleRuntime`.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num estático mutável dentro de uma função e num membro estático mutável num cabeçalho de uma pasta de plataforma.
+
+#### Attachments
+
+- None
+
+### KB-395
+
+- **Title:** A UI com um runtime próprio da engine, com superfícies, propriedades tipadas e acessibilidade por provedores, e o ImGui só como camada de ferramentas
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 10
+- **Dependencies:** [KB-076](#kb-076), pelo `graphics::ScreenCanvas`; [KB-363](#kb-363), pelo registro de tipos; [KB-381](#kb-381), pela biblioteca de fontes; [KB-383](#kb-383), pela ordem de entrada. O [KB-043](#kb-043) e o [KB-103](#kb-103) seguem este cartão.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+A UI retida usa o ImGui como runtime e o vaza na API pública: nove cabeçalhos públicos incluem `imgui.h`, um inclui o `imgui_internal.h`, o `Context` expõe `ImGuiID` e `ImFont*`, e o `engine/src/ui` faz 423 chamadas ao ImGui, muitas internas. Um contexto só serve as GUIs, o `haylen.imgui` e as janelas de depuração, e trocar o plugin de UI quebra as ferramentas. Um plugin de componente precisa ser escrito com o interno do ImGui, e a UI não desenha em várias superfícies com entrada ao mesmo tempo. O modelo de dados é JSON de ponta a ponta, com uma segunda cópia das propriedades na GUI e eventos de nome e JSON. O `UiPlugin` (1199 linhas) e o `ui::Context` juntam responsabilidades demais. Só a UI acrescenta elementos acessíveis, chaveados pelo `ImGuiID`, e o Android e a web recebem a árvore inteira como JSON a cada mudança.
+
+Desenho:
+- Um runtime de UI da engine: o `ui::Gui` faz o layout, o teste de toque, o foco e os ids por nó, e grava uma `ui::DrawList` que uma `ui::Surface` desenha pelo `ScreenCanvas`: a tela, um render target, um quad no mundo ou uma camada de XR, cada uma com a sua projeção de entrada (raios no 3D).
+- O ImGui fica como camada de ferramentas, com um contexto próprio para o `haylen.imgui` e as janelas de depuração, que não depende da UI do app. Nenhum cabeçalho público da UI inclui o ImGui.
+- Os componentes registram as suas propriedades no registro de tipos, `Gui::set(id, property, value)` é tipado, o JSON passa pelo registro só no Lua e nos arquivos, e os eventos são tipados. A segunda cópia sai.
+- O `UiPlugin` se divide em `ui::GuiHost` (montar, camadas e desenho), `ui::ThemeLibrary`, a `text::FontLibrary`, a `ui::ImageLibrary`, o provedor de acessibilidade, o estágio de entrada e a `ui::Navigation` num plugin próprio. O `Context` fica com o estado de cada desenho: a pilha de estilos, as transformações, os recortes e a direção da escrita.
+- `platform::AccessibilityTree` é um serviço com provedores: a UI é um, os componentes de nós 2D e 3D são outros, os ids têm o escopo do provedor e as ações voltam a ele. O Android e a web recebem os elementos num layout binário de registros fixos.
+
+Achados cobertos: S-023, S-024, S-025, S-026, a parte da UI de L-023 (camadas), P-033, P15 (regras) e a linha 98 das regras.
+
+#### Acceptance criteria
+
+- [ ] As GUIs desenham na tela, num render target e num quad no mundo, com entrada, com testes e capturas iguais antes e depois na categoria UI.
+- [ ] Um plugin escreve um componente sem o ImGui e um provedor de acessibilidade, com testes.
+- [ ] Um quadro que repete o anterior não aloca na UI, conferido pelo `test::AllocationTracker`, e os benchmarks de UI não perdem desempenho.
+- [ ] O código antigo saiu: o ImGui como runtime das GUIs, o JSON dentro do C++, a segunda cópia das propriedades e a árvore acessível em JSON.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num cabeçalho público que inclui um cabeçalho de terceiros fora da lista permitida e num arquivo de `engine/src/ui` que chama o ImGui fora da camada de ferramentas.
+
+#### Attachments
+
+- None
+
+### KB-396
+
+- **Title:** Ids estáveis de assets e um cache de importação no desenvolvimento
+- **Status:** todo
+- **Type:** feature
+- **Priority:** medium
+- **Complexity:** 6
+- **Dependencies:** [KB-385](#kb-385), pelos assets tipados.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Toda referência de asset é um caminho do pacote, então renomear ou mover um arquivo quebra cada cena, prefab e tema que o nomeia. Os shaders precisam do `haylen app shaders` à mão, e os modelos passam pela ferramenta de importação, à parte. Um editor precisa que a importação rode quando um arquivo muda.
+
+Desenho:
+- Um id opcional ao lado de cada asset, resolvido pelo índice do pacote. Os caminhos continuam a API, e os ids são o que as referências salvas guardam.
+- O desenvolvimento roda um cache de importação em `build/`, que compila os shaders e converte os modelos quando as suas fontes mudam.
+
+Achados cobertos: S-019.
+
+#### Acceptance criteria
+
+- [ ] Um asset movido continua achado pelo seu id numa cena e num prefab salvos, com testes.
+- [ ] Mudar um shader ou um modelo no desenvolvimento os importa sem comando, com testes do servidor de desenvolvimento.
+- [ ] O código antigo saiu: a compilação de shaders à mão no ciclo de desenvolvimento.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num id de asset repetido num pacote das amostras.
+
+#### Attachments
+
+- None
+
+### KB-397
+
+- **Title:** Tudo numa classe e num namespace em toda linguagem, com a regra de cada linguagem e o seu teste
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 7
+- **Dependencies:** [KB-357](#kb-357), que muda o Lua das amostras de nós; os streams do physics3d e da animação 3D, que mexem nos cabeçalhos de bindings 3D; [KB-393](#kb-393), que muda o Lua das amostras. O JavaScript é do [KB-362](#kb-362) e o Python do [KB-359](#kb-359).
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+O dono pediu que nada seja anônimo, que nada fique fora de um namespace e que toda função viva na sua classe, em toda linguagem. O `NamespaceScopeTest` só lê o C e o C++ de `engine/`, sem os arquivos `.in` nem o C++ de `samples/`, `templates/` e `tools/`. O C++ dos plugins nativos está no namespace global. Há arquivos com vários tipos de topo em C++ (`GlContext` dentro de `Surface.hpp` e os `Scripted*` dentro de cinco cabeçalhos de bindings 3D), em Swift e em Kotlin. O Lua tem 151 `local function` no topo de 77 arquivos, o papel de um namespace anônimo, e o `AGENTS.md` não tem regra para o Lua.
+
+Desenho, uma regra por linguagem, cada uma com as exceções que a plataforma impõe:
+- C e C++: nenhum namespace anônimo, nenhuma função ou variável no escopo de namespace, toda classe num namespace com nome e um tipo de topo por cabeçalho. As exceções são as entradas com nome imposto, cada uma só chamando uma classe. O C++ de um plugin nativo vive no namespace do seu id sem os traços, que o template escreve.
+- Objective-C e Objective-C++: nenhuma função C nem variável estática no escopo do arquivo, um `@interface` ou `@protocol` por cabeçalho e o prefixo `Haylen` em toda classe da engine.
+- Swift: nenhum `func`, `let` ou `var` global, um tipo principal por arquivo com o nome dele e as extensões em `Tipo+Assunto.swift`.
+- Kotlin: nenhum `fun`, `val`, `var` ou `typealias` de topo, e uma classe ou `object` de topo por arquivo. Java: uma classe de topo por arquivo com o nome dela.
+- Lua: cada arquivo expõe uma tabela de módulo, e as ajudas são funções dessa tabela ou de uma tabela de classe do arquivo, sem `local function` solta.
+- `GlContext.hpp`, os `Scripted*3D.hpp` dos bindings 3D e um arquivo por tipo no Swift e no Kotlin das amostras e dos testes de UI.
+- Um teste `SourceScopeTest`, com um teste por linguagem e um do seu leitor, lê todo arquivo rastreado, os `.in` e o template de plugin já com os tokens trocados.
+
+Achados cobertos: L-004, L-005 e L-007 (pastas), com a opção da tabela de módulo para o Lua, a tabela de regras por linguagem da revisão de pastas e da de plataformas, a parte do alcance do leitor de L-027 (camadas), a parte de C++ de F-014, P8 (regras) e as linhas 70 a 72 das regras.
+
+#### Acceptance criteria
+
+- [ ] Todo arquivo de toda linguagem do repositório segue a regra da sua linguagem.
+- [ ] O `AGENTS.md` tem a regra de cada linguagem com as exceções da plataforma.
+- [ ] O código antigo saiu: as funções e os estados soltos, os arquivos de vários tipos e as `local function` do topo.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] O `SourceScopeTest` falha numa violação de cada linguagem, com um teste do próprio leitor.
+
+#### Attachments
+
+- None
+
+### KB-398
+
+- **Title:** Os testes da engine espelham o código, com um nome só para os arquivos de teste e os executores de aparelho numa pasta própria
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 5
+- **Dependencies:** [KB-357](#kb-357), os streams do physics3d e da animação 3D e [KB-393](#kb-393), que mexem nos testes; [KB-355](#kb-355), pelo CMake dos testes. Os testes das pastas de plataforma se movem no [KB-399](#kb-399).
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Testes estão no contexto errado, como o `MaterialTests.cpp` do 2D em `engine/tests/graphics/` e o teste de `haylen.assets` em `engine/lua/tests/io/`. 46 arquivos de `engine/lua/tests` terminam em `LuaTests.cpp` e o resto em `Tests.cpp`, e uns 40 suites terminam em `LuaTest`, num programa que só testa Lua. Um módulo tem duas suites. As suites do 2D não levam a dimensão. O `engine/tests/ui` junta os testes do contexto `ui` com os executores de testes de UI de aparelho, que escrevem a mesma classe de três jeitos. Um teste está dentro da pasta de apoio. Duas funções públicas do Lua não têm teste. Há 71 esperas por tempo em testes para revisar.
+
+Desenho:
+- Cada teste fica no caminho do código que testa: `engine/tests/2d/graphics/MaterialTests.cpp`, `engine/lua/tests/2d/graphics/MaterialTests.cpp` e `engine/lua/tests/assets/PackageTests.cpp`, e o teste do `AllocationTracker` sai da pasta de apoio.
+- Todo arquivo de teste se chama `<Assunto>Tests.cpp`, e toda suite `<Assunto>Test`, com a dimensão no nome do tipo, como `AabbTree2DTest`, uma suite por assunto e nenhum `Lua` no nome, porque o programa inteiro roda Lua.
+- Os executores de aparelho vão para `engine/tests/devices/apple/`, `android/` e `windows/`, com a classe `HaylenUiTestCase` nas três linguagens, e o `engine/tests/ui/` fica só com o contexto `ui`.
+- Toda função pública do Lua tem um teste que a chama, como `animation3d.newSkin` e `nodes2d.newPrefab`.
+- Cada espera por tempo de um teste tem um prazo que falha o teste, ou sai.
+
+Achados cobertos: F-019 (sem os testes das pastas de plataforma), F-020, D-033 (com o nome `<Assunto>Tests.cpp`), A-023, P14 (regras) e as linhas 4, 6, 56 e 129 das regras.
+
+#### Acceptance criteria
+
+- [ ] Cada arquivo de teste fica no caminho espelhado do código, com um nome só, e o CTest mostra os mesmos testes.
+- [ ] Toda função pública do Lua tem um teste que a chama.
+- [ ] O código antigo saiu: os testes fora do lugar, os sufixos `LuaTests` e `LuaTest` e os executores dentro de `engine/tests/ui`.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num arquivo de teste fora do caminho do código, numa suite sem `Test`, num `DISABLED_`, num pulo sem frase e numa espera sem prazo.
+
+#### Attachments
+
+- None
+
+### KB-399
+
+- **Title:** As pastas, os alvos e os namespaces da plataforma: um namespace por pasta, o runtime numa pasta própria e cada variante ao lado do seu cabeçalho
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 8
+- **Dependencies:** [KB-394](#kb-394), [KB-387](#kb-387) e [KB-388](#kb-388), que mudam as classes que este cartão renomeia; [KB-345](#kb-345) e [KB-347](#kb-347), que mexem no `engine/CMakeLists.txt`; o stream do iOS e o do Linux parados durante a varredura.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+As pastas `android/`, `apple/`, `windows/`, `linux/`, `web/`, `posix/`, `headless/` e `native/` usam o namespace `haylen::platform` com prefixos nos nomes, enquanto `sdl/`, `worker/` e os dispositivos de GPU usam o namespace da pasta com nomes simples, e a web mistura `Web` e `Browser`. Duas classes da web vivem nos namespaces do áudio e da rede e compilam dentro da biblioteca do núcleo. A raiz de `engine/src/platform` junta os fontes de três alvos, e o `haylen-platform` não aparece no `AGENTS.md`. Os fontes escolhidos por sistema seguem quatro padrões, e o `haylen-platform` compila leitores de outros sistemas só para os testes os alcançarem. A ferramenta de conteúdo divide o namespace do contexto `content`. Uns tipos repetem o seu namespace, e "plugin" quer dizer duas coisas dentro da plataforma. Os testes das pastas de plataforma ficam todos numa pasta só.
+
+Desenho:
+- Cada pasta de plataforma é o namespace `haylen::platform::<pasta>` com nomes simples: `android::Host`, `android::TextInput`, `apple::Fonts`, `linux::Desktop`, `windows::Accessibility`, `web::AudioOutput`, `headless::Host`. As classes de Objective-C ficam com o prefixo `Haylen`, e `CMAKE_CXX_EXTENSIONS` continua `OFF`, para `linux` não ser uma macro.
+- `engine/src/platform/` fica com o contexto da plataforma do núcleo, e o runtime vai para `engine/src/runtime/` com as suas pastas de plataforma. O `haylen-platform` ganha um nome que diz o que guarda, ou se junta ao `haylen-runtime`, e o `AGENTS.md` nomeia cada alvo.
+- A saída de áudio do navegador vai para o runtime, como `web::AudioOutput`, e o núcleo não tem lista de fontes da web.
+- Toda variante fica em `<pasta do cabeçalho>/<posix|windows|unavailable>/<Classe>.cpp`, como `platform/native/posix/LibraryLoader.cpp`.
+- Os leitores de outros sistemas compilam numa biblioteca de objetos que os testes e a sua plataforma ligam.
+- `haylen::tools::content` para a ferramenta de conteúdo. Nomes que não repetem o namespace onde há um nome preciso: `gpu::AdapterPreference`, `port::Device`, `input::Recording`, `input::Playback`, `plugins::Registry`, `debug::Window` e `text::Fit`. O `platform::AppPlugin` vira `platform::NativePlugin`, em `engine/src/platform/plugins/`.
+- Os testes de cada pasta de plataforma vão para `engine/tests/platform/<pasta>/`.
+
+Achados cobertos: F-005 (sem o WebSocket), F-006, F-007, F-008, a parte dos testes de plataforma de F-019, F-021, F-025, F-026, P-013, P-014, a parte do `LibraryLoader` de P-015, a parte do áudio de P-025, a parte do `AppPlugin` de P-029, L-019 e L-020 (camadas), P4 (regras) e as linhas 62, 67, 68, 69 e 81 das regras.
+
+#### Acceptance criteria
+
+- [ ] Cada arquivo de uma pasta de plataforma está no namespace da pasta, e cada variante de sistema ao lado do seu cabeçalho.
+- [ ] Pelo caminho de um arquivo se sabe o alvo em que ele compila, e o núcleo não compila código de nenhum sistema.
+- [ ] O código antigo saiu: os prefixos de plataforma, os namespaces emprestados, os padrões extras de variante e os nomes que repetem o namespace.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num arquivo cujo namespace não é o da sua pasta, numa variante longe do seu cabeçalho e num fonte de sistema na lista do núcleo.
+
+#### Attachments
+
+- None
+
+### KB-400
+
+- **Title:** Cada tipo tem um nome único na engine, igual em C++ e em Lua, com a dimensão, e o teste que o guarda
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 9
+- **Dependencies:** [KB-348](#kb-348), que este cartão amplia e com o qual anda contexto por contexto; [KB-357](#kb-357), [KB-389](#kb-389), [KB-390](#kb-390), [KB-393](#kb-393) e [KB-398](#kb-398), que nomeiam os seus tipos com a regra; os streams do physics3d e da animação 3D.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Os tipos Lua dividem um conjunto global `haylen.<Nome>`, e dar só a dimensão aos nomes faz nomes colidirem: `graphics2d::Shape` e `physics2d::Shape`, `tiled::World` e `physics2d::World`, dois `QueryFilter3D`, e os tipos do glTF contra os nós, as malhas, os materiais e as câmeras 3D. O C++ e o Lua já discordam onde o nome era vago (`particles2d::Emitter` é `haylen.ParticleEmitter`, `physics2d::World` é `haylen.PhysicsWorld2D`), e o `AGENTS.md` dá `physics3d::World3D` como exemplo enquanto o Lua diz `haylen.PhysicsWorld3D`. 397 arquivos do 2D e 177 do 3D não têm a dimensão no nome, e o `AGENTS.md` diz que um teste a confere, mas o teste não existe. As classes de binding têm dois padrões de nome, e os benchmarks não levam a dimensão.
+
+Desenho:
+- Todo nome de tipo é único na engine inteira e igual em C++ e em Lua: o nome Lua é `haylen.` seguido do nome de C++, sem exceção. A dimensão vem sempre, e uma palavra do contexto só onde o nome sozinho colide: `physics2d::PhysicsWorld2D` e `physics3d::PhysicsWorld3D`, `physics2d::CollisionShape2D`, `graphics2d::Shape2D`, `tiled::TiledWorld2D`, `navigation3d::NavQueryFilter3D`, `physics3d::PhysicsQueryFilter3D`, `particles2d::ParticleEmitter2D`, `ParticleSystem2D` e `ParticleEffect2D`, `navigation2d::NavGrid2D` e `NavGraph2D`, `ui::NodeTransform` e `audio::FilterEffect`. Os tipos do glTF cujo nome colide com um tipo da engine levam `Gltf`, como `gltf::GltfNode3D`, `GltfMesh3D`, `GltfMaterial3D`, `GltfCamera3D`, `GltfSkin3D` e `GltfAnimation3D`.
+- O exemplo do `AGENTS.md` vira `physics3d::PhysicsWorld3D`.
+- Os arquivos levam o nome do tipo (`Camera2D.hpp`, `Body2D.cpp`, `Crowd3DBinding.cpp`), e a classe de binding é o nome do tipo seguido de `Binding`, num arquivo por tipo.
+- Os benchmarks levam a dimensão: `Animation2DBenchmark`, `Physics2DBenchmark`, `Particles2DBenchmark`, `Sprites2DBenchmark`, `Nodes2DBenchmark` e `Nodes3DBenchmark`, com os seus alvos, e o benchmark do Lua vai para `engine/lua/bench/`.
+- O teste do repositório lê cada `Type<T>::kName` e cada tipo das pastas `2d` e `3d` e falha num nome Lua diferente de `haylen.<nome de C++>`, num nome que dois tipos dividem e num tipo de uma dimensão sem ela.
+
+Achados cobertos: D-001, F-002, F-024, A-020, A-021, a parte dos nomes de D-027, P1 (regras) e as linhas 60 e 61 das regras.
+
+#### Acceptance criteria
+
+- [ ] Todo tipo da engine tem um nome único, igual em C++ e em Lua, com a dimensão onde ela existe.
+- [ ] Os arquivos, as bindings e os benchmarks levam o nome dos seus tipos.
+- [ ] O código anterior saiu, e uma busca só acha os nomes do desenho nos samples, nos templates, nos testes e nos docs.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] O teste do repositório que o `AGENTS.md` cita existe e falha num nome repetido, num nome Lua diferente do C++ e num tipo de uma dimensão sem ela.
+
+#### Attachments
+
+- None
+
+### KB-401
+
+- **Title:** O projeto de testes com as categorias por dimensão, uma categoria para cada módulo 3D e as regras das amostras guardadas
+- **Status:** todo
+- **Type:** test
+- **Priority:** high
+- **Complexity:** 7
+- **Dependencies:** [KB-357](#kb-357), [KB-076](#kb-076) e os módulos 3D com o desenho do renderizador; [KB-400](#kb-400), pelos nomes finais.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Nenhum teste do projeto de testes cobre um módulo 3D: `haylen.physics3d`, `haylen.nodes3d`, `haylen.gltf`, `haylen.animation3d`, `haylen.navigation3d` e `haylen.spatial3d` saem com páginas de referência e sem teste. As categorias do 2D não levam a dimensão nas pastas (`physics`, `animation`, `nodes`, `particles`, `lighting`, `procedural`, `camera`), enquanto as 3D planejadas levam. A categoria `varn` tem o nome da dependência, as fontes divididas não estão numa categoria, e os plugins locais `native-sample` e `platform-sample` têm nomes vagos e papéis que se sobrepõem. Nada confere a forma das amostras, os identificadores, os pacotes dos plugins, os códigos dos testes e os módulos que as amostras usam.
+
+Desenho:
+- As pastas do 2D levam a dimensão (`physics-2d`, `animation-2d`, `nodes-2d`, `particles-2d`, `lighting-2d`, `procedural-2d`, `camera-2d`), ao lado das `-3d`, e os prefixos dos códigos ficam como são, porque um código nunca muda. O `samples/tests/README.md` agrupa as categorias por dimensão.
+- Categorias 3D de nós, física, glTF, animação, navegação e espacial, com os seus códigos, desenhadas pelo renderizador 3D.
+- A categoria `varn` leva o nome do que testa, como `standard-modules`, com o mesmo prefixo. As fontes divididas ficam na categoria dona, e os dois plugins locais ganham nomes que dizem o que testam, ou viram um.
+- Guardas (P19): cada amostra tem `README.md`, e uma amostra Lua também `haylen.json`, `source/` e `content/`, sem nada além de `plugins`, `tools` e `ui-tests`; cada identificador é `com.haylen.<produto>`; os pacotes dos plugins são `com.haylen.plugins.*`; cada plugin tem `README.md` e `source/init.lua` (o `music-links` ganha o seu); os códigos de teste são únicos, com o prefixo e no README; as amostras usam só módulos que existem.
+
+Achados cobertos: T-023, D-030, T-024 (sem o README do `embedding`, que o [KB-360](#kb-360) escreve), a parte da categoria `varn` de F-027, P19 (regras) e as linhas 54, 55, 89 e 106 a 108 das regras.
+
+#### Acceptance criteria
+
+- [ ] Cada módulo 3D tem testes com código no projeto de testes, que rodam no player headless e em toda plataforma.
+- [ ] As categorias de uma dimensão levam a dimensão na pasta, com os mesmos códigos.
+- [ ] O código antigo saiu: as pastas sem dimensão, a categoria com o nome da dependência e os plugins de nome vago.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha numa amostra fora da forma, num identificador ou pacote fora da regra, num código repetido e num módulo que não existe.
+
+#### Attachments
+
+- None
+
+### KB-402
+
+- **Title:** A API Lua completa: os pontos de extensão do C++ em Lua, a prova da exportação e a referência conferida na hora de rodar
+- **Status:** todo
+- **Type:** test
+- **Priority:** high
+- **Complexity:** 7
+- **Dependencies:** [KB-395](#kb-395), pelo registro de componentes da UI; [KB-385](#kb-385), pelos tipos de asset; [KB-357](#kb-357), pelo contrato de componentes; [KB-393](#kb-393), pelas páginas de referência mudadas.
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Os tipos de componente da UI, os tipos de asset e os tipos de componente 3D se registram só em C++, e o Lua só os lista. Nenhum teste confere a regra "tudo o que existe em C++ vai ao Lua": 58 classes públicas não aparecem em nenhum arquivo do Lua, a maior parte de propósito, mas a falta fica invisível sem uma lista de exceções. Umas 157 palavras registradas nas bindings faltam nas suas páginas. As referências não seguem um esqueleto: faltam seções de erros, há seções de C++ em oito páginas e os nomes das variáveis dos exemplos variam.
+
+Desenho:
+- O Lua alcança todo ponto de extensão do C++: `ui.registerComponent(kind, definition)`, `assets.registerType(name, {extensions, load, loadAsync})` e o registro de tipos de componente dos nós, nas duas dimensões.
+- Um teste do repositório segue as inclusões de `engine/include` a partir da camada Lua e falha num cabeçalho público que nenhuma binding alcança, fora de uma lista de exceções com uma frase cada, e o teste contrário falha se uma classe de chave de conteúdo chega ao Lua.
+- Um teste do `haylen-lua-tests` percorre cada módulo, as suas classes, metatabelas, propriedades e nomes de enum e falha num nome que a página do módulo não traz ou que não está em camelCase, e numa classe com uma propriedade `x` e um método `setX`.
+- Toda referência tem a mesma ordem: título e primeiro parágrafo, `## Functions`, um `## <Tipo>` por tipo Lua com `### Properties`, `## Events` e `## Errors`. Os exemplos nomeiam a variável pelo tipo, e o C++ vai para os guias. O `DocsTest` confere o esqueleto.
+
+Achados cobertos: A-014, A-018, P7 e P13 (regras) e as linhas 27, 28, 31, 57 e 59 das regras.
+
+#### Acceptance criteria
+
+- [ ] Um app Lua registra um componente de UI, um tipo de asset e um tipo de componente de nó, com testes.
+- [ ] Cada nome da API Lua está na sua página, e cada página segue o esqueleto.
+- [ ] O código antigo saiu: as seções de C++ das referências e os esqueletos diferentes.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Os testes falham num cabeçalho público sem binding fora da lista, num nome da API fora da página e numa página fora do esqueleto.
+
+#### Attachments
+
+- None
+
+### KB-403
+
+- **Title:** O `AGENTS.md` descreve a organização final, e toda regra que um programa enxerga tem o seu teste
+- **Status:** todo
+- **Type:** task
+- **Priority:** high
+- **Complexity:** 5
+- **Dependencies:** todos os cartões do [KB-358](#kb-358), de [KB-359](#kb-359) a [KB-402](#kb-402).
+- **Parent:** [KB-358 · Revisão profunda da organização da engine inteira, para crescer certo](#kb-358)
+
+#### Description
+
+Depois dos cartões do [KB-358](#kb-358), o `AGENTS.md` precisa descrever a organização final e não citar nada que não existe, e as regras que sobram precisam de guarda. As bibliotecas de terceiros escapam do seu dono em três lugares (a Box2D no `Occluder.cpp`, que o [KB-367](#kb-367) tira, o miniaudio no decodificador de vídeo do Android e a Monocypher fora de `content/crypto/`). Uns parsers de formatos binários não têm entrada no fuzzer. Algumas regras são de pouco valor para um teste e precisam de uma decisão escrita.
+
+Desenho:
+- O `AGENTS.md` descreve as pastas, as camadas, os plugins, as linguagens e os testes como ficaram, e o `docs/core/architecture.md` também.
+- Um teste `test_agents_guide.py` confere que cada caminho citado pelo `AGENTS.md` existe, que cada teste citado existe e que cada frase "um teste do repositório falha em …" tem o seu teste numa tabela.
+- Uma guarda por biblioteca de terceiros, na forma da da Jolt: a Box2D só em `src/2d/physics/`, o miniaudio só em `src/audio/`, a HarfBuzz só em `src/text/` e no carregador de fontes do ImGui, o stb_image só em `graphics/Image.cpp`, o nanosvg só em `graphics`, o Clipper2 só em `math/Clipper2.hpp` e a Monocypher só em `content/crypto/`.
+- Um registro de fuzzers: cada classe que lê bytes de um formato binário tem a sua entrada no fuzzer.
+- As regras que não viram teste, como o inglês do código, a arquitetura x86-64-v2, o nome `value` nos setters, a lista das entradas da raiz, os nomes dos métodos de plugin, as chamadas encadeadas, os formatadores das outras linguagens e o limite de cobertura, ficam com a decisão e o motivo no `docs/tools/testing.md`.
+
+Achados cobertos: P9 e P15b (regras), a parte final de T-027 e as linhas 10, 47, 53, 88, 91, 100, 101, 112, 115, 131 e 136 das regras.
+
+#### Acceptance criteria
+
+- [ ] O `AGENTS.md` e o `architecture.md` descrevem a organização final, e o `test_agents_guide.py` passa.
+- [ ] Cada biblioteca de terceiros fica atrás do seu dono, e cada parser binário tem a sua entrada no fuzzer.
+- [ ] O código antigo saiu: as inclusões de terceiros fora do dono.
+- [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
+- [ ] Um teste do repositório falha num caminho ou teste citado que não existe, numa biblioteca fora do seu dono e num parser sem fuzzer.
 
 #### Attachments
 
@@ -9396,7 +11046,7 @@ O [KB-357](#kb-357), da arquitetura de nós, e o [KB-348](#kb-348), dos sufixos 
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-359. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-404. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Column counts:** Each column header shows its number of cards on the board, such as `TODO (3 tasks)`, `TODO (1 task)` or `TODO (0 tasks)`. DONE also shows the window, such as `DONE (12 tasks, 30 days)`, or only the count with `Done window: all`. Archived cards are not counted. Every edit that changes a column updates its count in the same edit.
