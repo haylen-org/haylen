@@ -5,16 +5,16 @@
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30 days) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-352 · A navegação 3D tem uma corrida entre threads ao assar a navmesh em segundo plano](#kb-352)**<br>🟠 high · `bug` · 3/10 | **[KB-144 · Componentes de nós 3D](#kb-144)**<br>🟡 medium · `feature` · 5/10 | — | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-143 · Árvore de nós 3D em haylen::nodes3d (engine/src/3d/nodes/, Lua haylen.nodes3d)](#kb-143)**<br>🟡 medium · `feature` · 7/10 |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-107 · O núcleo do glTF 2.0 inteiro, sem nada para depois](#kb-107)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-344 · Os testes não deixam pastas temporárias para trás e não engolem o erro de apagá-las](#kb-344)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-156 · Clipes e trilhas em haylen::animation3d (engine/src/3d/animation/, Lua haylen.animation3d)](#kb-156)**<br>🟡 medium · `feature` · 7/10 | — | — | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-343 · Os testes parametrizados têm nomes estáveis no CTest](#kb-343)**<br>🟡 medium · `bug` · 2/10 |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-157 · Esqueletos e skin](#kb-157)**<br>🟡 medium · `feature` · 7/10 | — | — | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-342 · Dois testes do Lua falham quando a máquina está carregada](#kb-342)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-158 · Alvos de morph](#kb-158)**<br>🟡 medium · `feature` · 3/10 | — | — | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-335 · O teste do corpo grande pelo TLS do Varn falha às vezes no Windows arm64](#kb-335)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-170 · Formas](#kb-170)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-340 · Máquinas de lote prontas para cada plataforma: Windows, Linux com GPU e Android](#kb-340)**<br>🟠 high · `improvement` · 5/10 | **[KB-334 · O `haylen app verify` de um produto da Apple acha o projeto do último build](#kb-334)**<br>🟠 high · `bug` · 2/10 |
-| **[KB-341 · Achar a causa da parada de 90 s do quadro na abertura de um app no simulador do iOS](#kb-341)**<br>🟠 high · `bug` · 5/10 | **[KB-173 · Personagem](#kb-173)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | **[KB-333 · No Android, o campo levantado não cai e sobe de novo quando o aparelho gira com o teclado aberto](#kb-333)**<br>🟡 medium · `bug` · 4/10 |
-| **[KB-348 · Todo tipo de uma dimensão leva 2D ou 3D no nome, no C++ e no Lua](#kb-348)**<br>🟠 high · `refactor` · 8/10 | **[KB-176 · Consultas](#kb-176)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-055 · Render targets completos em graphics::RenderTarget (hoje só cor)](#kb-055)**<br>🟡 medium · `feature` · 5/10 | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-349 · Os testes de UI do iOS na CI dizem por que o simulador parou, em vez de falhar ao desligá-lo](#kb-349)**<br>🟠 high · `bug` · 3/10 | **[KB-177 · Eventos de contato](#kb-177)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 |
-| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-178 · Ganchos de passo e ajudantes em C++](#kb-178)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-330 · No Android, o teclado fecha às vezes quando o aparelho gira com um campo editando](#kb-330)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-354 · O pacote pronto do OpenSSL que o Varn importa é achado pelo `find_package` no Windows](#kb-354)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-344 · Os testes não deixam pastas temporárias para trás e não engolem o erro de apagá-las](#kb-344)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-107 · O núcleo do glTF 2.0 inteiro, sem nada para depois](#kb-107)**<br>🟡 medium · `feature` · 8/10 | — | — | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-343 · Os testes parametrizados têm nomes estáveis no CTest](#kb-343)**<br>🟡 medium · `bug` · 2/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-156 · Clipes e trilhas em haylen::animation3d (engine/src/3d/animation/, Lua haylen.animation3d)](#kb-156)**<br>🟡 medium · `feature` · 7/10 | — | — | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-342 · Dois testes do Lua falham quando a máquina está carregada](#kb-342)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-157 · Esqueletos e skin](#kb-157)**<br>🟡 medium · `feature` · 7/10 | — | — | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-335 · O teste do corpo grande pelo TLS do Varn falha às vezes no Windows arm64](#kb-335)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-158 · Alvos de morph](#kb-158)**<br>🟡 medium · `feature` · 3/10 | — | — | **[KB-340 · Máquinas de lote prontas para cada plataforma: Windows, Linux com GPU e Android](#kb-340)**<br>🟠 high · `improvement` · 5/10 | **[KB-334 · O `haylen app verify` de um produto da Apple acha o projeto do último build](#kb-334)**<br>🟠 high · `bug` · 2/10 |
+| **[KB-341 · Achar a causa da parada de 90 s do quadro na abertura de um app no simulador do iOS](#kb-341)**<br>🟠 high · `bug` · 5/10 | **[KB-170 · Formas](#kb-170)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | **[KB-333 · No Android, o campo levantado não cai e sobe de novo quando o aparelho gira com o teclado aberto](#kb-333)**<br>🟡 medium · `bug` · 4/10 |
+| **[KB-348 · Todo tipo de uma dimensão leva 2D ou 3D no nome, no C++ e no Lua](#kb-348)**<br>🟠 high · `refactor` · 8/10 | **[KB-173 · Personagem](#kb-173)**<br>🟡 medium · `feature` · 5/10 | — | — | **[KB-055 · Render targets completos em graphics::RenderTarget (hoje só cor)](#kb-055)**<br>🟡 medium · `feature` · 5/10 | **[KB-332 · O teste de UI do tvOS espera o teclado do sistema aceitar teclas antes de digitar](#kb-332)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-349 · Os testes de UI do iOS na CI dizem por que o simulador parou, em vez de falhar ao desligá-lo](#kb-349)**<br>🟠 high · `bug` · 3/10 | **[KB-176 · Consultas](#kb-176)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-331 · A verificação de cada commit pega os avisos que só o GCC e o MSVC dão](#kb-331)**<br>🟡 medium · `improvement` · 5/10 |
+| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-177 · Eventos de contato](#kb-177)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-330 · No Android, o teclado fecha às vezes quando o aparelho gira com um campo editando](#kb-330)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | **[KB-178 · Ganchos de passo e ajudantes em C++](#kb-178)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 |
 | **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 |
 | **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 |
 | **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 |
@@ -9238,6 +9238,29 @@ Tudo assíncrono, com `owner`, como a política de API pede. Ele usa só o contr
 
 - None
 
+### KB-354
+
+- **Title:** O pacote pronto do OpenSSL que o Varn importa é achado pelo `find_package` no Windows
+- **Status:** doing
+- **Type:** bug
+- **Priority:** high
+- **Complexity:** 3
+- **Progress:** A causa está achada na VM Windows da Azure. A correção vai no Varn, num commit único com a release refeita, e depois a Haylen atualiza o pin.
+
+#### Description
+
+Com o cache de pacotes do Varn (`VARN_PACKAGE_CACHE`), um build no Windows com MSVC para no configure do Poco: "Could NOT find OpenSSL (missing: OPENSSL_CRYPTO_LIBRARY)". O pacote está inteiro. Quando o OpenSSL compila na árvore, a receita o declara com `OVERRIDE_FIND_PACKAGE`, e o `find_package(OpenSSL)` do Poco cai no redirecionamento que o CMake grava em `pkgRedirects`. Já a importação do pacote pronto (`varn_import_openssl_package`) só preenche as variáveis do `FindOpenSSL` e os alvos importados. No MSVC, o `FindOpenSSL` ignora o `OPENSSL_CRYPTO_LIBRARY` em cache e procura a biblioteca só nas pastas de instalação do sistema. O Linux e o macOS passam porque, fora do MSVC, o `FindOpenSSL` mantém os valores em cache.
+
+#### Acceptance criteria
+
+- [ ] A importação do pacote grava o mesmo redirecionamento de `find_package` que um build na árvore grava, com o arquivo de versão, em todas as plataformas.
+- [ ] Um teste do Varn importa o pacote no Windows com MSVC e configura um projeto que chama `find_package(OpenSSL REQUIRED)`, sem depender de um OpenSSL instalado na máquina.
+- [ ] A Haylen atualiza o pin do Varn, e um lote da VM Windows com o cache de pacotes ligado compila e passa.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -9262,7 +9285,7 @@ Tudo assíncrono, com `owner`, como a política de API pede. Ele usa só o contr
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-354. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-355. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
