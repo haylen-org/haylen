@@ -5,12 +5,12 @@
 | Status | Service | Running now | This month | Share | Cost status |
 | --- | --- | --- | --- | --- | --- |
 | 🟢 | 🔶 AWS EC2 | batch5b and batch6 (on-demand) | US$29.30 (estimate) | US$110 | 🟢 |
-| 🟢 | 🔷 Azure | windows-kb355-kb350 | US$5.60 (estimate) | US$10 | 🟡 |
+| ⚪ | 🔷 Azure | None, the VM is deallocated | US$5.65 (estimate) | US$10 | 🟡 |
 | 🟢 | 🏠 Own Machines | The Mac, with the web checks of KB-362 and the full tests of the 3D renderer | No cost | No cost | 🟢 |
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 07:20 UTC
+Last updated: 2026-11-27 08:10 UTC
 
 ## 🏃 Running Now
 
@@ -25,7 +25,7 @@ Last updated: 2026-11-27 07:20 UTC
 
 | Status | Session | Platform | Machine type | Market | Region | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | windows-kb355-kb350 | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 (AMD V620) | regular, deallocated between batches | eastus2 | 2026-11-27 06:15 | Within 2 hours in all | KB-355 (MSVC in a new folder with the shared cache), KB-356 (five runs on main and on the fix with the shader caches cleared) and KB-350 (Direct3D 11 and 12 on the GPU and WARP, with its regression) | US$0.64 | US$0.30 (estimate) |
+| ⚪ | None | | | | | | | | | |
 
 ### 🏠 Own Machines
 
@@ -59,7 +59,7 @@ Monthly limit: US$120. Month: 2026-11. Days left in the month: 4.
 | Cost status | Service | Share | Spent this month | Figure from | Left | Daily allowance | Projected month end |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 🟢 | 🔶 AWS EC2 | US$110 (Linux batches US$75, the monthly cloud Mac day US$30, the image US$5) | US$29.10 | Billing data of 2026-11-26 (US$23.85), plus estimates after it | US$80.90 | US$20.20 | US$50 |
-| 🟡 | 🔷 Azure | US$10 | US$4.60 | Estimate, since the usage listing of this subscription returns nothing | US$5.40 | US$1.35 | US$7 |
+| 🟡 | 🔷 Azure | US$10 | US$5.65 | Estimate, since the usage listing of this subscription returns nothing | US$4.35 | US$1.10 | US$7 |
 | 🟢 | 📱 AWS Device Farm | US$0, any run needs a go | US$0 | | | | US$0 |
 | 🟢 | ⚙️ CI | Public repository | Not measured | | | | |
 | 🟢 | Cache bucket | Inside the shares above | Not measured | | | | |
@@ -88,12 +88,13 @@ Next cloud Mac day: not planned. Card KB-346 prepares it.
 | 🟢 | 🤖 Android | 2026-11-27 03:30 | batch3, the emulator image of CI | KB-055 `304b884d8` | ✅ GPU tests on Vulkan and OpenGL ES | |
 | 🟢 | 🌐 Web | 2026-11-27 03:00 | batch3, headless browsers | KB-055 `304b884d8` | ✅ WebGPU and WebGL2, ✅ web SDK | |
 | 🟢 | 🎮 GPU on Linux | 2026-11-27 03:00 | batch3, lavapipe and llvmpipe | KB-055 `304b884d8` | ✅ Vulkan, ✅ OpenGL | |
-| 🟢 | 🎮 GPU on Windows | 2026-11-27 06:30 | Azure AMD V620, desktop session | main `cd8aa5777` | ✅ Direct3D 11 176, Direct3D 12 177, Vulkan 177, OpenGL 176, WARP 177, none failed | The package cache of Varn on |
+| 🟢 | 🎮 GPU on Windows | 2026-11-27 08:00 | Azure AMD V620, desktop session | KB-350 `fe7b5cf3c` | ✅ Direct3D 11 177, Direct3D 12 178, WARP 177 and 178, none failed | |
 
 ## 📜 Batch Log
 
 | Status | Date (UTC) | Session | Service | Platforms | Machine or devices | Duration | Cost | Jobs and results | Cache hit rate | Deleted and proven |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 🟢 | 2026-11-27 08:00 | windows-kb355-kb350 | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 97 min over five starts | US$1.05 (estimate) | ✅ KB-355 MSVC with warnings as errors, 3417 tests, paths only of the new folder, ✅ KB-350 Direct3D 11 and 12 on the GPU and WARP with its regression, ✅ KB-356 fix five of five, while main never failed in five runs | 96.1 % | ✅ deallocated, IP and rule removed |
 | 🟢 | 2026-11-27 05:30 | windows-varn-repin | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 55 min over four starts | US$0.60 (estimate) | ✅ gpu-build with the Varn package cache, ✅ Direct3D 11, ✅ Direct3D 12, ✅ Vulkan, ✅ OpenGL, ✅ WARP | | ✅ deallocated, IP and rule removed |
 | 🔴 | 2026-11-27 05:40 | batch5 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 10 min, reclaimed by AWS | US$0.11 (estimate) | ⏳ lost: physics3d and the animation3d node components, rerun on demand in batch5b | | ✅ |
 | 🔴 | 2026-11-27 04:16 | batch4 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 65 min, reclaimed by AWS | US$0.73 (estimate) | ✅ physics3d commits 1 to 7 (clang and gcc), ❌ navigation3d: its new regression test fails on all 32 bakes (clang, gcc, asan), ⏳ lost: physics3d commit 8 and heads, navigation3d tsan, animation3d node components | | ✅ |
