@@ -10022,6 +10022,8 @@ Desenho:
 - O `MessagePathsTest` pega nomes de classe nas mensagens do tooling.
 - O clang-tidy roda num job do Linux da matriz completa e pelo `haylen engine tidy`, com o filtro de cabeçalhos certo, os avisos como erros e as regras `readability-identifier-naming`, `readability-else-after-return`, `cppcoreguidelines-owning-memory`, `modernize-use-nullptr` e `cppcoreguidelines-avoid-c-arrays`. Os getters booleanos com `get` viram `is`, `has` ou `can`.
 
+O `shellcheck disable=SC2086` de `.github/actions/caches/caches.sh` também sai, com a lista de argumentos num array.
+
 Achados cobertos: P5, P11 e P12 (regras), A-022, a parte do `.clang-tidy` de T-025, as linhas 1, 2, 3 (a parte que não é Python), 15, 32, 48 a 51, 85, 116, 127 e 128 das regras e as partes do `EngineMessagesTest` e do `MessagePathsTest` de "Weak tests".
 
 #### Acceptance criteria
