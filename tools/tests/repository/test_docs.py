@@ -38,9 +38,11 @@ class DocsTest:
         assert wrong == []
 
     def test_no_section_heading_carries_an_emoji(self):
-        # Only the title carries an emoji, so the anchors of the sections stay plain.
+        # Only the title carries an emoji, so the anchors of the sections stay plain. The cloud tracker keeps the fixed section titles of its format, whose emoji show the state of each part at a glance.
         wrong = []
         for path in DocsTest.pages():
+            if DocsTest.shown(path) == "CLOUD.md":
+                continue
             for number, line in MarkdownPage(path).prose():
                 if not re.match(r"^#{2,6} ", line):
                     continue
