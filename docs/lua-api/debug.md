@@ -1,6 +1,6 @@
 # 📖 `haylen.debug`
 
-The module `haylen.debug` holds the tools that measure and inspect a running app: the debug statistics, the debug drawings, object counts, monitors, the frame profiler, the recent log, traces, GPU captures, breadcrumbs with the report of the last native crash, the developer console, the inspector and the breakpoints of the debugger. Use it to find where frame time goes, to see what the app draws and simulates, and to show performance numbers in your own debug tools. The [Lua guide](../core/lua.md#errors-and-stack-traces) explains the error screen, and the [architecture guide](../core/architecture.md#the-frame) explains the frame that the profiler measures.
+The module `haylen.debug` holds the tools that measure and inspect a running app: the debug statistics, the debug drawings, object counts, monitors, the frame profiler, the recent log, traces, GPU captures, breadcrumbs with the report of the last native crash, the developer console, the inspector and the breakpoints of the debugger. Use it to find where frame time goes, to see what the app draws and simulates, and to show performance numbers in your own debug tools. The [Lua guide](../core/lua.md#errors-and-stack-traces) explains the error screen, and the [architecture guide](../core/architecture.md#the-frame) explains the frame that the profiler measures. The [developer tools guide](../tools/developer-tools.md) explains when to reach for each tool.
 
 ```lua
 local debug = require('haylen.debug')
@@ -589,7 +589,7 @@ A GPU capture records every command that the GPU device of the app runs during a
 
 Captures go to the folder `gpu-captures` of the [storage folder](storage.md#the-storage-folder) of the app, named after the time they started, such as `gpu-captures/2026-11-03-14-05-09-123.gputrace`. RenderDoc adds the number of the first frame it captured to the name, such as `2026-11-03-14-05-09-123_frame482.rdc`. A capture starts at once and ends after the given number of frames was submitted, so it records the rest of the frame that asked for it and the frames after it. Each capture that ends writes its path into the log, and a development run reports it to the development server, whose terminal prints it.
 
-Besides this function, the console command `gpuCapture`, the key `g` of [`haylen app run`](../tools/commands.md) and the command [`haylen app capture`](../tools/commands.md) ask the app for a capture.
+Besides this function, the console command `gpuCapture`, the key `g` of [`haylen app run`](../reference/commands.md) and the command [`haylen app capture`](../reference/commands.md) ask the app for a capture.
 
 ### debug.gpuCaptureTool()
 

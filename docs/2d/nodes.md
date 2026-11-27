@@ -61,7 +61,7 @@ print(eyes.worldVisible)
 
 The node places what it shows. A sprite keeps its own `x`, `y`, `rotation`, `scaleX` and `scaleY`, which offset it from the node. Text and frames sit on the node itself. The world transform of the node then places the result.
 
-The world color of the node multiplies the color of its content. Its world layer adds to the layer of the content, and its `depth` and `sortOffset` add to those of the content, as the [draw order](../graphics/rendering.md#draw-order) uses them.
+The world color of the node multiplies the color of its content. Its world layer adds to the layer of the content, and its `depth` and `sortOffset` add to those of the content, as the [draw order](graphics.md#draw-order) uses them.
 
 Sprites, text and frames take the rotation and the scale of the world transform. A parent that is turned and scaled more along one axis than the other makes a shear, a slant that would turn a rectangle into a parallelogram. Content never shows that shear, so a sprite under such a parent stays a rectangle.
 
@@ -272,7 +272,7 @@ tree:writeTransforms(birds, places)
 
 A tree keeps its nodes in contiguous arrays in tree order and walks them in order. An update touches only the nodes that changed and their descendants. A tree of 4096 nodes or more updates the subtrees of its roots on the worker pool, in groups of at least 1024 nodes, while the frame thread does its share.
 
-A draw records every node in C++ without a call from Lua per node, and a culled node costs only a test of its bounds. The draw joins neighbouring sprite nodes of one texture and draw order into one batch, as the [rendering guide](../graphics/rendering.md#node-trees) explains. So a tree of the sprites of one atlas costs a few draw items however deep it is. A batch converts its sprites on the worker pool from 8,192 sprites on.
+A draw records every node in C++ without a call from Lua per node, and a culled node costs only a test of its bounds. The draw joins neighbouring sprite nodes of one texture and draw order into one batch, as the [rendering guide](graphics.md#node-trees) explains. So a tree of the sprites of one atlas costs a few draw items however deep it is. A batch converts its sprites on the worker pool from 8,192 sprites on.
 
 The command `haylen engine bench --suite nodes` times a tree of 100,000 sprite nodes on the headless host: a thousand roots with 99 children each. These are the numbers of an Apple M5 Pro in Release with 15 workers:
 

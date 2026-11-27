@@ -18,69 +18,19 @@ The five structures are [`HashGrid3D`](#hashgrid3d), [`Octree`](#octree), [`Aabb
 
 The structures `HashGrid3D`, `Octree`, `AabbTree3D` and `Bvh` store boxes, which are `Box` values of [`haylen.math`](math.md#box). A box that is not finite or whose largest corner lies below its smallest corner on an axis raises `Spatial bounds must be finite, and no coordinate of their largest corner may lie below the one of their smallest corner.` A `KdTree3D` stores points with an optional radius instead, and its queries treat each point as a sphere.
 
-### spatial3d.newHashGrid(cellSize)
+## Functions
 
-Returns a [`HashGrid3D`](#hashgrid3d), a spatial hash whose cubic cells are `cellSize` meters wide. A spatial hash files every entry under the cells that its box covers, and a cell about the size of a typical object, or a little larger, keeps queries fast. A size that is not positive and finite raises `A spatial hash needs a positive cell size.` A stored box covers at most 65536 cells, or `hash:set` raises `A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.`, and it lies within 1048575 cells of the origin, or `hash:set` raises `A spatial hash entry must lie within 1048575 cells of the origin.`
+The module has these functions. Each one is described in the section of what it makes or does.
 
-```lua
-local spatial3d = require('haylen.spatial3d')
-
-local hash = spatial3d.newHashGrid(2)
-print(hash.cellSize) -- 2.0
-```
-
-### spatial3d.newOctree(region, options)
-
-Returns an [`Octree`](#octree) over the `Box` `region`. An octree splits a crowded cell of its region into eight smaller cells, again and again. Each cell reaches past its own edges by `looseness` times half its size, so an entry goes down to the deepest cell that holds it whole and moves less often. Entries outside the region still work, and they stay in the root cell. The table `options` is optional, and an unknown key raises `Unknown option "<key>".`.
-
-| Key | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `maxEntries` | integer | `8` | How many entries a cell holds before it splits in eight. |
-| `maxDepth` | integer | `8` | How many times cells may split, from 0 to 16. |
-| `looseness` | number | `1` | How far each cell reaches past its edges, as a share of half its size, from 0 to 4. |
-
-A region without volume or a setting out of range raises `An octree needs a box with volume, room for an entry per node, a depth from 0 to 16 and a looseness from 0 to 4.`
-
-```lua
-local m = require('haylen.math')
-local spatial3d = require('haylen.spatial3d')
-
-local level = spatial3d.newOctree(m.box({-200, -20, -200}, {200, 80, 200}), {maxEntries = 16})
-print(level.region.max) -- Vec3(200.0, 80.0, 200.0)
-```
-
-### spatial3d.newAabbTree(margin)
-
-Returns an [`AabbTree3D`](#aabbtree3d), a dynamic tree of boxes. It keeps a box around each entry that is `margin` meters larger on every side, `0.1` by default, and it moves an entry in the tree only when the entry leaves that box. A margin that is negative or not finite raises `An AABB tree needs a finite margin of zero or more.`
-
-```lua
-local spatial3d = require('haylen.spatial3d')
-
-local bodies = spatial3d.newAabbTree(0.2)
-print(bodies.margin) -- 0.2
-```
-
-### spatial3d.newBvh()
-
-Returns an empty [`Bvh`](#bvh), a bounding volume hierarchy that a query needs built with `bvh:build` after entries come or go, and fitted with `bvh:refit` after they only move.
-
-```lua
-local spatial3d = require('haylen.spatial3d')
-
-local props = spatial3d.newBvh()
-print(props.built) -- true, since an empty tree needs no build
-```
-
-### spatial3d.newKdTree()
-
-Returns an empty [`KdTree3D`](#kdtree3d), a tree of points that splits space along `x`, `y` and `z` in turn. It answers nearest queries fastest, and a query needs it rebuilt with `kdTree:build` after its points change.
-
-```lua
-local spatial3d = require('haylen.spatial3d')
-
-local probes = spatial3d.newKdTree()
-print(probes.size) -- 0
-```
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`spatial3d.newHashGrid(cellSize)`](#spatial3dnewhashgridcellsize) | A spatial hash | [HashGrid3D](#hashgrid3d) |
+| [`spatial3d.newOctree(region, options)`](#spatial3dnewoctreeregion-options) | A loose octree | [Octree](#octree) |
+| [`spatial3d.newAabbTree(margin)`](#spatial3dnewaabbtreemargin) | A dynamic tree of boxes | [AabbTree3D](#aabbtree3d) |
+| [`spatial3d.newBvh()`](#spatial3dnewbvh) | An empty bounding volume hierarchy | [Bvh](#bvh) |
+| [`spatial3d.newKdTree()`](#spatial3dnewkdtree) | An empty tree of points | [KdTree3D](#kdtree3d) |
+| [`spatial3d.newMeshBvh(positions, indices)`](#spatial3dnewmeshbvhpositions-indices) | A hierarchy over the triangles of a mesh | [MeshBvh](#meshbvh) |
+| [`spatial3d.traverseGrid(from, to, cellSize)`](#spatial3dtraversegridfrom-to-cellsize) | The cells a segment crosses | [Grid algorithms](#grid-algorithms) |
 
 ## Structure methods
 
@@ -295,6 +245,17 @@ local spatial3d = require('haylen.spatial3d')
 print(spatial3d.newHashGrid(0.5).cellSize) -- 0.5
 ```
 
+### spatial3d.newHashGrid(cellSize)
+
+Returns a [`HashGrid3D`](#hashgrid3d), a spatial hash whose cubic cells are `cellSize` meters wide. A spatial hash files every entry under the cells that its box covers, and a cell about the size of a typical object, or a little larger, keeps queries fast. A size that is not positive and finite raises `A spatial hash needs a positive cell size.` A stored box covers at most 65536 cells, or `hash:set` raises `A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.`, and it lies within 1048575 cells of the origin, or `hash:set` raises `A spatial hash entry must lie within 1048575 cells of the origin.`
+
+```lua
+local spatial3d = require('haylen.spatial3d')
+
+local hash = spatial3d.newHashGrid(2)
+print(hash.cellSize) -- 2.0
+```
+
 ## Octree
 
 An `Octree` is a loose octree over a region that [`spatial3d.newOctree`](#spatial3dnewoctreeregion-options) returns. It suits entries of varied sizes spread over a known region, such as the objects of a level. It has every [structure method](#structure-methods), the property `octree.region`, the `Box` it covers, and the property `octree.nodeCount`, the number of cells in use.
@@ -305,6 +266,26 @@ local spatial3d = require('haylen.spatial3d')
 
 local level = spatial3d.newOctree(m.box({0, 0, 0}, {100, 100, 100}))
 print(level.nodeCount) -- 1
+```
+
+### spatial3d.newOctree(region, options)
+
+Returns an [`Octree`](#octree) over the `Box` `region`. An octree splits a crowded cell of its region into eight smaller cells, again and again. Each cell reaches past its own edges by `looseness` times half its size, so an entry goes down to the deepest cell that holds it whole and moves less often. Entries outside the region still work, and they stay in the root cell. The table `options` is optional, and an unknown key raises `Unknown option "<key>".`.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `maxEntries` | integer | `8` | How many entries a cell holds before it splits in eight. |
+| `maxDepth` | integer | `8` | How many times cells may split, from 0 to 16. |
+| `looseness` | number | `1` | How far each cell reaches past its edges, as a share of half its size, from 0 to 4. |
+
+A region without volume or a setting out of range raises `An octree needs a box with volume, room for an entry per node, a depth from 0 to 16 and a looseness from 0 to 4.`
+
+```lua
+local m = require('haylen.math')
+local spatial3d = require('haylen.spatial3d')
+
+local level = spatial3d.newOctree(m.box({-200, -20, -200}, {200, 80, 200}), {maxEntries = 16})
+print(level.region.max) -- Vec3(200.0, 80.0, 200.0)
 ```
 
 ## AabbTree3D
@@ -323,9 +304,31 @@ end
 print(bodies.height <= 12) -- true
 ```
 
+### spatial3d.newAabbTree(margin)
+
+Returns an [`AabbTree3D`](#aabbtree3d), a dynamic tree of boxes. It keeps a box around each entry that is `margin` meters larger on every side, `0.1` by default, and it moves an entry in the tree only when the entry leaves that box. A margin that is negative or not finite raises `An AABB tree needs a finite margin of zero or more.`
+
+```lua
+local spatial3d = require('haylen.spatial3d')
+
+local bodies = spatial3d.newAabbTree(0.2)
+print(bodies.margin) -- 0.2
+```
+
 ## Bvh
 
 A `Bvh` is a bounding volume hierarchy that [`spatial3d.newBvh`](#spatial3dnewbvh) returns, built by the surface area heuristic. It answers queries fastest of the box structures, so it suits content that rarely changes, such as the props of a level. It has every [structure method](#structure-methods) and the methods below. A query on a tree that changed since its last build or refit raises `The BVH changed since its last build. Call "build", or "refit" when its entries only moved, before a query.`
+
+### spatial3d.newBvh()
+
+Returns an empty [`Bvh`](#bvh), a bounding volume hierarchy that a query needs built with `bvh:build` after entries come or go, and fitted with `bvh:refit` after they only move.
+
+```lua
+local spatial3d = require('haylen.spatial3d')
+
+local props = spatial3d.newBvh()
+print(props.built) -- true, since an empty tree needs no build
+```
 
 ### bvh:build()
 
@@ -392,6 +395,17 @@ print(props.nodeCount > 1, props.depth > 0) -- true true
 
 A `KdTree3D` is a tree of points that [`spatial3d.newKdTree`](#spatial3dnewkdtree) returns. It suits points that rarely change, when nearest queries come most often, such as light probes or spawn points. Its points change freely, but a query on a tree that changed raises `The k-d tree changed since it was last built, so it needs "build" before a query.` It has every [structure method](#structure-methods) and the methods below.
 
+### spatial3d.newKdTree()
+
+Returns an empty [`KdTree3D`](#kdtree3d), a tree of points that splits space along `x`, `y` and `z` in turn. It answers nearest queries fastest, and a query needs it rebuilt with `kdTree:build` after its points change.
+
+```lua
+local spatial3d = require('haylen.spatial3d')
+
+local probes = spatial3d.newKdTree()
+print(probes.size) -- 0
+```
+
 ### kdTree:set(value, point, radius)
 
 Stores `value` at the point `point` with the radius `radius`, `0` by default, or moves it when it is already stored. A point that is not finite or a radius that is negative or not finite raises `A k-d tree entry needs a finite point and a finite radius of zero or more.`
@@ -443,7 +457,9 @@ probes:set({}, {0, 0, 0})
 print(probes.built) -- false
 ```
 
-## Meshes
+## MeshBvh
+
+A `MeshBvh` is a bounding volume hierarchy over the triangles of a mesh that [`spatial3d.newMeshBvh`](#spatial3dnewmeshbvhpositions-indices) returns. It casts rays against the exact surface, and a ray never slips between two triangles that share an edge. Triangles count from 1 in the order of the mesh.
 
 ### spatial3d.newMeshBvh(positions, indices)
 
@@ -455,10 +471,6 @@ local spatial3d = require('haylen.spatial3d')
 local floor = spatial3d.newMeshBvh({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}, {0, 0, -10}}, {1, 2, 3, 1, 3, 4})
 print(floor.triangleCount) -- 2
 ```
-
-## MeshBvh
-
-A `MeshBvh` is a bounding volume hierarchy over the triangles of a mesh that [`spatial3d.newMeshBvh`](#spatial3dnewmeshbvhpositions-indices) returns. It casts rays against the exact surface, and a ray never slips between two triangles that share an edge. Triangles count from 1 in the order of the mesh.
 
 ### mesh:raycast(ray)
 
@@ -543,7 +555,9 @@ local floor = spatial3d.newMeshBvh({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}, {0, 0, 
 print(floor.vertexCount, floor.triangleCount, floor.bounds.min) -- 4 2 Vec3(0.0, 0.0, -10.0)
 ```
 
-## Grids
+## Grid algorithms
+
+The grid algorithms walk a grid of boxes that the app never stores, such as the cells of a voxel world.
 
 ### spatial3d.traverseGrid(from, to, cellSize)
 

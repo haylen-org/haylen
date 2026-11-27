@@ -342,10 +342,10 @@ The cost of a visibility polygon grows with the square of the walls, as [costs](
 A generated level must be playable: the exit must be reachable from the start. A flood fill from the start lists every cell the player can walk to.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
-local cave = procedural.cellularAutomaton({width = 60, height = 40, seed = 5})
+local cave = procedural2d.cellularAutomaton({width = 60, height = 40, seed = 5})
 local start, exit = {x = 10, y = 20}, {x = 50, y = 20}
 cave:set(start.x, start.y, 0)
 cave:set(exit.x, exit.y, 0)

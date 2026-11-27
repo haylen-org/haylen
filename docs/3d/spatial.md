@@ -1,6 +1,6 @@
 # 🗂️ 3D spatial structures
 
-This guide explains how `haylen.spatial3d` finds things in 3D space without testing every object: which structure suits which task, how the queries answer, how many objects change in one call, how a mesh answers exact ray casts and how a ray walks the cells of a voxel world. The [reference of `haylen.spatial3d`](../lua-api/spatial3d.md) lists every function with its options and errors, and the [3D math guide](math.md) explains the boxes, spheres, rays and frustums that the queries take.
+This guide explains how `haylen.spatial3d` finds things in 3D space without testing every object: which structure suits which task, how the queries answer, how many objects change in one call, how a mesh answers exact ray casts and how a ray walks the cells of a voxel world. The [reference of `haylen.spatial3d`](../lua-api/spatial3d.md) lists every function with its options and errors, and the [3D math guide](../core/math.md) explains the boxes, spheres, rays and frustums that the queries take.
 
 ## Why spatial structures
 

@@ -16,7 +16,32 @@ Functions whose names end in `Async` copy what they need, run on a worker thread
 
 A grid keeps one copy of its cells for background work, and it shares that copy between calls until one of its cells changes. So many background searches on a grid that does not change copy it once.
 
-## Grids
+## Functions
+
+The module has these functions. Each one is described in the section of what it makes.
+
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`navigation2d.newGrid(width, height, layout)`](#navigation2dnewgridwidth-height-layout) | A grid of walkable cells | [NavGrid](#navgrid) |
+| [`navigation2d.newGraph()`](#navigation2dnewgraph) | An empty waypoint graph | [NavGraph](#navgraph) |
+| [`navigation2d.newNavMesh(boundary)`](#navigation2dnewnavmeshboundary) | A navigation mesh | [NavMesh2D](#navmesh2d) |
+| [`navigation2d.buildNavMeshAsync(boundary, obstacles)`](#navigation2dbuildnavmeshasyncboundary-obstacles) | A promise of a built navigation mesh | [NavMesh2D](#navmesh2d) |
+| [`navigation2d.newAgent(options)`](#navigation2dnewagentoptions) | A steering agent | [SteeringAgent](#steeringagent) |
+| [`navigation2d.newCrowd(flocking)`](#navigation2dnewcrowdflocking) | A crowd of agents | [Crowd2D](#crowd2d) |
+
+## NavGrid
+
+A `NavGrid` is a grid of walkable cells with costs, which [`navigation2d.newGrid`](#navigation2dnewgridwidth-height-layout) returns. The methods `grid:setWalkable`, `grid:setCost` and `grid:cost` raise an error such as `Cell 9,9 is outside the navigation grid.` for a cell outside the grid.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `width` | integer | read | The number of columns. |
+| `height` | integer | read | The number of rows. |
+| `topology` | string | read | `'square'`, `'hexagonal'` or `'staggered'`. |
+| `staggerX` | boolean | read | Whether the columns shift instead of the rows. |
+| `staggerEven` | boolean | read | Whether the even rows or columns shift. |
+| `uniformCost` | boolean | read | The value is `true` when every cell costs 1, which jump point search needs. |
+| `expandedCount` | integer | read | The cells that the last `grid:findPath` expanded. It shows how much work a heuristic, a weight or jump point search saves. |
 
 ### navigation2d.newGrid(width, height, layout)
 
@@ -37,20 +62,6 @@ local grid = navigation2d.newGrid(40, 30)
 local hexes = navigation2d.newGrid(20, 20, {topology = 'hexagonal', staggerX = true})
 print(grid.width, grid.height, hexes.topology, hexes.staggerX) -- 40 30 hexagonal true
 ```
-
-## NavGrid
-
-A `NavGrid` is a grid of walkable cells with costs, which [`navigation2d.newGrid`](#navigation2dnewgridwidth-height-layout) returns. The methods `grid:setWalkable`, `grid:setCost` and `grid:cost` raise an error such as `Cell 9,9 is outside the navigation grid.` for a cell outside the grid.
-
-| Property | Type | Access | Meaning |
-| --- | --- | --- | --- |
-| `width` | integer | read | The number of columns. |
-| `height` | integer | read | The number of rows. |
-| `topology` | string | read | `'square'`, `'hexagonal'` or `'staggered'`. |
-| `staggerX` | boolean | read | Whether the columns shift instead of the rows. |
-| `staggerEven` | boolean | read | Whether the even rows or columns shift. |
-| `uniformCost` | boolean | read | The value is `true` when every cell costs 1, which jump point search needs. |
-| `expandedCount` | integer | read | The cells that the last `grid:findPath` expanded. It shows how much work a heuristic, a weight or jump point search saves. |
 
 ### grid:contains(x, y)
 
@@ -504,7 +515,13 @@ router:rebuild()
 print(router.nodeCount)
 ```
 
-## Waypoint graphs
+## NavGraph
+
+A `NavGraph` finds paths through waypoints, which [`navigation2d.newGraph`](#navigation2dnewgraph) returns. The app picks the integer id of every point. Each point has a position, a weight and an enabled flag, and connections join points in one or both directions. Stepping into a point costs the distance to it times its weight. Paths use A\* and never pass through a disabled point. An unknown id raises an error such as `Point 7 is not in the graph.`
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `size` | integer | read | The number of points. |
 
 ### navigation2d.newGraph()
 
@@ -516,14 +533,6 @@ local navigation2d = require('haylen.navigation2d')
 local roads = navigation2d.newGraph()
 print(roads.size) -- 0
 ```
-
-## NavGraph
-
-A `NavGraph` finds paths through waypoints, which [`navigation2d.newGraph`](#navigation2dnewgraph) returns. The app picks the integer id of every point. Each point has a position, a weight and an enabled flag, and connections join points in one or both directions. Stepping into a point costs the distance to it times its weight. Paths use A\* and never pass through a disabled point. An unknown id raises an error such as `Point 7 is not in the graph.`
-
-| Property | Type | Access | Meaning |
-| --- | --- | --- | --- |
-| `size` | integer | read | The number of points. |
 
 ### graph:addPoint(id, x, y, weight)
 
@@ -780,7 +789,18 @@ roads:clear()
 print(roads.size, roads:closestPoint(0, 0)) -- 0 nil
 ```
 
-## Navigation meshes
+## NavMesh2D
+
+A `NavMesh2D` covers the walkable area of a level with triangles, which [`navigation2d.newNavMesh`](#navigation2dnewnavmeshboundary) and [`navigation2d.buildNavMeshAsync`](#navigation2dbuildnavmeshasyncboundary-obstacles) return. It is built with a constrained Delaunay triangulation, from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map that [`map:objectOutlines`](tiled.md#mapobjectoutlineslayer) returns. Obstacles may overlap each other and cross the boundary. The [navigation guide](../2d/navigation.md#navigation-meshes) explains how paths keep an agent clear of walls.
+
+Changing a polygon marks the mesh as dirty, and the mesh rebuilds on the next query or on `mesh:build`. A polygon is a list of points. A polygon with fewer than three points raises `A navigation mesh polygon needs at least three points.`, and a point that is not finite raises `A navigation mesh polygon needs finite points.`
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `boundary` | list of Vec2 | read | The outline of the walkable area. |
+| `obstacleCount` | integer | read | The number of obstacles. |
+| `triangleCount` | integer | read | The number of triangles. Reading it rebuilds a dirty mesh first. |
+| `dirty` | boolean | read | The value is `true` when the polygons changed since the last build. A new mesh is dirty. |
 
 ### navigation2d.newNavMesh(boundary)
 
@@ -809,19 +829,6 @@ async.spawn(function()
     print(mesh.triangleCount, mesh.dirty)
 end)
 ```
-
-## NavMesh2D
-
-A `NavMesh2D` covers the walkable area of a level with triangles, which [`navigation2d.newNavMesh`](#navigation2dnewnavmeshboundary) and [`navigation2d.buildNavMeshAsync`](#navigation2dbuildnavmeshasyncboundary-obstacles) return. It is built with a constrained Delaunay triangulation, from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map that [`map:objectOutlines`](tiled.md#mapobjectoutlineslayer) returns. Obstacles may overlap each other and cross the boundary. The [navigation guide](../2d/navigation.md#navigation-meshes) explains how paths keep an agent clear of walls.
-
-Changing a polygon marks the mesh as dirty, and the mesh rebuilds on the next query or on `mesh:build`. A polygon is a list of points. A polygon with fewer than three points raises `A navigation mesh polygon needs at least three points.`, and a point that is not finite raises `A navigation mesh polygon needs finite points.`
-
-| Property | Type | Access | Meaning |
-| --- | --- | --- | --- |
-| `boundary` | list of Vec2 | read | The outline of the walkable area. |
-| `obstacleCount` | integer | read | The number of obstacles. |
-| `triangleCount` | integer | read | The number of triangles. Reading it rebuilds a dirty mesh first. |
-| `dirty` | boolean | read | The value is `true` when the polygons changed since the last build. A new mesh is dirty. |
 
 ### mesh:setBoundary(polygon)
 
@@ -996,29 +1003,6 @@ scene.push({
 })
 ```
 
-## Steering
-
-### navigation2d.newAgent(options)
-
-Returns a [`SteeringAgent`](#steeringagent). The table `options` is optional.
-
-| Key | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `x`, `y` | number | `0` | The starting position. |
-| `maxSpeed` | number | `120` | The speed limit in units per second. |
-| `maxForce` | number | `600` | The largest change of velocity per second. Lower values turn and brake more slowly. |
-| `wanderDistance` | number | `60` | How far ahead of the agent the circle of `agent:wander` lies. |
-| `wanderRadius` | number | `30` | The radius of that circle. |
-| `wanderJitter` | number | `4` | How fast the wander target drifts around the circle, in radians per second. |
-| `seed` | integer | `1` | The seed of the wander randomness. Agents with the same seed and state wander the same way. |
-
-```lua
-local navigation2d = require('haylen.navigation2d')
-
-local bat = navigation2d.newAgent({x = 100, y = 100, maxSpeed = 90, maxForce = 300, wanderJitter = 6, seed = 42})
-print(bat.position, bat.maxSpeed) -- Vec2(100.0, 100.0) 90.0
-```
-
 ## SteeringAgent
 
 A `SteeringAgent` is a moving body for steering behaviors, which [`navigation2d.newAgent`](#navigation2dnewagentoptions) returns. Each behavior returns the change of velocity it wants, as a `Vec2`. The app adds up the behaviors it uses, and `agent:apply` turns the velocity toward the sum within `maxForce` and moves the agent. Targets and neighbors are a `Vec2` or a table `{x, y}` or `{x = 0, y = 0}`.
@@ -1041,6 +1025,27 @@ moth.wanderRadius = 60
 moth.wanderJitter = 8
 moth.position = {200, 120}
 print(moth.wanderDistance, moth.wanderRadius, moth.position.x) -- 60.0 60.0 200.0
+```
+
+### navigation2d.newAgent(options)
+
+Returns a [`SteeringAgent`](#steeringagent). The table `options` is optional.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y` | number | `0` | The starting position. |
+| `maxSpeed` | number | `120` | The speed limit in units per second. |
+| `maxForce` | number | `600` | The largest change of velocity per second. Lower values turn and brake more slowly. |
+| `wanderDistance` | number | `60` | How far ahead of the agent the circle of `agent:wander` lies. |
+| `wanderRadius` | number | `30` | The radius of that circle. |
+| `wanderJitter` | number | `4` | How fast the wander target drifts around the circle, in radians per second. |
+| `seed` | integer | `1` | The seed of the wander randomness. Agents with the same seed and state wander the same way. |
+
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local bat = navigation2d.newAgent({x = 100, y = 100, maxSpeed = 90, maxForce = 300, wanderJitter = 6, seed = 42})
+print(bat.position, bat.maxSpeed) -- Vec2(100.0, 100.0) 90.0
 ```
 
 ### agent:seek(target)
@@ -1189,7 +1194,20 @@ scene.push({
 })
 ```
 
-## Crowds
+## Crowd2D
+
+A `Crowd2D` moves many agents at once with optimal reciprocal collision avoidance, ORCA, which [`navigation2d.newCrowd`](#navigation2dnewcrowdflocking) returns. Every step, each agent takes the velocity closest to the one it wants among the velocities that keep it clear of its neighbors for a time horizon, and clear of obstacles for a shorter one. Each agent of a pair takes half of the effort to avoid the other. Steps are deterministic, allocate nothing once the crowd has grown, and spread over the job system of the engine.
+
+Agents are known by the integer ids that `crowd:addAgent` returns, which count from 0 while no agent has been removed. A later agent takes the place of a removed one with an id of its own, so an id that an app kept after the removal never names the new agent, and `crowd:hasAgent` answers `false` for it. An unknown id raises an error such as `Agent 7 is not in the crowd.`, and a position, target or velocity that is not finite raises `Crowd positions, targets and velocities must be finite.`
+
+Agents that all want the same spot, or that meet head on in a symmetric formation, can settle in a standoff where every agent keeps its neighbors clear. That is the correct ORCA answer. Break it by giving the targets a small spread, or by adding a little `separation`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `agentCount` | integer | read | The number of agents. |
+| `separation` | number | read and write | The weight of the push away from close neighbors. |
+| `alignment` | number | read and write | The weight of the turn toward the heading of neighbors. |
+| `cohesion` | number | read and write | The weight of the pull toward the center of neighbors. |
 
 ### navigation2d.newCrowd(flocking)
 
@@ -1207,21 +1225,6 @@ local navigation2d = require('haylen.navigation2d')
 local sheep = navigation2d.newCrowd({separation = 0.5, alignment = 0.3, cohesion = 0.2})
 print(sheep.agentCount, sheep.separation) -- 0 0.5
 ```
-
-## Crowd2D
-
-A `Crowd2D` moves many agents at once with optimal reciprocal collision avoidance, ORCA, which [`navigation2d.newCrowd`](#navigation2dnewcrowdflocking) returns. Every step, each agent takes the velocity closest to the one it wants among the velocities that keep it clear of its neighbors for a time horizon, and clear of obstacles for a shorter one. Each agent of a pair takes half of the effort to avoid the other. Steps are deterministic, allocate nothing once the crowd has grown, and spread over the job system of the engine.
-
-Agents are known by the integer ids that `crowd:addAgent` returns, which count from 0 while no agent has been removed. A later agent takes the place of a removed one with an id of its own, so an id that an app kept after the removal never names the new agent, and `crowd:hasAgent` answers `false` for it. An unknown id raises an error such as `Agent 7 is not in the crowd.`, and a position, target or velocity that is not finite raises `Crowd positions, targets and velocities must be finite.`
-
-Agents that all want the same spot, or that meet head on in a symmetric formation, can settle in a standoff where every agent keeps its neighbors clear. That is the correct ORCA answer. Break it by giving the targets a small spread, or by adding a little `separation`.
-
-| Property | Type | Access | Meaning |
-| --- | --- | --- | --- |
-| `agentCount` | integer | read | The number of agents. |
-| `separation` | number | read and write | The weight of the push away from close neighbors. |
-| `alignment` | number | read and write | The weight of the turn toward the heading of neighbors. |
-| `cohesion` | number | read and write | The weight of the pull toward the center of neighbors. |
 
 ### crowd:addAgent(options)
 

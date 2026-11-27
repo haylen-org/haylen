@@ -146,7 +146,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   platform/DisplayLuaTests.cpp
   platform/FoldTests.cpp
   platform/HeadlessPlayerTests.cpp
-  platform/NativeLuaTests.cpp
+  platform/native/NativeLuaTests.cpp
   platform/NativeViewsTests.cpp
   platform/PlatformLuaTests.cpp
   platform/SafeAreaTests.cpp

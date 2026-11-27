@@ -17,60 +17,28 @@ The four structures are [`HashGrid2D`](#hashgrid2d), [`QuadTree`](#quadtree), [`
 
 The structures `HashGrid2D`, `QuadTree` and `AabbTree2D` store rectangles. A rectangle is a `Rect`, a table `{x, y, width, height}` or a table `{x = 0, y = 0, width = 0, height = 0}`. A rectangle with a negative size or a component that is not finite raises `Spatial bounds must be finite and have a non-negative size.` A `KdTree2D` stores points with an optional radius instead, and its queries treat each point as a circle.
 
-### spatial2d.newHashGrid(cellSize)
+## Functions
 
-Returns a [`HashGrid2D`](#hashgrid2d), a spatial hash whose cells are `cellSize` units wide and high. A spatial hash files every entry under the cells that its rectangle covers. A cell size about the size of a typical entity, or a little larger, keeps queries fast. A size that is not positive and finite raises `A spatial hash needs a positive cell size.`
+The module has these functions. Each one is described in the section of what it makes or does.
 
-A stored rectangle covers at most 65536 cells, or `hash:set` raises `A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.`. It lies within 536870912 cells of the origin, or `hash:set` raises `A spatial hash entry must lie within 536870912 cells of the origin.`. A query never costs much more than a visit to every stored value, so a huge area, or a point or a ray far from every entry, stays cheap.
-
-```lua
-local spatial2d = require('haylen.spatial2d')
-
-local hash = spatial2d.newHashGrid(64)
-print(hash.cellSize) -- 64.0
-```
-
-### spatial2d.newQuadTree(area, options)
-
-Returns a [`QuadTree`](#quadtree) over the rectangle `area`. A quadtree splits a crowded square of its area into four smaller squares, again and again. Entries outside the area still work, and they stay in the root square. The table `options` is optional.
-
-| Key | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `maxEntries` | integer | `8` | How many entries a square holds before it splits in four. |
-| `maxDepth` | integer | `8` | How many times squares may split, from 0 to 16. |
-
-An empty area, a `maxEntries` of 0 or a `maxDepth` outside 0 to 16 raises `A quadtree needs an area of positive size, room for an entry per quadrant and a depth from 0 to 16.`
-
-```lua
-local spatial2d = require('haylen.spatial2d')
-
-local tree = spatial2d.newQuadTree({0, 0, 4096, 4096}, {maxEntries = 4, maxDepth = 6})
-print(tree.area.width, tree.nodeCount) -- 4096.0 1
-```
-
-### spatial2d.newAabbTree(margin)
-
-Returns an [`AabbTree2D`](#aabbtree2d), a dynamic tree of bounding boxes. It keeps a box around each entry that is `margin` units larger on every side, `4` by default, and it moves an entry in the tree only when the entry leaves that box. Larger margins make more small moves free, and smaller ones make queries tighter. A margin that is negative or not finite raises `An AABB tree needs a finite margin of zero or more.`
-
-```lua
-local spatial2d = require('haylen.spatial2d')
-
-local tree = spatial2d.newAabbTree(8)
-print(tree.margin, tree.height) -- 8.0 0
-```
-
-### spatial2d.newKdTree()
-
-Returns an empty [`KdTree2D`](#kdtree2d), a tree of points that splits space along x and y in turn. It answers nearest queries fastest, and it is rebuilt with `kdTree:build` after its points change.
-
-```lua
-local spatial2d = require('haylen.spatial2d')
-
-local trees = spatial2d.newKdTree()
-trees:set({kind = 'oak'}, 120, 80)
-trees:build()
-print(trees.size, trees.built) -- 1 true
-```
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`spatial2d.newHashGrid(cellSize)`](#spatial2dnewhashgridcellsize) | A spatial hash | [HashGrid2D](#hashgrid2d) |
+| [`spatial2d.newQuadTree(area, options)`](#spatial2dnewquadtreearea-options) | A quadtree | [QuadTree](#quadtree) |
+| [`spatial2d.newAabbTree(margin)`](#spatial2dnewaabbtreemargin) | A dynamic tree of boxes | [AabbTree2D](#aabbtree2d) |
+| [`spatial2d.newKdTree()`](#spatial2dnewkdtree) | An empty tree of points | [KdTree2D](#kdtree2d) |
+| [`spatial2d.raycastGrid(grid, from, to, cellSize)`](#spatial2draycastgridgrid-from-to-cellsize) | The hit on the first solid cell of a ray, or `nil` | [Grid algorithms](#grid-algorithms) |
+| [`spatial2d.traverseGrid(from, to, cellSize)`](#spatial2dtraversegridfrom-to-cellsize) | The cells a segment crosses | [Grid algorithms](#grid-algorithms) |
+| [`spatial2d.line(x1, y1, x2, y2)`](#spatial2dlinex1-y1-x2-y2) | The cells of a line | [Grid algorithms](#grid-algorithms) |
+| [`spatial2d.circle(x, y, radius)`](#spatial2dcirclex-y-radius) | The outline of a circle of cells | [Grid algorithms](#grid-algorithms) |
+| [`spatial2d.fieldOfView(grid, x, y, radius)`](#spatial2dfieldofviewgrid-x-y-radius) | The cells that a cell sees | [Grid algorithms](#grid-algorithms) |
+| [`spatial2d.visibilityPolygon(origin, walls, bounds)`](#spatial2dvisibilitypolygonorigin-walls-bounds) | The area in sight among walls | [Grid algorithms](#grid-algorithms) |
+| [`spatial2d.floodFill(grid, x, y, options)`](#spatial2dfloodfillgrid-x-y-options) | The connected cells of one value | [Grid algorithms](#grid-algorithms) |
+| [`spatial2d.components(grid, options)`](#spatial2dcomponentsgrid-options) | A grid of regions and their count | [Grid algorithms](#grid-algorithms) |
+| [`spatial2d.newCellGrid(width, height, value)`](#spatial2dnewcellgridwidth-height-value) | A grid of integer cells | [CellGrid](#cellgrid) |
+| [`spatial2d.newUnionFind(count)`](#spatial2dnewunionfindcount) | A union-find of elements | [UnionFind](#unionfind) |
+| [`spatial2d.screenRay(camera, x, y)`](#spatial2dscreenraycamera-x-y) | The world ray under a screen point | [Screen picking](#screen-picking) |
+| [`spatial2d.newOverlapWorld(options)`](#spatial2dnewoverlapworldoptions) | An overlap world | [OverlapWorld](#overlapworld) |
 
 ## Structure methods
 
@@ -289,6 +257,19 @@ bullets:set({damage = 2}, {10, 10, 4, 4})
 print(bullets.size, bullets.cellSize) -- 1 32.0
 ```
 
+### spatial2d.newHashGrid(cellSize)
+
+Returns a [`HashGrid2D`](#hashgrid2d), a spatial hash whose cells are `cellSize` units wide and high. A spatial hash files every entry under the cells that its rectangle covers. A cell size about the size of a typical entity, or a little larger, keeps queries fast. A size that is not positive and finite raises `A spatial hash needs a positive cell size.`
+
+A stored rectangle covers at most 65536 cells, or `hash:set` raises `A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.`. It lies within 536870912 cells of the origin, or `hash:set` raises `A spatial hash entry must lie within 536870912 cells of the origin.`. A query never costs much more than a visit to every stored value, so a huge area, or a point or a ray far from every entry, stays cheap.
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local hash = spatial2d.newHashGrid(64)
+print(hash.cellSize) -- 64.0
+```
+
 ## QuadTree
 
 A `QuadTree` is a quadtree that [`spatial2d.newQuadTree`](#spatial2dnewquadtreearea-options) returns. It suits entries of very different sizes spread over a known area. It has the [structure methods](#structure-methods) `tree:set`, `tree:remove`, `tree:has`, `tree:bounds`, `tree:query`, `tree:queryCircle`, `tree:queryPoint`, `tree:raycast`, `tree:nearest`, `tree:kNearest`, `tree:pick` and `tree:clear`.
@@ -307,6 +288,24 @@ for index = 1, 10 do
     level:set({id = index}, {index * 150, index * 150, 20, 20})
 end
 print(level.size, level.nodeCount > 1) -- 10 true
+```
+
+### spatial2d.newQuadTree(area, options)
+
+Returns a [`QuadTree`](#quadtree) over the rectangle `area`. A quadtree splits a crowded square of its area into four smaller squares, again and again. Entries outside the area still work, and they stay in the root square. The table `options` is optional.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `maxEntries` | integer | `8` | How many entries a square holds before it splits in four. |
+| `maxDepth` | integer | `8` | How many times squares may split, from 0 to 16. |
+
+An empty area, a `maxEntries` of 0 or a `maxDepth` outside 0 to 16 raises `A quadtree needs an area of positive size, room for an entry per quadrant and a depth from 0 to 16.`
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local tree = spatial2d.newQuadTree({0, 0, 4096, 4096}, {maxEntries = 4, maxDepth = 6})
+print(tree.area.width, tree.nodeCount) -- 4096.0 1
 ```
 
 ## AabbTree2D
@@ -329,6 +328,17 @@ end
 print(ships.size, ships.height, ships.margin)
 ```
 
+### spatial2d.newAabbTree(margin)
+
+Returns an [`AabbTree2D`](#aabbtree2d), a dynamic tree of bounding boxes. It keeps a box around each entry that is `margin` units larger on every side, `4` by default, and it moves an entry in the tree only when the entry leaves that box. Larger margins make more small moves free, and smaller ones make queries tighter. A margin that is negative or not finite raises `An AABB tree needs a finite margin of zero or more.`
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local tree = spatial2d.newAabbTree(8)
+print(tree.margin, tree.height) -- 8.0 0
+```
+
 ## KdTree2D
 
 A `KdTree2D` is a tree of points that [`spatial2d.newKdTree`](#spatial2dnewkdtree) returns. It suits points that rarely change, when nearest queries come most often. Its points change freely, but a query needs a [`kdTree:build`](#kdtreebuild) after a change. It has the [structure methods](#structure-methods) `kdTree:remove`, `kdTree:has`, `kdTree:query`, `kdTree:queryCircle`, `kdTree:queryPoint`, `kdTree:raycast`, `kdTree:nearest`, `kdTree:kNearest`, `kdTree:pick` and `kdTree:clear`, and the methods below.
@@ -337,6 +347,19 @@ A `KdTree2D` is a tree of points that [`spatial2d.newKdTree`](#spatial2dnewkdtre
 | --- | --- | --- | --- |
 | `size` | integer | read | The number of stored values. |
 | `built` | boolean | read | The value is `false` when the tree changed since its last `kdTree:build`. |
+
+### spatial2d.newKdTree()
+
+Returns an empty [`KdTree2D`](#kdtree2d), a tree of points that splits space along x and y in turn. It answers nearest queries fastest, and it is rebuilt with `kdTree:build` after its points change.
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local trees = spatial2d.newKdTree()
+trees:set({kind = 'oak'}, 120, 80)
+trees:build()
+print(trees.size, trees.built) -- 1 true
+```
 
 ### kdTree:set(value, x, y, radius)
 
@@ -380,19 +403,6 @@ print(stars.built, stars:kNearest(290, 40, 1)[1]) -- true comet
 ## Grid algorithms
 
 The grid algorithms work on a [`CellGrid`](#cellgrid), a grid of integer cells such as a tile map or the map of a generator of [`haylen.procedural2d`](procedural2d.md). Cells count from 0 by column and row. Unless an algorithm compares values, `0` is open ground and any other value is solid.
-
-### spatial2d.newCellGrid(width, height, value)
-
-Returns a [`CellGrid`](#cellgrid) of `width` columns and `height` rows whose cells all hold the integer `value`, `0` by default. A size that is not positive, or a grid of more than 16777216 cells, raises `A cell grid needs a positive size of at most 16777216 cells.`
-
-```lua
-local spatial2d = require('haylen.spatial2d')
-
-local dungeon = spatial2d.newCellGrid(40, 30)
-for column = 0, 39 do
-    dungeon:set(column, 0, 1)
-end
-```
 
 ### spatial2d.raycastGrid(grid, from, to, cellSize)
 
@@ -521,18 +531,6 @@ local islands, count = spatial2d.components(sea, {background = 0})
 print(count, islands:get(2, 1), islands:get(8, 5)) -- 2 1 2
 ```
 
-### spatial2d.newUnionFind(count)
-
-Returns a [`UnionFind`](#unionfind) of `count` elements, `0` by default, numbered from 1, each in a set of its own. More than 16777216 elements raise `A union-find holds at most 16777216 elements.`
-
-```lua
-local spatial2d = require('haylen.spatial2d')
-
-local sets = spatial2d.newUnionFind(10)
-sets:unite(1, 2)
-print(sets:connected(2, 1), sets.setCount) -- true 9
-```
-
 ## CellGrid
 
 A `CellGrid` holds one integer per cell, which [`spatial2d.newCellGrid`](#spatial2dnewcellgridwidth-height-value) and the generators of [`haylen.procedural2d`](procedural2d.md) return. Cells are addressed by column and row, counting from 0 like the cells of Tiled. The methods `grid:get` and `grid:set` raise an error such as `Cell 9,9 is outside the cell grid.` for a cell outside the grid.
@@ -541,6 +539,19 @@ A `CellGrid` holds one integer per cell, which [`spatial2d.newCellGrid`](#spatia
 | --- | --- | --- | --- |
 | `width` | integer | read | The number of columns. |
 | `height` | integer | read | The number of rows. |
+
+### spatial2d.newCellGrid(width, height, value)
+
+Returns a [`CellGrid`](#cellgrid) of `width` columns and `height` rows whose cells all hold the integer `value`, `0` by default. A size that is not positive, or a grid of more than 16777216 cells, raises `A cell grid needs a positive size of at most 16777216 cells.`
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local dungeon = spatial2d.newCellGrid(40, 30)
+for column = 0, 39 do
+    dungeon:set(column, 0, 1)
+end
+```
 
 ### grid:get(x, y)
 
@@ -596,6 +607,18 @@ A `UnionFind` keeps the elements 1 to `size` in sets that never share an element
 | --- | --- | --- | --- |
 | `size` | integer | read | The number of elements. |
 | `setCount` | integer | read | The number of sets. |
+
+### spatial2d.newUnionFind(count)
+
+Returns a [`UnionFind`](#unionfind) of `count` elements, `0` by default, numbered from 1, each in a set of its own. More than 16777216 elements raise `A union-find holds at most 16777216 elements.`
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local sets = spatial2d.newUnionFind(10)
+sets:unite(1, 2)
+print(sets:connected(2, 1), sets.setCount) -- true 9
+```
 
 ### sets:add()
 
@@ -707,6 +730,14 @@ A box reaches another box when three things hold:
 
 A box rectangle is relative to the origin of an entity that faces right. A mirrored entity places the box `x, y, width, height` at `-x - width, y`. Contacts come in the order the entities were added, then by box, whatever moved and whatever found the pairs, so results repeat in replays. Entities, sets and boxes count from 1. An id that is not an integer of 32 bits raises `bad argument #1 to 'place' (an id is an integer of 32 bits)`, with the position and the name of the method.
 
+## OverlapWorld
+
+An `OverlapWorld` is the world that [`spatial2d.newOverlapWorld`](#spatial2dnewoverlapworldoptions) returns.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `entityCount` | integer | read | The number of entities. |
+
 ### spatial2d.newOverlapWorld(options)
 
 Returns an [`OverlapWorld`](#overlapworld). The table `options` is optional.
@@ -724,14 +755,6 @@ local spatial2d = require('haylen.spatial2d')
 
 local world = spatial2d.newOverlapWorld({kinds = {'body', 'hit', 'grab'}, cellSize = 128})
 ```
-
-## OverlapWorld
-
-An `OverlapWorld` is the world that [`spatial2d.newOverlapWorld`](#spatial2dnewoverlapworldoptions) returns.
-
-| Property | Type | Access | Meaning |
-| --- | --- | --- | --- |
-| `entityCount` | integer | read | The number of entities. |
 
 ### world:defineSet(boxes)
 

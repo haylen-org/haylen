@@ -99,7 +99,7 @@ haylen project inspect ~/apps/my-game --target ios-simulator
 | `plugin new <folder> [--id]` | Makes a plugin, as [create it](#create-it) describes. The option `--id` defaults to the folder name. |
 | `project inspect [app] [--target] [--config]` | Shows what the plugins give one target: the plugins in load order with their parameters, and every merged contribution with its owners. |
 
-The option `--app` takes an app folder and defaults to the current folder. The options `--ref` and `--path` belong to a git repository, so with a plugin folder they fail with a sentence that says to leave them out. A `--path` that leads outside the repository, as an absolute path, through `..` or through a symbolic link, fails too. The [command reference](../tools/commands.md) lists every option and the JSON result of each command.
+The option `--app` takes an app folder and defaults to the current folder. The options `--ref` and `--path` belong to a git repository, so with a plugin folder they fail with a sentence that says to leave them out. A `--path` that leads outside the repository, as an absolute path, through `..` or through a symbolic link, fails too. The [command reference](../reference/commands.md) lists every option and the JSON result of each command.
 
 ## plugin.json
 
@@ -134,141 +134,29 @@ The manifest says what the plugin is, how it works on each platform, which value
 }
 ```
 
-| Key | Required | Value |
-| --- | --- | --- |
-| `interface` | Yes | The version of the plugin interface of Haylen that the manifest follows, `1`, apart from the version of the plugin. |
-| `id` | Yes | The id in dash-case, which is the key of the plugin in the `plugins` of `haylen.json` and the name of its folder in the package. |
-| `name` | Yes | The name that people read. |
-| `version` | Yes | The release version of the plugin, one to three numbers separated by dots, such as `1.2.0`. |
-| `description` | Yes | What the plugin does, in one sentence. |
-| `implementations` | Yes | How the plugin works on each platform it supports, by the names `ios`, `catalyst`, `tvos`, `visionos`, `macos`, `android`, `web`, `windows` and `linux`: `native` when its native part runs there, and `lua` when its Lua API works alone. A platform that is missing does not support the plugin, and the build of the app for it fails. |
-| `dependencies` | No | The plugins that the app must list as well, by id, with the oldest version of the same major version that this plugin works with, such as `{"cloud": "1.2"}` for `cloud-analytics`. |
-| `permissions` | No | The names of the [permissions](#permissions) that the plugin owns, in camelCase, such as `camera`, and no two plugins of an app declare the same name. |
-| `parameters` | No | The values that an app gives the plugin in `haylen.json`, by name in camelCase. |
-| `contributions` | No | What the plugin brings to the projects of its platforms, as a list of [contributions](#contributions). |
+The [reference of `plugin.json`](../reference/plugin-json.md#keys) lists every key of the manifest.
 
 A platform where the plugin works with its Lua API alone runs no native part. There, calls to the native side fail with the code `noHandler`. Every platform with a native part needs a contribution that brings it, and a contribution names only platforms where the plugin has a native part.
 
-### Parameters
-
-Each parameter is an object with these keys:
-
-| Key | Required | Value |
-| --- | --- | --- |
-| `type` | Yes | `string`, `number`, `integer`, `boolean`, `array`, `object` or `file`. A `file` is a path relative to the app folder. |
-| `description` | Yes | What the value means. The tooling repeats it when a required value is missing. |
-| `platforms` | No | The platforms of the plugin where the parameter applies and, when it is required, where a value must exist. It is every platform of the plugin by default. |
-| `required` | No | Whether the app must give a value for the platforms of the parameter. It is `false` by default. |
-| `default` | No | The value of an optional parameter that the app leaves out, of the type of the parameter. |
-
-A value that differs per platform uses one parameter per platform, such as `iosAppId` and `androidAppId`. So nothing resolves platform values while the app runs.
-
-### Placeholders
-
-The placeholder `${name}` in a string of a contribution becomes the value of the parameter `name`. Each placeholder must name a declared parameter.
-
-- A string that is only a placeholder takes the value with its type. So `"${testMode}"` becomes a boolean in `Info.plist`.
-- A placeholder inside longer text inserts the value as text.
-- A key or an item whose placeholders name a parameter without a value is left out.
-- A contribution takes only the parameters that apply to its platforms. So a parameter of `macos` alone, such as one that turns on the entitlements of the hardened runtime, leaves its keys out of the other platforms.
-- Shell expansions such as `${BUILD_DIR%/Build/*}` are no placeholders, and they stay as they are.
-- Build settings in paths and scripts use the form `$(NAME)`.
-
-### Contributions
-
-Every contribution is an object with its `type`, the `platforms` it applies to and the fields of its type. The backend of each platform declares the types it reads, with the JSON Schema of their fields, the identity that tells two contributions of one type apart and the way contributions of several owners merge. The tooling checks every contribution against its type when it resolves the plugins, so a field that the type refuses fails before a project exists, with the plugin and the key named. A type that no installed backend declares for a platform of the contribution fails the same way.
-
-Each type merges in one of four modes. The owners of a contribution are the plugins and, for the keys that the sections of `haylen.json` turn into contributions, the app. No owner wins by the order in which the files were read: every conflict stops the resolution with both owners and both files named.
-
-| Mode | Rule |
-| --- | --- |
-| `accumulate` | Every contribution stays, such as every `appleSources` folder and every `gradleModule`. |
-| `unique` | One contribution stays for each identity, such as one `swiftPackage` for each `url`. A second contribution with the same identity must be equal in every field, or the resolution fails with the fields that differ, except the lists that the type joins, such as the `products` of a `swiftPackage`, which gather the items of every owner. |
-| `dictionary` | The `values` objects merge key by key. Objects inside them merge the same way, arrays gain the items they lack, and two different values of one key fail. So two ad plugins share `SKAdNetworkItems` of `Info.plist`. |
-| `exclusive` | One owner of an app alone may give the type, such as the delivery of the packs of the content. |
-
-The app gives contributions of its own through the sections of `platforms` in `haylen.json`: `infoPlist` and `entitlements` of the sections `ios`, `catalyst`, `tvos`, `visionos` and `macos`, and `privacy` of the section `apple`. They merge with those of the plugins under the owner `app`, by the rules of their type, so the app never replaces a key that a plugin needs. The command `haylen project inspect` shows every merged contribution with its owners. The [distribution guide](../tools/distribution.md) describes the sections of `platforms`.
-
-#### Native library contributions
-
-Every backend that loads native libraries reads these types, and the core of the tooling reads the oldest system version itself.
-
-| Type | Fields | Merge | Value |
-| --- | --- | --- | --- |
-| `nativeLibrary` | `files` or `cmake`, `link`, `symbols` | `accumulate` | A native library, with the rules of the entries of the `native` section of `haylen.json` that the [native code guide](native.md#packaging-libraries-with-an-app) describes, and its paths relative to the plugin folder. It takes the id of the plugin as its name, and joins the native libraries of the app, as [native libraries](#native-libraries) describes. |
-| `minimumSystemVersion` | `version` | `accumulate` | The oldest version of the system of its platforms that the plugin runs on, which raises the minimum of the app only where the app allows it. |
-
-The init function of the library takes the id with underscores for its dashes, since a C function is named with an identifier. So `native.load('my-plugin', {init = 'my_plugin_haylen_init'})` loads the library of `my-plugin`.
-
-```json
-{"type": "nativeLibrary", "platforms": ["macos", "windows", "linux"], "cmake": "native"}
-```
-
-#### Apple contributions
-
-The Apple platforms are `ios`, `catalyst`, `tvos`, `visionos` and `macos`, and every Apple contribution names those it applies to.
-
-| Type | Fields | Merge | Value |
-| --- | --- | --- | --- |
-| `appleClass` | `name` | `accumulate` | The Objective-C runtime name of the plugin class, which Swift classes declare with `@objc(Name)`. The runtime reads it from the package and creates the class on the platforms of the contribution where the plugin has a native part, as [the Apple plugin class](#the-apple-plugin-class) describes. |
-| `appleSources` | `path` | `accumulate` | The folder whose Swift, Objective-C, C and C++ files compile into the app. |
-| `swiftPackage` | `name`, `url`, `exactVersion`, `products` | `unique` by `url` | A Swift package with its repository `url` (https or ssh), one `exactVersion` and the `products` that the app links. Two plugins that name one package by its url must agree on its `name` and `exactVersion`, and the app links the `products` of both, so several plugins of one SDK share its package. Another version of one package stops the resolution. |
-| `framework` | `name` | `unique` by `name` | A system framework or library, such as `StoreKit.framework` or `libz.tbd`. |
-| `binaryFramework` | `path`, `embed` | `unique` by `path` | A framework that the plugin ships in its folder, such as the `.xcframework` of an SDK that its vendor hands out as a file, with `embed` `true` for a dynamic framework, which the app embeds and signs, and `false` for a static one, which the app only links. Two plugins that ship a framework of the same file name stop the build. |
-| `infoPlist` | `values` | `dictionary` | Keys merged into the `Info.plist` of the app. A text may name the build settings of the identity of the app, `$(HAYLEN_BUNDLE_IDENTIFIER)`, `$(HAYLEN_PRODUCT_NAME)`, `$(HAYLEN_DISPLAY_NAME)`, `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)`, such as `"group.$(HAYLEN_BUNDLE_IDENTIFIER)"`. |
-| `entitlements` | `values` | `dictionary` | Keys merged into the entitlements of the app, whose texts may name the same build settings. |
-| `privacy` | `values` | `dictionary` | Declarations merged into the privacy manifest of the app: `NSPrivacyAccessedAPITypes`, each with its `NSPrivacyAccessedAPIType` and `NSPrivacyAccessedAPITypeReasons`, `NSPrivacyCollectedDataTypes`, `NSPrivacyTracking` and `NSPrivacyTrackingDomains`, as the [privacy manifest](../tools/distribution.md) describes. |
-| `appleResource` | `path` | `accumulate` | A file copied to the root of the app bundle: a path inside the plugin, or a placeholder of a `file` parameter such as `"${servicesPlist}"`, which names a file of the app and is left out while the parameter has no value. |
-| `buildScript` | `name`, `script`, `inputFiles`, `outputFiles`, `basedOnDependencyAnalysis` | `accumulate` | A post-build phase. A script that writes no file sets `basedOnDependencyAnalysis` to `false`, so it runs on every build without a warning of Xcode. A script reaches the checkout of a Swift package of the plugins at `"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/<package>"`, where `<package>` is the last part of the URL of the package. |
-| `appExtension` | `name`, `kind`, `point`, `sources`, `minimumVersion`, `frameworks`, `infoPlist`, `entitlements` | `unique` by `name` | An app extension that the app embeds, such as the downloader extension of Background Assets, on iOS, tvOS, visionOS and macOS: its name of letters and digits that starts with a capital letter, `extensionKit` or `appExtension` as its kind, the extension point that the system runs it for, the folder of its code, and optionally the oldest system version it runs on, its system frameworks, its `Info.plist` keys and its entitlements. Its bundle identifier is the one of the app followed by its name in lowercase. Two plugins that add an extension of the same name stop the build. |
-| `assetPacks` | `prefetch` | `exclusive` | Declares that the plugin delivers the named [packs](../content/content.md#delivery) of the content from the App Store with Background Assets, such as `{"prefetch": "${prefetchPacks}"}`. The Apple release build then packs every named pack into an asset pack of Background Assets with `ba-package`, as [distribution](../tools/distribution.md) describes. The packs that `prefetch` lists download with the install and every update, and the others when the app asks for them. Only one plugin of an app may declare it. |
-
-#### Android contributions
-
-| Type | Fields | Merge | Value |
-| --- | --- | --- | --- |
-| `gradleModule` | `path` | `accumulate` | The folder of the Android library module, with `build.gradle.kts` and `src/main/AndroidManifest.xml`. The module applies `com.android.library`. It depends on the engine with `implementation("dev.haylen:haylen-plugins:$haylenEngineVersion")`, and on the [other engine libraries](#engine-libraries) it uses. The line `val haylenEngineVersion = extra["haylenEngineVersion"] as String` reads the engine version that the Android project gives every module. |
-| `mavenRepository` | `url` | `unique` by `url` | The https address of a Maven repository that the module and its Gradle plugins come from, besides Google and Maven Central, such as `https://maven.example.com/releases`, so a plugin brings an SDK that its vendor publishes in a repository of its own. |
-| `gradlePlugin` | `id`, `version` | `unique` by `id` | A Gradle plugin that the app module applies, such as `{"id": "com.example.services", "version": "1.0.0"}`. |
-| `manifestPlaceholder` | `name`, `value` | `unique` by `name` | A manifest placeholder, whose text value the manifest of the module reads as `${name}`. |
-| `projectFile` | `from`, `to` | `unique` by `to` | A copy into the Android project. The value `from` is a path inside the plugin or a placeholder of a `file` parameter, and `to` is a path inside the project, such as `app/services.json`. |
-| `assetPacks` | `fastFollow` | `exclusive` | Declares that the plugin delivers the named [packs](../content/content.md#delivery) of the content from Google Play, such as `{"fastFollow": "${fastFollowPacks}"}`. The Android release build then writes an asset pack of Google Play for every named pack, as [distribution](../tools/distribution.md) describes. Play downloads the packs that `fastFollow` lists, by their names in `content.delivery`, right after the install, and the others when the app asks for them. Only one plugin of an app may declare it. The plugin adds a source of packs with `content.addPackSource`, which answers each pack with the folder where Play placed it. |
-
-#### Web contributions
-
-| Type | Fields | Merge | Value |
-| --- | --- | --- | --- |
-| `webModule` | `path` | `accumulate` | The ES module in the `web` folder that the loader imports, such as `web/ads.js`. Its default export is `load(context)`, and it may import the other modules of the folder with relative paths. |
-
-#### Desktop contributions
-
-Windows and Linux open an app from a link of a URL scheme that the app registers with the system. The contributions of the type `urlScheme` name those schemes, and the projects of Windows and Linux register them, as the [distribution guide](../tools/distribution.md) describes. Each link reaches the app as the event [`linkOpened`](../lua-api/events.md#app-and-plugins), so the Lua API of a plugin hears links on the desktops without a native part. A page is the link that opened it, so the web module of a plugin reads the links of its scheme from the address of the page, such as from its hash, and hands each one to the app with `context.openLink(url)`, which the app hears as `linkOpened` too.
-
-| Type | Fields | Merge | Value |
-| --- | --- | --- | --- |
-| `urlScheme` | `scheme` | `unique` by `scheme` | The scheme, such as `camera-scanner`, or a string parameter that holds one, such as `${scheme}`. |
-
-```json
-{"type": "urlScheme", "platforms": ["windows", "linux"], "scheme": "${scheme}"}
-```
+The [reference of `plugin.json`](../reference/plugin-json.md) lists the keys of the parameters, the placeholders and every type of contribution with its fields and how it merges.
 
 ### Validation
 
 The tooling loads every plugin that `haylen.json` lists from where its entry takes it, and checks each `plugin.json` against its schema and the fields of its contributions against the types of their backends. It checks the values of the app against the parameters of the plugin for each platform it builds for. It fails with every problem at once, each with its file and its key. These are the problems:
 
-- an entry with an unknown key, a `path`, `git` or `ref` that is no text, `parameters` that are no object, or a `ref` without `git`;
-- an id whose folder, or the folder or repository that its entry names, has no `plugin.json`;
-- a `plugin.json` whose `id` differs from the key of its entry;
-- any problem of a `plugin.json`, such as a contribution of an unknown type, a contribution for a platform without a native part, a native part without a contribution that brings it, or a placeholder of an undeclared parameter;
-- a plugin whose dependency `haylen.json` does not list, or lists in an older version or another major version;
-- a permission that two plugins of the app declare;
-- a value for a parameter that the plugin does not declare;
-- a value of the wrong type;
-- a required parameter without a value for the platform;
-- a `file` parameter whose file does not exist;
-- two contributions that conflict, such as one key of `Info.plist` with two values;
-- a plugin whose `implementations` leave out the platform of the target;
-- a plugin of a git repository that `haylen.lock` does not pin, in a Release build.
+- An entry with an unknown key, a `path`, `git` or `ref` that is no text, `parameters` that are no object, or a `ref` without `git`.
+- An id whose folder, or the folder or repository that its entry names, has no `plugin.json`.
+- A `plugin.json` whose `id` differs from the key of its entry.
+- Any problem of a `plugin.json`, such as a contribution of an unknown type, a contribution for a platform without a native part, a native part without a contribution that brings it, or a placeholder of an undeclared parameter.
+- A plugin whose dependency `haylen.json` does not list, or lists in an older version or another major version.
+- A permission that two plugins of the app declare.
+- A value for a parameter that the plugin does not declare.
+- A value of the wrong type.
+- A required parameter without a value for the platform.
+- A `file` parameter whose file does not exist.
+- Two contributions that conflict, such as one key of `Info.plist` with two values.
+- A plugin whose `implementations` leave out the platform of the target.
+- A plugin of a git repository that `haylen.lock` does not pin, in a Release build.
 
 A parameter applies to the platforms it lists, or to every platform of the plugin when it lists none. So a missing required value and a missing file fail only the builds for those platforms. The same holds for a plugin that a platform does not support: it fails the builds for that platform alone, and the sentence names the platforms that the plugin supports.
 
@@ -294,14 +182,7 @@ Plugins load in the order of `haylen.json`, except that every plugin loads after
 }
 ```
 
-The key `plugins` maps the id of every plugin that the app uses to its entry, an object with four optional keys:
-
-| Key | Value |
-| --- | --- |
-| `path` | The folder of the plugin, absolute or relative to the app folder. Next to `git`, it is the folder of the plugin inside the repository, relative to its root, which never leads outside the repository. |
-| `git` | The address of the git repository of the plugin, which holds `plugin.json` at its root, or in the folder that `path` names. A local repository is a path, absolute or relative to the app folder. |
-| `ref` | The branch, tag or commit of `git`, `HEAD` of the repository when it is left out. |
-| `parameters` | The values of the parameters of the plugin. |
+The key `plugins` maps the id of every plugin that the app uses to its entry, whose keys the [reference of `haylen.json`](../reference/haylen-json.md#plugins) lists.
 
 An entry without `path` and `git` is the folder `plugins/<id>/` of the app. The `id` of the `plugin.json` equals the key of its entry. The values of `parameters` are plain JSON values, and a parameter that the app leaves out takes its default. The README of every plugin lists its parameters.
 
@@ -349,7 +230,7 @@ The Apple backend generates one XcodeGen project for each target, with one app t
 
 1. The app target compiles the folders and files of the `appleSources` contributions where they lie in the plugin folders, which Xcode synchronizes, next to the `sources` of the `apple` section of `haylen.json` and the `cpp` sources of a C++ app.
 2. It links the products of every `swiftPackage`, which Swift Package Manager of Xcode resolves at their exact versions, the system frameworks of every `framework`, and the shipped frameworks of every `binaryFramework`, embedding the dynamic ones. A framework that the engine already links joins the target once.
-3. It joins the `Info.plist` of the template of the platform with the keys of the engine and the `infoPlist` contributions of the plugins and the app. The `entitlements` contributions make the entitlements of the app, and the `privacy` contributions join the privacy manifest of the engine. Every conflict fails, as [contributions](#contributions) describes.
+3. It joins the `Info.plist` of the template of the platform with the keys of the engine and the `infoPlist` contributions of the plugins and the app. The `entitlements` contributions make the entitlements of the app, and the `privacy` contributions join the privacy manifest of the engine. Every conflict fails, as [contributions](../reference/plugin-json.md#contributions) describes.
 4. It copies every `appleResource` to the root of the app bundle, runs every `buildScript` as a post-build phase and adds a target for every `appExtension`, which the app embeds.
 
 Swift sources reach the engine through the bridging header `HaylenBridging.h` of the project. The runtime reads the plugin classes and their order from the package, as [the Apple plugin class](#the-apple-plugin-class) describes. Since every target has a project of its own, a plugin that lists `ios` and leaves out `catalyst` simply brings nothing to the Mac Catalyst app.
@@ -375,7 +256,7 @@ The loader maps `haylen-plugin:<id>` to the module of every plugin in an import 
 
 #### Native libraries
 
-The [`nativeLibrary` contribution](#native-library-contributions) of a plugin joins the native libraries of the app, so the backend builds and places it like an entry of the `native` section of `haylen.json`, as the [native code guide](native.md#packaging-libraries-with-an-app) describes. The desktop player, the Windows and Linux apps, the Apple apps and Android receive it, on the platforms it lists.
+The [`nativeLibrary` contribution](../reference/plugin-json.md#native-library-contributions) of a plugin joins the native libraries of the app, so the backend builds and places it like an entry of the `native` section of `haylen.json`, as the [native code guide](native.md#packaging-libraries-with-an-app) describes. The desktop player, the Windows and Linux apps, the Apple apps and Android receive it, on the platforms it lists.
 
 #### C++ apps
 
@@ -749,7 +630,7 @@ export default function load(context) {
 The rules of browsers apply to every page screen:
 
 - **Activation.** Browsers open a popup only right after a click, a tap or a key press of the person. Otherwise `screen.popup` reports the code `popupBlocked`. The runtime opens the screen in the frame after the app asked for it. So an app that opens the screen in answer to a tap, such as from a button of `haylen.ui`, stays within the few seconds that browsers allow. An app that first awaits a network request may take too long. It opens the screen first and lets the page of the popup load what it needs, or it asks the person to tap again. Safari is stricter than other browsers with popups that do not open while the handler of the event runs.
-- **Cross-origin opener policy.** The header `Cross-Origin-Opener-Policy: same-origin` on the page of the app puts every popup of another origin into a browsing context group of its own. That cuts the link between the popup and the app, so the popup cannot answer through `postMessage`, and the app cannot tell when it closes. The web runtime has one thread and needs no cross-origin isolation, so pages leave the header out. The commands `haylen app run` and `haylen serve` leave it out unless `--coop` asks for it, as the [command reference](../tools/commands.md) describes. A site that needs isolation for other reasons sends `same-origin-allow-popups`, or lets its callback pages answer on the channel `haylen-screens`.
+- **Cross-origin opener policy.** The header `Cross-Origin-Opener-Policy: same-origin` on the page of the app puts every popup of another origin into a browsing context group of its own. That cuts the link between the popup and the app, so the popup cannot answer through `postMessage`, and the app cannot tell when it closes. The web runtime has one thread and needs no cross-origin isolation, so pages leave the header out. The commands `haylen app run` and `haylen serve` leave it out unless `--coop` asks for it, as the [command reference](../reference/commands.md) describes. A site that needs isolation for other reasons sends `same-origin-allow-popups`, or lets its callback pages answer on the channel `haylen-screens`.
 - **Mobile browsers** open popups as tabs. That hides the tab of the app and sends the app to the background while the popup shows.
 
 ### Desktop screens
@@ -1634,13 +1515,13 @@ The overlay places the element again whenever the canvas, the page or the elemen
 
 ## The desktop part
 
-The desktop part of a plugin is a C++ library in `native/`, which its [`nativeLibrary` contribution](#native-library-contributions) names. The desktop player and the Windows and Linux apps load it. They have no registry of plugin classes, so the library is the native part there. The Lua API loads it with `native.load(id, {init = '<id with underscores>_haylen_init'})`, which hands the init function the [C interface of the engine](../lua-api/native.md#the-c-interface-of-the-engine). Through that interface the library:
+The desktop part of a plugin is a C++ library in `native/`, which its [`nativeLibrary` contribution](../reference/plugin-json.md#native-library-contributions) names. The desktop player and the Windows and Linux apps load it. They have no registry of plugin classes, so the library is the native part there. The Lua API loads it with `native.load(id, {init = '<id with underscores>_haylen_init'})`, which hands the init function the [C interface of the engine](../lua-api/native.md#the-c-interface-of-the-engine). Through that interface the library:
 
-- registers the methods of the plugin with `registerHandler`, whose handlers run on the frame thread, and answers them from any thread with `resolve`, among them the check and the request of the [permissions](#permissions) that the plugin owns;
-- sends events with `emit`;
-- declares itself the native part of the plugin with `registerPlugin`, which turns `handle.native` on;
-- hears the errors of the app with `registerErrorHandler`;
-- feeds the [streams](#streams) of the plugin and opens its [screens](#desktop-screens) over the window of the app.
+- Registers the methods of the plugin with `registerHandler`, whose handlers run on the frame thread, and answers them from any thread with `resolve`, among them the check and the request of the [permissions](#permissions) that the plugin owns.
+- Sends events with `emit`.
+- Declares itself the native part of the plugin with `registerPlugin`, which turns `handle.native` on.
+- Hears the errors of the app with `registerErrorHandler`.
+- Feeds the [streams](#streams) of the plugin and opens its [screens](#desktop-screens) over the window of the app.
 
 Native libraries receive no parameters, since they have no context. So the Lua API passes what the library needs in its calls. The library and its handlers belong to the process, so the init function runs again after a restart and registers its handlers again. On Linux the frame thread dispatches the default main context of GLib once per frame without waiting, so a library that uses GLib or GTK 3 on the frame thread, such as for a dialog over the window of the app, receives their signals there. The [native code guide](native.md#libraries-that-talk-to-the-app) explains such libraries.
 

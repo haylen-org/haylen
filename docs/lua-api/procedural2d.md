@@ -3,7 +3,7 @@
 The module `haylen.procedural2d` builds 2D content from rules and a seed. It scatters objects over areas, places entities by the shapes they occupy, grows caves, lays out dungeons, carves mazes, fills maps with Wave Function Collapse, builds Delaunay triangulations and Voronoi diagrams, and picks tiles by their neighbors. The same options and the same seed always give the same result. The [procedural generation guide](../2d/procedural.md) explains which generator suits which content, how to build whole levels and how to keep generation off the frame.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 ```
 
 ## Seeds, maps and promises
@@ -16,13 +16,51 @@ Functions whose names end in `Async` take the same options and return a promise 
 
 ```lua
 local async = require('async')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 async.spawn(function()
-    local cave = procedural.cellularAutomatonAsync({width = 256, height = 256, seed = 7}):await()
+    local cave = procedural2d.cellularAutomatonAsync({width = 256, height = 256, seed = 7}):await()
     print(cave.width, cave:get(0, 0)) -- 256 1
 end)
 ```
+
+## Functions
+
+The module has these functions. Each one is described in the section of what it makes or does.
+
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`procedural2d.region(description)`](#procedural2dregiondescription) | A region of a description | [Region](#region) |
+| [`procedural2d.scatter(options)`](#procedural2dscatteroptions) | A list of typed points | [Scattering](#scattering) |
+| [`procedural2d.scatterAsync(options)`](#procedural2dscatterasyncoptions) | A promise of typed points | [Scattering](#scattering) |
+| [`procedural2d.place(options)`](#procedural2dplaceoptions) | The placed entities and the count of each kind that found no room | [Placement](#placement) |
+| [`procedural2d.placeAsync(options)`](#procedural2dplaceasyncoptions) | A promise of the same result | [Placement](#placement) |
+| [`procedural2d.cellularAutomaton(options)`](#procedural2dcellularautomatonoptions) | A cave map | [Caves](#caves) |
+| [`procedural2d.cellularAutomatonAsync(options)`](#procedural2dcellularautomatonasyncoptions) | A promise of a cave map | [Caves](#caves) |
+| [`procedural2d.cellularAutomatonStep(grid, options)`](#procedural2dcellularautomatonstepgrid-options) | A new map after one smoothing step | [Caves](#caves) |
+| [`procedural2d.drunkardWalk(options)`](#procedural2ddrunkardwalkoptions) | A map of winding tunnels | [Caves](#caves) |
+| [`procedural2d.drunkardWalkAsync(options)`](#procedural2ddrunkardwalkasyncoptions) | A promise of a map of tunnels | [Caves](#caves) |
+| [`procedural2d.dungeon(options)`](#procedural2ddungeonoptions) | The map, its rooms and their connections | [Dungeons](#dungeons) |
+| [`procedural2d.dungeonAsync(options)`](#procedural2ddungeonasyncoptions) | A promise of the same table | [Dungeons](#dungeons) |
+| [`procedural2d.maze(options)`](#procedural2dmazeoptions) | A carved maze | [Mazes](#mazes) |
+| [`procedural2d.mazeAsync(options)`](#procedural2dmazeasyncoptions) | A promise of a carved maze | [Mazes](#mazes) |
+| [`procedural2d.newMaze(width, height)`](#procedural2dnewmazewidth-height) | A maze with every wall closed | [Maze](#maze) |
+| [`procedural2d.waveFunctionCollapse(options)`](#procedural2dwavefunctioncollapseoptions) | A map of tile numbers, or `nil` | [Wave Function Collapse](#wave-function-collapse) |
+| [`procedural2d.waveFunctionCollapseAsync(options)`](#procedural2dwavefunctioncollapseasyncoptions) | A promise of a map of tile numbers, or of `nil` | [Wave Function Collapse](#wave-function-collapse) |
+| [`procedural2d.waveFunctionCollapseRules(options)`](#procedural2dwavefunctioncollapserulesoptions) | The rules of a set of tiles | [WaveFunctionCollapseRules](#wavefunctioncollapserules) |
+| [`procedural2d.delaunay(points)`](#procedural2ddelaunaypoints) | A triangulation of points | [Delaunay](#delaunay) |
+| [`procedural2d.voronoi(points, bounds)`](#procedural2dvoronoipoints-bounds) | The Voronoi cells of points | [Triangulation and Voronoi](#triangulation-and-voronoi) |
+| [`procedural2d.voronoiAsync(points, bounds)`](#procedural2dvoronoiasyncpoints-bounds) | A promise of Voronoi cells | [Triangulation and Voronoi](#triangulation-and-voronoi) |
+| [`procedural2d.relax(points, bounds, iterations)`](#procedural2drelaxpoints-bounds-iterations) | The relaxed points | [Triangulation and Voronoi](#triangulation-and-voronoi) |
+| [`procedural2d.relaxAsync(points, bounds, iterations)`](#procedural2drelaxasyncpoints-bounds-iterations) | A promise of relaxed points | [Triangulation and Voronoi](#triangulation-and-voronoi) |
+| [`procedural2d.mask4(grid, x, y, edgesMatch)`](#procedural2dmask4grid-x-y-edgesmatch) | The mask of the four sides of a cell | [Autotiling](#autotiling) |
+| [`procedural2d.mask8(grid, x, y, edgesMatch)`](#procedural2dmask8grid-x-y-edgesmatch) | The mask of the eight neighbors of a cell | [Autotiling](#autotiling) |
+| [`procedural2d.blobIndex(mask)`](#procedural2dblobindexmask) | The blob index of a mask | [Autotiling](#autotiling) |
+| [`procedural2d.autotile4(grid, value, edgesMatch)`](#procedural2dautotile4grid-value-edgesmatch) | A grid of the masks of four sides | [Autotiling](#autotiling) |
+| [`procedural2d.autotile8(grid, value, edgesMatch)`](#procedural2dautotile8grid-value-edgesmatch) | A grid of blob indexes | [Autotiling](#autotiling) |
+| [`procedural2d.autotileWang(colors, wangSet, seed)`](#procedural2dautotilewangcolors-wangset-seed) | A grid of the tile ids of a Wang set | [Autotiling](#autotiling) |
+
+The fields `procedural2d.north`, `procedural2d.east`, `procedural2d.south` and `procedural2d.west` are the [sides of a maze cell](#procedural2dnorth-procedural2deast-procedural2dsouth-procedural2dwest).
 
 ## Regions
 
@@ -38,22 +76,9 @@ A region is an area to place things in. Every function that takes a region accep
 
 A circle or ring table accepts only `center`, `radius` and `innerRadius`, and another key raises `Unknown option "<key>".`. An inner radius below 0 or above the radius raises `A ring needs an inner radius between zero and its outer radius.`. A polygon without area raises `A polygon region needs an outline with an area.`. A Tiled object of another shape, such as a point or a polyline, raises `Only rectangle, ellipse and polygon objects have an area.`, and an unknown shape name raises `Unknown Tiled object shape "<shape>".`.
 
-### procedural.region(description)
-
-Returns a `Region` made from a description. Make one when the same area serves many calls, so the area is read once. The polygon of a region is split into triangles when the region is made.
-
-```lua
-local m = require('haylen.math')
-local procedural = require('haylen.procedural2d')
-
-local meadow = procedural.region({polygon = {{0, 0}, {400, 0}, {300, 200}, {0, 250}}})
-print(meadow.kind, meadow.area, meadow.bounds)
-print(meadow:contains({50, 50}), meadow:randomPoint(m.random(3)))
-```
-
 ## Region
 
-A `Region` is an area that [`procedural.region`](#proceduralregiondescription) returns.
+A `Region` is an area that [`procedural2d.region`](#procedural2dregiondescription) returns.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -61,14 +86,27 @@ A `Region` is an area that [`procedural.region`](#proceduralregiondescription) r
 | `area` | number | read | The size of the area in square units. |
 | `bounds` | Rect | read | The smallest rectangle around the area. |
 
+### procedural2d.region(description)
+
+Returns a `Region` made from a description. Make one when the same area serves many calls, so the area is read once. The polygon of a region is split into triangles when the region is made.
+
+```lua
+local m = require('haylen.math')
+local procedural2d = require('haylen.procedural2d')
+
+local meadow = procedural2d.region({polygon = {{0, 0}, {400, 0}, {300, 200}, {0, 250}}})
+print(meadow.kind, meadow.area, meadow.bounds)
+print(meadow:contains({50, 50}), meadow:randomPoint(m.random(3)))
+```
+
 ### region:contains(point)
 
 Returns `true` when `point` lies inside the area. The point is a `Vec2` or a table such as `{x, y}`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local camp = procedural.region({center = {500, 500}, radius = 200, innerRadius = 120})
+local camp = procedural2d.region({center = {500, 500}, radius = 200, innerRadius = 120})
 print(camp:contains({500, 500}), camp:contains({650, 500})) -- false true
 ```
 
@@ -78,9 +116,9 @@ Returns a random point inside the area as a `Vec2`. Every part of the area has t
 
 ```lua
 local m = require('haylen.math')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local camp = procedural.region({center = {500, 500}, radius = 200, innerRadius = 120})
+local camp = procedural2d.region({center = {500, 500}, radius = 200, innerRadius = 120})
 local rng = m.random(9)
 for i = 1, 5 do
     print(camp:randomPoint(rng))
@@ -89,7 +127,7 @@ end
 
 ## Scattering
 
-### procedural.scatter(options)
+### procedural2d.scatter(options)
 
 Places points over a region and gives each one a type. It keeps the points out of the regions of `exclude`. It returns a list of `{x, y, type}` tables, with types counted from 1.
 
@@ -112,9 +150,9 @@ Places points over a region and gives each one a type. It keeps the points out o
 A map is a function or a noise table. A function receives the point as a `Vec2` and returns a number. A noise table is `{seed = 0, frequency = 0.01, octaves = 4, gain = 0.5}`, with those defaults, and it samples the fractal noise of [`noise:fractal`](math.md#noisefractalx-y-octaves-lacunarity-gain) at the point times `frequency`. Noise goes from -1 to 1, and a density map rescales it to 0 to 1, while a biome keeps it as it is.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local forest = procedural.scatter({
+local forest = procedural2d.scatter({
     region = {0, 0, 2048, 2048},
     method = 'poisson',
     spacing = 24,
@@ -139,23 +177,23 @@ These errors come from wrong options:
 - Layers without a `biome` raise `Scatter layers need a biome function.`
 - A region that would take more than 16777216 points raises `Scattering over this region would need more than 16777216 points, so the density must be lower or the spacing larger.`. A Poisson scatter whose sampling grid would need more cells than that raises `The minimum distance is too small for the area, whose sampling grid would need more than 16777216 cells.`
 
-### procedural.scatterAsync(options)
+### procedural2d.scatterAsync(options)
 
-Scatters like [`procedural.scatter`](#proceduralscatteroptions) on a worker thread and resolves with the list of points. Its maps must be noise tables, because Lua never runs on a worker thread. A function raises `Asynchronous scattering takes a noise table for "densityMap" instead of a function.`, or the same message that names `biome`.
+Scatters like [`procedural2d.scatter`](#procedural2dscatteroptions) on a worker thread and resolves with the list of points. Its maps must be noise tables, because Lua never runs on a worker thread. A function raises `Asynchronous scattering takes a noise table for "densityMap" instead of a function.`, or the same message that names `biome`.
 
 ```lua
 local async = require('async')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 async.spawn(function()
-    local rocks = procedural.scatterAsync({region = {0, 0, 4096, 4096}, density = 0.0005, seed = 1}):await()
+    local rocks = procedural2d.scatterAsync({region = {0, 0, 4096, 4096}, density = 0.0005, seed = 1}):await()
     print(#rocks)
 end)
 ```
 
 ## Placement
 
-### procedural.place(options)
+### procedural2d.place(options)
 
 Places a count of entities of several kinds on a map, such as trees, rocks and houses. Each entity occupies the shape of its kind, a circle, a rectangle or a polygon, instead of the size of its image. It keeps a gap from every other entity and a margin from the forbidden areas. Positions are random within the area, so the same seed always gives the same map. When the area has no room for everything, it places what fits and counts what it left out of each kind. The [placement recipe](../2d/procedural.md#recipe-trees-rocks-and-houses-that-never-overlap) explains when to use it instead of a scatter.
 
@@ -192,9 +230,9 @@ A shape is a table with these keys, a circle when it names no `kind`:
 It returns `{entities, missing}`. The list `entities` holds a `{kind, x, y, rotation}` table for each placed entity, in the order it was placed, where `kind` counts from 1 and `x`, `y` is its position. The list `missing` holds, for each kind, how many of its count found no room.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local map = procedural.place({
+local map = procedural2d.place({
     area = {0, 0, 1600, 1200},
     kinds = {
         {count = 4, shape = {kind = 'rectangle', width = 160, height = 110}, spacing = 60},
@@ -219,23 +257,23 @@ These errors come from wrong options:
 - A negative or infinite `spacing` or `margin` raises `A placement kind needs a finite spacing and margin of zero or more.`
 - Counts that add up to more than 1048576 raise `A placement places at most 1048576 entities.`
 
-### procedural.placeAsync(options)
+### procedural2d.placeAsync(options)
 
-Places like [`procedural.place`](#proceduralplaceoptions) on a worker thread and resolves with the same result, for maps with many entities.
+Places like [`procedural2d.place`](#procedural2dplaceoptions) on a worker thread and resolves with the same result, for maps with many entities.
 
 ```lua
 local async = require('async')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 async.spawn(function()
-    local map = procedural.placeAsync({area = {0, 0, 8192, 8192}, kinds = {{count = 20000, shape = {radius = 16}, spacing = 8}}, seed = 3}):await()
+    local map = procedural2d.placeAsync({area = {0, 0, 8192, 8192}, kinds = {{count = 20000, shape = {radius = 16}, spacing = 8}}, seed = 3}):await()
     print(#map.entities, map.missing[1])
 end)
 ```
 
 ## Caves
 
-### procedural.cellularAutomaton(options)
+### procedural2d.cellularAutomaton(options)
 
 Grows a cave map and returns it as a `CellGrid`. It fills the map with random walls, then smooths it a few times. Each smoothing step counts the walls among the eight neighbors of every cell. A floor turns into a wall when it has at least `birthLimit` wall neighbors. A wall stays a wall when it has at least `survivalLimit`. The table `options` is optional.
 
@@ -250,43 +288,43 @@ Grows a cave map and returns it as a `CellGrid`. It fills the map with random wa
 | `seed`, `random` | | | The generator, as [seeds, maps and promises](#seeds-maps-and-promises) describes. |
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
-local cave = procedural.cellularAutomaton({width = 80, height = 50, fillChance = 0.47, seed = 3})
+local cave = procedural2d.cellularAutomaton({width = 80, height = 50, fillChance = 0.47, seed = 3})
 local labels, regions = spatial2d.components(cave, {background = 1})
 print(cave:get(40, 25), regions, labels.width)
 ```
 
-### procedural.cellularAutomatonAsync(options)
+### procedural2d.cellularAutomatonAsync(options)
 
-Grows a cave like [`procedural.cellularAutomaton`](#proceduralcellularautomatonoptions) on a worker thread and resolves with the `CellGrid`.
+Grows a cave like [`procedural2d.cellularAutomaton`](#procedural2dcellularautomatonoptions) on a worker thread and resolves with the `CellGrid`.
 
 ```lua
 local async = require('async')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 async.spawn(function()
-    local cave = procedural.cellularAutomatonAsync({width = 512, height = 512, steps = 6, seed = 21}):await()
+    local cave = procedural2d.cellularAutomatonAsync({width = 512, height = 512, steps = 6, seed = 21}):await()
     print(cave.width, cave.height)
 end)
 ```
 
-### procedural.cellularAutomatonStep(grid, options)
+### procedural2d.cellularAutomatonStep(grid, options)
 
-Runs one smoothing step of the cave rule over any `CellGrid` of walls (`1`) and floors (`0`), such as a painted map or a noise map cut at a threshold. It returns a new smoothed grid and leaves `grid` as it was. The table `options` is optional and takes `birthLimit`, `survivalLimit` and `solidBorder`, with the defaults and meaning of [`procedural.cellularAutomaton`](#proceduralcellularautomatonoptions).
+Runs one smoothing step of the cave rule over any `CellGrid` of walls (`1`) and floors (`0`), such as a painted map or a noise map cut at a threshold. It returns a new smoothed grid and leaves `grid` as it was. The table `options` is optional and takes `birthLimit`, `survivalLimit` and `solidBorder`, with the defaults and meaning of [`procedural2d.cellularAutomaton`](#procedural2dcellularautomatonoptions).
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
 local painted = spatial2d.newCellGrid(5, 5)
 painted:set(2, 2, 1)
-local smooth = procedural.cellularAutomatonStep(painted, {solidBorder = false})
-print(smooth:get(2, 2), procedural.cellularAutomatonStep(painted):get(0, 0)) -- 0 1
+local smooth = procedural2d.cellularAutomatonStep(painted, {solidBorder = false})
+print(smooth:get(2, 2), procedural2d.cellularAutomatonStep(painted):get(0, 0)) -- 0 1
 ```
 
-### procedural.drunkardWalk(options)
+### procedural2d.drunkardWalk(options)
 
 Carves winding tunnels and returns the `CellGrid`. Random walkers start at the center of a map of walls. They take turns to step in a random direction and dig a floor where they stand. They stop once `coverage` of the cells inside the border is floor, or after `maxSteps` steps in total. The outermost cells stay walls. The table `options` is optional.
 
@@ -301,29 +339,29 @@ Carves winding tunnels and returns the `CellGrid`. Random walkers start at the c
 A side below 3 or no walkers raise `A drunkard walk needs a map of at least 3 by 3 cells and at least one walker.`. More walkers or steps raise `A drunkard walk takes at most 4096 walkers and 67108864 steps.`
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local tunnels = procedural.drunkardWalk({width = 60, height = 40, coverage = 0.35, walkers = 4, seed = 8})
+local tunnels = procedural2d.drunkardWalk({width = 60, height = 40, coverage = 0.35, walkers = 4, seed = 8})
 print(tunnels:get(30, 20)) -- 0
 ```
 
-### procedural.drunkardWalkAsync(options)
+### procedural2d.drunkardWalkAsync(options)
 
-Carves tunnels like [`procedural.drunkardWalk`](#proceduraldrunkardwalkoptions) on a worker thread and resolves with the `CellGrid`.
+Carves tunnels like [`procedural2d.drunkardWalk`](#procedural2ddrunkardwalkoptions) on a worker thread and resolves with the `CellGrid`.
 
 ```lua
 local async = require('async')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 async.spawn(function()
-    local tunnels = procedural.drunkardWalkAsync({width = 400, height = 300, walkers = 8, seed = 2}):await()
+    local tunnels = procedural2d.drunkardWalkAsync({width = 400, height = 300, walkers = 8, seed = 2}):await()
     print(tunnels:get(200, 150)) -- 0
 end)
 ```
 
 ## Dungeons
 
-### procedural.dungeon(options)
+### procedural2d.dungeon(options)
 
 Lays out rooms and joins them with corridors, so every room can reach every other one. It returns a table with three fields:
 
@@ -347,31 +385,31 @@ The method `'bsp'` splits the map in two again and again, puts one room in each 
 Room sizes below 1, a maximum below the minimum or a padding below 0 raise `Dungeon rooms need a positive minimum size, a maximum size of at least the minimum and a padding of at least zero.`. A map or a leaf too small for the smallest room with its padding raises `The dungeon and its leaves must fit the smallest room with its padding.`
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local dungeon = procedural.dungeon({method = 'bsp', width = 96, height = 64, seed = 12})
+local dungeon = procedural2d.dungeon({method = 'bsp', width = 96, height = 64, seed = 12})
 local start = dungeon.rooms[1]
 print(#dungeon.rooms, #dungeon.connections, start.x, start.y)
 print(dungeon.grid:get(start.x, start.y)) -- 0
 ```
 
-### procedural.dungeonAsync(options)
+### procedural2d.dungeonAsync(options)
 
-Lays out a dungeon like [`procedural.dungeon`](#proceduraldungeonoptions) on a worker thread and resolves with the same table.
+Lays out a dungeon like [`procedural2d.dungeon`](#procedural2ddungeonoptions) on a worker thread and resolves with the same table.
 
 ```lua
 local async = require('async')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 async.spawn(function()
-    local dungeon = procedural.dungeonAsync({method = 'placement', width = 200, height = 120, maximumRooms = 40, seed = 5}):await()
+    local dungeon = procedural2d.dungeonAsync({method = 'placement', width = 200, height = 120, maximumRooms = 40, seed = 5}):await()
     print(#dungeon.rooms)
 end)
 ```
 
 ## Mazes
 
-### procedural.maze(options)
+### procedural2d.maze(options)
 
 Carves a perfect maze, where exactly one path joins any two cells, and returns a [`Maze`](#maze). The table `options` is required.
 
@@ -384,55 +422,41 @@ Carves a perfect maze, where exactly one path joins any two cells, and returns a
 A side below 1, or a maze whose `maze:toGrid` would hold more than 16777216 cells, raises `A maze needs at least one cell on each side and a tile grid of at most 16777216 cells.`
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local maze = procedural.maze({width = 20, height = 12, algorithm = 'prim', seed = 5})
+local maze = procedural2d.maze({width = 20, height = 12, algorithm = 'prim', seed = 5})
 print(maze.width, maze.height, maze.passageCount) -- 20 12 239
 ```
 
-### procedural.mazeAsync(options)
+### procedural2d.mazeAsync(options)
 
-Carves a maze like [`procedural.maze`](#proceduralmazeoptions) on a worker thread and resolves with the `Maze`.
+Carves a maze like [`procedural2d.maze`](#procedural2dmazeoptions) on a worker thread and resolves with the `Maze`.
 
 ```lua
 local async = require('async')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 async.spawn(function()
-    local maze = procedural.mazeAsync({width = 500, height = 500, algorithm = 'kruskal', seed = 3}):await()
+    local maze = procedural2d.mazeAsync({width = 500, height = 500, algorithm = 'kruskal', seed = 3}):await()
     print(maze.passageCount) -- 249999
 end)
 ```
 
-### procedural.newMaze(width, height)
+### procedural2d.north, procedural2d.east, procedural2d.south, procedural2d.west
 
-Returns a `Maze` with every wall closed. Carve it by hand with `maze:open`, or with an algorithm of your own. The sizes follow the rules of [`procedural.maze`](#proceduralmazeoptions).
-
-```lua
-local procedural = require('haylen.procedural2d')
-
-local corridor = procedural.newMaze(4, 1)
-for x = 0, 2 do
-    corridor:open(x, 0, procedural.east)
-end
-print(corridor.passageCount, corridor:openings(1, 0)) -- 3 10
-```
-
-### procedural.north, procedural.east, procedural.south, procedural.west
-
-The sides of a maze cell as bits of a mask: `procedural.north` is `1`, `procedural.east` is `2`, `procedural.south` is `4` and `procedural.west` is `8`. Test a side with the `&` operator of Lua.
+The sides of a maze cell as bits of a mask: `procedural2d.north` is `1`, `procedural2d.east` is `2`, `procedural2d.south` is `4` and `procedural2d.west` is `8`. Test a side with the `&` operator of Lua.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local maze = procedural.maze({width = 8, height = 8, seed = 1})
+local maze = procedural2d.maze({width = 8, height = 8, seed = 1})
 local exits = maze:openings(0, 0)
-print(exits & procedural.east ~= 0, exits & procedural.south ~= 0, exits & procedural.north ~= 0)
+print(exits & procedural2d.east ~= 0, exits & procedural2d.south ~= 0, exits & procedural2d.north ~= 0)
 ```
 
 ## Maze
 
-A `Maze` is a grid of cells with walls between them, which [`procedural.maze`](#proceduralmazeoptions) and [`procedural.newMaze`](#proceduralnewmazewidth-height) return. Cells count from 0. A cell outside the maze raises `The cell is outside the maze.`
+A `Maze` is a grid of cells with walls between them, which [`procedural2d.maze`](#procedural2dmazeoptions) and [`procedural2d.newMaze`](#procedural2dnewmazewidth-height) return. Cells count from 0. A cell outside the maze raises `The cell is outside the maze.`
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -440,17 +464,31 @@ A `Maze` is a grid of cells with walls between them, which [`procedural.maze`](#
 | `height` | integer | read | The number of rows. |
 | `passageCount` | integer | read | The number of open walls. A perfect maze has one less than its number of cells. |
 
-### maze:openings(x, y)
+### procedural2d.newMaze(width, height)
 
-Returns the sides of a cell that are open, as a mask of [`procedural.north`, `procedural.east`, `procedural.south` and `procedural.west`](#proceduralnorth-proceduraleast-proceduralsouth-proceduralwest).
+Returns a `Maze` with every wall closed. Carve it by hand with `maze:open`, or with an algorithm of your own. The sizes follow the rules of [`procedural2d.maze`](#procedural2dmazeoptions).
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local maze = procedural.maze({width = 8, height = 8, seed = 1})
+local corridor = procedural2d.newMaze(4, 1)
+for x = 0, 2 do
+    corridor:open(x, 0, procedural2d.east)
+end
+print(corridor.passageCount, corridor:openings(1, 0)) -- 3 10
+```
+
+### maze:openings(x, y)
+
+Returns the sides of a cell that are open, as a mask of [`procedural2d.north`, `procedural2d.east`, `procedural2d.south` and `procedural2d.west`](#procedural2dnorth-procedural2deast-procedural2dsouth-procedural2dwest).
+
+```lua
+local procedural2d = require('haylen.procedural2d')
+
+local maze = procedural2d.maze({width = 8, height = 8, seed = 1})
 local exits = maze:openings(3, 3)
 for _, side in ipairs({'north', 'east', 'south', 'west'}) do
-    if exits & procedural[side] ~= 0 then
+    if exits & procedural2d[side] ~= 0 then
         print('The cell opens to the ' .. side .. '.')
     end
 end
@@ -461,11 +499,11 @@ end
 Opens the wall on one side of a cell, and the matching wall of the neighbor on that side. The argument `side` is one of the four side values. A wall on the edge of the maze, or a `side` that is not one side, raises `Only walls between two cells of the maze can open.`
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local room = procedural.newMaze(2, 2)
-room:open(0, 0, procedural.south)
-print(room:openings(0, 1) == procedural.north) -- true
+local room = procedural2d.newMaze(2, 2)
+room:open(0, 0, procedural2d.south)
+print(room:openings(0, 1) == procedural2d.north) -- true
 ```
 
 ### maze:toGrid()
@@ -473,9 +511,9 @@ print(room:openings(0, 1) == procedural.north) -- true
 Draws the maze as a `CellGrid` of tiles, with walls `1` and floors `0`. The grid is `2 * width + 1` tiles wide and `2 * height + 1` tiles high. Cell `(x, y)` sits on tile `(2x + 1, 2y + 1)`, and an open wall becomes a floor tile between two cells. The grid is ready for path finding and for the tiles of a map.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local maze = procedural.maze({width = 8, height = 8, seed = 1})
+local maze = procedural2d.maze({width = 8, height = 8, seed = 1})
 local tiles = maze:toGrid()
 print(tiles.width, tiles:get(1, 1), tiles:get(0, 0)) -- 17 0 1
 ```
@@ -484,7 +522,7 @@ print(tiles.width, tiles:get(1, 1), tiles:get(0, 0)) -- 17 0 1
 
 Wave Function Collapse fills a map with tiles so that every pair of neighbors follows adjacency rules. A rule says that one tile may sit on one side of another. This is the simple tiled model of the algorithm.
 
-### procedural.waveFunctionCollapse(options)
+### procedural2d.waveFunctionCollapse(options)
 
 Fills a map and returns a `CellGrid` of tile numbers, counted from 0. It returns `nil` when every attempt ran into a contradiction, a cell with no tile left. It settles the cell with the fewest choices left, picks one of its tiles by weight, and spreads what that choice rules out to the other cells. It starts over when a cell runs out of tiles. The table `options` is required.
 
@@ -509,7 +547,7 @@ The output takes these keys:
 | `seed`, `random` | | | The generator, as [seeds, maps and promises](#seeds-maps-and-promises) describes. |
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
 -- Water (0), sand (1) and grass (2), where water never touches grass.
@@ -520,7 +558,7 @@ for _, pair in ipairs({{0, 0}, {1, 1}, {2, 2}, {0, 1}, {1, 0}, {1, 2}, {2, 1}}) 
 end
 local fixed = spatial2d.newCellGrid(48, 32, -1)
 fixed:set(24, 16, 2)
-local island = procedural.waveFunctionCollapse({tiles = 3, allow = rules, weights = {3, 1, 2}, width = 48, height = 32, fixed = fixed, seed = 9})
+local island = procedural2d.waveFunctionCollapse({tiles = 3, allow = rules, weights = {3, 1, 2}, width = 48, height = 32, fixed = fixed, seed = 9})
 print(island and island:get(24, 16)) -- 2
 ```
 
@@ -535,13 +573,13 @@ These errors come from wrong rules or output keys:
 - An `attempts` outside 1 to 1000 raises `Wave function collapse takes from 1 to 1000 attempts.`
 - A `fixed` grid of another size raises `The fixed cells must match the size of the output.`
 
-### procedural.waveFunctionCollapseAsync(options)
+### procedural2d.waveFunctionCollapseAsync(options)
 
-Fills a map like [`procedural.waveFunctionCollapse`](#proceduralwavefunctioncollapseoptions) on a worker thread. It resolves with the `CellGrid`, or with `nil` after a contradiction in every attempt.
+Fills a map like [`procedural2d.waveFunctionCollapse`](#procedural2dwavefunctioncollapseoptions) on a worker thread. It resolves with the `CellGrid`, or with `nil` after a contradiction in every attempt.
 
 ```lua
 local async = require('async')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
 local sample = spatial2d.newCellGrid(6, 6)
@@ -550,43 +588,43 @@ for x = 0, 5 do
 end
 
 async.spawn(function()
-    local tiles = procedural.waveFunctionCollapseAsync({sample = sample, width = 128, height = 64, seed = 4}):await()
+    local tiles = procedural2d.waveFunctionCollapseAsync({sample = sample, width = 128, height = 64, seed = 4}):await()
     print(tiles and tiles.width or 'Every attempt failed.')
 end)
 ```
 
-### procedural.waveFunctionCollapseRules(options)
+## WaveFunctionCollapseRules
 
-Reads the rule keys of [`procedural.waveFunctionCollapse`](#proceduralwavefunctioncollapseoptions), which are `sample`, `periodicSample`, `tiles`, `allow` and `weights`, and returns a [`WaveFunctionCollapseRules`](#wavefunctioncollapserules). Use it to see what a sample taught, or to check a map painted by hand against the rules. Any other key raises `Unknown option "<key>".`
+A `WaveFunctionCollapseRules` holds the tiles, their weights and which tile may sit beside which. The function [`procedural2d.waveFunctionCollapseRules`](#procedural2dwavefunctioncollapserulesoptions) returns one.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `tileCount` | integer | read | The number of tiles. |
+
+### procedural2d.waveFunctionCollapseRules(options)
+
+Reads the rule keys of [`procedural2d.waveFunctionCollapse`](#procedural2dwavefunctioncollapseoptions), which are `sample`, `periodicSample`, `tiles`, `allow` and `weights`, and returns a [`WaveFunctionCollapseRules`](#wavefunctioncollapserules). Use it to see what a sample taught, or to check a map painted by hand against the rules. Any other key raises `Unknown option "<key>".`
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
 local sample = spatial2d.newCellGrid(4, 1)
 for x = 0, 3 do
     sample:set(x, 0, x % 2)
 end
-local rules = procedural.waveFunctionCollapseRules({sample = sample, periodicSample = true})
+local rules = procedural2d.waveFunctionCollapseRules({sample = sample, periodicSample = true})
 print(rules.tileCount, rules:weight(1)) -- 2 2.0
 ```
-
-## WaveFunctionCollapseRules
-
-A `WaveFunctionCollapseRules` holds the tiles, their weights and which tile may sit beside which. The function [`procedural.waveFunctionCollapseRules`](#proceduralwavefunctioncollapserulesoptions) returns one.
-
-| Property | Type | Access | Meaning |
-| --- | --- | --- | --- |
-| `tileCount` | integer | read | The number of tiles. |
 
 ### rules:allowed(first, second, side)
 
 Returns `true` when tile `second` may sit on `side` of tile `first`, where `side` is `'right'`, `'down'`, `'left'` or `'up'`. A tile the rules do not have returns `false`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local rules = procedural.waveFunctionCollapseRules({tiles = 2, allow = {{0, 1, 'right'}}})
+local rules = procedural2d.waveFunctionCollapseRules({tiles = 2, allow = {{0, 1, 'right'}}})
 print(rules:allowed(0, 1, 'right'), rules:allowed(1, 0, 'left'), rules:allowed(0, 0, 'right')) -- true true false
 ```
 
@@ -595,9 +633,9 @@ print(rules:allowed(0, 1, 'right'), rules:allowed(1, 0, 'left'), rules:allowed(0
 Returns the weight of a tile, or `0` for a tile the rules do not have.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local rules = procedural.waveFunctionCollapseRules({tiles = 3, weights = {5, 1, 0}})
+local rules = procedural2d.waveFunctionCollapseRules({tiles = 3, weights = {5, 1, 0}})
 print(rules:weight(0), rules:weight(2), rules:weight(7)) -- 5.0 0.0 0.0
 ```
 
@@ -606,14 +644,14 @@ print(rules:weight(0), rules:weight(2), rules:weight(7)) -- 5.0 0.0 0.0
 Returns `true` when every pair of neighbors of the `CellGrid` follows the rules. With `periodic` set to `true`, it also checks the pairs across opposite edges. A cell that holds no tile of the rules makes it `false`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
 local sample = spatial2d.newCellGrid(4, 1)
 for x = 0, 3 do
     sample:set(x, 0, x % 2)
 end
-local rules = procedural.waveFunctionCollapseRules({sample = sample, periodicSample = true})
+local rules = procedural2d.waveFunctionCollapseRules({sample = sample, periodicSample = true})
 
 local painted = spatial2d.newCellGrid(6, 2)
 for x = 0, 5 do
@@ -625,43 +663,31 @@ print(rules:valid(painted), rules:valid(sample, true)) -- true true
 
 ## Triangulation and Voronoi
 
-### procedural.delaunay(points)
-
-Returns the Delaunay triangulation of a list of points as a [`Delaunay`](#delaunay). In a Delaunay triangulation, no point lies inside the circle through the corners of any triangle, so the triangles are as wide as they can be. It is built with a sweep hull in O(n log n) time. Duplicate points stay out of the triangles, and points that all lie on one line give no triangles. A point that is not finite raises `A Delaunay triangulation needs finite points.`
-
-```lua
-local procedural = require('haylen.procedural2d')
-
-local stars = {{0, 0}, {100, 10}, {40, 80}, {120, 90}, {60, 30}}
-local mesh = procedural.delaunay(stars)
-print(mesh.triangleCount, #mesh.hull)
-```
-
-### procedural.voronoi(points, bounds)
+### procedural2d.voronoi(points, bounds)
 
 Returns the Voronoi cell of every point inside the rectangle `bounds`, in the order of the points. Cell `i` holds every position that is closer to point `i` than to any other point. Each cell is a convex outline, a list of `Vec2` with a positive area. A duplicate point gets an empty cell. To find the cell that holds a position, use [`mesh:findNearest`](#meshfindnearestposition-start) on the triangulation of the same points. A point that is not finite raises `A Delaunay triangulation needs finite points.`, and bounds that are not finite raise `A Voronoi diagram needs a finite area.`
 
 ```lua
 local m = require('haylen.math')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 local rng = m.random(6)
 local sites = {}
 for i = 1, 30 do
     sites[i] = {rng:range(0, 800), rng:range(0, 600)}
 end
-local provinces = procedural.voronoi(sites, {0, 0, 800, 600})
+local provinces = procedural2d.voronoi(sites, {0, 0, 800, 600})
 print(#provinces, m.polygonSignedArea(provinces[1]))
 ```
 
-### procedural.voronoiAsync(points, bounds)
+### procedural2d.voronoiAsync(points, bounds)
 
-Builds the cells like [`procedural.voronoi`](#proceduralvoronoipoints-bounds) on a worker thread and resolves with the list of cells. It reports wrong points and bounds by rejecting its promise.
+Builds the cells like [`procedural2d.voronoi`](#procedural2dvoronoipoints-bounds) on a worker thread and resolves with the list of cells. It reports wrong points and bounds by rejecting its promise.
 
 ```lua
 local async = require('async')
 local m = require('haylen.math')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 local rng = m.random(1)
 local sites = {}
@@ -670,36 +696,36 @@ for i = 1, 5000 do
 end
 
 async.spawn(function()
-    local cells = procedural.voronoiAsync(sites, {0, 0, 4096, 4096}):await()
+    local cells = procedural2d.voronoiAsync(sites, {0, 0, 4096, 4096}):await()
     print(#cells)
 end)
 ```
 
-### procedural.relax(points, bounds, iterations)
+### procedural2d.relax(points, bounds, iterations)
 
 Moves every point to the center of its Voronoi cell inside `bounds`, `iterations` times, `1` by default, and returns the new points. A count outside 0 to 1000 raises `A relaxation takes from 0 to 1000 iterations.`. This is Lloyd relaxation. It evens out the spacing of random points while they still look random.
 
 ```lua
 local m = require('haylen.math')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 local rng = m.random(2)
 local towns = {}
 for i = 1, 20 do
     towns[i] = {rng:range(0, 1000), rng:range(0, 1000)}
 end
-towns = procedural.relax(towns, {0, 0, 1000, 1000}, 3)
+towns = procedural2d.relax(towns, {0, 0, 1000, 1000}, 3)
 print(towns[1])
 ```
 
-### procedural.relaxAsync(points, bounds, iterations)
+### procedural2d.relaxAsync(points, bounds, iterations)
 
-Relaxes the points like [`procedural.relax`](#proceduralrelaxpoints-bounds-iterations) on a worker thread and resolves with the new points.
+Relaxes the points like [`procedural2d.relax`](#procedural2drelaxpoints-bounds-iterations) on a worker thread and resolves with the new points.
 
 ```lua
 local async = require('async')
 local m = require('haylen.math')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 local rng = m.random(4)
 local seeds = {}
@@ -708,14 +734,14 @@ for i = 1, 2000 do
 end
 
 async.spawn(function()
-    local even = procedural.relaxAsync(seeds, {0, 0, 2048, 2048}, 4):await()
+    local even = procedural2d.relaxAsync(seeds, {0, 0, 2048, 2048}, 4):await()
     print(#even)
 end)
 ```
 
 ## Delaunay
 
-A `Delaunay` is a triangulation that [`procedural.delaunay`](#proceduraldelaunaypoints) returns. Its lists count points, triangles and edges from 1. Each list is built the first time it is read, and later reads return the same table, so a loop may read them freely. Do not change these tables.
+A `Delaunay` is a triangulation that [`procedural2d.delaunay`](#procedural2ddelaunaypoints) returns. Its lists count points, triangles and edges from 1. Each list is built the first time it is read, and later reads return the same table, so a loop may read them freely. Do not change these tables.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -727,9 +753,9 @@ A `Delaunay` is a triangulation that [`procedural.delaunay`](#proceduraldelaunay
 | `triangleCount` | integer | read | The number of triangles. |
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local mesh = procedural.delaunay({{0, 0}, {100, 10}, {40, 80}, {120, 90}, {60, 30}})
+local mesh = procedural2d.delaunay({{0, 0}, {100, 10}, {40, 80}, {120, 90}, {60, 30}})
 local triangles = mesh.triangles
 for i = 1, #triangles, 3 do
     print(triangles[i], triangles[i + 1], triangles[i + 2])
@@ -737,14 +763,26 @@ end
 print(#mesh.points, #mesh.halfedges, #mesh.neighbors[5])
 ```
 
+### procedural2d.delaunay(points)
+
+Returns the Delaunay triangulation of a list of points as a [`Delaunay`](#delaunay). In a Delaunay triangulation, no point lies inside the circle through the corners of any triangle, so the triangles are as wide as they can be. It is built with a sweep hull in O(n log n) time. Duplicate points stay out of the triangles, and points that all lie on one line give no triangles. A point that is not finite raises `A Delaunay triangulation needs finite points.`
+
+```lua
+local procedural2d = require('haylen.procedural2d')
+
+local stars = {{0, 0}, {100, 10}, {40, 80}, {120, 90}, {60, 30}}
+local mesh = procedural2d.delaunay(stars)
+print(mesh.triangleCount, #mesh.hull)
+```
+
 ### mesh:circumcenter(triangle)
 
 Returns the center of the circle through the three corners of a triangle, counted from 1, as a `Vec2`. That is where the Voronoi cells of its three corners meet. A triangle outside `1` to `triangleCount` raises `bad argument #1 to 'circumcenter' (the triangle is outside the triangulation)`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local mesh = procedural.delaunay({{100, 100}, {400, 120}, {250, 380}, {600, 300}})
+local mesh = procedural2d.delaunay({{100, 100}, {400, 120}, {250, 380}, {600, 300}})
 for triangle = 1, mesh.triangleCount do
     print(mesh:circumcenter(triangle))
 end
@@ -755,10 +793,10 @@ end
 Returns the position of the point nearest to `position`, counted from 1. That point is also the Voronoi cell that holds `position`. It returns `nil` for a triangulation without points. It walks along the edges, in about the square root of the point count in steps. It starts from the point `start` when one is given, so a start near the answer, such as the last answer for a moving position, makes it faster. A duplicate point given as `start` returns itself. A start outside the points raises `bad argument #2 to 'findNearest' (the start is outside the points)`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 local towns = {{100, 100}, {400, 120}, {250, 380}, {600, 300}}
-local mesh = procedural.delaunay(towns)
+local mesh = procedural2d.delaunay(towns)
 local region = mesh:findNearest({380, 150})
 print(region, mesh:findNearest({590, 310}, region)) -- 2 4
 ```
@@ -767,67 +805,67 @@ print(region, mesh:findNearest({590, 310}, region)) -- 2 4
 
 Autotiling picks the tile of each cell from its neighbors, so painted or generated maps get borders and corners without placing them by hand.
 
-### procedural.mask4(grid, x, y, edgesMatch)
+### procedural2d.mask4(grid, x, y, edgesMatch)
 
 Returns the sides of a cell whose neighbor holds the same value, as a mask: north `1`, east `2`, south `4` and west `8`. Cells beyond the grid match, unless `edgesMatch` is `false`. A cell outside the grid raises `bad argument #2 to 'mask4' (the cell is outside the grid)`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
 local water = spatial2d.newCellGrid(3, 3, 1)
 water:set(1, 0, 0)
-print(procedural.mask4(water, 1, 1), procedural.mask4(water, 0, 0, false)) -- 14 4
+print(procedural2d.mask4(water, 1, 1), procedural2d.mask4(water, 0, 0, false)) -- 14 4
 ```
 
-### procedural.mask8(grid, x, y, edgesMatch)
+### procedural2d.mask8(grid, x, y, edgesMatch)
 
 Returns the neighbors of a cell that hold the same value, clockwise from north: north `1`, north-east `2`, east `4`, south-east `8`, south `16`, south-west `32`, west `64` and north-west `128`. A corner counts only when both sides next to it match too. That leaves the 47 masks of a blob tile set. Cells beyond the grid match, unless `edgesMatch` is `false`. A cell outside the grid raises `bad argument #2 to 'mask8' (the cell is outside the grid)`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
 local water = spatial2d.newCellGrid(3, 3, 1)
 water:set(0, 0, 0)
-print(procedural.mask4(water, 1, 1), procedural.mask8(water, 1, 1)) -- 15 127
+print(procedural2d.mask4(water, 1, 1), procedural2d.mask8(water, 1, 1)) -- 15 127
 ```
 
-### procedural.blobIndex(mask)
+### procedural2d.blobIndex(mask)
 
-Numbers the 47 masks of [`procedural.mask8`](#proceduralmask8grid-x-y-edgesmatch) from 0, in increasing order of the mask. It returns `-1` for a mask that `mask8` never returns. Lay a blob tile set out in this order to find a tile by its index.
+Numbers the 47 masks of [`procedural2d.mask8`](#procedural2dmask8grid-x-y-edgesmatch) from 0, in increasing order of the mask. It returns `-1` for a mask that `mask8` never returns. Lay a blob tile set out in this order to find a tile by its index.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-print(procedural.blobIndex(0), procedural.blobIndex(255), procedural.blobIndex(2)) -- 0 46 -1
+print(procedural2d.blobIndex(0), procedural2d.blobIndex(255), procedural2d.blobIndex(2)) -- 0 46 -1
 ```
 
-### procedural.autotile4(grid, value, edgesMatch)
+### procedural2d.autotile4(grid, value, edgesMatch)
 
-Returns a new `CellGrid` of the size of `grid`. Each cell that holds `value` gets its [`procedural.mask4`](#proceduralmask4grid-x-y-edgesmatch), and every other cell gets `-1`.
+Returns a new `CellGrid` of the size of `grid`. Each cell that holds `value` gets its [`procedural2d.mask4`](#procedural2dmask4grid-x-y-edgesmatch), and every other cell gets `-1`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local maze = procedural.maze({width = 10, height = 10, seed = 6}):toGrid()
-local walls = procedural.autotile4(maze, 1)
+local maze = procedural2d.maze({width = 10, height = 10, seed = 6}):toGrid()
+local walls = procedural2d.autotile4(maze, 1)
 print(walls:get(0, 0), walls:get(1, 1)) -- 15 -1
 ```
 
-### procedural.autotile8(grid, value, edgesMatch)
+### procedural2d.autotile8(grid, value, edgesMatch)
 
-Returns a new `CellGrid` of the size of `grid`. Each cell that holds `value` gets the [`procedural.blobIndex`](#proceduralblobindexmask) of its mask, and every other cell gets `-1`.
+Returns a new `CellGrid` of the size of `grid`. Each cell that holds `value` gets the [`procedural2d.blobIndex`](#procedural2dblobindexmask) of its mask, and every other cell gets `-1`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local cave = procedural.cellularAutomaton({width = 32, height = 32, seed = 4})
-local walls = procedural.autotile8(cave, 1)
+local cave = procedural2d.cellularAutomaton({width = 32, height = 32, seed = 4})
+local walls = procedural2d.autotile8(cave, 1)
 print(walls:get(0, 0))
 ```
 
-### procedural.autotileWang(colors, wangSet, seed)
+### procedural2d.autotileWang(colors, wangSet, seed)
 
 Picks the tiles of a Wang set of Tiled and returns a `CellGrid` of the tile ids of the tileset, or `-1` where no tile matches. A Wang set gives each tile a color on its corners, its edges or both, and the tiles of a map match where their colors meet.
 
@@ -839,7 +877,7 @@ A `'corner'` or `'mixed'` set reads the colors at the corners of the cells from 
 
 ```lua
 local assets = require('haylen.assets')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 local tiled = require('haylen.tiled')
 
@@ -849,7 +887,7 @@ local corners = spatial2d.newCellGrid(33, 33, 1)
 for i = 10, 20 do
     corners:set(i, i, 2)
 end
-local tiles = procedural.autotileWang(corners, terrain, 7)
+local tiles = procedural2d.autotileWang(corners, terrain, 7)
 print(tiles.width, tiles:get(10, 10))
 ```
 
@@ -867,7 +905,7 @@ These messages come from the functions and methods of the module. Messages that 
 | `Only rectangle, ellipse and polygon objects have an area.` | A Tiled object of another shape was given as a region. |
 | `Unknown Tiled object shape "<shape>".` | The `shape` of an object table is not a shape of Tiled. |
 | `The "densityMap" option takes a function or a noise table.` | A map of a scatter is another type. The same message names `biome`. |
-| `Asynchronous scattering takes a noise table for "densityMap" instead of a function.` | A map of `procedural.scatterAsync` is a function. The same message names `biome`. |
+| `Asynchronous scattering takes a noise table for "densityMap" instead of a function.` | A map of `procedural2d.scatterAsync` is a function. The same message names `biome`. |
 | `Scattering needs a finite density of at least zero and a finite positive spacing.` | The `density` or the `spacing` of a scatter is out of range. |
 | `Poisson scattering with a density map needs a finite "maximumSpacing" of at least the spacing.` | A Poisson scatter with a density map has no valid `maximumSpacing`. |
 | `Poisson sampling needs between 1 and 1000 attempts.` | The `attempts` of a scatter are out of range. |
@@ -892,9 +930,9 @@ These messages come from the functions and methods of the module. Messages that 
 | `Wave function collapse takes from 1 to 1000 attempts.` | The `attempts` are outside 1 to 1000. |
 | `The fixed cells must match the size of the output.` | The `fixed` grid has another size. |
 | `A Delaunay triangulation needs finite points.` | A point of a triangulation, a Voronoi diagram or a relaxation is not finite. |
-| `A relaxation takes from 0 to 1000 iterations.` | The `iterations` of `procedural.relax` are outside 0 to 1000. |
+| `A relaxation takes from 0 to 1000 iterations.` | The `iterations` of `procedural2d.relax` are outside 0 to 1000. |
 | `A Voronoi diagram needs a finite area.` | The bounds of a Voronoi diagram or a relaxation are not finite. |
 | `bad argument #1 to 'circumcenter' (the triangle is outside the triangulation)` | The triangle of `mesh:circumcenter` is out of range. |
 | `bad argument #2 to 'findNearest' (the start is outside the points)` | The start of `mesh:findNearest` is out of range. |
-| `bad argument #2 to 'mask4' (the cell is outside the grid)` | The cell of `procedural.mask4` or `procedural.mask8` is outside the grid. |
+| `bad argument #2 to 'mask4' (the cell is outside the grid)` | The cell of `procedural2d.mask4` or `procedural2d.mask8` is outside the grid. |
 | `Wang sets must be of the "corner", "edge" or "mixed" kind.` | The `kind` of a Wang set is another value. |

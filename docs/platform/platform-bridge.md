@@ -469,10 +469,10 @@ macOS uses the Apple registry above. Windows and Linux have no registry in the l
 
 A native library answers methods in C on every platform that loads native libraries. The function `native.load(name, {init = 'symbol'})` hands the init function of the library the `HaylenNativeApi` of `haylen/platform/native/HaylenNative.h`. Through it the library can:
 
-- register handlers with an optional cancel function, which receive the parameters with their byte buffers, and answer them from any thread with `resolve`;
-- send events from any thread with `emit`, retained or batched;
-- write to the engine log, declare itself the native part of a plugin and hear the errors that stop the app;
-- feed the [streams](plugins.md#streams) of a plugin, open the [screens](plugins.md#desktop-screens) of a plugin over the window of the app and cover the app.
+- Register handlers with an optional cancel function, which receive the parameters with their byte buffers, and answer them from any thread with `resolve`.
+- Send events from any thread with `emit`, retained or batched.
+- Write to the engine log, declare itself the native part of a plugin and hear the errors that stop the app.
+- Feed the [streams](plugins.md#streams) of a plugin, open the [screens](plugins.md#desktop-screens) of a plugin over the window of the app and cover the app.
 
 The handlers belong to the process. They answer after the engine handlers and before the platform handlers. The [native code guide](native.md#libraries-that-talk-to-the-app) shows a library, and the [`haylen.native` reference](../lua-api/native.md#the-c-interface-of-the-engine) lists every entry.
 

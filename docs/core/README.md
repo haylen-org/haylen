@@ -6,10 +6,14 @@ The core runs an app: the engine and its plugins, the frame, the threads, the Lu
 
 | Name | Description | Link |
 | --- | --- | --- |
+| AI | How the characters of an app decide what to do: state machines for modes, behavior trees for plans with fallbacks, utility selectors for needs that compete, influence maps for the best place, how the tools combine in one character and what they cost. | [`ai.md`](ai.md) |
 | Architecture | The libraries the engine builds, the source layout, plugins, the host boundary, the platform layers, the GPU devices and the renderers, the frame, threads, resource ownership, app packages, the web runtime and how hot reload works. | [`architecture.md`](architecture.md) |
+| Conversation | Branching conversations: conversations and the walks through them, the file of nodes, steps, choices and conditions, variables and commands that connect the writing with the game, texts for translators, saves that resume a walk and a check of every branch. | [`conversation.md`](conversation.md) |
 | Lifecycle | What happens from start to stop: app states on each platform, the scene lifecycle, the game pause and process modes, autoloads and the owners that end listeners, timers and tasks. | [`lifecycle.md`](lifecycle.md) |
 | Localization | Texts per language, the `localization` section of `haylen.json`, language tags in any form and their canonical form, the order in which the language is picked from the device or the app, where each platform keeps the languages of the person, and the events of a change. | [`localization.md`](localization.md) |
 | Lua | The first steps of a Lua app: the app package and `haylen.json`, modules and asset paths, scenes, autoloads, classes, owners, disk access, asynchronous code, errors, hot reload, performance and Lua modules written in C++. | [`lua.md`](lua.md) |
+| Math | The math of both dimensions: vectors, transforms, rectangles, circles, ray casts, polygons, curves, easing and springs in 2D, and vectors, matrices, rotations, transforms, shapes, curves, batches, spherical coordinates and harmonics, noise, planes and tolerance in 3D. | [`math.md`](math.md) |
+| Storage | Where an app keeps its data, files with atomic writes on the frame thread or the I/O pool, save slots with backups, versions and migrations, copies of slots on other devices, when data becomes durable, the resume state and the classes of the context in C++. | [`storage.md`](storage.md) |
 
 ## Lua API
 

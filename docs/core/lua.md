@@ -69,9 +69,9 @@ These are the parts of `haylen.json` that most apps set.
 | `lua` | The modules that load before the first scene, the reload mode and the execution budget of development, which the Lua layer of the engine reads. |
 | `plugins` | The plugins of the app. |
 
-The reference of [`haylen.config`](../lua-api/haylen.md#haylenconfig) lists every field with its default. Scripts read the same settings, with every default filled in, from `require('haylen').config`.
+The [reference of `haylen.json`](../reference/haylen-json.md) lists every key with its default. Scripts read the same settings, with every default filled in, from `require('haylen').config`.
 
-The engine checks the file strictly. An unknown key is an error, so a misspelled field never goes unnoticed. A value of the wrong type or out of its range is an error too. A package whose `haylen.json` fails shows the reason on the screen instead of the app, and the reference lists [every message](../lua-api/haylen.md#errors-of-haylenjson).
+The engine checks the file strictly. An unknown key is an error, so a misspelled field never goes unnoticed. A value of the wrong type or out of its range is an error too. A package whose `haylen.json` fails shows the reason on the screen instead of the app, and the reference lists [every message](../reference/haylen-json.md#errors-of-haylenjson).
 
 ## source/main.lua
 
@@ -567,7 +567,7 @@ The player checks `haylen.json`, `source/`, `content/` and the `plugin.json` and
 
 ### What a save does
 
-- **A Lua module that the app loaded** reloads in place. Its functions run the new code everywhere, while the state of the app stays, as [`haylen.hotReload`](../lua-api/hotReload.md#how-a-module-reloads) describes. A module that fails to compile or to run changes nothing and shows its error, while the other changed modules of the save still reload. Saving the fix reloads it. Saving the text that the module runs, such as an undo of the broken save, needs no reload, so the module counts as restored and the error screen goes away as it does after a fix. A module keeps the text it loaded, so a save while its first load runs reloads it like any later save.
+- **A Lua module that the app loaded** reloads in place. Its functions run the new code everywhere, while the state of the app stays, as [`haylen.hotReload`](../lua-api/hot-reload.md#how-a-module-reloads) describes. A module that fails to compile or to run changes nothing and shows its error, while the other changed modules of the save still reload. Saving the fix reloads it. Saving the text that the module runs, such as an undo of the broken save, needs no reload, so the module counts as restored and the error screen goes away as it does after a fix. A module keeps the text it loaded, so a save while its first load runs reloads it like any later save.
 - **A file under `content/`** reloads the assets read from it without a restart. Textures, shaders, JSON, fonts and sounds change in place, so sprites that already use a texture show the new pixels, text lays out again with the new glyphs and the next voice of a sound plays the new samples. Other asset types leave the cache, so the next load reads the new file, and every live asset that went stale gets the event `assetChanged`, as [`haylen.assets`](../lua-api/assets.md#hot-reload-of-assets) describes. The texts of a folder that `localization.loadFolder` loaded and the themes that `ui.loadTheme` loaded rebuild from their changed files.
 - **A removed module** that no code of the app requires leaves the app in place: its names leave `package.loaded`, and what its top level registered without an owner ends with it, so a later `require` of it fails as for a module that never existed. A module that another module, `source/main.lua` or another file of the app that is no module requires, or that the app keeps as an autoload, restarts the app instead.
 - **A Lua file that no module loaded yet** changes nothing, because the next `require` reads it. While an error shows, such as one of a module whose first load failed, saving the file resumes the app, so the code that failed requires it again, or restarts the app when the error cannot resume.

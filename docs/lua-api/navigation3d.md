@@ -8,84 +8,15 @@ local navigation3d = require('haylen.navigation3d')
 
 ## Functions
 
-### navigation3d.newGeometry()
+The module has these functions. Each one is described in the section of what it makes.
 
-Returns an empty [`SourceGeometry`](#sourcegeometry), the world that a mesh bakes from.
-
-```lua
-local m = require('haylen.math')
-local navigation3d = require('haylen.navigation3d')
-
-local level = navigation3d.newGeometry()
-level:addMesh({m.vec3(-20, 0, -20), m.vec3(-20, 0, 20), m.vec3(20, 0, 20), m.vec3(20, 0, -20)}, {1, 2, 3, 1, 3, 4})
-level:addBox(m.obb(m.vec3(0, 1, 0), nil, m.vec3(2, 1, 2)))
-print(level.triangleCount) -- 14
-```
-
-### navigation3d.build(geometry, settings)
-
-Bakes the [`SourceGeometry`](#sourcegeometry) `geometry` on the calling thread and returns a [`NavMesh3D`](#navmesh3d). The table `settings` is optional, with the keys that [settings](#settings) lists. A geometry without triangles raises `The geometry of a navigation mesh holds no triangles, so there is nothing to bake.`, and a tile that holds more than it fits raises `The tile <x>, <z> of a navigation mesh holds more <regions, polygons, floors or vertices> than one tile fits. Bake it with a smaller "tileSize" or a larger "cellSize".`. A large world bakes with `buildAsync` instead.
-
-```lua
-local navigation3d = require('haylen.navigation3d')
-
-local level = navigation3d.newGeometry()
-level:addHeightfield({0, 0, 0, 0.5, 1, 0.5, 0, 0, 0}, 3, 3, {origin = {-10, 0, -10}, spacing = 10})
-local mesh = navigation3d.build(level, {agentRadius = 0.4, agentHeight = 1.8})
-print(mesh.tileCount > 0) -- true
-```
-
-### navigation3d.buildAsync(geometry, settings)
-
-Bakes a copy of the geometry with every tile in a job of its own on the task pool, and returns a promise that resolves with the [`NavMesh3D`](#navmesh3d) or rejects with the error of the bake. The geometry may change while the bake runs. Settings out of their range raise at once.
-
-```lua
-local navigation3d = require('haylen.navigation3d')
-local scene = require('haylen.scene')
-
-local level = {}
-
-function level:enter()
-    local geometry = navigation3d.newGeometry()
-    geometry:addHeightfield({0, 0, 0, 0}, 2, 2, {origin = {-50, 0, -50}, spacing = 100})
-    scene.spawn(self, function()
-        self.mesh = navigation3d.buildAsync(geometry, {tileSize = 24}):await()
-        print(self.mesh.tileCount)
-    end)
-end
-
-scene.push(level)
-```
-
-### navigation3d.decode(bytes, name)
-
-Reads the bytes of a `.navmesh` file, a Lua string that [`mesh:encode`](#meshencode) wrote, such as one read from the storage of the app, and returns a [`NavMesh3D`](#navmesh3d). The optional `name` names the file in errors. Bytes that are damaged raise `The navigation mesh "<name>" is damaged or was not made by this version of Haylen.`. A `.navmesh` file of the package loads with `assets.load` of [`haylen.assets`](assets.md), as the asset type `navmesh`.
-
-```lua
-local assets = require('haylen.assets')
-
-local mesh = assets.load('levels/harbor.navmesh')
-print(mesh.polygonCount)
-```
-
-### navigation3d.newCrowd(mesh, options)
-
-Returns a [`Crowd3D`](#crowd3d) of agents that walk the mesh. The table `options` is optional:
-
-| Option | Default | Meaning |
+| Function | Returns | Section |
 | --- | --- | --- |
-| `maxAgents` | `256` | How many agents the crowd holds at once, from 1 to 65535. The crowd allocates every agent when it is made. |
-| `maxAgentRadius` | `0.6` | The largest radius of its agents, which sizes the grid that finds neighbors and how far an agent looks for the mesh. |
-| `pathBudget` | `100` | How many search steps the paths of all agents take in each step at most, so a crowd that plans long paths never stalls a frame. |
-
-```lua
-local navigation3d = require('haylen.navigation3d')
-
-local level = navigation3d.newGeometry()
-level:addHeightfield({0, 0, 0, 0}, 2, 2, {origin = {-20, 0, -20}, spacing = 40})
-local crowd = navigation3d.newCrowd(navigation3d.build(level), {maxAgents = 500})
-print(crowd.count) -- 0
-```
+| [`navigation3d.newGeometry()`](#navigation3dnewgeometry) | An empty source geometry | [SourceGeometry](#sourcegeometry) |
+| [`navigation3d.build(geometry, settings)`](#navigation3dbuildgeometry-settings) | A baked navigation mesh | [NavMesh3D](#navmesh3d) |
+| [`navigation3d.buildAsync(geometry, settings)`](#navigation3dbuildasyncgeometry-settings) | A promise of a baked navigation mesh | [NavMesh3D](#navmesh3d) |
+| [`navigation3d.decode(bytes, name)`](#navigation3ddecodebytes-name) | The navigation mesh of the bytes of a `.navmesh` file | [NavMesh3D](#navmesh3d) |
+| [`navigation3d.newCrowd(mesh, options)`](#navigation3dnewcrowdmesh-options) | A crowd of agents on a mesh | [Crowd3D](#crowd3d) |
 
 ## Settings
 
@@ -118,6 +49,20 @@ The table of [`navigation3d.build`](#navigation3dbuildgeometry-settings) and [`n
 ## SourceGeometry
 
 A `SourceGeometry` collects the world that a mesh bakes from. Triangles whose corners run counter-clockwise seen from above face up and can be walked on, the front faces of the engine. Each piece names its area in the option `area`: `'ground'` by default, `'none'` for ground that is never walked, or any other name, which takes the next free area as it first appears. A geometry holds up to 63 areas besides `'none'`, and a 64th raises `A navigation mesh holds at most 63 areas besides "none", so the area "<name>" does not fit.`. Where two surfaces meet within a step, the area that appeared later wins. A number that is not finite or lies more than a trillion meters from the origin raises `Every <part> of the geometry of a navigation mesh must be a finite number within a trillion meters of the origin.`.
+
+### navigation3d.newGeometry()
+
+Returns an empty [`SourceGeometry`](#sourcegeometry), the world that a mesh bakes from.
+
+```lua
+local m = require('haylen.math')
+local navigation3d = require('haylen.navigation3d')
+
+local level = navigation3d.newGeometry()
+level:addMesh({m.vec3(-20, 0, -20), m.vec3(-20, 0, 20), m.vec3(20, 0, 20), m.vec3(20, 0, -20)}, {1, 2, 3, 1, 3, 4})
+level:addBox(m.obb(m.vec3(0, 1, 0), nil, m.vec3(2, 1, 2)))
+print(level.triangleCount) -- 14
+```
 
 ### geometry:addMesh(positions, indices, options)
 
@@ -225,6 +170,52 @@ A `NavMesh3D` is a baked navigation mesh. Its queries run on the frame thread, a
 | `maxPoints` | `256` | How many points a path keeps at most. |
 
 A search that runs out of nodes, polygons or points answers with the partial path it found.
+
+### navigation3d.build(geometry, settings)
+
+Bakes the [`SourceGeometry`](#sourcegeometry) `geometry` on the calling thread and returns a [`NavMesh3D`](#navmesh3d). The table `settings` is optional, with the keys that [settings](#settings) lists. A geometry without triangles raises `The geometry of a navigation mesh holds no triangles, so there is nothing to bake.`, and a tile that holds more than it fits raises `The tile <x>, <z> of a navigation mesh holds more <regions, polygons, floors or vertices> than one tile fits. Bake it with a smaller "tileSize" or a larger "cellSize".`. A large world bakes with `buildAsync` instead.
+
+```lua
+local navigation3d = require('haylen.navigation3d')
+
+local level = navigation3d.newGeometry()
+level:addHeightfield({0, 0, 0, 0.5, 1, 0.5, 0, 0, 0}, 3, 3, {origin = {-10, 0, -10}, spacing = 10})
+local mesh = navigation3d.build(level, {agentRadius = 0.4, agentHeight = 1.8})
+print(mesh.tileCount > 0) -- true
+```
+
+### navigation3d.buildAsync(geometry, settings)
+
+Bakes a copy of the geometry with every tile in a job of its own on the task pool, and returns a promise that resolves with the [`NavMesh3D`](#navmesh3d) or rejects with the error of the bake. The geometry may change while the bake runs. Settings out of their range raise at once.
+
+```lua
+local navigation3d = require('haylen.navigation3d')
+local scene = require('haylen.scene')
+
+local level = {}
+
+function level:enter()
+    local geometry = navigation3d.newGeometry()
+    geometry:addHeightfield({0, 0, 0, 0}, 2, 2, {origin = {-50, 0, -50}, spacing = 100})
+    scene.spawn(self, function()
+        self.mesh = navigation3d.buildAsync(geometry, {tileSize = 24}):await()
+        print(self.mesh.tileCount)
+    end)
+end
+
+scene.push(level)
+```
+
+### navigation3d.decode(bytes, name)
+
+Reads the bytes of a `.navmesh` file, a Lua string that [`mesh:encode`](#meshencode) wrote, such as one read from the storage of the app, and returns a [`NavMesh3D`](#navmesh3d). The optional `name` names the file in errors. Bytes that are damaged raise `The navigation mesh "<name>" is damaged or was not made by this version of Haylen.`. A `.navmesh` file of the package loads with `assets.load` of [`haylen.assets`](assets.md), as the asset type `navmesh`.
+
+```lua
+local assets = require('haylen.assets')
+
+local mesh = assets.load('levels/harbor.navmesh')
+print(mesh.polygonCount)
+```
 
 ### mesh:findPath(start, goal, options)
 
@@ -422,6 +413,25 @@ print(filter:cost('water'), filter:excluded('water')) -- 4.0 false
 ## Crowd3D
 
 A `Crowd3D` moves many agents together on a mesh. Each agent follows a corridor of polygons toward its target, steers around the corners ahead, keeps clear of walls and of the other agents on the plane of the mesh, and crosses the links on its way by their kind. The work of each agent spreads over the job system, and a step gives the same result whatever the number of threads. Agents are named by whole numbers that are never reused while the crowd lives.
+
+### navigation3d.newCrowd(mesh, options)
+
+Returns a [`Crowd3D`](#crowd3d) of agents that walk the mesh. The table `options` is optional:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `maxAgents` | `256` | How many agents the crowd holds at once, from 1 to 65535. The crowd allocates every agent when it is made. |
+| `maxAgentRadius` | `0.6` | The largest radius of its agents, which sizes the grid that finds neighbors and how far an agent looks for the mesh. |
+| `pathBudget` | `100` | How many search steps the paths of all agents take in each step at most, so a crowd that plans long paths never stalls a frame. |
+
+```lua
+local navigation3d = require('haylen.navigation3d')
+
+local level = navigation3d.newGeometry()
+level:addHeightfield({0, 0, 0, 0}, 2, 2, {origin = {-20, 0, -20}, spacing = 40})
+local crowd = navigation3d.newCrowd(navigation3d.build(level), {maxAgents = 500})
+print(crowd.count) -- 0
+```
 
 ### crowd:addAgent(options)
 

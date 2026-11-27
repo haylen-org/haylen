@@ -1,6 +1,6 @@
 # ⌨️ Commands
 
-This page is the reference of the command `haylen`: every command with its arguments, its options, its defaults and the result it prints with `--json`. The [build guide](build.md) explains how the command runs, its output and its logs, and the [distribution guide](distribution.md) explains targets, generated projects and what each platform ships.
+This page is the reference of the command `haylen`: every command with its arguments, its options, its defaults and the result it prints with `--json`. The [build guide](../tools/build.md) explains how the command runs, its output and its logs, and the [distribution guide](../tools/distribution.md) explains targets, generated projects and what each platform ships.
 
 ## The command tree
 
@@ -18,7 +18,7 @@ haylen test
 haylen engine configure|build|bench|fuzz|coverage|format|clean|tools|consumers
 ```
 
-Every command also takes `--verbose`, `--json` and `--jobs`, and `haylen` alone takes `--version`. With `--json`, a command prints `{"ok": true, "result": {...}}` when it succeeds and `{"ok": false, "error": {...}}` when it fails, as [options of every command](build.md#options-of-every-command) describes. The sections below list the `result` of each command.
+Every command also takes `--verbose`, `--json` and `--jobs`, and `haylen` alone takes `--version`. With `--json`, a command prints `{"ok": true, "result": {...}}` when it succeeds and `{"ok": false, "error": {...}}` when it fails, as [options of every command](../tools/build.md#options-of-every-command) describes. The sections below list the `result` of each command.
 
 ## Shared arguments
 
@@ -33,7 +33,7 @@ The commands that resolve an app for a target share these options:
 | `--engine-config Debug\|Release` | The configuration of the engine SDK that the app links, `Release` by default. A Debug SDK is for debugging the engine itself. |
 | `--architecture <name>` | An architecture to build, such as `arm64` or `x86_64`. It repeats, and without it the `architectures` of the section of the platform in `haylen.json` apply, or else the default architectures of the target. An architecture outside those `architectures` stops with both owners named. |
 
-The targets of each backend, with their architectures and the systems they build on, are listed in [targets](distribution.md#targets).
+The targets of each backend, with their architectures and the systems they build on, are listed in [targets](../tools/distribution.md#targets).
 
 ## Apps
 
@@ -48,9 +48,9 @@ Creates an app in a folder that does not exist or is empty: `haylen.json`, the l
 | Option | Default |
 | --- | --- |
 | `--kind` | `lua`. The value `cpp` makes an app whose C++ code compiles against the engine SDK. |
-| `--category` | None, so the app names no category. The category that the stores and the app menus show the app in: `game`, `entertainment`, `education`, `productivity`, `utility`, `graphics`, `music`, `video`, `social` or `developer`, as [category](distribution.md#category) maps them. |
+| `--category` | None, so the app names no category. The category that the stores and the app menus show the app in: `game`, `entertainment`, `education`, `productivity`, `utility`, `graphics`, `music`, `video`, `social` or `developer`, as [category](../tools/distribution.md#category) maps them. |
 | `--name` | The display name, made from the folder name. |
-| `--identifier` | None, so the app takes the identifier that the tooling generates for its folder until a Release build, a device or a store needs one of yours, as [identifier](distribution.md#identifier) describes. |
+| `--identifier` | None, so the app takes the identifier that the tooling generates for its folder until a Release build, a device or a store needs one of yours, as [identifier](../tools/distribution.md#identifier) describes. |
 | `--orientation` | `landscape`. |
 
 Result: `folder`, `name`, `identifier`, `kind` and `category`, where `identifier` and `category` are `null` when the command names none.
@@ -103,7 +103,7 @@ Checks that the backend of the target runs apps, then builds the SDK that the ta
 | `--coop` | The `Cross-Origin-Opener-Policy` of a web page: `same-origin`, `same-origin-allow-popups` or `off`, the default. |
 | `--open` | Opens a web page in the default browser. |
 
-The keys that act on a running app are listed in [while the app runs](distribution.md#while-the-app-runs).
+The keys that act on a running app are listed in [while the app runs](../tools/distribution.md#while-the-app-runs).
 
 Result, once the app ends: `product` and `verification`, as for `app build`.
 
@@ -497,7 +497,7 @@ Result: `folder`, the key folder, and `report`.
 haylen test [--target <target>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--cmake-target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--ui-test <class>] [--device-farm <devices>] [--app <folder>] [--libraries] [--compiler gcc] [--port]
 ```
 
-Builds and runs the engine tests of this machine by default. The [testing guide](testing.md#running-the-tests) explains each mode.
+Builds and runs the engine tests of this machine by default. The [testing guide](../tools/testing.md#running-the-tests) explains each mode.
 
 | Option | Meaning |
 | --- | --- |
@@ -514,7 +514,7 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--device-farm` | Runs the UI tests of `--ui` on the phones of AWS Device Farm that this list names, separated by commas, with `--target android` or `ios`. |
 | `--app` | Builds the app of this folder in the configuration of `--config` and checks instead that it starts: with `--target web` in a page on WebGPU and WebGL2 or on the API of `--graphics-api`, and with `--target android` on the device of `--device` or on an emulator that it starts. With `--target macos` or `--target catalyst` it checks that the app ends with the status 0 on this Mac when its window closes and when the Dock quits it. |
 | `--libraries` | With `--target android`, runs the tests of the Android libraries of the engine instead: the tests of `src/test` on the Java of this machine and the instrumented tests of `src/androidTest` on the device of `--device` or on an emulator that it starts. Gradle installs the test app, runs it and uninstalls it. |
-| `--compiler` | Compiles every source of every target of the engine with the GCC of this Linux machine and warnings as errors instead, without linking, as [the check of GCC](testing.md#the-check-of-gcc) describes. It takes `--config` alone and runs on Linux alone. |
+| `--compiler` | Compiles every source of every target of the engine with the GCC of this Linux machine and warnings as errors instead, without linking, as [the check of GCC](../tools/testing.md#the-check-of-gcc) describes. It takes `--config` alone and runs on Linux alone. |
 | `--port` | Builds the engine with the test port and plays its app instead. |
 
 Result: the build tree with what ran, which depends on what the command ran:
@@ -556,7 +556,7 @@ Result: `tree` and `targets`.
 haylen engine bench [--suite <suite>] [--graphics-api <api>] [--gpu]
 ```
 
-Builds a benchmark in Release and runs it on this machine. The [benchmarks guide](benchmarks.md) lists the suites and what they measure. Each run prints the table of the benchmark, and the command ends with the results of every graphics API, where an API whose device cannot start on this machine shows a hollow dot.
+Builds a benchmark in Release and runs it on this machine. The [benchmarks guide](../tools/benchmarks.md) lists the suites and what they measure. Each run prints the table of the benchmark, and the command ends with the results of every graphics API, where an API whose device cannot start on this machine shows a hollow dot.
 
 ```text
 Results of the "sprites" benchmark  3

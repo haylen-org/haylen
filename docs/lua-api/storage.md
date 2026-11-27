@@ -1,6 +1,6 @@
 # 📖 `haylen.storage`
 
-The module `haylen.storage` reads and writes the private files of the player, such as caches, exported data and logs. It also keeps named save slots for the progress of the app. Its resume state brings the player back where they were after the system ended the app. Use it whenever the app keeps data between sessions. Choices of the player, such as the volume or the controls, belong in [`haylen.preferences`](preferences.md) instead. The [Lua guide](../core/lua.md#disk-access) explains when to use this module and when the `fs` module of Varn.
+The module `haylen.storage` reads and writes the private files of the player, such as caches, exported data and logs. It also keeps named save slots for the progress of the app. Its resume state brings the player back where they were after the system ended the app. Use it whenever the app keeps data between sessions. Choices of the player, such as the volume or the controls, belong in [`haylen.preferences`](preferences.md) instead. The [Lua guide](../core/lua.md#disk-access) explains when to use this module and when the `fs` module of Varn. The [storage guide](../core/storage.md) explains what goes where and how saves stay safe.
 
 ```lua
 local storage = require('haylen.storage')

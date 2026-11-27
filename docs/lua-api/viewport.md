@@ -1,6 +1,6 @@
 # 📖 `haylen.viewport`
 
-The module `haylen.viewport` describes how the design area of the app maps onto the real framebuffer, the image the GPU draws for the window. Use it to place the HUD inside the visible and safe areas, and to convert between design units and framebuffer pixels. It also changes the design size and the scaling policy while the app runs. The [rendering guide](../graphics/rendering.md#design-units-and-the-viewport) explains design units and how canvases use them.
+The module `haylen.viewport` describes how the design area of the app maps onto the real framebuffer, the image the GPU draws for the window. Use it to place the HUD inside the visible and safe areas, and to convert between design units and framebuffer pixels. It also changes the design size and the scaling policy while the app runs. The [rendering guide](../2d/graphics.md#design-units-and-the-viewport) explains design units and how canvases use them.
 
 ```lua
 local viewport = require('haylen.viewport')
@@ -34,7 +34,7 @@ end
 
 ### viewport.designSize()
 
-Returns the width and height of the design area in design units, as two numbers. They are 1920 and 1080 unless the `design` section of `haylen.json` or `viewport.setDesignSize` gives others. An app whose `orientation` is `any` turns the design with the screen, so a design of 440 by 956 returns 956 and 440 while the screen is wider than tall, as the [rendering guide](../graphics/rendering.md#design-units-and-the-viewport) explains.
+Returns the width and height of the design area in design units, as two numbers. They are 1920 and 1080 unless the `design` section of `haylen.json` or `viewport.setDesignSize` gives others. An app whose `orientation` is `any` turns the design with the screen, so a design of 440 by 956 returns 956 and 440 while the screen is wider than tall, as the [rendering guide](../2d/graphics.md#design-units-and-the-viewport) explains.
 
 ```lua
 local viewport = require('haylen.viewport')

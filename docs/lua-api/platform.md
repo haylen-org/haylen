@@ -85,7 +85,7 @@ scene.push({
 
 Calls `listener(payload)` every time native code sends the event named `event`. The payload is the JSON of the event as a Lua value, with its bytes as strings. The function returns a [`Connection`](signal.md#connection) of `haylen.signal`. Its method `disconnect()` stops the listener, and its property `connected` is `true` until then. The listener stays connected when Lua drops the connection object.
 
-The table `options` may hold an `owner`, such as a scene, and the listener ends with it, like the listeners of [`haylen.events`](events.md#owners). A listener without an owner, which a module adds at its top level in development, belongs to that module. So a [hot reload](hotReload.md) of the module ends it. An unknown option raises `Unknown option "<key>".`. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace.
+The table `options` may hold an `owner`, such as a scene, and the listener ends with it, like the listeners of [`haylen.events`](events.md#owners). A listener without an owner, which a module adds at its top level in development, belongs to that module. So a [hot reload](hot-reload.md) of the module ends it. An unknown option raises `Unknown option "<key>".`. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace.
 
 Events that no listener waits for are dropped, unless they are retained or batched as below. The engine sends no events of its own, so the names of events are a contract between the app and its native code. Plugins name their events after their id, such as `ads.closed`.
 

@@ -1426,7 +1426,7 @@ print(table.concat(shader.textures, ', '))
 
 ## VectorImage
 
-A `VectorImage` is an SVG document read into curves, or the colors of a color glyph of a font, which draws sharp at any size with [`graphics2d.drawVector`](graphics2d.md#graphics2ddrawvectorimage-x-y-options). Load one from a `.svg` file with `assets.vectorImage(path)` or `assets.load(path)`, or make one with `graphics.newVectorImage`, and take the image of a color glyph from the `image` of [`font:glyph`](#fontglyphcharacter). The [rendering guide](../graphics/rendering.md#vector-images) lists the parts of SVG that the engine reads and explains how it rasterizes them. Two images compare equal with `==` when they are the same image. A file that changes on disk loads anew the next time the app asks for it, and the images the app holds keep their document.
+A `VectorImage` is an SVG document read into curves, or the colors of a color glyph of a font, which draws sharp at any size with [`graphics2d.drawVector`](graphics2d.md#graphics2ddrawvectorimage-x-y-options). Load one from a `.svg` file with `assets.vectorImage(path)` or `assets.load(path)`, or make one with `graphics.newVectorImage`, and take the image of a color glyph from the `image` of [`font:glyph`](#fontglyphcharacter). The [rendering guide](../2d/graphics.md#vector-images) lists the parts of SVG that the engine reads and explains how it rasterizes them. Two images compare equal with `==` when they are the same image. A file that changes on disk loads anew the next time the app asks for it, and the images the app holds keep their document.
 
 ### graphics.newVectorImage(text)
 

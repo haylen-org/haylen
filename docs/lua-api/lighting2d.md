@@ -8,6 +8,22 @@ local lighting2d = require('haylen.lighting2d')
 
 ## Functions
 
+The module has these functions. Each one is described in the section of what it makes or does.
+
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`lighting2d.newLight(properties)`](#lighting2dnewlightproperties) | A light | [Light](#light) |
+| [`lighting2d.newOccluder(properties)`](#lighting2dnewoccluderproperties) | An occluder | [Occluder](#occluder) |
+| [`lighting2d.occludersFromBody(world, body)`](#lighting2doccludersfrombodyworld-body) | The occluders of the shapes of a body | [Occluder](#occluder) |
+| [`lighting2d.occludersFromMap(map, layer)`](#lighting2doccludersfrommapmap-layer) | The occluders of the objects of a map | [Occluder](#occluder) |
+| [`lighting2d.illuminate(ambient, lights, x, y, options)`](#lighting2dilluminateambient-lights-x-y-options) | The color of the light map at a point | [Light queries](#light-queries) |
+| [`lighting2d.falloff(distance)`](#lighting2dfalloffdistance) | The radial falloff of a light | [Light queries](#light-queries) |
+| [`lighting2d.flicker(time, options)`](#lighting2dflickertime-options) | An intensity multiplier that wavers like a flame | [Light queries](#light-queries) |
+
+## Light
+
+A `Light` holds every setting of one light. Create it once with `lighting2d.newLight` and draw it in every frame with [`graphics2d.drawLight`](graphics2d.md), which also takes a table with the same keys. Its properties read and write straight into the light.
+
 ### lighting2d.newLight(properties)
 
 Creates a [`Light`](#light) with the [properties](#properties) of the table over the defaults. The table is optional, and a `Light` in its place makes a copy. Unknown keys raise `Unknown option "<key>".`
@@ -30,158 +46,6 @@ scene.push({
     end,
 })
 ```
-
-### lighting2d.newOccluder(properties)
-
-Creates an [`Occluder`](#occluder) with the [properties](#properties-1) of the table over the defaults. The table is optional, and an `Occluder` in its place makes a copy. Unknown keys raise `Unknown option "<key>".`, and a flat list of points with an odd count or a value that is not a number raises `A flat list of points needs two numbers per point.`
-
-```lua
-local graphics2d = require('haylen.graphics2d')
-local lighting2d = require('haylen.lighting2d')
-local scene = require('haylen.scene')
-
-local camera = graphics2d.newCamera()
-local pillar = lighting2d.newOccluder({points = {{-15, -15}, {15, -15}, {15, 15}, {-15, 15}}, cull = 'counterClockwise'})
-local lamp = lighting2d.newLight({x = -200, y = 0, radius = 500, shadows = true})
-
-scene.push({
-    render = function(self)
-        graphics2d.beginWorld(camera, {ambientLight = '#FF101018'})
-        graphics2d.drawRect({-600, -400, 1200, 800}, '#FF707070')
-        for index = 0, 3 do
-            pillar.x, pillar.y = index * 90, (index % 2) * 120 - 60
-            graphics2d.drawRect({pillar.x - 15, pillar.y - 15, 30, 30}, '#FF303030', {layer = 1})
-            graphics2d.drawOccluder(pillar)
-        end
-        graphics2d.drawLight(lamp)
-    end,
-})
-```
-
-### lighting2d.occludersFromBody(world, body)
-
-Returns a list of occluders, one for each shape of a body of a [`physics2d`](physics2d.md) world. The occluders sit in the space of the body at its current position and rotation. Polygons, boxes, circles and capsules make closed occluders, and segments open ones. The segments of a chain join into one outline, closed when the chain loops. To follow a moving body, give its occluders its position and rotation in every frame.
-
-```lua
-local graphics2d = require('haylen.graphics2d')
-local lighting2d = require('haylen.lighting2d')
-local physics2d = require('haylen.physics2d')
-local scene = require('haylen.scene')
-
-local world = physics2d.newWorld()
-local crate = world:createBody({x = 0, y = -200})
-crate:addBox(40, 40)
-local floor = world:createBody({type = 'static', x = 0, y = 150})
-floor:addBox(600, 20)
-local shapes = lighting2d.occludersFromBody(world, crate)
-local camera = graphics2d.newCamera()
-local lamp = lighting2d.newLight({x = -250, y = 0, radius = 600, shadows = true, shadowFilter = 'pcf5'})
-
-scene.push({
-    update = function(self, dt)
-        world:step(dt)
-        for _, shape in ipairs(shapes) do
-            shape.x, shape.y, shape.rotation = crate.x, crate.y, crate.rotation
-        end
-    end,
-    render = function(self)
-        graphics2d.beginWorld(camera, {ambientLight = '#FF181820'})
-        graphics2d.drawRect({-600, -400, 1200, 800}, '#FF6A6A62')
-        for _, shape in ipairs(shapes) do
-            graphics2d.drawOccluder(shape)
-        end
-        graphics2d.drawLight(lamp)
-    end,
-})
-```
-
-### lighting2d.occludersFromMap(map, layer)
-
-Returns a list of occluders, one for each object of the named object layer of a [Tiled](tiled.md) map renderer, or of every object layer when `layer` is `nil`. The occluders are in world coordinates, with the offsets of the layer and its groups. Rectangles, tile objects, ellipses, capsules and polygons make closed occluders, and polylines open ones. A tile object outlines its image where it draws. Points and text have no outline and make no occluder. A name that is not an object layer raises `The map has no object layer named "<name>".`
-
-```lua
-local assets = require('haylen.assets')
-local graphics2d = require('haylen.graphics2d')
-local lighting2d = require('haylen.lighting2d')
-local scene = require('haylen.scene')
-local tiled = require('haylen.tiled')
-
-local map = tiled.newMapRenderer(assets.load('maps/level.tmj'))
-local walls = lighting2d.occludersFromMap(map, 'walls')
-local camera = graphics2d.newCamera()
-local lamp = lighting2d.newLight({x = 200, y = 150, radius = 500, shadows = true})
-
-scene.push({
-    render = function(self)
-        graphics2d.beginWorld(camera, {ambientLight = '#FF101018'})
-        map:draw(camera)
-        for _, wall in ipairs(walls) do
-            graphics2d.drawOccluder(wall)
-        end
-        graphics2d.drawLight(lamp)
-    end,
-})
-```
-
-### lighting2d.illuminate(ambient, lights, x, y, options)
-
-Returns the `Color` of the light map at a point, after the ambient color and a list of lights, in order and with their blend modes. It works as the light pass does, without normal maps or shadows. The list `lights` holds `Light` objects or tables with their properties. Combine it with `light:shadowedAt` to tell how lit a character really is. The table `options` is optional:
-
-| Key | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `lightMask` | integer | `1` | The light mask of the draw at the point. |
-| `layer` | integer | `0` | The layer of the draw at the point. |
-
-```lua
-local lighting2d = require('haylen.lighting2d')
-
-local torches = {lighting2d.newLight({x = 0, y = 0, radius = 200}), {x = 150, y = 0, radius = 120, color = '#FFFF8040'}}
-local seen = lighting2d.illuminate('#FF101020', torches, 60, 0, {layer = 2})
-print(seen.r > 0.5 and 'visible' or 'hidden')
-```
-
-### lighting2d.falloff(distance)
-
-Returns the radial falloff of lights without a texture, the curve of `graphics2d.lightTexture()`. The `distance` is a fraction of the radius. The result is 1 at the center and fades smoothly to 0 at the radius and beyond. Gameplay code uses it to weigh light the way the light pass does.
-
-```lua
-local lighting2d = require('haylen.lighting2d')
-
-local lamp = lighting2d.newLight({x = 0, y = 0, radius = 200})
-local distance = 80
-print(lighting2d.falloff(distance / lamp.radius), lamp:strengthAt(distance, 0))
-```
-
-### lighting2d.flicker(time, options)
-
-Returns an intensity multiplier that wavers like a flame, between `1 - amount` and 1, from smooth noise. The same time, options and seed always give the same value. Unknown keys raise `Unknown option "<key>".` The table `options` is optional:
-
-| Key | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `speed` | number | `8` | How fast the value changes. |
-| `amount` | number | `0.15` | How far the value can dim below 1. With 0 it always returns 1. |
-| `seed` | integer | `0` | The seed of the noise. Give each light its own seed so they do not flicker in step. |
-
-```lua
-local graphics2d = require('haylen.graphics2d')
-local haylen = require('haylen')
-local lighting2d = require('haylen.lighting2d')
-local scene = require('haylen.scene')
-
-local camera = graphics2d.newCamera()
-
-scene.push({
-    render = function(self)
-        graphics2d.beginWorld(camera, {ambientLight = '#FF101830'})
-        local wave = lighting2d.flicker(haylen.elapsed(), {speed = 6, amount = 0.2, seed = 4})
-        graphics2d.drawLight({x = 0, y = 0, radius = 140 * wave, color = '#FFFF9040', intensity = 0.8 * wave})
-    end,
-})
-```
-
-## Light
-
-A `Light` holds every setting of one light. Create it once with `lighting2d.newLight` and draw it in every frame with [`graphics2d.drawLight`](graphics2d.md), which also takes a table with the same keys. Its properties read and write straight into the light.
 
 ### Properties
 
@@ -282,6 +146,98 @@ print(lamp:shadowedAt(200, 0, {wall}), lamp:shadowedAt(50, 0, {wall}))
 
 An `Occluder` is an outline that blocks the lights with shadows. Its points are local to its position, rotation and scale. The function [`graphics2d.drawOccluder`](graphics2d.md) draws it in a lit canvas, and also takes a table with the same keys. Drawing an occluder with too few points raises `An occluder needs at least 2 points, and 3 when it is closed.`
 
+### lighting2d.newOccluder(properties)
+
+Creates an [`Occluder`](#occluder) with the [properties](#properties-1) of the table over the defaults. The table is optional, and an `Occluder` in its place makes a copy. Unknown keys raise `Unknown option "<key>".`, and a flat list of points with an odd count or a value that is not a number raises `A flat list of points needs two numbers per point.`
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local lighting2d = require('haylen.lighting2d')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+local pillar = lighting2d.newOccluder({points = {{-15, -15}, {15, -15}, {15, 15}, {-15, 15}}, cull = 'counterClockwise'})
+local lamp = lighting2d.newLight({x = -200, y = 0, radius = 500, shadows = true})
+
+scene.push({
+    render = function(self)
+        graphics2d.beginWorld(camera, {ambientLight = '#FF101018'})
+        graphics2d.drawRect({-600, -400, 1200, 800}, '#FF707070')
+        for index = 0, 3 do
+            pillar.x, pillar.y = index * 90, (index % 2) * 120 - 60
+            graphics2d.drawRect({pillar.x - 15, pillar.y - 15, 30, 30}, '#FF303030', {layer = 1})
+            graphics2d.drawOccluder(pillar)
+        end
+        graphics2d.drawLight(lamp)
+    end,
+})
+```
+
+### lighting2d.occludersFromBody(world, body)
+
+Returns a list of occluders, one for each shape of a body of a [`physics2d`](physics2d.md) world. The occluders sit in the space of the body at its current position and rotation. Polygons, boxes, circles and capsules make closed occluders, and segments open ones. The segments of a chain join into one outline, closed when the chain loops. To follow a moving body, give its occluders its position and rotation in every frame.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local lighting2d = require('haylen.lighting2d')
+local physics2d = require('haylen.physics2d')
+local scene = require('haylen.scene')
+
+local world = physics2d.newWorld()
+local crate = world:createBody({x = 0, y = -200})
+crate:addBox(40, 40)
+local floor = world:createBody({type = 'static', x = 0, y = 150})
+floor:addBox(600, 20)
+local shapes = lighting2d.occludersFromBody(world, crate)
+local camera = graphics2d.newCamera()
+local lamp = lighting2d.newLight({x = -250, y = 0, radius = 600, shadows = true, shadowFilter = 'pcf5'})
+
+scene.push({
+    update = function(self, dt)
+        world:step(dt)
+        for _, shape in ipairs(shapes) do
+            shape.x, shape.y, shape.rotation = crate.x, crate.y, crate.rotation
+        end
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera, {ambientLight = '#FF181820'})
+        graphics2d.drawRect({-600, -400, 1200, 800}, '#FF6A6A62')
+        for _, shape in ipairs(shapes) do
+            graphics2d.drawOccluder(shape)
+        end
+        graphics2d.drawLight(lamp)
+    end,
+})
+```
+
+### lighting2d.occludersFromMap(map, layer)
+
+Returns a list of occluders, one for each object of the named object layer of a [Tiled](tiled.md) map renderer, or of every object layer when `layer` is `nil`. The occluders are in world coordinates, with the offsets of the layer and its groups. Rectangles, tile objects, ellipses, capsules and polygons make closed occluders, and polylines open ones. A tile object outlines its image where it draws. Points and text have no outline and make no occluder. A name that is not an object layer raises `The map has no object layer named "<name>".`
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local lighting2d = require('haylen.lighting2d')
+local scene = require('haylen.scene')
+local tiled = require('haylen.tiled')
+
+local map = tiled.newMapRenderer(assets.load('maps/level.tmj'))
+local walls = lighting2d.occludersFromMap(map, 'walls')
+local camera = graphics2d.newCamera()
+local lamp = lighting2d.newLight({x = 200, y = 150, radius = 500, shadows = true})
+
+scene.push({
+    render = function(self)
+        graphics2d.beginWorld(camera, {ambientLight = '#FF101018'})
+        map:draw(camera)
+        for _, wall in ipairs(walls) do
+            graphics2d.drawOccluder(wall)
+        end
+        graphics2d.drawLight(lamp)
+    end,
+})
+```
+
 ### Properties
 
 | Property | Type | Default | Meaning |
@@ -315,4 +271,64 @@ local door = lighting2d.newOccluder({points = {0, 0, 40, 0}, closed = false, x =
 for _, point in ipairs(door:worldPoints()) do
     print(point.x, point.y)
 end
+```
+
+## Light queries
+
+These functions measure and shape light for gameplay the way the light pass draws it.
+
+### lighting2d.illuminate(ambient, lights, x, y, options)
+
+Returns the `Color` of the light map at a point, after the ambient color and a list of lights, in order and with their blend modes. It works as the light pass does, without normal maps or shadows. The list `lights` holds `Light` objects or tables with their properties. Combine it with `light:shadowedAt` to tell how lit a character really is. The table `options` is optional:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `lightMask` | integer | `1` | The light mask of the draw at the point. |
+| `layer` | integer | `0` | The layer of the draw at the point. |
+
+```lua
+local lighting2d = require('haylen.lighting2d')
+
+local torches = {lighting2d.newLight({x = 0, y = 0, radius = 200}), {x = 150, y = 0, radius = 120, color = '#FFFF8040'}}
+local seen = lighting2d.illuminate('#FF101020', torches, 60, 0, {layer = 2})
+print(seen.r > 0.5 and 'visible' or 'hidden')
+```
+
+### lighting2d.falloff(distance)
+
+Returns the radial falloff of lights without a texture, the curve of `graphics2d.lightTexture()`. The `distance` is a fraction of the radius. The result is 1 at the center and fades smoothly to 0 at the radius and beyond. Gameplay code uses it to weigh light the way the light pass does.
+
+```lua
+local lighting2d = require('haylen.lighting2d')
+
+local lamp = lighting2d.newLight({x = 0, y = 0, radius = 200})
+local distance = 80
+print(lighting2d.falloff(distance / lamp.radius), lamp:strengthAt(distance, 0))
+```
+
+### lighting2d.flicker(time, options)
+
+Returns an intensity multiplier that wavers like a flame, between `1 - amount` and 1, from smooth noise. The same time, options and seed always give the same value. Unknown keys raise `Unknown option "<key>".` The table `options` is optional:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `speed` | number | `8` | How fast the value changes. |
+| `amount` | number | `0.15` | How far the value can dim below 1. With 0 it always returns 1. |
+| `seed` | integer | `0` | The seed of the noise. Give each light its own seed so they do not flicker in step. |
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local haylen = require('haylen')
+local lighting2d = require('haylen.lighting2d')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+
+scene.push({
+    render = function(self)
+        graphics2d.beginWorld(camera, {ambientLight = '#FF101830'})
+        local wave = lighting2d.flicker(haylen.elapsed(), {speed = 6, amount = 0.2, seed = 4})
+        graphics2d.drawLight({x = 0, y = 0, radius = 140 * wave, color = '#FFFF9040', intensity = 0.8 * wave})
+    end,
+})
 ```

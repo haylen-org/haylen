@@ -159,7 +159,7 @@ An owner is a table or a userdata, such as a scene, an autoload, a GUI or a game
 - A scene ends when it unloads, and a GUI ends when it is unmounted.
 - Any other owner ends when the garbage collector frees it. Its listeners then end at the end of that frame.
 - The owner keeps the functions of its listeners, and the bus never keeps the owner. So a listener may use its owner freely without keeping it alive.
-- Without the option `owner`, a listener belongs to the default owner. In development, a listener that a module adds while its top level runs belongs to that module, so a [reload](hotReload.md) of the module ends it. Otherwise the listener lives until it disconnects or the app stops.
+- Without the option `owner`, a listener belongs to the default owner. In development, a listener that a module adds while its top level runs belongs to that module, so a [reload](hot-reload.md) of the module ends it. Otherwise the listener lives until it disconnects or the app stops.
 - An owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`.
 
 The function [`scene.listen(owner, source, fn, options)`](scene.md#scenelistenowner-source-fn-options) of `haylen.scene` subscribes with an owner in one call, and scenes built on `scene.Scene` call it as `self:listen(name, fn)`. Every engine function that registers a listener, a task or a job takes the same option, such as `signal:connect`, `timer.after`, `tween.to`, `jobs.spawn`, `socket:on` and `debug.addMonitor`.
@@ -354,7 +354,7 @@ end)
 | `contentUpdateReady` | An update of the content is installed and plays from the next start. | `{generation}` |
 | `contentUpdateFailed` | A check or a download of an update failed. | `{code, message}` |
 | `contentRecovered` | The app fell back to earlier content when it started, because downloaded content could not play. It arrives during `appStarted`, so the listeners of `source/main.lua` hear it. | `{manifest, reason}`, where `manifest` is the ID of the content that could not play. |
-| `moduleReloaded` | During hot reload, a changed Lua module reloaded in place, once for each module of a save, as [`haylen.hotReload`](hotReload.md) describes. Queued. | `{module, path}` |
+| `moduleReloaded` | During hot reload, a changed Lua module reloaded in place, once for each module of a save, as [`haylen.hotReload`](hot-reload.md) describes. Queued. | `{module, path}` |
 | `breadcrumbAdded` | The function `debug.addBreadcrumb()` added a breadcrumb, which a crash reporting or analytics plugin forwards to its service. Queued. | `{message, data, time}`, where `time` counts the seconds since 1970. |
 | `objectCreated`, `objectDestroyed` | While object events are on, a counted object was created or destroyed, as [`haylen.debug`](debug.md#object-counts-and-events) describes. Queued. | `{type, count}`, where `type` is a counter name such as `'haylen.Sprite'` or `'Texture'`. |
 

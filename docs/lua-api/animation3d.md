@@ -8,6 +8,45 @@ local animation3d = require('haylen.animation3d')
 
 ## Functions
 
+The module has these functions. Each one is described in the section of what it makes.
+
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`animation3d.newTrack(description)`](#animation3dnewtrackdescription) | A track of keys | [Track3D](#track3d) |
+| [`animation3d.newClip(description)`](#animation3dnewclipdescription) | A clip of tracks and events | [Clip3D](#clip3d) |
+| [`animation3d.clipFromGltf(document, animation)`](#animation3dclipfromgltfdocument-animation) | The clip of a glTF animation | [Clip3D](#clip3d) |
+| [`animation3d.clipsFromGltf(document)`](#animation3dclipsfromgltfdocument) | The clips of every glTF animation | [Clip3D](#clip3d) |
+| [`animation3d.clipFromMorphSequence(target, targetCount, options)`](#animation3dclipfrommorphsequencetarget-targetcount-options) | A clip that shows morph targets in turn | [Clip3D](#clip3d) |
+| [`animation3d.newClipPlayer(clip, options)`](#animation3dnewclipplayerclip-options) | A player of a clip | [ClipPlayer3D](#clipplayer3d) |
+| [`animation3d.newSkeleton(bones)`](#animation3dnewskeletonbones) | A skeleton of a list of bones | [Skeleton3D](#skeleton3d) |
+| [`animation3d.skeletonFromGltf(document, skin)`](#animation3dskeletonfromgltfdocument-skin) | The skeleton of a glTF skin | [Skeleton3D](#skeleton3d) |
+| [`animation3d.newPose(skeleton)`](#animation3dnewposeskeleton) | A pose at the rest pose | [Pose3D](#pose3d) |
+| [`animation3d.newSkin(skeleton, joints)`](#animation3dnewskinskeleton-joints) | A skin of a list of joints | [Skin3D](#skin3d) |
+| [`animation3d.skinFromGltf(document, skin, skeleton)`](#animation3dskinfromgltfdocument-skin-skeleton) | The skin of a glTF skin | [Skin3D](#skin3d) |
+| [`animation3d.skinWeightsFromGltf(document, mesh, skin, options)`](#animation3dskinweightsfromgltfdocument-mesh-skin-options) | The skin weights of a glTF primitive | [SkinWeights3D](#skinweights3d) |
+| [`animation3d.newPoseBatch(skin)`](#animation3dnewposebatchskin) | An empty pose batch | [PoseBatch3D](#posebatch3d) |
+| [`animation3d.newMorphTargets(vertexCount, targets)`](#animation3dnewmorphtargetsvertexcount-targets) | The morph targets of a mesh | [MorphTargets3D](#morphtargets3d) |
+| [`animation3d.morphTargetsFromGltf(document, mesh, options)`](#animation3dmorphtargetsfromgltfdocument-mesh-options) | The morph targets of a glTF primitive | [MorphTargets3D](#morphtargets3d) |
+
+The field [`animation3d.faceExpressions`](#animation3dfaceexpressions) lists the names of the face blend shapes, as the section [MorphTargets3D](#morphtargets3d) describes.
+
+## Track3D
+
+A `Track3D` holds the keys of one property of one target. It never changes once made.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `target` | string | The node or bone it moves. |
+| `property` | string | The property it moves. |
+| `type` | string | The type of its values. |
+| `interpolation` | string | How values run between its keys. |
+| `storage` | string | `'float'`, or `'quantized'` for values in 16-bit steps. |
+| `keyCount` | integer | The number of keys. |
+| `componentCount` | integer | The numbers that a sample writes, one for a string track. |
+| `startTime` and `endTime` | number | The times of the first and the last key. |
+| `quantizationError` | number | The most that quantizing moved a value, `0` for floats. |
+| `memorySize` | integer | The bytes that its keys take. |
+
 ### animation3d.newTrack(description)
 
 Returns a [`Track3D`](#track3d) of the keys of the table `description`, whose unknown keys raise `Unknown option "<key>".`:
@@ -30,6 +69,39 @@ local glow = animation3d.newTrack({target = 'Lamp', property = 'light.intensity'
 local mood = animation3d.newTrack({target = 'Hero', property = 'mood', type = 'string', interpolation = 'step', times = {0, 2}, strings = {'calm', 'angry'}})
 print(glow:sample(0.25), mood:sample(3)) -- 2.5 angry
 ```
+
+### track:sample(time)
+
+Returns the value at a time: a number, a boolean, a string, a `Vec2`, a `Vec3`, a `Vec4`, a `Quat`, a `Color` or a list of weights. A time before the first key gives the first value and a time after the last key the last value. A cubic spline of rotations that passes through a quaternion of length zero raises `The "<property>" track of "<target>" passes through a quaternion of length zero at <time> seconds, so it holds no rotation there. Make the tangents of its keys smaller.`.
+
+```lua
+local animation3d = require('haylen.animation3d')
+
+local track = animation3d.newTrack({target = 'Face', property = 'weights', type = 'weights', times = {0, 1}, values = {0, 1, 1, 0}})
+local weights = track:sample(0.25)
+print(weights[1], weights[2]) -- 0.25 0.75
+```
+
+### track:times(), track:values() and track:handles()
+
+Return the times, the values and the handles of the keys as new `FloatBuffer` values, in the layout of `animation3d.newTrack`. Quantized values come back as the floats they stand for.
+
+### track:strings()
+
+Returns the list of the strings of a string track.
+
+## Clip3D
+
+A `Clip3D` holds the tracks and events of one animation. It never changes once made, and every edit returns a new clip.
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `name` | string | The name of the clip. |
+| `duration` | number | How long it lasts in seconds. |
+| `valueCount` | integer | The numbers that a sample writes, the components of every track one after another. |
+| `memorySize` | integer | The bytes that the keys of its tracks take. |
+| `tracks` | list | Its [`Track3D`](#track3d) values, in order. |
+| `events` | list | Its events, each `{time, name, data}`, in the order of their times. |
 
 ### animation3d.newClip(description)
 
@@ -89,125 +161,6 @@ local animation3d = require('haylen.animation3d')
 local talk = animation3d.clipFromMorphSequence('Mouth', 8, {name = 'talk', framesPerSecond = 12})
 print(talk.duration) -- 0.66666668653488
 ```
-
-### animation3d.newClipPlayer(clip, options)
-
-Returns a [`ClipPlayer3D`](#clipplayer3d) of a clip. The optional table `options` takes `loop` (default `'loop'`), `speed` (default `1`), `paused` (default `false`) and `time`, the time to start at, which is the start of the clip, or its end while the speed is negative, without one. Unknown keys raise `Unknown option "<key>".`.
-
-```lua
-local animation3d = require('haylen.animation3d')
-local gltf = require('haylen.gltf')
-
-local document = gltf.read('models/robot.glb')
-local player = animation3d.newClipPlayer(animation3d.clipFromGltf(document, document.animations[1]), {loop = 'pingPong', speed = 0.5})
-```
-
-### animation3d.newSkeleton(bones)
-
-Returns a [`Skeleton3D`](#skeleton3d) of a list of bones, each `{name, parent, position, rotation, scale}`, whose unknown keys raise `Unknown option "<key>".`. The `name` of each bone is its own, the `parent` is the place of a bone before it in the list, counted from 1, or nil for a root, and the rest pose takes `position` (default `{0, 0, 0}`), `rotation` (default no turn) and `scale` (default `{1, 1, 1}`). A skeleton holds from 1 to 65536 bones.
-
-```lua
-local animation3d = require('haylen.animation3d')
-
-local arm = animation3d.newSkeleton({{name = 'Shoulder'}, {name = 'Elbow', parent = 1, position = {0.3, 0, 0}}, {name = 'Wrist', parent = 2, position = {0.25, 0, 0}}})
-print(arm.boneCount) -- 3
-```
-
-### animation3d.skeletonFromGltf(document, skin)
-
-Returns the [`Skeleton3D`](#skeleton3d) of a skin table of a `Document` of [`haylen.gltf`](gltf.md): the joints of the skin and every node above them, parents first, named after their nodes by the rule of [`animation3d.clipFromGltf`](#animation3dclipfromgltfdocument-animation), with the rest poses of the nodes.
-
-### animation3d.newPose(skeleton)
-
-Returns a [`Pose3D`](#pose3d) of a skeleton at its rest pose.
-
-### animation3d.newSkin(skeleton, joints)
-
-Returns a [`Skin3D`](#skin3d) of a skeleton with a list of joints, each `{bone, inverseBindMatrix}`, whose unknown keys raise `Unknown option "<key>".`. The `bone` is the place of a bone of the skeleton counted from 1, and the `inverseBindMatrix` a `Mat4`, the identity by default.
-
-### animation3d.skinFromGltf(document, skin, skeleton)
-
-Returns the [`Skin3D`](#skin3d) of a skin table of a `Document` for the skeleton that `animation3d.skeletonFromGltf` made of it, with an identity for each joint when the skin has no inverse bind matrices.
-
-```lua
-local animation3d = require('haylen.animation3d')
-local gltf = require('haylen.gltf')
-
-local document = gltf.read('models/knight.glb')
-local skeleton = animation3d.skeletonFromGltf(document, document.skins[1])
-local skin = animation3d.skinFromGltf(document, document.skins[1], skeleton)
-print(skeleton.boneCount, skin.jointCount)
-```
-
-### animation3d.skinWeightsFromGltf(document, mesh, skin, options)
-
-Returns the [`SkinWeights3D`](#skinweights3d) of a primitive of a mesh table of a `Document`, which the skin bends. The optional table `options` takes `primitive`, the place of the primitive in the mesh counted from 1 (default `1`), and `influences`, `4` (the default) or `8`, and other keys raise `Unknown option "<key>".`. Each vertex keeps its largest weights, the joint of the lower index first between equal weights, and they add up to one again.
-
-### animation3d.newPoseBatch(skin)
-
-Returns an empty [`PoseBatch3D`](#posebatch3d) of the characters of a skin.
-
-### animation3d.newMorphTargets(vertexCount, targets)
-
-Returns [`MorphTargets3D`](#morphtargets3d) of a mesh of `vertexCount` vertices from a list of targets, each `{name, vertices, positions, normals, tangents}`, whose unknown keys raise `Unknown option "<key>".`. The `vertices` are the vertices that the target moves, counted from 1 and growing, and `positions`, `normals` and `tangents`, each optional, hold three numbers for each of them, in a list or a `FloatBuffer`: the difference that the target adds at a weight of one. Each named target needs a name of its own.
-
-### animation3d.morphTargetsFromGltf(document, mesh, options)
-
-Returns the [`MorphTargets3D`](#morphtargets3d) of a primitive of a mesh table of a `Document`, each keeping the vertices it moves, named by the `targetNames` of the `extras` of the mesh when they name every target. The optional table `options` takes `primitive`, counted from 1 (default `1`), and other keys raise `Unknown option "<key>".`.
-
-### animation3d.faceExpressions
-
-The list of the names of the 52 face blend shapes that face tracking reports, from `'eyeBlinkLeft'` to `'tongueOut'`, which [`targets:find`](#targetsfindname) finds the targets of.
-
-## Track3D
-
-A `Track3D` holds the keys of one property of one target. It never changes once made.
-
-| Property | Type | Meaning |
-| --- | --- | --- |
-| `target` | string | The node or bone it moves. |
-| `property` | string | The property it moves. |
-| `type` | string | The type of its values. |
-| `interpolation` | string | How values run between its keys. |
-| `storage` | string | `'float'`, or `'quantized'` for values in 16-bit steps. |
-| `keyCount` | integer | The number of keys. |
-| `componentCount` | integer | The numbers that a sample writes, one for a string track. |
-| `startTime` and `endTime` | number | The times of the first and the last key. |
-| `quantizationError` | number | The most that quantizing moved a value, `0` for floats. |
-| `memorySize` | integer | The bytes that its keys take. |
-
-### track:sample(time)
-
-Returns the value at a time: a number, a boolean, a string, a `Vec2`, a `Vec3`, a `Vec4`, a `Quat`, a `Color` or a list of weights. A time before the first key gives the first value and a time after the last key the last value. A cubic spline of rotations that passes through a quaternion of length zero raises `The "<property>" track of "<target>" passes through a quaternion of length zero at <time> seconds, so it holds no rotation there. Make the tangents of its keys smaller.`.
-
-```lua
-local animation3d = require('haylen.animation3d')
-
-local track = animation3d.newTrack({target = 'Face', property = 'weights', type = 'weights', times = {0, 1}, values = {0, 1, 1, 0}})
-local weights = track:sample(0.25)
-print(weights[1], weights[2]) -- 0.25 0.75
-```
-
-### track:times(), track:values() and track:handles()
-
-Return the times, the values and the handles of the keys as new `FloatBuffer` values, in the layout of `animation3d.newTrack`. Quantized values come back as the floats they stand for.
-
-### track:strings()
-
-Returns the list of the strings of a string track.
-
-## Clip3D
-
-A `Clip3D` holds the tracks and events of one animation. It never changes once made, and every edit returns a new clip.
-
-| Property | Type | Meaning |
-| --- | --- | --- |
-| `name` | string | The name of the clip. |
-| `duration` | number | How long it lasts in seconds. |
-| `valueCount` | integer | The numbers that a sample writes, the components of every track one after another. |
-| `memorySize` | integer | The bytes that the keys of its tracks take. |
-| `tracks` | list | Its [`Track3D`](#track3d) values, in order. |
-| `events` | list | Its events, each `{time, name, data}`, in the order of their times. |
 
 ### clip:track(target, property)
 
@@ -294,6 +247,18 @@ A `ClipPlayer3D` plays one clip. Each update moves its time by the seconds times
 | `loop` | string | read and write | `'loop'`, `'once'` or `'pingPong'`. |
 | `finished` | boolean | read | Whether a player of `'once'` reached the end it plays toward. |
 
+### animation3d.newClipPlayer(clip, options)
+
+Returns a [`ClipPlayer3D`](#clipplayer3d) of a clip. The optional table `options` takes `loop` (default `'loop'`), `speed` (default `1`), `paused` (default `false`) and `time`, the time to start at, which is the start of the clip, or its end while the speed is negative, without one. Unknown keys raise `Unknown option "<key>".`.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local gltf = require('haylen.gltf')
+
+local document = gltf.read('models/robot.glb')
+local player = animation3d.newClipPlayer(animation3d.clipFromGltf(document, document.animations[1]), {loop = 'pingPong', speed = 0.5})
+```
+
 ### player:update(dt)
 
 Moves the player by `dt` seconds times its speed, samples its clip and reports what it passed. A player of `'loop'` starts again from the other end, a player of `'once'` stops at the end and reports `'complete'`, and a player of `'pingPong'` turns. An update far longer than the clip reports the events of the last three passes it makes. A negative or infinite step raises `A clip player updates by a finite time step of zero or more seconds, while it was given <dt>.`, and a listener that updates the player it listens to raises `A clip player cannot update from a listener of its own events.`. An error of a listener reaches the caller of `update`.
@@ -338,6 +303,21 @@ A `Skeleton3D` holds the bones of a character. It never changes once made, and m
 | `boneCount` | integer | The number of bones. |
 | `bones` | list | The bones, each `{name, parent, position, rotation, scale}`, with `parent` counted from 1 and nil for a root. |
 
+### animation3d.newSkeleton(bones)
+
+Returns a [`Skeleton3D`](#skeleton3d) of a list of bones, each `{name, parent, position, rotation, scale}`, whose unknown keys raise `Unknown option "<key>".`. The `name` of each bone is its own, the `parent` is the place of a bone before it in the list, counted from 1, or nil for a root, and the rest pose takes `position` (default `{0, 0, 0}`), `rotation` (default no turn) and `scale` (default `{1, 1, 1}`). A skeleton holds from 1 to 65536 bones.
+
+```lua
+local animation3d = require('haylen.animation3d')
+
+local arm = animation3d.newSkeleton({{name = 'Shoulder'}, {name = 'Elbow', parent = 1, position = {0.3, 0, 0}}, {name = 'Wrist', parent = 2, position = {0.25, 0, 0}}})
+print(arm.boneCount) -- 3
+```
+
+### animation3d.skeletonFromGltf(document, skin)
+
+Returns the [`Skeleton3D`](#skeleton3d) of a skin table of a `Document` of [`haylen.gltf`](gltf.md): the joints of the skin and every node above them, parents first, named after their nodes by the rule of [`animation3d.clipFromGltf`](#animation3dclipfromgltfdocument-animation), with the rest poses of the nodes.
+
 ### skeleton:findBone(name)
 
 Returns the place of the bone of a name, counted from 1, or nil.
@@ -349,6 +329,10 @@ A `Pose3D` holds the local transform of each bone of one character, which clips 
 | Property | Type | Meaning |
 | --- | --- | --- |
 | `skeleton` | Skeleton3D | The skeleton it poses. |
+
+### animation3d.newPose(skeleton)
+
+Returns a [`Pose3D`](#pose3d) of a skeleton at its rest pose.
 
 ### pose:sample(clip, time)
 
@@ -393,6 +377,24 @@ A `Skin3D` holds the joints that bend a mesh, bones of a skeleton with their inv
 | `joints` | list | The joints, each `{bone, inverseBindMatrix}`, with `bone` counted from 1. |
 | `skeleton` | Skeleton3D | The skeleton whose bones bend it. |
 
+### animation3d.newSkin(skeleton, joints)
+
+Returns a [`Skin3D`](#skin3d) of a skeleton with a list of joints, each `{bone, inverseBindMatrix}`, whose unknown keys raise `Unknown option "<key>".`. The `bone` is the place of a bone of the skeleton counted from 1, and the `inverseBindMatrix` a `Mat4`, the identity by default.
+
+### animation3d.skinFromGltf(document, skin, skeleton)
+
+Returns the [`Skin3D`](#skin3d) of a skin table of a `Document` for the skeleton that `animation3d.skeletonFromGltf` made of it, with an identity for each joint when the skin has no inverse bind matrices.
+
+```lua
+local animation3d = require('haylen.animation3d')
+local gltf = require('haylen.gltf')
+
+local document = gltf.read('models/knight.glb')
+local skeleton = animation3d.skeletonFromGltf(document, document.skins[1])
+local skin = animation3d.skinFromGltf(document, document.skins[1], skeleton)
+print(skeleton.boneCount, skin.jointCount)
+```
+
 ### skin:palette(pose, buffer, first)
 
 Writes the palette of a pose of the skeleton of the skin into a `FloatBuffer`, from its value `first` on, `1` by default: twelve floats for each joint, the first three rows of the model matrix of its bone times its inverse bind matrix, as of the last `pose:computeModelMatrices`. A pose of another skeleton raises `The pose belongs to another skeleton than the skin.`, and a buffer without room raises `The palette of <count> joints takes <values> values, while the buffer holds <size> from its first one.`.
@@ -411,6 +413,10 @@ Writes the palette of a pose as dual quaternions, eight floats for each joint: t
 | `vertexCount` | integer | The number of vertices. |
 | `jointCount` | integer | The joints of the skin that the joints of the vertices name. |
 
+### animation3d.skinWeightsFromGltf(document, mesh, skin, options)
+
+Returns the [`SkinWeights3D`](#skinweights3d) of a primitive of a mesh table of a `Document`, which the skin bends. The optional table `options` takes `primitive`, the place of the primitive in the mesh counted from 1 (default `1`), and `influences`, `4` (the default) or `8`, and other keys raise `Unknown option "<key>".`. Each vertex keeps its largest weights, the joint of the lower index first between equal weights, and they add up to one again.
+
 ### weights:readJoints(buffer, first) and weights:readWeights(buffer, first)
 
 Write the joints of every vertex, counted from zero as a shader reads them, or their weights into a `FloatBuffer`, the influences of each vertex one after another.
@@ -427,6 +433,10 @@ A `PoseBatch3D` poses many characters of one skin, each looping a clip at its ow
 | --- | --- | --- |
 | `count` | integer | The number of characters. |
 | `paletteSize` | integer | The floats of the palette of one character, twelve for each joint. |
+
+### animation3d.newPoseBatch(skin)
+
+Returns an empty [`PoseBatch3D`](#posebatch3d) of the characters of a skin.
 
 ### batch:add(clip, options)
 
@@ -475,6 +485,18 @@ crowd:readPalettes(palettes)
 | `vertexCount` | integer | The vertices of the mesh. |
 | `names` | list | The name of each target, an empty string for a target without one. |
 | `memorySize` | integer | The bytes that the vertices and differences of the targets take. |
+
+### animation3d.newMorphTargets(vertexCount, targets)
+
+Returns [`MorphTargets3D`](#morphtargets3d) of a mesh of `vertexCount` vertices from a list of targets, each `{name, vertices, positions, normals, tangents}`, whose unknown keys raise `Unknown option "<key>".`. The `vertices` are the vertices that the target moves, counted from 1 and growing, and `positions`, `normals` and `tangents`, each optional, hold three numbers for each of them, in a list or a `FloatBuffer`: the difference that the target adds at a weight of one. Each named target needs a name of its own.
+
+### animation3d.morphTargetsFromGltf(document, mesh, options)
+
+Returns the [`MorphTargets3D`](#morphtargets3d) of a primitive of a mesh table of a `Document`, each keeping the vertices it moves, named by the `targetNames` of the `extras` of the mesh when they name every target. The optional table `options` takes `primitive`, counted from 1 (default `1`), and other keys raise `Unknown option "<key>".`.
+
+### animation3d.faceExpressions
+
+The list of the names of the 52 face blend shapes that face tracking reports, from `'eyeBlinkLeft'` to `'tongueOut'`, which [`targets:find`](#targetsfindname) finds the targets of.
 
 ### targets:find(name)
 

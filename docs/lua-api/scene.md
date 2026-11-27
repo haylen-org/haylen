@@ -22,7 +22,7 @@ A scene is any Lua table. It may define hooks, which are functions that the engi
 | `resume` | When the scenes above it are popped and it is on top again. | `self` |
 | `paused` | When the game pause stops the scene, by its process mode. | `self` |
 | `unpaused` | When the game pause lets the scene run again, by its process mode. | `self` |
-| `reloaded` | In development, after a save reloaded Lua modules in place. Every scene of the stack hears it, from the bottom up, as [`haylen.hotReload`](hotReload.md#the-reloaded-hook) describes. | `self` and a table with `modules` and `paths`, the names and the files of the reloaded modules. |
+| `reloaded` | In development, after a save reloaded Lua modules in place. Every scene of the stack hears it, from the bottom up, as [`haylen.hotReload`](hot-reload.md#the-reloaded-hook) describes. | `self` and a table with `modules` and `paths`, the names and the files of the reloaded modules. |
 | `event` | For every platform event, on the top scene only. Input events arrive only while its process mode runs and no change holds input back. No event arrives while the error screen shows. | `self` and the event table that [platform events](#platform-events) describes. |
 | `fixedUpdate` | On the top scene, once for each fixed step of the frame, which may be zero or several times. It runs only while its process mode runs and no scene covers it. | `self` and the length of a fixed step in seconds, which [`haylen.fixedStep()`](haylen.md#haylenfixedstep) returns. |
 | `update` | On the top scene, once per frame, while its process mode runs and no scene covers it. | `self` and the scaled time of the frame in seconds. |

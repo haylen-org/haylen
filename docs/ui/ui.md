@@ -1064,7 +1064,7 @@ ui.setScale(preferences.get('interfaceSize', 1))
 
 ## Smooth edges
 
-Every curve of the components fades over one pixel of the screen, in both scale modes, at any scale factor, screen density and graphics API. The components draw their rounded surfaces, borders, focus rings, shadows, circles, rings, arcs, pills, check marks, arrows, crosses, lines, selections and carets as [shapes](../graphics/rendering.md#shapes-and-smooth-edges) of the 2D renderer. The shader of a shape covers it exactly from the distance to its edge. So the shapes stay smooth however much the UI or the transform of a node scales them, and inside the image of a transition.
+Every curve of the components fades over one pixel of the screen, in both scale modes, at any scale factor, screen density and graphics API. The components draw their rounded surfaces, borders, focus rings, shadows, circles, rings, arcs, pills, check marks, arrows, crosses, lines, selections and carets as [shapes](../2d/graphics.md#shapes-and-smooth-edges) of the 2D renderer. The shader of a shape covers it exactly from the distance to its edge. So the shapes stay smooth however much the UI or the transform of a node scales them, and inside the image of a transition.
 
 - A surface paints its fill and its border in one shape. So the border runs inside the same edge, follows its corners and meets the fill without a seam.
 - The focus ring is the border of a shape, `focusGap` away from its control, with corners that are concentric to the corners of the control.

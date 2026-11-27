@@ -8,77 +8,14 @@ local particles2d = require('haylen.particles2d')
 
 ## Functions
 
-### particles2d.newEmitter(options)
+The module has these functions. Each one is described in the section of what it makes.
 
-Creates a [`ParticleEmitter`](#particleemitter) from a table of [emitter options](#emitter-options). The emitter starts emitting at once, after its delay.
-
-```lua
-local graphics = require('haylen.graphics')
-local particles2d = require('haylen.particles2d')
-
-local sparkle = particles2d.newEmitter({texture = graphics.whiteTexture(), rate = 30, startSize = 4, endSize = 0, blend = 'additive', seed = 3})
-```
-
-### particles2d.newEmitter(effect, overrides)
-
-Creates a [`ParticleEmitter`](#particleemitter) from a loaded [`ParticleEffect`](#particleeffect) of one emitter. The optional table `overrides` takes the keys of the [emitter options](#emitter-options) and replaces only the values it names, so the draw order and every other value it leaves out come from the effect. A composite effect raises `The particle effect holds several emitters, so create it with "particles2d.newSystem".`
-
-```lua
-local assets = require('haylen.assets')
-local particles2d = require('haylen.particles2d')
-
-local sparks = assets.load('effects/sparks.particles')
-local blue = particles2d.newEmitter(sparks, {colors = {'#FFA0E0FF', '#002080FF'}, seed = 7})
-```
-
-### particles2d.newSystem(effect, options)
-
-Creates a [`ParticleSystem`](#particlesystem) from a loaded [`ParticleEffect`](#particleeffect). It makes one emitter for each entry of a composite effect, or one emitter for an effect of one emitter. The optional table `options` takes `seed`, the seed of the first emitter, from which the seeds of the others count up. Any other key raises `Unknown option "<key>".`
-
-```lua
-local assets = require('haylen.assets')
-local particles2d = require('haylen.particles2d')
-
-local explosion = particles2d.newSystem(assets.load('effects/explosion.particles'), {seed = 2})
-explosion.position = {400, 300}
-```
-
-### particles2d.newTrail(options)
-
-Creates a [`Trail`](#trail), a ribbon that follows a moving point. The table `options` takes these keys, and any other key raises `Unknown option "<key>".`:
-
-| Key | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `lifetime` | number | `0.4` | The seconds each point of the ribbon lives, which sets how long the ribbon is behind a moving point. |
-| `minDistance` | number | `4` | The distance the position moves before the trail adds a point. |
-| `maxPoints` | integer | `64` | The most points the trail keeps, from 2 to 4096. The oldest goes when a new one needs room. |
-| `widthStart`, `widthEnd` | number | `12`, `0` | The width at the head and at the tail. |
-| `colors` | table | `{'#FFFFFFFF', '#00FFFFFF'}` | Colors spread evenly from the head to the tail. |
-| `texture` | Texture | white | An image stretched along the ribbon from the head, across its width. |
-| `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `emission`, `unshaded`, `lightMask` | | | The draw order of the ribbon, as in [`graphics2d.draw`](graphics2d.md#draw-order). |
-
-The options are checked, and these errors can come up: `A trail needs a positive, finite lifetime and a minimum distance of at least 0.`, `A trail keeps from 2 to 4096 points.` and `A trail needs widths of at least 0 and at least one color.`
-
-```lua
-local graphics2d = require('haylen.graphics2d')
-local input = require('haylen.input')
-local particles2d = require('haylen.particles2d')
-local scene = require('haylen.scene')
-
-local camera = graphics2d.newCamera()
-local slash = particles2d.newTrail({lifetime = 0.25, widthStart = 24, colors = {'#FFFFFFFF', '#00A0E0FF'}, blend = 'additive'})
-
-scene.push({
-    update = function(self, dt)
-        slash.x, slash.y = camera:screenToWorld(input.mousePosition())
-        slash:update(dt)
-    end,
-    render = function(self)
-        graphics2d.beginWorld(camera)
-        slash:draw()
-    end,
-})
-```
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`particles2d.newEmitter(options)`](#particles2dnewemitteroptions) | An emitter of emitter options | [ParticleEmitter](#particleemitter) |
+| [`particles2d.newEmitter(effect, overrides)`](#particles2dnewemittereffect-overrides) | An emitter of an effect of one emitter | [ParticleEmitter](#particleemitter) |
+| [`particles2d.newSystem(effect, options)`](#particles2dnewsystemeffect-options) | A system of the emitters of an effect | [ParticleSystem](#particlesystem) |
+| [`particles2d.newTrail(options)`](#particles2dnewtrailoptions) | A ribbon that follows a point | [Trail](#trail) |
 
 ## Emitter options
 
@@ -408,6 +345,29 @@ Loading a file can raise these errors, besides the [errors of emitter options](#
 
 A `ParticleEmitter` spawns, moves and draws particles. It comes from `particles2d.newEmitter`, or from `system:emitter` and `system:emitters`. Two emitter values compare equal with `==` when they are the same emitter.
 
+### particles2d.newEmitter(options)
+
+Creates a [`ParticleEmitter`](#particleemitter) from a table of [emitter options](#emitter-options). The emitter starts emitting at once, after its delay.
+
+```lua
+local graphics = require('haylen.graphics')
+local particles2d = require('haylen.particles2d')
+
+local sparkle = particles2d.newEmitter({texture = graphics.whiteTexture(), rate = 30, startSize = 4, endSize = 0, blend = 'additive', seed = 3})
+```
+
+### particles2d.newEmitter(effect, overrides)
+
+Creates a [`ParticleEmitter`](#particleemitter) from a loaded [`ParticleEffect`](#particleeffect) of one emitter. The optional table `overrides` takes the keys of the [emitter options](#emitter-options) and replaces only the values it names, so the draw order and every other value it leaves out come from the effect. A composite effect raises `The particle effect holds several emitters, so create it with "particles2d.newSystem".`
+
+```lua
+local assets = require('haylen.assets')
+local particles2d = require('haylen.particles2d')
+
+local sparks = assets.load('effects/sparks.particles')
+local blue = particles2d.newEmitter(sparks, {colors = {'#FFA0E0FF', '#002080FF'}, seed = 7})
+```
+
 ### Properties
 
 | Property | Type | Access | Meaning |
@@ -662,6 +622,18 @@ end
 
 A `ParticleSystem` holds the emitters of an effect, which update, draw, move, scale, turn and restart together. It comes from `particles2d.newSystem`. Every emitter sits at its offset from the position of the system, turned and scaled with it, and draws in the order the effect lists it.
 
+### particles2d.newSystem(effect, options)
+
+Creates a [`ParticleSystem`](#particlesystem) from a loaded [`ParticleEffect`](#particleeffect). It makes one emitter for each entry of a composite effect, or one emitter for an effect of one emitter. The optional table `options` takes `seed`, the seed of the first emitter, from which the seeds of the others count up. Any other key raises `Unknown option "<key>".`
+
+```lua
+local assets = require('haylen.assets')
+local particles2d = require('haylen.particles2d')
+
+local explosion = particles2d.newSystem(assets.load('effects/explosion.particles'), {seed = 2})
+explosion.position = {400, 300}
+```
+
 ### Properties
 
 | Property | Type | Access | Meaning |
@@ -731,6 +703,43 @@ scene.push({
 ## Trail
 
 A `Trail` is a ribbon from `particles2d.newTrail` that follows its position. It adds a point whenever its position moves `minDistance` away from the last point and drops the points older than its lifetime. While it emits, its head follows the position.
+
+### particles2d.newTrail(options)
+
+Creates a [`Trail`](#trail), a ribbon that follows a moving point. The table `options` takes these keys, and any other key raises `Unknown option "<key>".`:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `lifetime` | number | `0.4` | The seconds each point of the ribbon lives, which sets how long the ribbon is behind a moving point. |
+| `minDistance` | number | `4` | The distance the position moves before the trail adds a point. |
+| `maxPoints` | integer | `64` | The most points the trail keeps, from 2 to 4096. The oldest goes when a new one needs room. |
+| `widthStart`, `widthEnd` | number | `12`, `0` | The width at the head and at the tail. |
+| `colors` | table | `{'#FFFFFFFF', '#00FFFFFF'}` | Colors spread evenly from the head to the tail. |
+| `texture` | Texture | white | An image stretched along the ribbon from the head, across its width. |
+| `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `emission`, `unshaded`, `lightMask` | | | The draw order of the ribbon, as in [`graphics2d.draw`](graphics2d.md#draw-order). |
+
+The options are checked, and these errors can come up: `A trail needs a positive, finite lifetime and a minimum distance of at least 0.`, `A trail keeps from 2 to 4096 points.` and `A trail needs widths of at least 0 and at least one color.`
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local input = require('haylen.input')
+local particles2d = require('haylen.particles2d')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+local slash = particles2d.newTrail({lifetime = 0.25, widthStart = 24, colors = {'#FFFFFFFF', '#00A0E0FF'}, blend = 'additive'})
+
+scene.push({
+    update = function(self, dt)
+        slash.x, slash.y = camera:screenToWorld(input.mousePosition())
+        slash:update(dt)
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera)
+        slash:draw()
+    end,
+})
+```
 
 ### Properties
 

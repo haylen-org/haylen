@@ -35,9 +35,85 @@ scene.push({
 })
 ```
 
+## Functions
+
+The module has these functions. Each one is described in the section of what it makes or does.
+
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`graphics2d.beginWorld(camera, options)`](#graphics2dbeginworldcamera-options) | Nothing | [Canvases](#canvases) |
+| [`graphics2d.beginScreen(options)`](#graphics2dbeginscreenoptions) | Nothing | [Canvases](#canvases) |
+| [`graphics2d.beginTarget(target, camera, options)`](#graphics2dbegintargettarget-camera-options) | Nothing | [Canvases](#canvases) |
+| [`graphics2d.canvasBounds()`](#graphics2dcanvasbounds) | The area that the open canvas shows | [Canvases](#canvases) |
+| [`graphics2d.canvasUnitSize()`](#graphics2dcanvasunitsize) | The length of a unit of the destination | [Canvases](#canvases) |
+| [`graphics2d.canvasLit()`](#graphics2dcanvaslit) | Whether the open canvas is lit | [Canvases](#canvases) |
+| [`graphics2d.pushClip(rect)`](#graphics2dpushcliprect) | Nothing | [Canvases](#canvases) |
+| [`graphics2d.popClip()`](#graphics2dpopclip) | Nothing | [Canvases](#canvases) |
+| [`graphics2d.pushFade(rect, options)`](#graphics2dpushfaderect-options) | Nothing | [Canvases](#canvases) |
+| [`graphics2d.popFade()`](#graphics2dpopfade) | Nothing | [Canvases](#canvases) |
+| [`graphics2d.pushLayerOffset(offset)`](#graphics2dpushlayeroffsetoffset) | Nothing | [Canvases](#canvases) |
+| [`graphics2d.popLayerOffset()`](#graphics2dpoplayeroffset) | Nothing | [Canvases](#canvases) |
+| [`graphics2d.beginCapture(target, options)`](#graphics2dbegincapturetarget-options) | Nothing | [Captures](#captures) |
+| [`graphics2d.endCapture()`](#graphics2dendcapture) | Nothing | [Captures](#captures) |
+| [`graphics2d.capturing()`](#graphics2dcapturing) | Whether a capture is open | [Captures](#captures) |
+| [`graphics2d.newCamera()`](#graphics2dnewcamera) | A camera | [Camera](#camera) |
+| [`graphics2d.blendCameras(from, to, amount)`](#graphics2dblendcamerasfrom-to-amount) | A camera between two views | [Camera](#camera) |
+| [`graphics2d.newCameraRig(options)`](#graphics2dnewcamerarigoptions) | A camera rig | [CameraRig](#camerarig) |
+| [`graphics2d.newPixelCanvas(width, height, options)`](#graphics2dnewpixelcanvaswidth-height-options) | A pixel canvas | [PixelCanvas](#pixelcanvas) |
+| [`graphics2d.newParallax(texture, properties)`](#graphics2dnewparallaxtexture-properties) | A parallax layer | [Parallax](#parallax) |
+| [`graphics2d.draw(texture, x, y, options)`](#graphics2ddrawtexture-x-y-options) | Nothing | [Sprite](#sprite) |
+| [`graphics2d.newSprite(texture, properties)`](#graphics2dnewspritetexture-properties) | A sprite | [Sprite](#sprite) |
+| [`graphics2d.newSpriteBatch(texture)`](#graphics2dnewspritebatchtexture) | A sprite batch | [SpriteBatch](#spritebatch) |
+| [`graphics2d.drawBatch(texture, sprites, order)`](#graphics2ddrawbatchtexture-sprites-order) | Nothing | [SpriteBatch](#spritebatch) |
+| [`graphics2d.drawBatch(texture, buffer, layout, order)`](#graphics2ddrawbatchtexture-buffer-layout-order) | Nothing | [SpriteBatch](#spritebatch) |
+| [`graphics2d.drawStatic(batch, x, y, order)`](#graphics2ddrawstaticbatch-x-y-order) | Nothing | [StaticSpriteBatch](#staticspritebatch) |
+| [`graphics2d.newTileLayer(textures, options)`](#graphics2dnewtilelayertextures-options) | A tile layer | [TileLayer](#tilelayer) |
+| [`graphics2d.drawRect(rect, color, order)`](#graphics2ddrawrectrect-color-order) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawRectOutline(rect, thickness, color, order)`](#graphics2ddrawrectoutlinerect-thickness-color-order) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawLine(x1, y1, x2, y2, thickness, color, order)`](#graphics2ddrawlinex1-y1-x2-y2-thickness-color-order) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawCircle(x, y, radius, color, order)`](#graphics2ddrawcirclex-y-radius-color-order) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawEllipse(x, y, radiusX, radiusY, color, order)`](#graphics2ddrawellipsex-y-radiusx-radiusy-color-order) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawPoints(points, options)`](#graphics2ddrawpointspoints-options) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawRing(x, y, radius, thickness, color, order)`](#graphics2ddrawringx-y-radius-thickness-color-order) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawArc(x, y, radius, thickness, startAngle, endAngle, color, order)`](#graphics2ddrawarcx-y-radius-thickness-startangle-endangle-color-order) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawShape(rect, options)`](#graphics2ddrawshaperect-options) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawGlass(rect, options)`](#graphics2ddrawglassrect-options) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawPolygon(points, color, order)`](#graphics2ddrawpolygonpoints-color-order) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawPolyline(points, thickness, color, closed, order)`](#graphics2ddrawpolylinepoints-thickness-color-closed-order) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawStroke(points, options)`](#graphics2ddrawstrokepoints-options) | Nothing | [Shapes and lines](#shapes-and-lines) |
+| [`graphics2d.drawMesh(texture, vertices, indices, order)`](#graphics2ddrawmeshtexture-vertices-indices-order) | Nothing | [Mesh](#mesh) |
+| [`graphics2d.newMesh(texture, vertices, indices)`](#graphics2dnewmeshtexture-vertices-indices) | A mesh | [Mesh](#mesh) |
+| [`graphics2d.newGridMesh(texture, columns, rows, options)`](#graphics2dnewgridmeshtexture-columns-rows-options) | A mesh of a grid of cells | [Mesh](#mesh) |
+| [`graphics2d.newPath()`](#graphics2dnewpath) | An empty path | [Path](#path) |
+| [`graphics2d.drawText(font, text, x, y, style)`](#graphics2ddrawtextfont-text-x-y-style) | Nothing | [Text](#text) |
+| [`graphics2d.measureText(font, text, style)`](#graphics2dmeasuretextfont-text-style) | The width and height of a text block | [Text](#text) |
+| [`graphics2d.defaultFont()`](#graphics2ddefaultfont) | The default font of the engine | [Text](#text) |
+| [`graphics2d.newRichText(markup, options)`](#graphics2dnewrichtextmarkup-options) | A laid out rich text | [RichText](#richtext) |
+| [`graphics2d.drawRichText(markup, x, y, options)`](#graphics2ddrawrichtextmarkup-x-y-options) | Nothing | [RichText](#richtext) |
+| [`graphics2d.measureRichText(markup, options)`](#graphics2dmeasurerichtextmarkup-options) | The width and height of a rich text block | [RichText](#richtext) |
+| [`graphics2d.registerTextEffect(name, effect, options)`](#graphics2dregistertexteffectname-effect-options) | A connection that removes the effect | [RichText](#richtext) |
+| [`graphics2d.registerTextIcon(name, texture, options)`](#graphics2dregistertexticonname-texture-options) | Nothing | [RichText](#richtext) |
+| [`graphics2d.textEffectNames()`](#graphics2dtexteffectnames) | The names of the registered text effects | [RichText](#richtext) |
+| [`graphics2d.newNineSlice(texture, options)`](#graphics2dnewnineslicetexture-options) | A nine-slice | [NineSlice](#nineslice) |
+| [`graphics2d.drawNineSlice(slice, rect, color, options)`](#graphics2ddrawninesliceslice-rect-color-options) | Nothing | [NineSlice](#nineslice) |
+| [`graphics2d.drawVector(image, x, y, options)`](#graphics2ddrawvectorimage-x-y-options) | Nothing | [Vector images](#vector-images) |
+| [`graphics2d.beginGroup(options)`](#graphics2dbegingroupoptions) | Nothing | [Groups and masks](#groups-and-masks) |
+| [`graphics2d.endGroup()`](#graphics2dendgroup) | Nothing | [Groups and masks](#groups-and-masks) |
+| [`graphics2d.pushMask(drawShape, options)`](#graphics2dpushmaskdrawshape-options) | Nothing | [Groups and masks](#groups-and-masks) |
+| [`graphics2d.popMask()`](#graphics2dpopmask) | Nothing | [Groups and masks](#groups-and-masks) |
+| [`graphics2d.drawImageBlend(from, to, rect, options)`](#graphics2ddrawimageblendfrom-to-rect-options) | Nothing | [Image blends](#image-blends) |
+| [`graphics2d.drawMetaballs(points, radius, options)`](#graphics2ddrawmetaballspoints-radius-options) | Nothing | [Metaballs](#metaballs) |
+| [`graphics2d.drawLight(light)`](#graphics2ddrawlightlight) | Nothing | [Lights](#lights) |
+| [`graphics2d.drawOccluder(occluder)`](#graphics2ddrawoccluderoccluder) | Nothing | [Lights](#lights) |
+| [`graphics2d.lightTexture()`](#graphics2dlighttexture) | The radial falloff texture of lights | [Lights](#lights) |
+| [`graphics2d.hdrLighting()`](#graphics2dhdrlighting) | Whether light maps hold light in floating point | [Lights](#lights) |
+| [`graphics2d.newMaterial(shader, uniforms)`](#graphics2dnewmaterialshader-uniforms) | A material | [Material](#material) |
+| [`graphics2d.stats()`](#graphics2dstats) | The counters of the renderer | [Statistics and inspection](#statistics-and-inspection) |
+| [`graphics2d.drawn()`](#graphics2ddrawn) | The quads and text blocks of the open canvas | [Statistics and inspection](#statistics-and-inspection) |
+
 ## Draw order
 
-Every draw that takes an `order` table, and every options table that lists `layer`, `depth` and `blend`, places and shades the draw in its canvas with these keys. The [rendering guide](../graphics/rendering.md#draw-order) explains how canvases sort them.
+Every draw that takes an `order` table, and every options table that lists `layer`, `depth` and `blend`, places and shades the draw in its canvas with these keys. The [rendering guide](../2d/graphics.md#draw-order) explains how canvases sort them.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -114,7 +190,7 @@ scene.push({
 
 ## Canvases
 
-Every draw goes into the open canvas. A scene opens a world, screen or render target canvas, and each new canvas closes the one before it. Drawing without an open canvas raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`. Canvases exist only while the engine renders a frame, so draws belong in `render` or `renderUi` and never in `update`. The [rendering guide](../graphics/rendering.md#canvases) explains the kinds of canvas and the order they reach the screen.
+Every draw goes into the open canvas. A scene opens a world, screen or render target canvas, and each new canvas closes the one before it. Drawing without an open canvas raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`. Canvases exist only while the engine renders a frame, so draws belong in `render` or `renderUi` and never in `update`. The [rendering guide](../2d/graphics.md#canvases) explains the kinds of canvas and the order they reach the screen.
 
 ### graphics2d.beginWorld(camera, options)
 
@@ -180,7 +256,7 @@ scene.push({
 | `dither` | boolean | `false` | Spreads the rounding of every color to 8 bits over neighbouring pixels, so smooth gradients, fog and the falloff of lights show no bands. |
 | `materials` | list of Material | empty | Custom shader passes that run after the other adjustments, in order, each over the image that the step before made. The image is the texture of each pass, which covers the whole canvas. |
 
-Units are design units for world canvases and pixels for render target canvases. The [rendering guide](../graphics/rendering.md#post-processing) gives the order of the steps and what each one costs. These errors come from post-processing:
+Units are design units for world canvases and pixels for render target canvases. The [rendering guide](../2d/graphics.md#post-processing) gives the order of the steps and what each one costs. These errors come from post-processing:
 
 | Error | Cause |
 | --- | --- |
@@ -335,7 +411,7 @@ scene.push({
 
 ### graphics2d.pushFade(rect, options)
 
-Fades the alpha of the following draws of the open canvas out toward the edges of `rect`, in the coordinates of the canvas, so whatever lies below them shows through. The options give the `length` of the fade and the strength of each edge. A strength of `0` keeps the draws along that edge as they are, and `1` leaves nothing of them at the edge. From the edge, the alpha grows back to full over the length. The fade does not clip, and draws past an edge that fades fade further, down to nothing. Nested fades multiply, and fades end with `graphics2d.popFade` or when a new canvas begins. The [rendering guide](../graphics/rendering.md#fades) explains how draws take a fade.
+Fades the alpha of the following draws of the open canvas out toward the edges of `rect`, in the coordinates of the canvas, so whatever lies below them shows through. The options give the `length` of the fade and the strength of each edge. A strength of `0` keeps the draws along that edge as they are, and `1` leaves nothing of them at the edge. From the edge, the alpha grows back to full over the length. The fade does not clip, and draws past an edge that fades fade further, down to nothing. Nested fades multiply, and fades end with `graphics2d.popFade` or when a new canvas begins. The [rendering guide](../2d/graphics.md#fades) explains how draws take a fade.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -426,7 +502,7 @@ scene.push({
 
 ## Captures
 
-A capture sends whole canvases into a render target instead of the screen, lit and post-processed canvases included, ready to draw as a texture, blend or keep. Scene transitions use captures to render the scenes before and after a change into images of their own, as the [scene reference](scene.md#effects-that-show-both-scenes) explains. The [rendering guide](../graphics/rendering.md#captures) explains when a capture renders.
+A capture sends whole canvases into a render target instead of the screen, lit and post-processed canvases included, ready to draw as a texture, blend or keep. Scene transitions use captures to render the scenes before and after a change into images of their own, as the [scene reference](scene.md#effects-that-show-both-scenes) explains. The [rendering guide](../2d/graphics.md#captures) explains when a capture renders.
 
 ### graphics2d.beginCapture(target, options)
 
@@ -512,7 +588,7 @@ scene.push({
 
 ## Camera
 
-A `Camera` shows a part of the world for `graphics2d.beginWorld` and `graphics2d.beginTarget`. Its `position` is the point of the world it shows. The method `camera:follow` moves that position toward a target through the dead zone, the drag margins, the look-ahead, the smoothing and the limits, and `camera:update` advances the shake and the rotation smoothing. The [rendering guide](../graphics/rendering.md#cameras-and-parallax) explains how following works. Vector and rectangle properties return copies, so assign a new value instead of changing a field of the returned one.
+A `Camera` shows a part of the world for `graphics2d.beginWorld` and `graphics2d.beginTarget`. Its `position` is the point of the world it shows. The method `camera:follow` moves that position toward a target through the dead zone, the drag margins, the look-ahead, the smoothing and the limits, and `camera:update` advances the shake and the rotation smoothing. The [rendering guide](../2d/graphics.md#cameras-and-parallax) explains how following works. Vector and rectangle properties return copies, so assign a new value instead of changing a field of the returned one.
 
 The methods measure the view with the screen, the visible design area of `viewport.visibleRect()`, and a `viewport` is a rectangle of that screen in design coordinates. Screen points, such as the pointer positions of [`haylen.input`](input.md), are in the same design coordinates. A render target canvas measures the view with the target instead, so for a camera used with `graphics2d.beginTarget` the methods describe the screen view unless the camera has a viewport.
 
@@ -1056,7 +1132,7 @@ scene.push({
 
 ## CameraRig
 
-A `CameraRig` directs a camera through zones and along a rail, as the [rendering guide](../graphics/rendering.md#cameras-and-parallax) explains. A zone gives the camera its own limits, zoom and offset while the target is inside it, and the camera eases into a zone it enters. A rail is a line that the camera follows the target along.
+A `CameraRig` directs a camera through zones and along a rail, as the [rendering guide](../2d/graphics.md#cameras-and-parallax) explains. A zone gives the camera its own limits, zoom and offset while the target is inside it, and the camera eases into a zone it enters. A rail is a line that the camera follows the target along.
 
 ### graphics2d.newCameraRig(options)
 
@@ -1204,7 +1280,7 @@ scene.push({
 
 ## PixelCanvas
 
-A `PixelCanvas` renders pixel art at a low resolution and draws it scaled up, scrolling smoothly while every pixel stays whole, as the [rendering guide](../graphics/rendering.md#cameras-and-parallax) explains.
+A `PixelCanvas` renders pixel art at a low resolution and draws it scaled up, scrolling smoothly while every pixel stays whole, as the [rendering guide](../2d/graphics.md#cameras-and-parallax) explains.
 
 ### graphics2d.newPixelCanvas(width, height, options)
 
@@ -1625,7 +1701,7 @@ scene.push({
 
 ## Sprite effects
 
-The `effect` of a sprite dissolves it into noise with a colored edge, and draws an outline and a glow around its visible pixels. It all runs on the GPU, so sprites of one texture share a draw call whatever their effects. The quad of the sprite grows by the outline and the glow, which spill past its frame. The [rendering guide](../graphics/rendering.md#sprite-effects) explains how the effect draws. The table takes these keys:
+The `effect` of a sprite dissolves it into noise with a colored edge, and draws an outline and a glow around its visible pixels. It all runs on the GPU, so sprites of one texture share a draw call whatever their effects. The quad of the sprite grows by the outline and the glow, which spill past its frame. The [rendering guide](../2d/graphics.md#sprite-effects) explains how the effect draws. The table takes these keys:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1670,7 +1746,7 @@ scene.push({
 
 ## Recoloring by parts
 
-A white or gray sprite drawn with a `partMask` takes a color for each part that the mask marks in red, green, blue or yellow. It keeps its shading, so one set of images makes every outfit of a character. The [rendering guide](../graphics/rendering.md#recoloring-by-parts) explains how the colors mix. The `partColors` of a sprite, or of each sprite of a batch, name the color of each mask color, as `{red = Color, green = Color, blue = Color, yellow = Color}`.
+A white or gray sprite drawn with a `partMask` takes a color for each part that the mask marks in red, green, blue or yellow. It keeps its shading, so one set of images makes every outfit of a character. The [rendering guide](../2d/graphics.md#recoloring-by-parts) explains how the colors mix. The `partColors` of a sprite, or of each sprite of a batch, name the color of each mask color, as `{red = Color, green = Color, blue = Color, yellow = Color}`.
 
 The keys `partMask` and `partColors` work with `sprite:draw()`, `graphics2d.draw`, `batch:draw` and `graphics2d.drawBatch` with sprite tables. A material with a part mask raises `A draw with a part mask does not take a material.`, `graphics2d.drawStatic` raises `A baked sprite batch draws without a part mask. Draw a sprite batch to recolor its sprites.`, and `graphics2d.drawVector` raises `A vector image draws without a part mask.`.
 
@@ -1702,11 +1778,11 @@ scene.push({
 
 ## Distortion
 
-A draw with a `distortion` above 0 bends the image of its canvas instead of drawing colors. Its coverage is the alpha of its texture times its color and the distortion. The coverage adds up in the distortion map of the canvas, and the composite moves every pixel down the slope of the map. The `distortion` of the [post-process options](#post-process-options) sets how far, at an edge where the coverage goes from nothing to full, and the bend fades smoothly around that edge, as [the rendering guide](../graphics/rendering.md#distortion) explains. This makes these effects:
+A draw with a `distortion` above 0 bends the image of its canvas instead of drawing colors. Its coverage is the alpha of its texture times its color and the distortion. The coverage adds up in the distortion map of the canvas, and the composite moves every pixel down the slope of the map. The `distortion` of the [post-process options](#post-process-options) sets how far, at an edge where the coverage goes from nothing to full, and the bend fades smoothly around that edge, as [the rendering guide](../2d/graphics.md#distortion) explains. This makes these effects:
 
 - A ring pushes the image outward at its outer edge and inward at its inner edge, like a shock wave.
 - A soft dot bends the image around its edge, like a lens.
-- Soft blobs that rise and fade shimmer like heat above a fire. The [rendering guide](../graphics/rendering.md#distortion) explains the map.
+- Soft blobs that rise and fade shimmer like heat above a fire. The [rendering guide](../2d/graphics.md#distortion) explains the map.
 
 Only world and render target canvases with lighting or post-processing have the map, and other canvases skip distortion draws. Only sprites, sprite batches, nine-slices, rectangles, lines, shapes and meshes make them, and particle emitters take the same `distortion` key. Other draws raise `Only sprites, sprite batches, nine-slices, shapes and meshes draw as distortion.`, and `graphics2d.drawStatic` raises `A baked sprite batch draws without a distortion. Draw a sprite batch to distort with its sprites.`.
 
@@ -1735,7 +1811,7 @@ scene.push({
 
 ## SpriteBatch
 
-A `SpriteBatch` holds many sprites that share one texture, or up to 8 textures, and draws them in one call. The sprites live in C++, and scripts change only the sprites that move. Indices count from 1. The [rendering guide](../graphics/rendering.md#sprites-sprite-batches-and-static-batches) compares batches with single sprites and static batches.
+A `SpriteBatch` holds many sprites that share one texture, or up to 8 textures, and draws them in one call. The sprites live in C++, and scripts change only the sprites that move. Indices count from 1. The [rendering guide](../2d/graphics.md#sprites-sprite-batches-and-static-batches) compares batches with single sprites and static batches.
 
 ### graphics2d.newSpriteBatch(texture)
 
@@ -2322,7 +2398,7 @@ scene.push({
 
 ## Shapes and lines
 
-Rectangles and lines draw with the white texture and keep hard edges. Circles, ellipses, points, rings, arcs and shapes draw as one quad each, whose edge the shader covers exactly. So the edge fades over one pixel of the screen or of the render target at any radius, zoom and density. Polygons and strokes fade their edges over a fringe one pixel wide. The [rendering guide](../graphics/rendering.md#shapes-and-smooth-edges) explains how. Every function here takes an optional [draw order](#draw-order).
+Rectangles and lines draw with the white texture and keep hard edges. Circles, ellipses, points, rings, arcs and shapes draw as one quad each, whose edge the shader covers exactly. So the edge fades over one pixel of the screen or of the render target at any radius, zoom and density. Polygons and strokes fade their edges over a fringe one pixel wide. The [rendering guide](../2d/graphics.md#shapes-and-smooth-edges) explains how. Every function here takes an optional [draw order](#draw-order).
 
 ### graphics2d.drawRect(rect, color, order)
 
@@ -2851,7 +2927,7 @@ scene.push({
 
 ## Path
 
-A `Path` is a shape made of lines, curves and arcs, which fills and strokes with edges that fade over one pixel of the destination. Its outlines can cross themselves, overlap each other and cut holes, and the fill rule decides what lies inside. The [rendering guide](../graphics/rendering.md#paths) explains how a path is tessellated and kept. A path keeps its triangles between draws, so a path that draws again at the same scale only copies them. That holds also when its commands are cleared and given again unchanged, so a path built every frame costs no more than a kept one while it stays the same.
+A `Path` is a shape made of lines, curves and arcs, which fills and strokes with edges that fade over one pixel of the destination. Its outlines can cross themselves, overlap each other and cut holes, and the fill rule decides what lies inside. The [rendering guide](../2d/graphics.md#paths) explains how a path is tessellated and kept. A path keeps its triangles between draws, so a path that draws again at the same scale only copies them. That holds also when its commands are cleared and given again unchanged, so a path built every frame costs no more than a kept one while it stays the same.
 
 Every command returns the path, so calls chain, such as `path:moveTo(0, 0):lineTo(100, 0):close()`. Angles are in radians, measured clockwise on the screen from the x axis, where y grows downward.
 
@@ -3485,7 +3561,7 @@ print(#laid.links, laid.links[1].link)
 
 ## NineSlice
 
-A `NineSlice` is a frame made of nine regions of a texture, which draws at any size while its corners keep their shape. Make one with `graphics2d.newNineSlice` or with `atlas:slice(name)` of [`haylen.animation2d`](animation2d.md), and draw it with `graphics2d.drawNineSlice`. The [rendering guide](../graphics/rendering.md#nine-slices) gives every rule of how the pieces lay out. Vector and rectangle properties return copies, so assign a new value instead of changing a returned one.
+A `NineSlice` is a frame made of nine regions of a texture, which draws at any size while its corners keep their shape. Make one with `graphics2d.newNineSlice` or with `atlas:slice(name)` of [`haylen.animation2d`](animation2d.md), and draw it with `graphics2d.drawNineSlice`. The [rendering guide](../2d/graphics.md#nine-slices) gives every rule of how the pieces lay out. Vector and rectangle properties return copies, so assign a new value instead of changing a returned one.
 
 ### graphics2d.newNineSlice(texture, options)
 
@@ -3582,7 +3658,7 @@ end
 
 ## Vector images
 
-A [`VectorImage`](graphics.md#vectorimage) of `haylen.graphics` draws sharp at any size and zoom. The [rendering guide](../graphics/rendering.md#vector-images) explains how the engine rasterizes it at the scale it covers and keeps the rasters in a vector atlas.
+A [`VectorImage`](graphics.md#vectorimage) of `haylen.graphics` draws sharp at any size and zoom. The [rendering guide](../2d/graphics.md#vector-images) explains how the engine rasterizes it at the scale it covers and keeps the rasters in a vector atlas.
 
 ### graphics2d.drawVector(image, x, y, options)
 
@@ -3609,7 +3685,7 @@ scene.push({
 
 ## Groups and masks
 
-A group draws everything between its two calls into an image, which then draws as one. So the parts of a character, a panel or an effect that overlap fade together instead of showing each other through. A mask draws its content only inside, or outside, a shape drawn with any draws. It goes through the coverage of the shape, so soft and smooth edges stay soft. The [rendering guide](../graphics/rendering.md#groups-and-masks) explains what they cost. Groups and masks nest, and a canvas that ends, or a frame, closes the groups and masks it left open.
+A group draws everything between its two calls into an image, which then draws as one. So the parts of a character, a panel or an effect that overlap fade together instead of showing each other through. A mask draws its content only inside, or outside, a shape drawn with any draws. It goes through the coverage of the shape, so soft and smooth edges stay soft. The [rendering guide](../2d/graphics.md#groups-and-masks) explains what they cost. Groups and masks nest, and a canvas that ends, or a frame, closes the groups and masks it left open.
 
 ### graphics2d.beginGroup(options)
 
@@ -3760,7 +3836,7 @@ scene.push({
 
 ## Metaballs
 
-Metaballs merge nearby soft circles into one smooth shape, such as a liquid made of particles. The [rendering guide](../graphics/rendering.md#metaballs) explains how the field draws.
+Metaballs merge nearby soft circles into one smooth shape, such as a liquid made of particles. The [rendering guide](../2d/graphics.md#metaballs) explains how the field draws.
 
 ### graphics2d.drawMetaballs(points, radius, options)
 
@@ -3798,7 +3874,7 @@ scene.push({
 
 ## Lights
 
-Lights and occluders draw only in lit canvases, world or render target canvases with `ambientLight`. The module [`haylen.lighting2d`](lighting2d.md) explains the kinds of light, blend modes, masks and shadows, and the [rendering guide](../graphics/rendering.md#lighting) explains the passes.
+Lights and occluders draw only in lit canvases, world or render target canvases with `ambientLight`. The module [`haylen.lighting2d`](lighting2d.md) explains the kinds of light, blend modes, masks and shadows, and the [rendering guide](../2d/graphics.md#lighting) explains the passes.
 
 ### graphics2d.drawLight(light)
 

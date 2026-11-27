@@ -8,217 +8,19 @@ local animation2d = require('haylen.animation2d')
 
 ## Functions
 
-### animation2d.fromGrid(texture, options)
+The module has these functions. Each one is described in the section of what it makes.
 
-Cuts an [`Animation`](#animation) from a grid of cells of the same size in `texture`. Cells count from 1, left to right and top to bottom. The table `options` takes:
-
-| Key | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `frameWidth` | number | required | The cell width in pixels. |
-| `frameHeight` | number | required | The cell height in pixels. |
-| `cells` | table | every cell | The cell numbers to play, in order. Cells can repeat. |
-| `framesPerSecond` | number | `10` | Frames per second. |
-| `loop` | string | `'loop'` | The [loop mode](#loop-modes). |
-| `margin` | Vec2 | `{0, 0}` | Empty pixels around the whole grid, as `{x, y}`. |
-| `spacing` | Vec2 | `{0, 0}` | Empty pixels between cells, as `{x, y}`. |
-| `ticksPerFrame` | integer | `0` | Above 0, every frame lasts this many ticks and the animation advances with `animator:step`. |
-
-These errors can come up: an argument error that says `framesPerSecond must be positive`, `A grid animation needs a texture, a positive frame size and a positive frame rate.`, `A grid animation needs frames that a spacing never overlaps.`, `The frame size does not fit the texture.`, `A grid animation has at most 65536 frames.` and `A grid animation refers to a cell outside the texture.` Any other key raises `Unknown option "<key>".`
-
-```lua
-local animation2d = require('haylen.animation2d')
-local assets = require('haylen.assets')
-
-local idle = animation2d.fromGrid(assets.texture('sprites/knight/idle.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 10})
-local slash = animation2d.fromGrid(assets.texture('sprites/knight/attack.png'), {frameWidth = 192, frameHeight = 192, cells = {1, 2, 3, 4}, framesPerSecond = 12, loop = 'once'})
-print(idle.frameCount, slash.duration)
-```
-
-### animation2d.fromFrames(texture, frames, options)
-
-Builds an [`Animation`](#animation) from a list of frames in `texture`. A frame is a source rectangle, or a table with `source`, the rectangle, and its [frame data](#frame-data): `pivot` (`{x, y}`), `duration` in seconds, `ticks`, `boxes` (a list of `{name, x, y, width, height}`), `points` (a list of `{name, x, y}`) and `events` (a list of names). The optional table `options` takes `framesPerSecond` (default `10`), which gives the frames without a `duration` theirs, and `loop` (default `'loop'`).
-
-An empty list raises an argument error that says `expected at least one frame`. A key that a frame table does not know raises `Unknown option "<key>".` The `boxes` or `points` of a frame that are not a table raise `The option "<option>" of "<function>" is invalid: <reason>.`, and an item of them that is not a table raises `The item <n> of "<list>" of "<function>" is invalid: <reason>.`. A frame that lasts no time raises `A frame lasts a positive number of seconds.`, and a mix of frames with and without ticks raises `Every frame of an animation counts ticks, or none does.`
-
-```lua
-local animation2d = require('haylen.animation2d')
-local assets = require('haylen.assets')
-
-local fire = animation2d.fromFrames(assets.texture('effects/fire.png'), {
-    {0, 0, 64, 64},
-    {64, 0, 64, 64},
-    {128, 0, 64, 64},
-    {192, 0, 64, 64},
-}, {framesPerSecond = 8, loop = 'pingPong'})
-
-local punch = animation2d.fromFrames(assets.texture('fighters/brawler.png'), {
-    {source = {0, 0, 240, 240}, pivot = {117, 237}, ticks = 2},
-    {source = {240, 0, 240, 240}, pivot = {111, 237}, ticks = 3, events = {'swing'}, boxes = {{name = 'hit', x = 150, y = 60, width = 100, height = 40}}},
-    {source = {480, 0, 240, 240}, pivot = {111, 237}, ticks = 4},
-}, {loop = 'once'})
-print(fire.frameCount, punch.countsTicks)
-```
-
-### animation2d.newAnimator()
-
-Creates an empty [`Animator`](#animator).
-
-```lua
-local animation2d = require('haylen.animation2d')
-local assets = require('haylen.assets')
-local graphics2d = require('haylen.graphics2d')
-local scene = require('haylen.scene')
-
-local sheet = assets.texture('sprites/knight/run.png')
-local warrior = graphics2d.newSprite(sheet, {x = 400, y = 300})
-local animator = animation2d.newAnimator()
-animator:add('run', animation2d.fromGrid(sheet, {frameWidth = 192, frameHeight = 192, framesPerSecond = 12}))
-animator:play('run')
-
-scene.push({
-    update = function(self, dt)
-        animator:update(dt)
-        animator:apply(warrior)
-    end,
-    render = function(self)
-        graphics2d.beginScreen()
-        warrior:draw()
-    end,
-})
-```
-
-### animation2d.newAnimatedBatch(texture, animations)
-
-Creates an [`AnimatedBatch`](#animatedbatch) of `texture` that plays the animations of the table `animations`, which maps names to `Animation` values of that texture. The animations all count seconds or all count ticks. An animation of another texture or without frames raises `An animation of an animated batch needs a name, at least one frame and the texture of the batch.`, and a mix of seconds and ticks raises `The animations of an animated batch all count seconds or all count ticks.`
-
-```lua
-local animation2d = require('haylen.animation2d')
-local assets = require('haylen.assets')
-local graphics2d = require('haylen.graphics2d')
-local scene = require('haylen.scene')
-
-local atlas = assets.load('units/villager.json', 'atlas')
-local crowd = animation2d.newAnimatedBatch(atlas.texture, {walk = atlas:animation('walk'), idle = atlas:animation('idle')})
-for index = 1, 2000 do
-    crowd:add({x = math.random(0, 4000), y = math.random(0, 3000), animation = index % 3 == 0 and 'idle' or 'walk', speed = 0.8 + math.random() * 0.4})
-end
-local camera = graphics2d.newCamera()
-
-scene.push({
-    update = function(self, dt)
-        crowd:update(dt)
-    end,
-    render = function(self)
-        graphics2d.beginWorld(camera, {sort = 'y'})
-        crowd:draw({layer = 1})
-    end,
-})
-```
-
-### animation2d.newStateGraph(description)
-
-Creates a [`StateGraph`](#stategraph) from a [description](#state-graph-descriptions) table, or from the package path of a JSON file with the same keys, and checks it once.
-
-```lua
-local animation2d = require('haylen.animation2d')
-
-local graph = animation2d.newStateGraph({
-    parameters = {speed = 0, jump = 'trigger'},
-    states = {idle = {animation = 'idle'}, run = {animation = 'run'}, jump = {animation = 'jump'}},
-    initial = 'idle',
-    transitions = {
-        {from = 'idle', to = 'run', when = 'speed > 0.1'},
-        {from = 'run', to = 'idle', when = 'speed <= 0.1'},
-        {to = 'jump', when = 'jump'},
-        {from = 'jump', to = 'idle', atEnd = true, fade = 0.1},
-    },
-})
-local villager = animation2d.newStateGraph('animation/villager.graph.json')
-print(#graph.states, graph.parameters.jump)
-```
-
-### animation2d.newSkeletonData(description, atlas)
-
-Creates [`SkeletonData`](#skeletondata) from a description table in the [`.skeleton` format](#skeleton-files), without its `atlas` key, and a `SpriteAtlas`. The function `assets.load(path)` loads `.skeleton` files with their atlas on a worker thread instead.
-
-```lua
-local animation2d = require('haylen.animation2d')
-local assets = require('haylen.assets')
-
-local atlas = assets.load('animation/puppet.json', 'atlas')
-local data = animation2d.newSkeletonData({
-    bones = {{name = 'root'}, {name = 'body', parent = 'root', y = -40}},
-    slots = {{name = 'body', bone = 'body', attachment = 'body'}},
-    skins = {default = {body = {body = {}}}},
-}, atlas)
-print(data.bones[2])
-```
-
-### animation2d.newSkeleton(data, options)
-
-Creates a [`Skeleton2D`](#skeleton2d) of `data` in its setup pose. The optional table `options` takes `skin`, `x`, `y`, `rotation`, `scaleX`, `scaleY` and `color`, and any other key raises `Unknown option "<key>".`
-
-```lua
-local animation2d = require('haylen.animation2d')
-local assets = require('haylen.assets')
-local graphics2d = require('haylen.graphics2d')
-local input = require('haylen.input')
-local scene = require('haylen.scene')
-
-local camera = graphics2d.newCamera()
-local knight = animation2d.newSkeleton(assets.load('characters/knight.skeleton'), {skin = 'blue', x = 0, y = 200})
-knight:play('walk', {track = 1})
-
-scene.push({
-    enter = function(self)
-        knight:on('event', function(event) if event.name == 'step' then print('Footstep.') end end, {owner = self})
-    end,
-    update = function(self, dt)
-        if input.pressed('attack') then
-            knight:crossFade('slash', 0.1, {track = 2, loop = false})
-        end
-        knight:setIkTarget('aim', camera:screenToWorld(input.mousePosition()))
-        knight:update(dt)
-    end,
-    render = function(self)
-        graphics2d.beginWorld(camera, {sort = 'y'})
-        knight:draw({layer = 2})
-    end,
-})
-```
-
-### animation2d.newAtlasBuilder()
-
-Returns an empty [`AtlasBuilder`](#atlasbuilder).
-
-```lua
-local animation2d = require('haylen.animation2d')
-
-local builder = animation2d.newAtlasBuilder()
-print(builder.count)
-```
-
-### animation2d.newChain(options)
-
-Returns a [`Chain`](#chain) that lies straight from its root along `angle`. The table `options` takes these keys, and any other key raises `Unknown option "<key>".`:
-
-| Option | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `x`, `y` | number | `0` | The root, the first point. |
-| `lengths` | list of numbers | | The length of each segment, from the root on. |
-| `segments`, `length` | integer, number | | A number of segments of the same length, in place of `lengths`. |
-| `angle` | number | `0` | The direction in radians that the chain lies along from the root when it is made. |
-| `maxBend` | number | `math.pi` | The largest bend in radians between two segments in a row, from 0, which keeps the chain straight, to `math.pi`, which lets it fold. |
-
-Both `lengths` and `segments`, or neither, raise `A chain takes the lengths of its segments either as "lengths" or as "segments" of the same "length".`. A count outside 1 to 4096 raises `A chain needs from 1 to 4096 segments in "segments".`, and a length that is not a number greater than zero raises `Every segment of a chain needs a finite length greater than zero.`
-
-```lua
-local animation2d = require('haylen.animation2d')
-
-local leg = animation2d.newChain({x = 400, y = 200, lengths = {90, 90}})
-local snake = animation2d.newChain({x = 200, y = 300, segments = 24, length = 14, angle = math.pi, maxBend = 0.5})
-print(leg.count, leg.length, snake.count)
-```
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`animation2d.fromGrid(texture, options)`](#animation2dfromgridtexture-options) | An animation cut from a grid | [Animation](#animation) |
+| [`animation2d.fromFrames(texture, frames, options)`](#animation2dfromframestexture-frames-options) | An animation of a list of frames | [Animation](#animation) |
+| [`animation2d.newAnimator()`](#animation2dnewanimator) | An empty animator | [Animator](#animator) |
+| [`animation2d.newAnimatedBatch(texture, animations)`](#animation2dnewanimatedbatchtexture-animations) | A batch of animated sprites | [AnimatedBatch](#animatedbatch) |
+| [`animation2d.newStateGraph(description)`](#animation2dnewstategraphdescription) | A state graph | [StateGraph](#stategraph) |
+| [`animation2d.newSkeletonData(description, atlas)`](#animation2dnewskeletondatadescription-atlas) | The data of a skeleton | [SkeletonData](#skeletondata) |
+| [`animation2d.newSkeleton(data, options)`](#animation2dnewskeletondata-options) | A skeleton in its setup pose | [Skeleton2D](#skeleton2d) |
+| [`animation2d.newAtlasBuilder()`](#animation2dnewatlasbuilder) | An empty atlas builder | [AtlasBuilder](#atlasbuilder) |
+| [`animation2d.newChain(options)`](#animation2dnewchainoptions) | A chain of segments | [Chain](#chain) |
 
 ## Loop modes
 
@@ -376,6 +178,57 @@ Errors name the part at fault, such as these:
 
 An `Animation` is a value that holds a texture, a list of frames with their durations and a loop mode. It comes from `animation2d.fromGrid`, `animation2d.fromFrames`, `atlas:animation` and `atlas:animationFromFrames`. The method `animator:add` stores a copy, so changing an animation afterwards does not change the animator.
 
+### animation2d.fromGrid(texture, options)
+
+Cuts an [`Animation`](#animation) from a grid of cells of the same size in `texture`. Cells count from 1, left to right and top to bottom. The table `options` takes:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `frameWidth` | number | required | The cell width in pixels. |
+| `frameHeight` | number | required | The cell height in pixels. |
+| `cells` | table | every cell | The cell numbers to play, in order. Cells can repeat. |
+| `framesPerSecond` | number | `10` | Frames per second. |
+| `loop` | string | `'loop'` | The [loop mode](#loop-modes). |
+| `margin` | Vec2 | `{0, 0}` | Empty pixels around the whole grid, as `{x, y}`. |
+| `spacing` | Vec2 | `{0, 0}` | Empty pixels between cells, as `{x, y}`. |
+| `ticksPerFrame` | integer | `0` | Above 0, every frame lasts this many ticks and the animation advances with `animator:step`. |
+
+These errors can come up: an argument error that says `framesPerSecond must be positive`, `A grid animation needs a texture, a positive frame size and a positive frame rate.`, `A grid animation needs frames that a spacing never overlaps.`, `The frame size does not fit the texture.`, `A grid animation has at most 65536 frames.` and `A grid animation refers to a cell outside the texture.` Any other key raises `Unknown option "<key>".`
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+
+local idle = animation2d.fromGrid(assets.texture('sprites/knight/idle.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 10})
+local slash = animation2d.fromGrid(assets.texture('sprites/knight/attack.png'), {frameWidth = 192, frameHeight = 192, cells = {1, 2, 3, 4}, framesPerSecond = 12, loop = 'once'})
+print(idle.frameCount, slash.duration)
+```
+
+### animation2d.fromFrames(texture, frames, options)
+
+Builds an [`Animation`](#animation) from a list of frames in `texture`. A frame is a source rectangle, or a table with `source`, the rectangle, and its [frame data](#frame-data): `pivot` (`{x, y}`), `duration` in seconds, `ticks`, `boxes` (a list of `{name, x, y, width, height}`), `points` (a list of `{name, x, y}`) and `events` (a list of names). The optional table `options` takes `framesPerSecond` (default `10`), which gives the frames without a `duration` theirs, and `loop` (default `'loop'`).
+
+An empty list raises an argument error that says `expected at least one frame`. A key that a frame table does not know raises `Unknown option "<key>".` The `boxes` or `points` of a frame that are not a table raise `The option "<option>" of "<function>" is invalid: <reason>.`, and an item of them that is not a table raises `The item <n> of "<list>" of "<function>" is invalid: <reason>.`. A frame that lasts no time raises `A frame lasts a positive number of seconds.`, and a mix of frames with and without ticks raises `Every frame of an animation counts ticks, or none does.`
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+
+local fire = animation2d.fromFrames(assets.texture('effects/fire.png'), {
+    {0, 0, 64, 64},
+    {64, 0, 64, 64},
+    {128, 0, 64, 64},
+    {192, 0, 64, 64},
+}, {framesPerSecond = 8, loop = 'pingPong'})
+
+local punch = animation2d.fromFrames(assets.texture('fighters/brawler.png'), {
+    {source = {0, 0, 240, 240}, pivot = {117, 237}, ticks = 2},
+    {source = {240, 0, 240, 240}, pivot = {111, 237}, ticks = 3, events = {'swing'}, boxes = {{name = 'hit', x = 150, y = 60, width = 100, height = 40}}},
+    {source = {480, 0, 240, 240}, pivot = {111, 237}, ticks = 4},
+}, {loop = 'once'})
+print(fire.frameCount, punch.countsTicks)
+```
+
 ### Properties
 
 | Property | Type | Access | Meaning |
@@ -434,6 +287,34 @@ print(walk:frameData(2).events[1], walk:frameData(1).source.width)
 ## Animator
 
 An `Animator` plays named animations and applies the current frame to sprites. It advances only when the app calls `animator:update` or `animator:step`. Create one with `animation2d.newAnimator`.
+
+### animation2d.newAnimator()
+
+Creates an empty [`Animator`](#animator).
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local sheet = assets.texture('sprites/knight/run.png')
+local warrior = graphics2d.newSprite(sheet, {x = 400, y = 300})
+local animator = animation2d.newAnimator()
+animator:add('run', animation2d.fromGrid(sheet, {frameWidth = 192, frameHeight = 192, framesPerSecond = 12}))
+animator:play('run')
+
+scene.push({
+    update = function(self, dt)
+        animator:update(dt)
+        animator:apply(warrior)
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        warrior:draw()
+    end,
+})
+```
 
 ### Properties
 
@@ -693,6 +574,34 @@ animator:play('attack')
 
 An `AnimatedBatch` is a [sprite batch](graphics2d.md#spritebatch) whose sprites each play an animation of a shared set with their own time, speed and scale, advanced in C++. It comes from `animation2d.newAnimatedBatch`. Every update writes the source, the size and the pivot of the frame each sprite shows, mirrored where the sprite flips. Batches of 4096 sprites or more advance on the worker pool. Sprites are numbered from 1, and removing one renumbers the sprites after it. An index outside the batch raises an argument error that says `sprite index out of range`.
 
+### animation2d.newAnimatedBatch(texture, animations)
+
+Creates an [`AnimatedBatch`](#animatedbatch) of `texture` that plays the animations of the table `animations`, which maps names to `Animation` values of that texture. The animations all count seconds or all count ticks. An animation of another texture or without frames raises `An animation of an animated batch needs a name, at least one frame and the texture of the batch.`, and a mix of seconds and ticks raises `The animations of an animated batch all count seconds or all count ticks.`
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local atlas = assets.load('units/villager.json', 'atlas')
+local crowd = animation2d.newAnimatedBatch(atlas.texture, {walk = atlas:animation('walk'), idle = atlas:animation('idle')})
+for index = 1, 2000 do
+    crowd:add({x = math.random(0, 4000), y = math.random(0, 3000), animation = index % 3 == 0 and 'idle' or 'walk', speed = 0.8 + math.random() * 0.4})
+end
+local camera = graphics2d.newCamera()
+
+scene.push({
+    update = function(self, dt)
+        crowd:update(dt)
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera, {sort = 'y'})
+        crowd:draw({layer = 1})
+    end,
+})
+```
+
 ### Properties
 
 | Property | Type | Access | Meaning |
@@ -826,6 +735,28 @@ scene.push({
 
 A `StateGraph` is a checked [description](#state-graph-descriptions) of states, made by `animation2d.newStateGraph`, which any number of players share.
 
+### animation2d.newStateGraph(description)
+
+Creates a [`StateGraph`](#stategraph) from a [description](#state-graph-descriptions) table, or from the package path of a JSON file with the same keys, and checks it once.
+
+```lua
+local animation2d = require('haylen.animation2d')
+
+local graph = animation2d.newStateGraph({
+    parameters = {speed = 0, jump = 'trigger'},
+    states = {idle = {animation = 'idle'}, run = {animation = 'run'}, jump = {animation = 'jump'}},
+    initial = 'idle',
+    transitions = {
+        {from = 'idle', to = 'run', when = 'speed > 0.1'},
+        {from = 'run', to = 'idle', when = 'speed <= 0.1'},
+        {to = 'jump', when = 'jump'},
+        {from = 'jump', to = 'idle', atEnd = true, fade = 0.1},
+    },
+})
+local villager = animation2d.newStateGraph('animation/villager.graph.json')
+print(#graph.states, graph.parameters.jump)
+```
+
 ### Properties
 
 | Property | Type | Access | Meaning |
@@ -921,6 +852,23 @@ scene.push({
 
 `SkeletonData` is the shared, unchanging data of a `.skeleton` file, from `assets.load(path)` or `animation2d.newSkeletonData`. Two values compare equal with `==` when they are the same data.
 
+### animation2d.newSkeletonData(description, atlas)
+
+Creates [`SkeletonData`](#skeletondata) from a description table in the [`.skeleton` format](#skeleton-files), without its `atlas` key, and a `SpriteAtlas`. The function `assets.load(path)` loads `.skeleton` files with their atlas on a worker thread instead.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+
+local atlas = assets.load('animation/puppet.json', 'atlas')
+local data = animation2d.newSkeletonData({
+    bones = {{name = 'root'}, {name = 'body', parent = 'root', y = -40}},
+    slots = {{name = 'body', bone = 'body', attachment = 'body'}},
+    skins = {default = {body = {body = {}}}},
+}, atlas)
+print(data.bones[2])
+```
+
 ### Properties
 
 | Property | Type | Access | Meaning |
@@ -945,6 +893,39 @@ print(#data.bones, #data.slots, data.skins[1], #data.events, data:duration(data.
 ## Skeleton2D
 
 A `Skeleton2D` is one posed character of [`SkeletonData`](#skeletondata), from `animation2d.newSkeleton`. Tracks are numbered from 1 to 32, and a track below 1 raises an argument error that says `tracks are numbered from one`.
+
+### animation2d.newSkeleton(data, options)
+
+Creates a [`Skeleton2D`](#skeleton2d) of `data` in its setup pose. The optional table `options` takes `skin`, `x`, `y`, `rotation`, `scaleX`, `scaleY` and `color`, and any other key raises `Unknown option "<key>".`
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local camera = graphics2d.newCamera()
+local knight = animation2d.newSkeleton(assets.load('characters/knight.skeleton'), {skin = 'blue', x = 0, y = 200})
+knight:play('walk', {track = 1})
+
+scene.push({
+    enter = function(self)
+        knight:on('event', function(event) if event.name == 'step' then print('Footstep.') end end, {owner = self})
+    end,
+    update = function(self, dt)
+        if input.pressed('attack') then
+            knight:crossFade('slash', 0.1, {track = 2, loop = false})
+        end
+        knight:setIkTarget('aim', camera:screenToWorld(input.mousePosition()))
+        knight:update(dt)
+    end,
+    render = function(self)
+        graphics2d.beginWorld(camera, {sort = 'y'})
+        knight:draw({layer = 2})
+    end,
+})
+```
 
 ### Properties
 
@@ -1066,6 +1047,17 @@ scene.push({
 ## AtlasBuilder
 
 An `AtlasBuilder` collects frames and packs them into one texture, as the [guide](../2d/animation.md#atlases-at-run-time) explains. It comes from `animation2d.newAtlasBuilder`.
+
+### animation2d.newAtlasBuilder()
+
+Returns an empty [`AtlasBuilder`](#atlasbuilder).
+
+```lua
+local animation2d = require('haylen.animation2d')
+
+local builder = animation2d.newAtlasBuilder()
+print(builder.count)
+```
 
 ### Properties
 
@@ -1279,6 +1271,28 @@ print(blink.duration)
 ## Chain
 
 A `Chain` is a row of points joined by segments of fixed lengths, which procedural animation bends, as the [guide](../2d/animation.md#procedural-animation-with-chains) explains. It comes from [`animation2d.newChain`](#animation2dnewchainoptions). Points are numbered from 1 at the root to `chain.count` at the end, and segments from 1 to `chain.count - 1`, where a segment runs from its point to the next one.
+
+### animation2d.newChain(options)
+
+Returns a [`Chain`](#chain) that lies straight from its root along `angle`. The table `options` takes these keys, and any other key raises `Unknown option "<key>".`:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y` | number | `0` | The root, the first point. |
+| `lengths` | list of numbers | | The length of each segment, from the root on. |
+| `segments`, `length` | integer, number | | A number of segments of the same length, in place of `lengths`. |
+| `angle` | number | `0` | The direction in radians that the chain lies along from the root when it is made. |
+| `maxBend` | number | `math.pi` | The largest bend in radians between two segments in a row, from 0, which keeps the chain straight, to `math.pi`, which lets it fold. |
+
+Both `lengths` and `segments`, or neither, raise `A chain takes the lengths of its segments either as "lengths" or as "segments" of the same "length".`. A count outside 1 to 4096 raises `A chain needs from 1 to 4096 segments in "segments".`, and a length that is not a number greater than zero raises `Every segment of a chain needs a finite length greater than zero.`
+
+```lua
+local animation2d = require('haylen.animation2d')
+
+local leg = animation2d.newChain({x = 400, y = 200, lengths = {90, 90}})
+local snake = animation2d.newChain({x = 200, y = 300, segments = 24, length = 14, angle = math.pi, maxBend = 0.5})
+print(leg.count, leg.length, snake.count)
+```
 
 ### Properties
 

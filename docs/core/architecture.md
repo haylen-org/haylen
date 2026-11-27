@@ -223,10 +223,12 @@ class App final : public haylen::core::Application {
 };
 ```
 
-Plugins added this way run after the built-in ones in every phase and stop before them. Code finds a plugin in two ways:
+A plugin added while the engine runs, such as from `Application::start`, also publishes the event `pluginStarted`. An application that delegates to a `lua::Application` adds the script plugin with it in `addPlugins`, and adds the Lua module of its plugin with `ScriptPlugin::addModule` in `start` before it delegates, so the module installs before `source/main.lua` runs. Plugins added this way run after the built-in ones in every phase and stop before them. Code finds a plugin in two ways:
 
 - `engine.getPlugin<ScorePlugin>()` throws `std::logic_error` when the plugin is missing.
 - `engine.getPlugins().find<ScorePlugin>()` and `engine.getPlugins().find("score")` return a null pointer when it is missing.
+
+A Lua binding reaches the engine of its state through `lua::Runtime::getEngine(L)`, and finds a plugin from there.
 
 Plugins talk to each other only through public methods, never through the internals of another plugin. The [Lua guide](lua.md#extending-the-engine-from-c) shows a complete plugin with a Lua module of its own.
 

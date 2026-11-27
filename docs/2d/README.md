@@ -1,12 +1,14 @@
 # 📐 2D
 
-The 2D block holds the modules that build 2D games and apps: retained node trees, frame and skeletal animation, particles, lighting, physics, Tiled maps, navigation, spatial queries and procedural generation. Their Lua modules end with `2d`, so 3D modules can grow next to them.
+The 2D block holds the modules that build 2D games and apps, starting with the conventions that every 2D module follows: the renderer with its canvases, cameras and batching, retained node trees, frame and skeletal animation, particles, lighting, physics, Tiled maps, navigation, spatial queries and procedural generation. Their Lua modules end with `2d`, so 3D modules can grow next to them.
 
 ## Guides
 
 | Name | Description | Link |
 | --- | --- | --- |
 | Animation | Frame animations, sprite atlases and frame data, animators, fixed steps, animated batches, state graphs, skeletons, procedural chains, atlases packed at run time and performance. | [`animation.md`](animation.md) |
+| Coordinates | The conventions of every 2D part: `y` pointing down, design units, world units and pixels, the `pixelsPerMeter` scale of physics, angles that turn clockwise, the order of transforms, the order of draws and colors. | [`coordinates.md`](coordinates.md) |
+| Graphics | How the 2D renderer draws a frame: canvases and their order, design units and the viewport, cameras, draw order and blend modes, batching and what breaks a batch, smooth edges, paths, sprites and atlases, nine-slices, recoloring, sprite effects, vector images, groups and masks, captures, scene transitions, lighting, post-processing, distortion, metaballs, glass, node trees and tile layers, performance and the renderer from C++. | [`graphics.md`](graphics.md) |
 | Lighting | Lit canvases, light types and blend modes, masks and layers, how surfaces take light, shadows and occluders from bodies and maps, light queries for gameplay, flicker and performance. | [`lighting.md`](lighting.md) |
 | Navigation | Planning and moving: paths on grids, waypoint graphs and navigation meshes, flow fields and Dijkstra maps for many units, steering, crowds that follow a path, work off the frame, which method to choose and what each costs. | [`navigation.md`](navigation.md) |
 | Nodes | Retained trees of objects made of parts: what nodes pass to their children, updating and drawing, handles, prefabs, nodes with physics, tweens, animation and particles, and performance. | [`nodes.md`](nodes.md) |
@@ -21,6 +23,7 @@ The 2D block holds the modules that build 2D games and apps: retained node trees
 | Name | Description | Link |
 | --- | --- | --- |
 | `haylen.animation2d` | Frame animations from grids and atlases with frame data, animators, animated sprite batches, state graphs, skeletal and cutout animation, chains for procedural motion and atlases packed at run time. | [`lua-api/animation2d.md`](../lua-api/animation2d.md) |
+| `haylen.graphics2d` | Canvases with their options and post-processing, captures, draw order and blend modes, cameras, camera rigs, pixel canvases and parallax layers, sprites with effects, recoloring and distortion, sprite batches, static batches and tile layers, shapes, lines and strokes, glass, paths, meshes, text and rich text, nine-slices, vector images, groups and masks with their dithers, image blends, metaballs, lights, materials and the statistics of the renderer. | [`lua-api/graphics2d.md`](../lua-api/graphics2d.md) |
 | `haylen.lighting2d` | Point, spot and directional lights with blend modes, masks and shadows, occluders from outlines, physics bodies and Tiled maps, light queries and flame flicker. | [`lua-api/lighting2d.md`](../lua-api/lighting2d.md) |
 | `haylen.navigation2d` | A\*, weighted A\*, jump point search and hierarchical path finding on square, isometric, staggered and hexagonal grids, Dijkstra maps, flow fields, waypoint graphs, navigation meshes with agent radius, steering agents and ORCA crowds, with asynchronous versions. | [`lua-api/navigation2d.md`](../lua-api/navigation2d.md) |
 | `haylen.nodes2d` | Retained trees of 2D nodes with transforms, colors, visibility and layers that subtrees inherit, culled drawing in one call, prefabs, saving to descriptions, nodes that follow bodies and native properties for tweens. | [`lua-api/nodes2d.md`](../lua-api/nodes2d.md) |

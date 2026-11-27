@@ -1,6 +1,6 @@
 # 📖 `haylen.ai`
 
-The module `haylen.ai` holds four tools that decide what the characters of an app do. A state machine keeps a character in one named state at a time, such as idle, patrol or attack. A behavior tree makes layered decisions again on every tick. A utility selector weighs several needs and picks the best action. An influence map spreads values such as threat over a grid, so agents can choose where to go. This page is for developers who write the behavior of enemies, allies, pets and bosses.
+The module `haylen.ai` holds four tools that decide what the characters of an app do. A state machine keeps a character in one named state at a time, such as idle, patrol or attack. A behavior tree makes layered decisions again on every tick. A utility selector weighs several needs and picks the best action. An influence map spreads values such as threat over a grid, so agents can choose where to go. This page is for developers who write the behavior of enemies, allies, pets and bosses. The [AI guide](../core/ai.md) explains when to use each tool and how they work together.
 
 ```lua
 local ai = require('haylen.ai')

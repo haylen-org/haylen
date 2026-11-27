@@ -1,6 +1,6 @@
 # 📖 `haylen.conversation`
 
-The module `haylen.conversation` runs branching conversations, such as dialogue with characters, tutorials and onboarding. This page is for developers who write those conversations and show them on screen. A conversation is a set of named nodes. A node shows lines with a speaker and tags, runs commands of the app, sets variables, and offers choices that lead to other nodes. The writing lives in `.conversation` files of the app. The module walks them one line or choice at a time, picks variants with a seeded generator, counts visits and saves a walk so that it resumes where it stood.
+The module `haylen.conversation` runs branching conversations, such as dialogue with characters, tutorials and onboarding. This page is for developers who write those conversations and show them on screen. A conversation is a set of named nodes. A node shows lines with a speaker and tags, runs commands of the app, sets variables, and offers choices that lead to other nodes. The writing lives in `.conversation` files of the app. The module walks them one line or choice at a time, picks variants with a seeded generator, counts visits and saves a walk so that it resumes where it stood. The [conversation guide](../core/conversation.md) explains how to write, show, translate and save conversations.
 
 ```lua
 local conversation = require('haylen.conversation')
@@ -471,7 +471,7 @@ Calls `listener` for every command that the walk runs, and returns a [`Connectio
 
 A listener runs at the end of the call that ran the command, such as `state:advance()`, so the walk already stands at its next line or choices, and the listener may call `advance` or `choose` itself. The commands of the steps that such a call runs reach the listeners after the commands that already waited, so every command arrives in the order the walk ran it. Commands wait until something listens, so the commands that ran before the first listener reach it during the call to `on`. An error raised in a listener is raised by the call that delivered the command.
 
-The table `options` may hold an `owner`, a table or a userdata such as a scene, and the listener ends with it, as [subscription scopes](../core/lifecycle.md#subscription-scopes) describe. Without an `owner`, a listener that a module adds at its top level in development belongs to that module, so a [reload](hotReload.md) of the module ends it. Any other listener without an `owner` belongs to the state, so it ends with the state, and a listener that refers to the state never keeps it alive.
+The table `options` may hold an `owner`, a table or a userdata such as a scene, and the listener ends with it, as [subscription scopes](../core/lifecycle.md#subscription-scopes) describe. Without an `owner`, a listener that a module adds at its top level in development belongs to that module, so a [reload](hot-reload.md) of the module ends it. Any other listener without an `owner` belongs to the state, so it ends with the state, and a listener that refers to the state never keeps it alive.
 
 An unknown event raises `Unknown conversation event "<event>". Conversations report "command".`. An unknown option raises `Unknown option "<key>".`, and an owner of another type raises `An owner must be a table or a userdata, not <type>.`.
 

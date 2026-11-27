@@ -8,10 +8,36 @@ from tests.support.tracked_files import TrackedFiles
 
 
 class DocsTest:
-    """The documentation is one tree that a reader walks from the main page: every page starts with its title, which alone carries an emoji, names the language of its code blocks and keeps each paragraph on one line, every row of a table has as many cells as its header, every relative link reaches its page and heading, the indexes list their pages in tables of name, description and link, and no long sentence repeats in another page."""
+    """The documentation is one tree that a reader walks from the main page: every page starts with its title, which alone carries an emoji, names the language of its code blocks and keeps each paragraph on one line, every row of a table has as many cells as its header, every relative link reaches its page and heading, the indexes list their pages in tables of name, description and link that never mix guides with reference pages, and no long sentence repeats in another page. The docs mirror the code: every Lua module has its reference page in both indexes, every folder of 2D and 3D has its guide, every guide shows code, every folder of Lua bindings has its tests, and no semicolon joins sentences."""
 
     DOCS = Repository.ROOT / "docs"
     HEADER = "| Name | Description | Link |"
+    # The blocks that hold reference pages: the Lua API, and the manifests with the commands.
+    REFERENCE_BLOCKS = frozenset({"lua-api", "reference"})
+    PRELOAD = re.compile(r'\bBinding::preload\(\s*\w+\s*,\s*"(haylen(?:\.\w+)?)"')
+    # A semicolon of prose, outside code and the entities of HTML such as `&lt;`.
+    SEMICOLON = re.compile(r"(?<!&[a-z]{2})(?<!&[a-z]{3})(?<!&[a-z]{4});")
+
+    @staticmethod
+    def page_of(module: str) -> str:
+        """The reference page of a Lua module, named in dashes, such as `hot-reload.md` for `haylen.hotReload`."""
+        name = module.removeprefix("haylen.") if module != "haylen" else "haylen"
+        return re.sub(r"(?<!^)([A-Z])", r"-\1", name).lower() + ".md"
+
+    @staticmethod
+    def listed(index: Path, block: Path) -> set[str]:
+        """The pages of a block that the tables of an index link."""
+        found = set()
+        for _, rows in MarkdownPage(index).tables():
+            for row in rows:
+                found |= {(index.parent / target).resolve().name for target in MarkdownPage.row_links(row) if (index.parent / target).resolve().parent == block.resolve()}
+        return found
+
+    @staticmethod
+    def semicolons(line: str) -> list[str]:
+        """The sentences of a line of prose that a semicolon joins, outside its code spans."""
+        prose = re.sub(r"`[^`]*`", "", line)
+        return [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", prose) if DocsTest.SEMICOLON.search(sentence)]
 
     @staticmethod
     def pages(*patterns: str) -> list[Path]:
@@ -139,12 +165,12 @@ class DocsTest:
         page.write_text("\n".join(["# 📖 Page", "", "## Devices", "", *rows, ""]), encoding="utf-8")
         assert list(MarkdownPage(page).uneven_rows()) == [("Devices", "| Tablet | 24 |"), ("Devices", "| Watch | 8 | None | Extra |")]
 
-    def test_no_table_of_an_index_mixes_guides_with_the_lua_reference(self):
-        reference = (DocsTest.DOCS / "lua-api").resolve()
+    def test_no_table_of_an_index_mixes_guides_with_reference_pages(self):
+        references = {(DocsTest.DOCS / block).resolve() for block in DocsTest.REFERENCE_BLOCKS}
         wrong = []
         for path in DocsTest.indexes():
             for section, rows in MarkdownPage(path).tables():
-                kinds = {(path.parent / target).resolve().parent == reference for row in rows for target in MarkdownPage.row_links(row)}
+                kinds = {(path.parent / target).resolve().parent in references for row in rows for target in MarkdownPage.row_links(row)}
                 if len(kinds) > 1:
                     wrong.append(f"{DocsTest.shown(path)}, {section}")
         assert wrong == []
@@ -162,4 +188,51 @@ class DocsTest:
                     first = seen.setdefault(sentence, name) if len(sentence) >= 100 else name
                     if first != name and not (first.startswith("docs/lua-api/") and name.startswith("docs/lua-api/")):
                         wrong.append(f"{first} and {name}: {sentence}")
+        assert wrong == []
+
+    def test_every_lua_module_has_its_reference_page_listed_in_both_indexes(self):
+        # The page of a module takes its name in dashes, such as `hot-reload.md` for `haylen.hotReload`, and the module `haylen` itself is `haylen.md`.
+        modules = set()
+        for name in TrackedFiles.names("engine/lua"):
+            if name.endswith(".cpp"):
+                modules.update(DocsTest.PRELOAD.findall((Repository.ROOT / name).read_text(encoding="utf-8")))
+        assert modules
+        pages = {DocsTest.page_of(module) for module in modules}
+        reference = DocsTest.DOCS / "lua-api"
+        assert sorted(pages) == sorted(path.name for path in reference.glob("*.md") if path.name != "README.md")
+        in_reference = DocsTest.listed(reference / "README.md", reference)
+        in_blocks = set().union(*(DocsTest.listed(index, reference) for index in DocsTest.DOCS.glob("*/README.md") if index.parent != reference))
+        assert sorted(pages - in_reference) == []
+        assert sorted(pages - in_blocks) == []
+
+    def test_every_folder_of_2d_and_3d_has_its_guide(self):
+        missing = []
+        for dimension in ("2d", "3d"):
+            for folder in sorted((Repository.ENGINE / "include" / "haylen" / dimension).iterdir()):
+                if folder.is_dir() and not (DocsTest.DOCS / dimension / f"{folder.name}.md").is_file():
+                    missing.append(f"docs/{dimension}/{folder.name}.md")
+        assert missing == []
+
+    def test_every_guide_shows_code(self):
+        # A guide explains its capability with an example, while the indexes and the reference blocks list pages and names.
+        wrong = []
+        for path in DocsTest.pages("docs/*.md"):
+            if path.name == "README.md" or path.parent.name in DocsTest.REFERENCE_BLOCKS:
+                continue
+            if not any(line.lstrip().startswith("```") for line in path.read_text(encoding="utf-8").splitlines()):
+                wrong.append(DocsTest.shown(path))
+        assert wrong == []
+
+    def test_every_folder_of_lua_bindings_has_its_tests(self):
+        folders = {Path(name).parent.relative_to("engine/lua/src") for name in TrackedFiles.names("engine/lua/src") if name.endswith("Binding.cpp")}
+        assert folders
+        assert sorted(str(folder) for folder in folders if not (Repository.ENGINE / "lua" / "tests" / folder).is_dir()) == []
+
+    def test_no_semicolon_joins_sentences(self):
+        assert DocsTest.semicolons("Plugins load in order; the app waits. Use `a; b` in code and &lt;kind&gt; in a heading.") == ["Plugins load in order; the app waits."]
+        wrong = []
+        for path in DocsTest.pages():
+            if DocsTest.shown(path) == "KANBAN.md":
+                continue
+            wrong += [f"{DocsTest.shown(path)}:{number}: {text}" for number, line in MarkdownPage(path).prose() for text in DocsTest.semicolons(line)]
         assert wrong == []

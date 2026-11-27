@@ -543,7 +543,7 @@ A music player, a radio, a podcast app or a meditation app keeps playing when th
 | Windows and Linux | Nothing. A minimized window keeps running and plays on. |
 | Web | Nothing. A hidden tab keeps running the app from timers, which browsers do not slow down while the page plays sound. Safari on iPhones and iPads suspends the page when the browser leaves the screen, which stops its sound, and a browser that freezes or discards a hidden tab stops it as well. |
 
-A plugin that plays in the background, such as one that shows what plays in the controls of the lock screen and the media notification, brings the declaration with its contributions: the `infoPlist` key on Apple platforms and the service in the manifest of its Android module, as the [plugins guide](../platform/plugins.md#contributions) describes. An app that plays in the background without such a plugin adds the mode itself, and on Android it needs a module with the service, since the foreground service runs code of its own:
+A plugin that plays in the background, such as one that shows what plays in the controls of the lock screen and the media notification, brings the declaration with its contributions: the `infoPlist` key on Apple platforms and the service in the manifest of its Android module, as the [plugins guide](../reference/plugin-json.md#contributions) describes. An app that plays in the background without such a plugin adds the mode itself, and on Android it needs a module with the service, since the foreground service runs code of its own:
 
 ```json
 {

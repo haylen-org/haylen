@@ -1,8 +1,126 @@
-# 📏 3D math
+# 📏 Math
 
-This guide explains the math types of 3D space and how they fit together. They live in `haylen.math`, next to the 2D types, and the [reference of `haylen.math`](../lua-api/math.md) lists every function with its options and errors. The axes, units and angles they follow are on the [coordinates page](coordinates.md).
+This guide explains the math types of Haylen and how they fit together, in two dimensions and in three. They all live in the one module `haylen.math`, and the [reference of `haylen.math`](../lua-api/math.md) lists every function with its options and errors. The axes, units and angles of each dimension are on its coordinates page: the [2D coordinates](../2d/coordinates.md) and the [3D coordinates](../3d/coordinates.md).
 
-## Vectors
+## Vectors in 2D
+
+A [`Vec2`](../lua-api/math.md#vec2) carries two numbers, `x` and `y`. Like its 3D sibling, it holds a point, such as the position of a sprite, or a direction, such as a velocity or the offset from one point to another. The operators add, subtract and scale vectors, and the methods measure them.
+
+A direction often comes from an angle. The function `m.fromAngle(radians, length)` builds the vector of an angle, and `vec:angle()` reads the angle of a vector back. Angles are in radians and grow clockwise on the screen, since the y axis of 2D points down.
+
+```lua
+local m = require('haylen.math')
+
+local player = m.vec2(400, 300)
+local enemy = m.vec2(520, 210)
+local toward = (enemy - player):normalized()
+local step = m.fromAngle(toward:angle(), 120)
+print(player:distance(enemy), step:length()) -- 150.0 and close to 120
+```
+
+The method `vec:perpendicular()` turns a direction a quarter turn, which gives the normal of an edge, and `vec:rotated(radians)` turns it by any angle.
+
+## Transforms in 2D
+
+A [`Transform2D`](../lua-api/math.md#transform2d) moves, rotates, scales and skews points in one step. It is the transform of a camera, of a node and of a child placed inside a parent. The operator `*` chains two of them, so a child inside a parent is `parent * child`, and `transform:inverse()` maps the other way, such as from the screen back to the world.
+
+```lua
+local m = require('haylen.math')
+
+local ship = m.transform2d({300, 200}, m.pi / 2)
+local cannon = m.transform2d({50, 0})
+local muzzle = (ship * cannon):apply({0, 0})
+local back = (ship * cannon):inverse():apply(muzzle)
+print(muzzle, back) -- close to Vec2(300.0, 250.0) and Vec2(0.0, 0.0)
+```
+
+The method `transform:apply(point)` places a point, while `transform:applyVector(vector)` turns and scales a direction without moving it.
+
+## Rectangles and circles
+
+A [`Rect`](../lua-api/math.md#rect) is a box that is not rotated, with its top left corner at `x`, `y`. It is the shape of hitboxes, of the visible area of a camera and of the bounds of a node. Its methods test points and other rectangles, and they grow, shrink and merge boxes. A circle is a plain table with a `center` and a `radius`, which [`m.intersects`](../lua-api/math.md#mintersectscircle-other) tests against another circle or a rectangle.
+
+```lua
+local m = require('haylen.math')
+
+local room = m.rect(0, 0, 800, 600)
+local crate = m.rect(480, 280, 64, 64)
+local blast = {center = {400, 300}, radius = 120}
+print(room:contains(crate), crate:intersects(m.rect(500, 300, 10, 10)), m.intersects(blast, crate)) -- true true true
+```
+
+## Ray casts in 2D
+
+A [ray cast](../lua-api/math.md#ray-casts) traces a straight line from one point to another and reports where it first meets a shape, with no physics world. Each function casts against one kind of shape: a segment, a rectangle, a circle, a polygon, a chain or a list of segments, such as the walls of a level. A hit holds the point, the normal of the surface, the distance and the fraction of the ray, and a miss returns `nil`.
+
+```lua
+local m = require('haylen.math')
+
+local door = m.rect(200, 100, 20, 80)
+local hit = m.raycastRect({0, 140}, {400, 140}, door)
+if hit then
+    print('The bolt stops at ' .. hit.x .. ', ' .. hit.y .. '.')
+end
+```
+
+The function `m.bounceRay` follows a ray as it bounces off a list of segments, which draws the path of a laser, and `m.rayFan` casts many rays over an angle, which finds what a guard sees.
+
+## Polygons and outlines
+
+A polygon is a list of points, and a shape is a list of outlines, where an outline wound the other way from the one around it is a hole. The table [`m.polygon`](../lua-api/math.md#polygon-operations) unites, subtracts, intersects, grows and simplifies shapes, such as a floor that joins rooms and halls or a hole that an explosion cuts into the ground. The table [`m.marchingSquares`](../lua-api/math.md#marching-squares) goes the other way: it traces the outlines of a field of numbers or of the pixels of an image, which gives a destructible terrain its collision.
+
+```lua
+local m = require('haylen.math')
+
+local ground = {{0, 0}, {400, 0}, {400, 100}, {0, 100}}
+local crater = {{180, -20}, {220, -20}, {220, 40}, {180, 40}}
+local cut = m.polygon.subtract(ground, crater)
+print(#cut, m.polygon.area(cut) < m.polygon.area(ground)) -- 1 true
+```
+
+## Curves in 2D
+
+A [`Spline2D`](../lua-api/math.md#spline2d) is a smooth curve through or near control points, such as the path of an enemy, a rail or a road. It is measured by its length, so `spline:pointAtDistance` walks it at a steady speed whatever the spacing of its points, and `spline:sampleByDistance` places things along it at even steps.
+
+```lua
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+
+local rail = m.spline2d({{0, 0}, {300, 0}, {300, 300}})
+local traveled = 0
+
+scene.push({
+    update = function(self, dt)
+        traveled = math.min(traveled + 80 * dt, rail.length)
+        self.cart = rail:pointAtDistance(traveled)
+    end,
+})
+```
+
+## Easing and springs
+
+Motion looks natural when it starts and stops softly. An [easing curve](../lua-api/math.md#easing) maps progress from `0` to `1` to eased progress, and the tweens, the scene transitions and the particles take the same curves that `m.ease` takes. A [`Spring`](../lua-api/math.md#spring) follows a target that moves, such as a camera behind a player or a health bar that drains, and settles on it without going past it.
+
+```lua
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+
+local health = m.spring(100, 0.25)
+
+scene.push({
+    update = function(self, dt)
+        self.health = self.health or 100
+        self.shown = health:update(self.health, dt)
+    end,
+    renderUi = function(self)
+        self.glow = m.ease('quadOut', self.shown / 100)
+    end,
+})
+```
+
+The [random numbers, noise and sampling](../lua-api/math.md#random) of `haylen.math` serve both dimensions: a seeded `Random`, the noise of [`Noise2D`](../lua-api/math.md#noise2d), Poisson disk sampling in 2D and 3D, shuffle bags and weighted choices. The 3D noise and random points follow below.
+
+## Vectors in 3D
 
 A `Vec3` carries three numbers, `x`, `y` and `z`. The same type holds two different ideas:
 
@@ -98,7 +216,7 @@ end
 print(current:angleTo(target) < 0.1) -- true
 ```
 
-## Transforms
+## Transforms in 3D
 
 A `Transform3D` holds a placement as its three parts: a position, a rotation and a scale. The parts are easy to read, to edit and to animate, so a transform is the form that an object keeps, while a matrix is the form that drawing and the GPU take. A child placed in a parent combines as `parent * child`, which lands the child where the parent puts it.
 
@@ -115,7 +233,7 @@ Parts cannot hold everything a chain of matrices holds. When a parent scales its
 
 A skinned mesh, whose vertices follow the joints of a skeleton, blends the placements of several joints for each vertex. Blending matrices pinches the mesh where a joint twists, such as a wrist, so `DualQuat` holds the rotation and translation of a joint in a form that blends without that loss.
 
-## Shapes and ray casts
+## Shapes and ray casts in 3D
 
 The shapes of 3D stand for the room that things take, and each suits its own task:
 
@@ -149,7 +267,7 @@ print(underPointer:cast(crate) ~= nil) -- true when the pointer is over the crat
 
 A `Frustum` is the space that a camera sees, which `m.frustum` builds from the view and the projection of the camera. Culling skips the objects whose bounds lie outside it, which saves the work of drawing them. The test is conservative: it never calls a shape outside that reaches inside, so nothing that the camera sees disappears, and it allows a little room past each plane so a shape that rests on one is never cut by rounding.
 
-## Curves
+## Curves in 3D
 
 A curve in 3D gives a smooth way through space from a few points, such as the rail of a coaster, the center of a road, a tube or the track that a camera follows. A `Spline3D` holds one, and its kind decides how the points shape it:
 
@@ -217,7 +335,7 @@ print(#camera:cull(trees), 'trees to draw on', m.matrixBatch.instructions)
 
 ## Spherical coordinates
 
-A point around a center often reads better as a distance and two angles than as `x`, `y` and `z`. A camera that orbits a target keeps its distance while the person drags its angles, and a sun moves across the sky by its height and its heading. A `Spherical` holds such a point, and a `Cylindrical` holds one by its distance from the up axis, its angle and its height, which suits towers, carousels and spirals. The [coordinates page](coordinates.md#spherical-and-cylindrical-coordinates) shows which way the angles run.
+A point around a center often reads better as a distance and two angles than as `x`, `y` and `z`. A camera that orbits a target keeps its distance while the person drags its angles, and a sun moves across the sky by its height and its heading. A `Spherical` holds such a point, and a `Cylindrical` holds one by its distance from the up axis, its angle and its height, which suits towers, carousels and spirals. The [coordinates page](../3d/coordinates.md#spherical-and-cylindrical-coordinates) shows which way the angles run.
 
 ```lua
 local m = require('haylen.math')

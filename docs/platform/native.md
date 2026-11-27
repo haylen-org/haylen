@@ -133,10 +133,10 @@ lib.native_test_visit(3, visitor)
 
 A library written for Haylen receives the C interface of the engine when the app loads it with `native.load(name, {init = 'my_library_haylen_init'})`. The interface is `HaylenNativeApi` from `haylen/platform/native/HaylenNative.h`. With it a library can do all of this, the same way on every platform:
 
-- register bridge handlers through its C entry points and answer them from any thread, with JSON and byte buffers;
-- send events, retained or batched;
-- feed the video and audio streams of a plugin, and open the screens of a plugin over the window of the app;
-- cover the app, write to the engine log and hear the errors that stop the app.
+- Register bridge handlers through its C entry points and answer them from any thread, with JSON and byte buffers.
+- Send events, retained or batched.
+- Feed the video and audio streams of a plugin, and open the screens of a plugin over the window of the app.
+- Cover the app, write to the engine log and hear the errors that stop the app.
 
 The library exports its `init` function, so `native.load` finds it. On Windows that takes `__declspec(dllexport)`, and a library built with hidden symbols marks the function visible, as the C++ library of the plugin template does with a macro on the init function that forwards to its class. The [reference](../lua-api/native.md#the-c-interface-of-the-engine) lists every entry.
 
@@ -175,7 +175,7 @@ This is also how Windows and Linux apps answer bridge methods with native code, 
 
 ## Packaging libraries with an app
 
-The `native` section of `haylen.json` lists the libraries that an app ships, by the name it loads them with. A library is either prebuilt files for each platform or a CMake project that the backend of each platform it lists builds for its target. A plugin brings a library of its own with its [`nativeLibrary` contribution](plugins.md#native-library-contributions), which takes the id of the plugin as its name and the same keys as an entry of this section.
+The `native` section of `haylen.json` lists the libraries that an app ships, by the name it loads them with. A library is either prebuilt files for each platform or a CMake project that the backend of each platform it lists builds for its target. A plugin brings a library of its own with its [`nativeLibrary` contribution](../reference/plugin-json.md#native-library-contributions), which takes the id of the plugin as its name and the same keys as an entry of this section.
 
 A name starts with a letter and holds letters, digits, dashes and underscores. A library that the app builds takes dashes, such as `native-test`. A prebuilt library keeps the name of its files, such as `game_platform`. The `init` function of a library takes underscores, such as `native_test_haylen_init`, because a C function is named with an identifier.
 
@@ -252,7 +252,7 @@ haylen --dev ~/apps/my-game --native ~/sdk/lib --native ~/apps/my-game/build/nat
 
 ## C++ plugins
 
-A C++ app, whose `kind` in `haylen.json` is `cpp` and whose sources compile against the prebuilt SDK of the engine, extends the engine with plugins of its own. They have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `lateUpdate`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. A plugin added before the engine starts, or while it runs, gets `start` like a built-in one. A plugin knows nothing of Lua, so a `lua::Module` installs its Lua module with the binding toolkit of `haylen/lua/`, and the application adds the module to the `lua::ScriptPlugin` with `ScriptPlugin::addModule`. The [embedding guide](../tools/embedding.md) shows a complete plugin.
+A C++ app, whose `kind` in `haylen.json` is `cpp`, reaches native code through plugins of its own, such as a plugin that pumps the callbacks of an SDK in `update` with a Lua module that gives the SDK to scripts. The [architecture guide](../core/architecture.md#plugins) describes the hooks of a plugin and how an application adds one, and a plugin knows nothing of Lua, so its Lua module is a `lua::Module` that the application adds to the `lua::ScriptPlugin` with `ScriptPlugin::addModule`.
 
 ```cpp
 class GamePlatformPlugin final : public haylen::plugins::Plugin {

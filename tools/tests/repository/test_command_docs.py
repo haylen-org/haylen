@@ -8,7 +8,7 @@ from haylen.core.repository import Repository
 class CommandDocsTest:
     """The reference of the commands has a section for every command of the command line that names each of its options, and the guide of the agents names every command of the tree, so neither falls behind the parser."""
 
-    COMMANDS_PAGE = Repository.ROOT / "docs" / "tools" / "commands.md"
+    COMMANDS_PAGE = Repository.ROOT / "docs" / "reference" / "commands.md"
     AGENTS = Repository.ROOT / "AGENTS.md"
 
     @staticmethod

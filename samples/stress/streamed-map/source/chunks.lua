@@ -3,7 +3,7 @@ local collections = require('haylen.collections')
 local graphics2d = require('haylen.graphics2d')
 local jobs = require('haylen.jobs')
 local m = require('haylen.math')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local scene = require('haylen.scene')
 
 local Terrain = require('terrain')
@@ -103,7 +103,7 @@ function Chunks:build(chunkX, chunkY)
     self.building[chunkKey] = true
     self.buildCount = self.buildCount + 1
     scene.spawn(self.owner, function()
-        local points, failure = procedural.scatterAsync(terrain:scatterOptions(chunkX, chunkY)):await()
+        local points, failure = procedural2d.scatterAsync(terrain:scatterOptions(chunkX, chunkY)):await()
         if not points then
             error(failure, 0)
         end

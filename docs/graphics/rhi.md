@@ -322,7 +322,7 @@ A `FormatSupport` holds seven values:
 | `mipmaps` | The dynamic images and render targets of the format generate their smaller mip levels on the GPU with `generateMipmaps`. |
 | `sampleCounts` | The sample counts that render targets and depth stencil images of the format take, as bits whose values are the counts, so `5` holds one sample and four. A color format that takes more samples than one also resolves into an image of one sample. |
 
-For example, the light map of lit canvases is `Rgba16Float` only when that format renders and blends, as the [lighting section](rendering.md#lighting) explains.
+For example, the light map of lit canvases is `Rgba16Float` only when that format renders and blends, as the [lighting section](../2d/graphics.md#lighting) explains.
 
 ## Pixel formats
 

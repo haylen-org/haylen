@@ -141,7 +141,7 @@ The project reads the way from its cache variable `HAYLEN_CONSUMER_MODE`. Each w
 
 ## haylen_add_app
 
-The file `engine/cmake/haylen-app.cmake` defines the function that builds the binary of an app for the platform of the build.
+The file `engine/cmake/haylen-app.cmake` defines the function that builds the binary of an app for the platform of the build, Lua or C++, against the engine of an installed SDK or of a source tree. The generated projects of the desktop, Android and web backends build their apps with it.
 
 ```cmake
 haylen_add_app(<target> LUA|CPP [WITH_LUA] [CONSOLE] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
@@ -290,14 +290,7 @@ The class `core::Engine` gives access to every service, such as `getRenderer2D()
 
 ## Plugins of an app
 
-A C++ app extends the engine with plugins of its own. They use the same `haylen::plugins::Plugin` interface as the built-in plugins. Its hooks are `getName`, `start`, `stop`, `event`, `beginFrame`, `fixedUpdate`, `update`, `lateUpdate`, which runs after the scenes updated, `render`, `renderUi`, `renderOverlay` and `endFrame`, all on the frame thread. One more hook, `packageChanged`, hears the package paths that changed while the app runs in development. So a plugin rebuilds what it built from files outside the asset cache. Three queries answer the engine: `isCapturingBack` tells whether the plugin takes the next press of the back button, `isFrameComplete` tells whether the frame that just rendered drew everything the plugin had to draw, so the platform shows the app for the first time with a complete frame, and `isAnimating` tells whether what the plugin draws changes by itself, so an app that [redraws on change](../core/architecture.md#redraw-on-change) draws the next frame.
-
-```cpp
-engine.addPlugin(std::make_unique<MyPlugin>());
-MyPlugin& plugin = engine.getPlugin<MyPlugin>();
-```
-
-The call `engine.addPlugin` adds a plugin. A plugin added while the engine runs, such as from `Application::start`, gets `start` at once and the event `pluginStarted`. An application that delegates to a `lua::Application` adds the script plugin with it in `addPlugins`, and adds the Lua module of its plugin with `ScriptPlugin::addModule` in `start` before it delegates, so the module installs before `source/main.lua` runs. The call `engine.getPlugin<MyPlugin>()` finds the plugin again, such as from a Lua binding through `lua::Runtime::getEngine(L)`.
+A C++ app extends the engine with plugins of its own, through the `haylen::plugins::Plugin` interface of the built-in plugins. The [architecture guide](../core/architecture.md#plugins) lists every hook of a plugin, and [adding a plugin](../core/architecture.md#adding-a-plugin) shows how an application adds one and finds it again.
 
 A plugin is the place for native code that a C++ app compiles itself:
 

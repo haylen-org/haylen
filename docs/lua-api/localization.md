@@ -43,7 +43,7 @@ A language that reads right to left declares it with `"@direction": "rightToLeft
 }
 ```
 
-The usual layout keeps one JSON file per language in a folder of the content, named after its language tag, such as `locale/en.json` and `locale/pt-BR.json`. The section `localization` of [`haylen.json`](haylen.md#localization) loads that folder before any Lua runs, and [`localization.loadFolder`](#localizationloadfolderfolder) loads any other folder. A folder that downloads when the app asks for it, such as the dialogue of an expansion that a rule of `content.delivery` delivers on demand, loads with [`localization.loadFolderAsync`](#localizationloadfolderasyncfolder).
+The usual layout keeps one JSON file per language in a folder of the content, named after its language tag, such as `locale/en.json` and `locale/pt-BR.json`. The section `localization` of [`haylen.json`](../reference/haylen-json.md#localization) loads that folder before any Lua runs, and [`localization.loadFolder`](#localizationloadfolderfolder) loads any other folder. A folder that downloads when the app asks for it, such as the dialogue of an expansion that a rule of `content.delivery` delivers on demand, loads with [`localization.loadFolderAsync`](#localizationloadfolderasyncfolder).
 
 ```json
 {

@@ -49,7 +49,7 @@ print('The window is on', shown.name, 'at', shown.refreshRate, 'frames per secon
 
 ### display.unlisted()
 
-Returns `true` when the device has displays that `display.list()` leaves out until the person lets the app see every screen. A browser tells that the device has more screens than the page sees before the person lets the page see them, so the app asks with [`display.requestEveryScreen()`](#displayrequesteveryscreen) instead of telling the person that there is a single display. Every other platform lists all of its displays and returns `false`. An iPhone or an iPad without [`window.externalDisplays`](haylen.md#haylenconfig) in `haylen.json` mirrors the app on an external display and tells nothing of it, so it returns `false` too.
+Returns `true` when the device has displays that `display.list()` leaves out until the person lets the app see every screen. A browser tells that the device has more screens than the page sees before the person lets the page see them, so the app asks with [`display.requestEveryScreen()`](#displayrequesteveryscreen) instead of telling the person that there is a single display. Every other platform lists all of its displays and returns `false`. An iPhone or an iPad without [`window.externalDisplays`](../reference/haylen-json.md#window) in `haylen.json` mirrors the app on an external display and tells nothing of it, so it returns `false` too.
 
 ```lua
 local display = require('haylen.display')

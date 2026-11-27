@@ -13,7 +13,7 @@ The examples name the module `m`, so the standard `math` library keeps its name.
 These value types carry positions, areas, colors and transforms through the whole engine:
 
 - A [`Vec2`](#vec2) is a 2D vector with `x` and `y`. It is a point, such as a position, or a direction with a length, such as a velocity.
-- A [`Vec3`](#vec3) is a 3D vector with `x`, `y` and `z`, and a [`Vec4`](#vec4) adds `w`. The [3D math guide](../3d/math.md) explains how they carry points and directions.
+- A [`Vec3`](#vec3) is a 3D vector with `x`, `y` and `z`, and a [`Vec4`](#vec4) adds `w`. The [3D math guide](../core/math.md) explains how they carry points and directions.
 - A [`Mat3`](#mat3) or a [`Mat4`](#mat4) is a matrix that places, views or projects 3D space, a [`Quat`](#quat) is a 3D rotation and a [`Plane`](#plane) is an infinite flat surface. A [`Spherical`](#spherical) or a [`Cylindrical`](#cylindrical) holds a point by its angles around the up axis, and [`SphericalHarmonics`](#sphericalharmonics) hold the light that arrives from every direction. A [`Transform3D`](#transform3d) places an object in 3D, and a [`DualQuat`](#dualquat) blends the joints of a skinned mesh. The [3D shapes](#3d-shapes) are rays, segments, boxes, spheres, oriented boxes, capsules, triangles and frustums.
 - A [`Rect`](#rect) is a rectangle that is not rotated, with its top left corner at `x`, `y` and a `width` and `height`.
 - A [`Color`](#color) has red, green, blue and alpha components from 0 to 1. Alpha is the opacity, 0 for invisible and 1 for solid.
@@ -886,7 +886,7 @@ print((a + {1, 1, 1, 1}) * 2, a / 2) -- Vec4(4.0, 6.0, 8.0, 10.0) Vec4(0.5, 1.0,
 
 ## Mat3
 
-A `Mat3` is a 3x3 matrix, such as the rotation and scale of a 3D placement or the matrix that turns its normals. It is stored by columns and multiplies a column vector on its right. Make one with `m.mat3`, or get one from `mat4:linear()`, `mat4:normalMatrix()` or `quat:matrix()`. The [3D math guide](../3d/math.md#matrices) explains how matrices chain.
+A `Mat3` is a 3x3 matrix, such as the rotation and scale of a 3D placement or the matrix that turns its normals. It is stored by columns and multiplies a column vector on its right. Make one with `m.mat3`, or get one from `mat4:linear()`, `mat4:normalMatrix()` or `quat:matrix()`. The [3D math guide](../core/math.md#matrices) explains how matrices chain.
 
 ```lua
 local m = require('haylen.math')
@@ -1043,7 +1043,7 @@ print((double * double) * {1, 1, 1}, double == m.mat3(double)) -- Vec3(4.0, 4.0,
 
 ## Mat4
 
-A `Mat4` is a 4x4 matrix, such as the placement of an object in the world, the view of a camera or its projection. It is stored by columns and multiplies a column vector on its right, so the matrices of a draw chain as `projection * view * model`. Make one with `m.mat4`, `m.compose`, `m.lookAt` or a projection function. The [3D math guide](../3d/math.md#matrices) explains when to use which.
+A `Mat4` is a 4x4 matrix, such as the placement of an object in the world, the view of a camera or its projection. It is stored by columns and multiplies a column vector on its right, so the matrices of a draw chain as `projection * view * model`. Make one with `m.mat4`, `m.compose`, `m.lookAt` or a projection function. The [3D math guide](../core/math.md#matrices) explains when to use which.
 
 ```lua
 local m = require('haylen.math')
@@ -1367,7 +1367,7 @@ print((move * move):translation(), move * m.vec4(0, 0, 0, 1)) -- Vec3(2.0, 0.0, 
 
 ## Quat
 
-A `Quat` is a rotation in 3D, a unit quaternion with the components `x`, `y`, `z` and `w`, where `w` is the real part and the identity is `(0, 0, 0, 1)`. A quaternion and its opposite hold the same rotation. Make one with `m.quat`, `m.fromAxisAngle`, `m.fromEuler`, `m.rotationBetween` or `m.lookRotation`. The [3D math guide](../3d/math.md#rotations) explains when to use rotations, Euler angles and matrices.
+A `Quat` is a rotation in 3D, a unit quaternion with the components `x`, `y`, `z` and `w`, where `w` is the real part and the identity is `(0, 0, 0, 1)`. A quaternion and its opposite hold the same rotation. Make one with `m.quat`, `m.fromAxisAngle`, `m.fromEuler`, `m.rotationBetween` or `m.lookRotation`. The [3D math guide](../core/math.md#rotations) explains when to use rotations, Euler angles and matrices.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -1718,7 +1718,7 @@ print(m.plane({0, 2, 0}, 4) == m.plane(m.up(), 2)) -- true
 
 ## 3D shapes
 
-The 3D shapes are userdata of their own types: `Ray3D`, `Segment3D`, `Box`, `Sphere`, `Obb`, `Capsule`, `Triangle` and `Frustum`, next to [`Plane`](#plane). A ray casts against any of the solid shapes and returns a hit table with the `distance` from its origin, the `point` and the `normal` of the surface, which faces the ray, or `nil` when it misses. Boxes, oriented boxes, spheres and capsules are solid, so a ray that starts inside one hits it at distance `0` with a zero normal, and triangles and planes are hit from both sides. The [3D math guide](../3d/math.md#shapes-and-ray-casts) explains which shape suits which task.
+The 3D shapes are userdata of their own types: `Ray3D`, `Segment3D`, `Box`, `Sphere`, `Obb`, `Capsule`, `Triangle` and `Frustum`, next to [`Plane`](#plane). A ray casts against any of the solid shapes and returns a hit table with the `distance` from its origin, the `point` and the `normal` of the surface, which faces the ray, or `nil` when it misses. Boxes, oriented boxes, spheres and capsules are solid, so a ray that starts inside one hits it at distance `0` with a zero normal, and triangles and planes are hit from both sides. The [3D math guide](../core/math.md#shapes-and-ray-casts-in-3d) explains which shape suits which task.
 
 ```lua
 local m = require('haylen.math')
@@ -2307,7 +2307,7 @@ end
 
 ### frustum:cull(boxes, tolerance)
 
-Returns the positions, from `1` and in order, of the boxes of the list `boxes` that are not wholly outside, with the `tolerance` of `frustum:contains`. It keeps exactly the boxes that `frustum:classify` does not call `'outside'`, and it tests them in one call with the vector instructions of the processor, which the [3D math guide](../3d/math.md#batches) describes.
+Returns the positions, from `1` and in order, of the boxes of the list `boxes` that are not wholly outside, with the `tolerance` of `frustum:contains`. It keeps exactly the boxes that `frustum:classify` does not call `'outside'`, and it tests them in one call with the vector instructions of the processor, which the [3D math guide](../core/math.md#batches) describes.
 
 ```lua
 local m = require('haylen.math')
@@ -2404,7 +2404,7 @@ print(m.cylindrical(3, math.pi / 2, 2):vector()) -- close to Vec3(3.0, 2.0, 0.0)
 
 ## SphericalHarmonics
 
-A `SphericalHarmonics` holds the light that reaches a point from every direction in nine coefficients, such as the sky of a scene or a light probe, which the [3D math guide](../3d/math.md#spherical-harmonics) explains. Each coefficient is a `Vec3` with the red, green and blue of linear light in `x`, `y` and `z`, and the nine follow these basis functions of a unit direction `(x, y, z)`:
+A `SphericalHarmonics` holds the light that reaches a point from every direction in nine coefficients, such as the sky of a scene or a light probe, which the [3D math guide](../core/math.md#spherical-harmonics) explains. Each coefficient is a `Vec3` with the red, green and blue of linear light in `x`, `y` and `z`, and the nine follow these basis functions of a unit direction `(x, y, z)`:
 
 | Coefficient | Basis function |
 | --- | --- |
@@ -2513,7 +2513,7 @@ print(day:lerp(dusk, 0.5):evaluate(m.up()))
 
 ## Transform3D
 
-A `Transform3D` places an object in 3D with a `position`, a `rotation` and a `scale`. It scales a point first, then turns it, then moves it. A child placed in a parent combines with `parent * child`. Make one with `m.transform3d`, and turn it into a matrix with `transform:matrix()`. The [3D math guide](../3d/math.md#transforms) explains when to keep a transform and when a matrix.
+A `Transform3D` places an object in 3D with a `position`, a `rotation` and a `scale`. It scales a point first, then turns it, then moves it. A child placed in a parent combines with `parent * child`. Make one with `m.transform3d`, and turn it into a matrix with `transform:matrix()`. The [3D math guide](../core/math.md#transforms-in-3d) explains when to keep a transform and when a matrix.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -3341,7 +3341,7 @@ print(string.format('%.1f', glow.r)) -- 4.0
 
 ## Matrix batches
 
-The table `m.matrixBatch` multiplies and applies lists of matrices in one call, such as the world matrices of many objects under one parent or the points of a shape, with the vector instructions of the processor. Each result matches the matrix math of `Mat4` within rounding. The [3D math guide](../3d/math.md#batches) explains when a batch pays off.
+The table `m.matrixBatch` multiplies and applies lists of matrices in one call, such as the world matrices of many objects under one parent or the points of a shape, with the vector instructions of the processor. Each result matches the matrix math of `Mat4` within rounding. The [3D math guide](../core/math.md#batches) explains when a batch pays off.
 
 ### m.matrixBatch.multiply(parent, matrices)
 
@@ -4264,7 +4264,7 @@ end)
 
 ## Noise3D
 
-A `Noise3D` is seeded noise in three and four dimensions, made with `m.noise3d`, for caves, clouds, volumes and the textures of 3D surfaces. The fourth dimension often runs with time, so a 3D pattern changes in place instead of sliding. Every method takes `x`, `y` and `z`, and one more number `w` after them makes the sample 4D. The methods `noise:perlin`, `noise:simplex`, `noise:value` and `noise:fractal` return values from `-1` to `1`, and the same seed gives the same values on every platform. Features lie about one unit apart, so scale world coordinates before sampling, such as `x / 50`. The [3D math guide](../3d/math.md#noise-and-random-points) explains each kind.
+A `Noise3D` is seeded noise in three and four dimensions, made with `m.noise3d`, for caves, clouds, volumes and the textures of 3D surfaces. The fourth dimension often runs with time, so a 3D pattern changes in place instead of sliding. Every method takes `x`, `y` and `z`, and one more number `w` after them makes the sample 4D. The methods `noise:perlin`, `noise:simplex`, `noise:value` and `noise:fractal` return values from `-1` to `1`, and the same seed gives the same values on every platform. Features lie about one unit apart, so scale world coordinates before sampling, such as `x / 50`. The [3D math guide](../core/math.md#noise-and-random-points) explains each kind.
 
 ### m.noise3d(seed)
 
@@ -4510,7 +4510,7 @@ print(m.bounds({{120, 300}, {180, 260}, {90, 340}})) -- Rect(90.0, 260.0, 90.0, 
 
 ### m.poissonDisk2d(options)
 
-Returns random points spread evenly inside an area, as a list of `Vec2`. No two points are closer than a minimum distance, so the points never clump. Use it to scatter trees, rocks or spawn points. The same options and seed always give the same points. For points with types, regions and exclusions, use [`procedural.scatter`](procedural2d.md#proceduralscatteroptions) of `haylen.procedural2d`.
+Returns random points spread evenly inside an area, as a list of `Vec2`. No two points are closer than a minimum distance, so the points never clump. Use it to scatter trees, rocks or spawn points. The same options and seed always give the same points. For points with types, regions and exclusions, use [`procedural2d.scatter`](procedural2d.md#procedural2dscatteroptions) of `haylen.procedural2d`.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -5013,7 +5013,7 @@ print(#outline, outline[1], outline[#outline])
 
 ## Spline3D
 
-A `Spline3D` is a smooth curve in 3D built from control points, such as a rail, a road, a tube or the track of a camera. Its parameter `t` runs from `0` at the start to `1` at the end of the whole curve, and distances run in world units from its start. The [3D math guide](../3d/math.md#curves) explains the kinds of curve and how frames follow them. Make one with `m.spline3d`.
+A `Spline3D` is a smooth curve in 3D built from control points, such as a rail, a road, a tube or the track of a camera. Its parameter `t` runs from `0` at the start to `1` at the end of the whole curve, and distances run in world units from its start. The [3D math guide](../core/math.md#curves-in-3d) explains the kinds of curve and how frames follow them. Make one with `m.spline3d`.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -5354,7 +5354,7 @@ print(#road:frames(8)) -- 8
 
 ## ParametricCurve3D
 
-A `ParametricCurve3D` is a curve that a formula of its parameter defines, such as a helix, a spring, a spiral staircase, a torus knot or a Lissajous figure. Its parameter `t` runs from `0` at the start to `1` at the end, and like a `Spline3D` it measures its length, walks by distance, finds its closest point and gives frames for tubes. The [3D math guide](../3d/math.md#curves) explains when to use one. Make one with `m.helix`, `m.torusKnot` or `m.lissajous3d`.
+A `ParametricCurve3D` is a curve that a formula of its parameter defines, such as a helix, a spring, a spiral staircase, a torus knot or a Lissajous figure. Its parameter `t` runs from `0` at the start to `1` at the end, and like a `Spline3D` it measures its length, walks by distance, finds its closest point and gives frames for tubes. The [3D math guide](../core/math.md#curves-in-3d) explains when to use one. Make one with `m.helix`, `m.torusKnot` or `m.lissajous3d`.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |

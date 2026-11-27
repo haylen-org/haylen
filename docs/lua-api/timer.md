@@ -28,7 +28,7 @@ The functions `timer.after` and `timer.every` take an optional `options` table.
 | `unscaled` | boolean | `false` | Counts real time and ignores the time scale. |
 | `count` | integer | `-1` | Only for `timer.every`. The timer stops after this many calls. A negative count repeats until the timer is cancelled. |
 
-Without an `owner`, a timer that a module creates at its top level in development belongs to that module, so a [reload](hotReload.md) of the module cancels it.
+Without an `owner`, a timer that a module creates at its top level in development belongs to that module, so a [reload](hot-reload.md) of the module cancels it.
 
 An unknown key raises `Unknown option "<key>".`, so `count` raises it for `timer.after`. A value of the wrong type raises `The option "<key>" of "<function>" is invalid: <reason>.`, such as `The option "processMode" of "after" is invalid: unknown value 'paused'.`. An `owner` that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.`.
 

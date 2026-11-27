@@ -11,7 +11,7 @@ Every effect below runs on the GPU in the frame that draws it, and the same Lua 
 | Glass | A surface that shows what lies behind it blurred, tinted, lit along its rim and bent at its edge, such as a bar, a card, a sheet or a dialog. | [`graphics2d.drawGlass`](../lua-api/graphics2d.md#graphics2ddrawglassrect-options), or `glass = true` on a panel, a card or a dialog of [`haylen.ui`](../lua-api/ui.md#uipanelproperties). |
 | Backdrop blur | A region that blurs whatever lies behind it, without the rest of the glass. | `graphics2d.drawGlass` with only a `blur`. |
 | Dithered fades | Fades and masks that show as a pattern of whole pixels, as in pixel art. | The `dither` of [`beginGroup`](../lua-api/graphics2d.md#graphics2dbegingroupoptions) and [`pushMask`](../lua-api/graphics2d.md#graphics2dpushmaskdrawshape-options). |
-| Distortion | Draws that bend the image of a canvas, such as heat haze and shock waves. | The `distortion` of a draw, as the [rendering guide](rendering.md#distortion) explains. |
+| Distortion | Draws that bend the image of a canvas, such as heat haze and shock waves. | The `distortion` of a draw, as the [rendering guide](../2d/graphics.md#distortion) explains. |
 | Sprite effects | Dissolve, outlines and glows on one sprite. | The [`effect`](../lua-api/graphics2d.md#sprite-effects) of a sprite. |
 | Post-processing | Bloom, blur, color grading, vignettes and the rest over a whole canvas. | The [`postProcess`](../lua-api/graphics2d.md#post-process-options) of a canvas. |
 | Materials | Any effect of your own on a draw, a canvas or a glass. | A `.shader` file and [`graphics2d.newMaterial`](../lua-api/graphics2d.md#material), as [your own effects](#your-own-effects) shows. |
@@ -172,7 +172,7 @@ A glass costs passes over its own region, never over the whole screen, and one c
 | The player on macOS, Metal | 2560 by 1504 | 3.37 ms | 4.65 ms | 1.28 ms |
 | Chrome on macOS, WebGPU | 2000 by 1125 | 1.85 ms | 2.49 ms | 0.64 ms |
 
-The [render benchmark](rendering.md#render-benchmark) measures the same in Release on that machine, with 400 circles under a bar, a card and a sheet of glass of 1920 by 1080 pixels. The three surfaces take the GPU time of a frame from 0.11 ms to 0.49 ms on Metal, add 28 draw calls, and add 2 microseconds of the frame thread, which allocates nothing for them. The Metal driver allocates 28 small blocks more for the passes of the glass in each frame, which the engine cannot avoid.
+The [render benchmark](../2d/graphics.md#render-benchmark) measures the same in Release on that machine, with 400 circles under a bar, a card and a sheet of glass of 1920 by 1080 pixels. The three surfaces take the GPU time of a frame from 0.11 ms to 0.49 ms on Metal, add 28 draw calls, and add 2 microseconds of the frame thread, which allocates nothing for them. The Metal driver allocates 28 small blocks more for the passes of the glass in each frame, which the engine cannot avoid.
 
 So one surface costs about a quarter of a millisecond on that GPU at that size. The GPU of a phone is several times slower, and its screen holds about as many pixels, so a phone pays about a millisecond for each surface of glass, which keeps one or two of them, such as a tab bar and a sheet, well inside a frame. The work of the frame thread grows by a few hundredths of a millisecond for each glass. WebGL2 measures no GPU time in Chrome, and its frame thread showed the same small growth.
 

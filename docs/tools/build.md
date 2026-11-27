@@ -1,6 +1,6 @@
 # 🔨 Building Haylen
 
-This guide is for people who build the engine itself. It explains the command `haylen` and the Python package behind it, what each target needs, the tools that the command downloads, the engine SDKs and the engine ports that build them, the build trees, the engine commands, the CMake options, the dependencies with their patches, the desktop player and the web runtime. Other guides cover the rest: the [command reference](commands.md) lists every command with its options and its result, the [distribution guide](distribution.md) covers apps and their targets, the [testing guide](testing.md) covers tests and continuous integration, and the [embedding guide](embedding.md) covers projects that add the engine with CMake.
+This guide is for people who build the engine itself. It explains the command `haylen` and the Python package behind it, what each target needs, the tools that the command downloads, the engine SDKs and the engine ports that build them, the build trees, the engine commands, the CMake options, the dependencies with their patches, the desktop player and the web runtime. Other guides cover the rest: the [command reference](../reference/commands.md) lists every command with its options and its result, the [distribution guide](distribution.md) covers apps and their targets, the [testing guide](testing.md) covers tests and continuous integration, and the [embedding guide](embedding.md) covers projects that add the engine with CMake.
 
 ## The command haylen
 
@@ -25,7 +25,7 @@ Every command takes three options, before or after its words:
 | `--json` | Prints the result of the command as one JSON document on the standard output, and its steps and the output of the tools that it prints, such as with `--verbose`, on the error output, so the standard output holds the document alone, for continuous integration and editors. |
 | `--jobs` | The parallel jobs of the builds, one less than the processors of this machine by default. |
 
-With `--json`, a command that succeeds prints `{"ok": true, "result": {...}}`, whose result the [command reference](commands.md) describes for each command. A command that fails prints `{"ok": false, "error": {...}}` and exits with the code 1. The error holds its `code`, such as `incompatibleSdk`, `missingToolchain`, `unsupportedTarget`, `invalidManifest`, `invalidContribution` or `buildFailed`, its `message`, and, when it has them, its `origin`, the manifest or plugin it comes from, and its `details`, the output of the tool that failed.
+With `--json`, a command that succeeds prints `{"ok": true, "result": {...}}`, whose result the [command reference](../reference/commands.md) describes for each command. A command that fails prints `{"ok": false, "error": {...}}` and exits with the code 1. The error holds its `code`, such as `incompatibleSdk`, `missingToolchain`, `unsupportedTarget`, `invalidManifest`, `invalidContribution` or `buildFailed`, its `message`, and, when it has them, its `origin`, the manifest or plugin it comes from, and its `details`, the output of the tool that failed.
 
 ```sh
 haylen --json sdk list
@@ -165,18 +165,7 @@ The option `--target` repeats, and every target it names must belong to one engi
 
 ### What an SDK holds
 
-The engine port writes `haylen-sdk.json` into the folder of the SDK, which the schema `tools/haylen/schemas/haylen-sdk.schema.json` checks:
-
-| Field | Meaning |
-| --- | --- |
-| `format` | The version of the format of the manifest, `1`. |
-| `port`, `portVersion` | The engine port that built the SDK and its version. |
-| `engineVersion` | The version of `engine/VERSION`. |
-| `revision` | A hash of the engine sources that built the SDK, which changes with any file of `engine/` that reaches an SDK. The tests and the benchmarks never reach one, so a change to `engine/tests` or `engine/bench` keeps every SDK current. |
-| `configuration` | `Debug` or `Release`. |
-| `slices` | One slice per system and environment, each with its `system`, `environment` (`host`, `device` or `simulator`), `architectures`, `abi`, `toolchain`, the C++ `runtime` it links, its `minimumSystemVersion`, its `graphicsApis`, the `capabilities` of the system that the engine uses there, such as `dynamicLibraries`, and its `files` by name. |
-| `hostTools` | The programs that run on the machine that builds apps, never on the target, each with its `name`, `system`, `architecture` and `path`, such as the content tool `haylen-content`. |
-| `files` | The files that every slice shares, by name. |
+The engine port writes `haylen-sdk.json` into the folder of the SDK, whose fields the [reference of `haylen-sdk.json`](../reference/haylen-sdk-json.md) lists.
 
 A port keeps the slices of its folder that the same engine sources built in the same configuration, so building one slice later adds it to the SDK. An SDK of other sources or another configuration leaves the folder before the first new slice installs.
 
@@ -202,6 +191,159 @@ Each target finds its slice after the requirements of its plugins are known and 
 
 A host tool of another system or architecture never runs. Protected releases take the content tool of the desktop SDK of this machine, whose engine port declares that its SDK carries it in the `host_tools` of its `PortDescription`. When no installed SDK of the current engine sources holds the tool, the commands that prepare or build a Release of any target first build that SDK in the configuration of the engine. They do it in a step of its own that says why, as they build the SDK of the target. The command `app verify` and the commands of `haylen content` stop with the `haylen sdk build` command to run instead, such as `haylen sdk build --target player` on macOS.
 
+The SDK of each platform carries these parts for apps.
+
+### Haylen.xcframework
+
+The command `haylen sdk build` with the Apple targets builds the Apple SDK into `build/sdk/apple-<config>/`. It holds two frameworks with one static library per slice. The library `libhaylen.a` of `Haylen.xcframework` merges, with `libtool`, the engine, every dependency (the scheduler and the network of Varn without Lua, Poco, OpenSSL, libuv, Box2D, ImGui, miniaudio and the rest) and the runtime, next to the public headers, and holds nothing of Lua. The library `libhaylen-lua.a` of `HaylenLua.xcframework` holds the Lua layer with the Lua runtime of Varn and Lua itself, and the Lua player as a member of its own, which defines `haylen::core::Application::create` for Lua apps. Lua apps and C++ apps whose `cpp.lua` is `true` link both frameworks, and the link takes the player only when the sources of the app define no application of their own. Other C++ apps link only `Haylen.xcframework`. The SDK is built in these steps:
+
+1. Every architecture is a CMake build of `engine/` with `HAYLEN_BUILD_SDK` and `HAYLEN_BUILD_FRAMEWORK`, in `build/engine/apple-<slice>-<arch>-<config>`.
+2. The script `haylen-install.cmake` merges the engine and the runtime, as it does for the [SDK](embedding.md#find_package-and-the-sdk).
+3. The script `haylen-framework.cmake` merges both into `libhaylen.a`, and the Lua layer of `haylen-install.cmake` with the player into `libhaylen-lua.a`. It writes `haylen-apple.json` with the lists of system frameworks in `haylen-app.cmake`, the same lists that `haylen_link_runtime_platform` links into CMake apps, and the preprocessor definitions that C++ sources compile with against the headers.
+4. The tool `lipo` joins the architectures of a slice, and `xcodebuild -create-xcframework` joins the slices of each framework. A slice that the SDK folder holds from the same engine sources and configuration stays, so building one slice later adds it.
+5. The tool `codesign` signs both frameworks ad hoc with `--sign -` and `--timestamp=none`, and `codesign --verify --strict` checks the signatures, so Xcode takes them as signed and a broken signature stops the build of the SDK.
+6. The engine port copies `haylen-apple.json`, the privacy manifest of the engine, its Swift helpers, the headers and the CMake package that gives native libraries `haylen::native` into the SDK folder, and lists them in `haylen-sdk.json`.
+
+| Slice | Architectures | Built with |
+| --- | --- | --- |
+| `macos` | arm64, x86_64 | The macOS SDK. |
+| `ios` | arm64 | `CMAKE_SYSTEM_NAME=iOS` and the `iphoneos` SDK. |
+| `ios-simulator` | arm64, x86_64 | `CMAKE_SYSTEM_NAME=iOS` and the `iphonesimulator` SDK. |
+| `ios-maccatalyst` | arm64, x86_64 | `engine/cmake/haylen-catalyst.toolchain.cmake`, which compiles for the `macabi` flavor of iOS against the macOS SDK and its `iOSSupport` folder, because CMake has no system name for Mac Catalyst. The engine treats the build as iOS. |
+| `tvos` | arm64 | `CMAKE_SYSTEM_NAME=tvOS` and the `appletvos` SDK. |
+| `tvos-simulator` | arm64, x86_64 | `CMAKE_SYSTEM_NAME=tvOS` and the `appletvsimulator` SDK. |
+| `xros` | arm64 | `CMAKE_SYSTEM_NAME=visionOS` and the `xros` SDK. |
+| `xros-simulator` | arm64 | `CMAKE_SYSTEM_NAME=visionOS` and the `xrsimulator` SDK. The visionOS build of OpenSSL in Varn names no architecture and always comes out arm64, so the slice has no x86_64, the target `visionos-simulator` builds arm64 alone and Intel Macs run no visionOS simulator. |
+
+The slices target the oldest systems that the code of the engine allows, which each slice records in `haylen-sdk.json` as the floor of the apps that link it:
+
+- iOS and tvOS 16.3, and Mac Catalyst 16.4, which is macOS 13.3 on the Mac. Those releases have a C++ library whose `std::format` formats floating point numbers, which the engine uses for text and logs. The toolchain itself reaches back to iOS and tvOS 15 and macOS 12, and a build for iOS 15 fails only on `std::format` with floating point.
+- visionOS 1.0, its first release, whose C++ library already formats floating point numbers with `std::format`.
+- macOS 14.0, the first release with the display link of a screen on the run loop, `CADisplayLink`, which plays the frames of a macOS app, so the main thread waits in the run loop between them as the main thread of every native app does. The C++ library of macOS formats floating point numbers with `std::format` from 13.3 on, SDL runs from macOS 10.13 on, and the Metal device from macOS 10.15 on, where Metal sorts GPUs into the families that it asks about, so none of them sets the minimum.
+- Mac Catalyst starts at 16.4 rather than 16.3, because Xcode maps iOS 16.3 to macOS 13.2.
+- The engine parses floating point numbers with fast_float, because `std::from_chars` for floating point needs iOS, tvOS and macOS 26.
+
+The engine port passes the versions as `CMAKE_OSX_DEPLOYMENT_TARGET`, and the Apple projects of apps take the floor of their slice as their deployment target when the app sets no newer one.
+
+The SDL platform layer enters the main callbacks of SDL itself, so the runtime never defines `main` on Apple platforms. The app calls `haylen_main` instead, which `haylen/platform/apple/HaylenMain.h` declares and the `main.m` of the generated project calls:
+
+```objc
+#import "haylen/platform/apple/HaylenMain.h"
+
+int main(int argc, char* argv[]) {
+    return haylen_main(argc, argv);
+}
+```
+
+When the system ends the app with `SIGTERM`, such as when the Simulator quits while the app runs, Xcode stops the app at `return haylen_main(argc, argv);` with "signal SIGTERM". That is the debugger, which stops on every signal before the app receives it, and not a crash. The frames of UIKit and AppKit run inside `haylen_main`, so the debugger shows that line. Continue in Xcode, and the app quits the way it quits when the system asks it to: SDL turns the signal into a request to quit, the app hears `appQuitRequested`, and the engine stops and saves what it keeps. A run without the debugger never stops there. To keep the debugger running on the signal, type `process handle SIGTERM --stop false --notify true` in the console of the debugger, or put that line in the `~/.lldbinit` file.
+
+The bridge handlers of an app register before `main` runs, when their classes load, such as `AppBridgeLoader` of the starter app, which calls `[AppBridge registerHandlers]` in `+load`. Native plugins register theirs through their context, as the [plugin guide](../platform/plugins.md#the-apple-part) describes. Plain macOS executables of CMake projects, and the macOS desktop player, get the same `main` from `engine/src/platform/apple/AppleMain.cpp`.
+
+### The system libraries of the engine
+
+The engine links only the frameworks and the libraries of the system that every app needs to run, which `haylen_link_runtime_platform` of `engine/cmake/haylen-app.cmake` gives the runtime, CMake apps and the settings `haylen-apple.json` of the Apple SDK. A capability that only some apps use, such as the camera, notifications or the controls of what plays, brings its frameworks with the plugin that serves it. The build of every slice of the Apple SDK checks with `nm` that each framework of its list gives the merged `libhaylen.a` at least one symbol that the library leaves undefined, from the stubs of the framework in the SDK of Xcode, and fails with the frameworks that give none, so no framework stays linked once the code that used it leaves.
+
+The Android SDK keeps the list `HAYLEN_ANDROID_LIBRARIES` of the same file. The player library `libhaylen.so` links with `--as-needed`, so it records in its entries `DT_NEEDED` only the libraries whose symbols it uses. The build of every ABI reads those entries with `llvm-readelf -d` of the NDK and fails when a listed library is missing from them, or when the library needs one that the list lacks. The only libraries outside the list are `libc.so`, `libm.so` and `libdl.so`, which the clang driver of the NDK adds to the link of every shared library.
+
+| Framework or library | Platforms | Why the engine links it |
+| --- | --- | --- |
+| `AppKit`, `Foundation` | macOS | The application, the windows, the menus, the views and the strings of the system. |
+| `Foundation`, `UIKit` | iOS, iPadOS, Mac Catalyst, tvOS, visionOS | The application, the scenes, the views and the strings of the system. |
+| `Carbon` | macOS | The keyboard layouts that SDL reads. |
+| `CoreFoundation`, `CoreGraphics` | macOS, and `CoreGraphics` on every Apple platform | The displays, the geometry and the collections of the system. |
+| `CoreText` | Every Apple platform | The fonts of the system that text falls back on. |
+| `Metal` | Every Apple platform | The GPU device of Metal. |
+| `QuartzCore` | Every Apple platform | The Metal layer of the views and the display link that plays the frames. |
+| `GameController` | Every Apple platform | Gamepads, the keyboards and mice of iPads and TV remotes. |
+| `CoreHaptics`, `ForceFeedback` | macOS | The rumble of gamepads, through GameController and SDL. |
+| `AVFoundation`, `AudioToolbox`, `CoreMedia`, `CoreVideo` | Every Apple platform | The audio session, the audio output and the decoding of videos. |
+| `CoreAudio` | macOS | The audio devices of the Mac, which miniaudio links with `AudioToolbox` instead of opening them while it runs. |
+| `Network` | Every Apple platform | The state of the network. |
+| `IOKit` | macOS, Mac Catalyst | The battery and the devices of HID that SDL reads. |
+| `UniformTypeIdentifiers` | Every Apple platform | The type of a video file that AVFoundation opens. |
+| `shell32`, `shcore`, `shlwapi`, `ole32`, `oleaut32`, `advapi32`, `uuid` | Windows | The shell, the DPI awareness, COM and the registry that the runtime uses. |
+| `dwrite` | Windows | The fonts of the system. |
+| `mfplat`, `mfreadwrite`, `mfuuid` | Windows | The decoding of videos through Media Foundation. |
+| `uiautomationcore` | Windows | The accessibility of the UI for screen readers. |
+| `android`, `log` | Android | The native activity, the window, the assets and the log. |
+| `EGL` | Android | The context of OpenGL ES. |
+| `jnigraphics` | Android | The pixels of the bitmaps of the video streams of plugins. |
+| `mediandk` | Android | The decoding of videos, whose functions of Android 9 the decoder references weakly behind a check of the version, so apps run on Android 8.1 without videos. |
+
+On Linux the runtime links no library of the desktop and opens `libgio-2.0.so.0` and `libfontconfig.so.1` while it runs, where the system has them, as the libraries that SDL and miniaudio open.
+
+### The Android libraries
+
+The folder `engine/platform/android` is a Gradle project with five modules. The module `haylen` is the Android library (AAR) with the namespace `dev.haylen`. It holds:
+
+- `HaylenActivity`, a `GameActivity` of the AndroidX games libraries and so an `AppCompatActivity`. It draws the app in a `SurfaceView` of an ordinary view hierarchy and installs the splash screen. It hides the system bars, apart from the status bar that the app shows, and reports the safe area, the on-screen keyboard and the orientation of the screen. It forwards low-memory warnings. It takes the back button through an `OnBackPressedCallback` while the app captures it, and hands its events to the plugins.
+- `HaylenLinkActivity`, which hands the links and notifications of the app to the activity.
+- `HaylenEditText`, the hidden field that edits the focused text field of the UI.
+- `HaylenAudioFocus`, which holds the audio focus in the foreground and while the app plays in the background, `HaylenBackgroundAudio`, which reads whether the merged manifest declares a service of the type `mediaPlayback`, as the [audio guide](../audio/audio.md#playing-in-the-background) describes, `HaylenNetwork`, which follows the network while the app holds the permission `ACCESS_NETWORK_STATE`, `HaylenBattery`, `HaylenPowerSaving`, `HaylenThermalState` and `HaylenTimeZone`, which follow the battery, the battery saver, the thermal status and the time zone, and `HaylenAccessibility`, which follows the accessibility settings.
+- `HaylenAccessibilityTree`, which serves the elements of the UI to TalkBack and the other accessibility services.
+- `HaylenDisplays`, which follows the displays of the device, `HaylenOutputs`, which shows the outputs of the app on the other displays, and `HaylenFold`, which reports the fold of foldable and dual-screen devices through Jetpack WindowManager.
+- `HaylenBridge` for the platform bridge, and the host of the Android parts of [plugins](../platform/plugins.md#the-android-part): `HaylenPluginProvider`, which loads them when the process starts, `HaylenPlugin`, `HaylenPluginContext`, `HaylenRequirements`, `HaylenOverlay` with its `HaylenPlacement`, the screens of plugins with `HaylenScreens` and `HaylenScreen`, and the streams `HaylenVideoStream` and `HaylenAudioStream`.
+- The splash themes, the R8 rules for the classes that C++ calls by name, the Kotlin HTTP transport of Varn and the Java class of its data views.
+
+The manifest of `haylen` declares only the OpenGL ES 3 requirement, with no permission and no component. So the permissions, the back policy and the components that only some apps want never reach an app through it. The other modules each depend on `haylen` as an API:
+
+- `haylen-plugins` holds only a manifest, which declares `HaylenPluginProvider` for the modules of plugins.
+- `haylen-links` holds only a manifest, which declares the exported `HaylenLinkActivity` for plugins of links and notifications.
+- `haylen-coroutines` holds `HaylenCoroutines`, with `kotlinx-coroutines-android`, as the [plugin guide](../platform/plugins.md#engine-libraries) describes.
+
+The library packages the player, which the CMake project of the engine builds with `HAYLEN_BUILD_PLAYER` as the shared library `libhaylen.so`. It covers arm64-v8a, armeabi-v7a, for the 32-bit Android TV devices still in use, and x86_64, for emulators, from Android 8.1 (API 27) on. The NDK r30 links the arm64-v8a and x86_64 libraries with 16 KB page alignment, which Android 15 devices with 16 KB pages need, and `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES` makes it explicit. 32-bit ARM has no 16 KB pages and keeps 4 KB alignment.
+
+The Android library needs API 27 because miniaudio plays through AAudio from Android 8.1 on, as the [build guide](#dependencies) explains. The others need less: GameActivity needs API 21, AppCompat and the activity library need API 23, and the HTTP transport of Varn needs API 24. `HaylenActivity` reaches the system bars through `WindowCompat` and `WindowInsetsControllerCompat` of `androidx.core`, and covers display cutouts from Android 9 on, where cutouts exist. Back reaches `HaylenActivity` only through the `OnBackPressedCallback` that it enables while the app takes back or edits a text field. Android 13 and later call it through the back callbacks of the window, which the generated manifest turns on with `android:enableOnBackInvokedCallback`. So the system plays its predictive back animation when back leaves the app.
+
+The command `haylen sdk build --target android` builds the Android SDK into `build/sdk/android-<config>/` with the engine port of Android, in these steps:
+
+1. It builds the player and the SDK of the engine for every ABI, or for the ones that `--architecture` names, in `build/engine/android-<abi>-<config>`, one ABI after the other with the jobs of `--jobs`. So the compilers stay within those jobs, and the configures never write into the shared CPM sources at the same time.
+2. It installs the CMake package of each ABI into `abis/<abi>/` of the SDK, which the native code of apps links against, and copies the player of each ABI into `jniLibs/<abi>/libhaylen.so`. The ABIs that the SDK folder holds from the same engine sources and configuration stay, so building one ABI later adds it to the SDK.
+3. It runs Gradle with `-PhaylenNativeLibraries` for the players of every ABI of the SDK, `-PhaylenVarnSourceDir` for the folder where CPM placed Varn, `-PhaylenMavenDir` for the Maven repository and `-PhaylenBuildDirectory` for the build outputs, which go to `build/engine/android-libraries-<config>`. The tasks `copyVarnTransport` and `copyVarnDataView` copy `VarnHttp.kt` and `VarnDataView.java` of Varn into the module, because the engine links Varn into the player library and only the Kotlin HTTP transport and the data views of the Android library of Varn run in the app.
+4. It runs the task `publishReleasePublicationToArtifactsRepository` of every module. That publishes `dev.haylen:haylen`, `dev.haylen:haylen-plugins`, `dev.haylen:haylen-links` and `dev.haylen:haylen-coroutines` at the engine version, with their POMs, to `maven/` of the SDK.
+5. It writes `haylen-sdk.json` with one slice per ABI, which names the CMake package and the player of the ABI, and the Maven repository that every slice shares.
+
+The POM of `haylen` lists the dependencies of the library, which Gradle brings into every app:
+
+- The Kotlin standard library.
+- `androidx.games:games-activity` 4.4.2, which the Gradle module metadata pins strictly. The Java classes of GameActivity must match its native side in `libhaylen.so`, which links the same version that `engine/cmake/haylen-dependencies.cmake` pins. A change of version updates the pin, the library and the template together.
+- `androidx.appcompat:appcompat` 1.8.0, `androidx.activity:activity` 1.13.0 and `androidx.core:core` 1.19.1, as APIs, which `HaylenActivity` and its plugins build on.
+- `androidx.core:core-splashscreen`, `androidx.customview:customview`, whose `ExploreByTouchHelper` serves the elements of the UI to accessibility services, and `androidx.window:window-java`, the Jetpack WindowManager that reports the fold of foldable devices.
+
+The POMs of the other libraries list `haylen`. The POM of `haylen-coroutines` also lists `kotlinx-coroutines-android`, which apps and plugins with suspending handlers get as an API.
+
+### Web and desktop
+
+The web SDK holds the `haylen` web player, which carries the devices of WebGPU and WebGL2 and draws through WebGPU, or through WebGL2 where WebGPU does not start. It sits next to `haylen-audio-worklet.js`, the AudioWorklet processor that the runtime loads from the folder of its script, `haylen-content-store.js`, the worker of its content store, and `haylen-page.js` and `haylen-worker.js`, the page side and the worker of the Worker mode, which every site of the web backend carries too, so a page whose address holds `hosting=worker` runs the app in a dedicated worker. The Emscripten CMake package of the SDK links the runtime of a release and of a C++ app. The player embeds no app. In development the page hands it the package at runtime, so the same `haylen.wasm` runs every app.
+
+The desktop SDK of this machine holds three things, which one build tree of the engine builds:
+
+- The `haylen` player of this machine, which runs any package that its command line names, as the [build guide](#the-desktop-player) describes, and which the `player` target uses.
+- The content tool `haylen-content`, which builds the protected releases of apps, as the [content guide](../content/content.md#the-content-tool) describes.
+- The CMake package of the engine, which the Windows and Linux projects of apps and the native libraries of the desktop link.
+
+### The size of 3D physics
+
+Jolt Physics, the backend of 3D physics, joins the static library of every SDK. These are the sizes of its archive in Release, with the options of the engine and without debug information, before the link of an app drops the code that the app never reaches. An app keeps only the part of it that its 3D worlds reach. Each archive compiles in about 15 seconds on 8 threads of a desktop processor.
+
+| SDK | Architecture | Archive of Jolt |
+| --- | --- | --- |
+| Apple | macOS arm64 | 2.7 MB |
+| Android | arm64-v8a | 4.2 MB |
+| Android | armeabi-v7a | 4.4 MB |
+| Android | x86_64 | 4.3 MB |
+| Web | wasm32 with SIMD | 3.3 MB |
+| Desktop | Linux x64 | 4.8 MB |
+
+### The size of 3D navigation
+
+Recast and Detour, which bake and walk the navigation meshes of `haylen.navigation3d`, join the static library of every SDK as `haylen-recast`. These are the bytes of code and data of its four libraries compiled with `-O2`, function sections and without debug information, before the link of an app drops the code that the app never reaches. Recast bakes, Detour holds the mesh and answers its queries, and the parts of crowds and of the tile cache move agents and carve obstacles. The module `haylen.navigation3d` binds every part, so a Lua app keeps all of them, while a C++ app keeps only what it calls.
+
+| Architecture | Recast | Detour | Crowds | Tile cache | In all |
+| --- | --- | --- | --- | --- | --- |
+| x86-64 | 143 KB | 66 KB | 36 KB | 34 KB | 279 KB |
+| arm64 | 121 KB | 55 KB | 27 KB | 29 KB | 232 KB |
+
 ## Build trees
 
 The tooling keeps every build tree of the engine under `build/engine/`, apart from the trees of apps:
@@ -216,7 +358,7 @@ The tooling keeps every build tree of the engine under `build/engine/`, apart fr
 | `build/engine/consumers/<mode>-<config>` | The consumer project of [engine consumers](#engine-consumers). |
 | `build/engine/desktop-<config>`, `build/engine/web-<config>`, `build/engine/apple-<slice>-<architecture>-<config>`, `build/engine/android-<abi>-<config>` | The trees of the engine ports, which `haylen sdk build` reuses. The Apple port joins the architectures of a slice in `build/engine/apple-<slice>-<config>`, and the Android port builds its Android libraries with Gradle in `build/engine/android-libraries-<config>`. |
 
-The `haylen` player and every app of [`haylen_add_app`](#haylen_add_app) land in `bin/<target>/` inside a tree, and the other executables, such as the tests, the headless player, the content tool and the benchmarks, land in `bin/`. A tree configures again when CMake never configured it, its last configure failed, or another pin of the shader compiler or another uv configured it, so its shaders and its tests never use an old tool. CMake cannot change the generator of a tree, which is why the Xcode generator gets a tree of its own.
+The `haylen` player and every app of [`haylen_add_app`](embedding.md#haylen_add_app) land in `bin/<target>/` inside a tree, and the other executables, such as the tests, the headless player, the content tool and the benchmarks, land in `bin/`. A tree configures again when CMake never configured it, its last configure failed, or another pin of the shader compiler or another uv configured it, so its shaders and its tests never use an old tool. CMake cannot change the generator of a tree, which is why the Xcode generator gets a tree of its own.
 
 The other folders of `build/` belong to apps, SDKs and logs:
 
@@ -230,7 +372,7 @@ The other folders of `build/` belong to apps, SDKs and logs:
 
 ## Engine commands
 
-The group `engine` builds the engine of this machine for developing it. Apps never build against these trees. The commands `engine fuzz`, `engine coverage` and `engine format` are in the [testing guide](testing.md), and every option of every command is in the [command reference](commands.md).
+The group `engine` builds the engine of this machine for developing it. Apps never build against these trees. The commands `engine fuzz`, `engine coverage` and `engine format` are in the [testing guide](testing.md), and every option of every command is in the [command reference](../reference/commands.md).
 
 ### engine configure
 
@@ -270,13 +412,13 @@ The benchmarks that draw, `sprites`, `render`, `ui`, `particles`, `nodes`, `anim
 
 | Suite | Target | What it measures | Results |
 | --- | --- | --- | --- |
-| `sprites` | `haylen-sprite-benchmark` | Sprites drawn on the GPU of this machine, in phases. | [Rendering guide](../graphics/rendering.md#sprite-benchmark) |
+| `sprites` | `haylen-sprite-benchmark` | Sprites drawn on the GPU of this machine, in phases. | [Rendering guide](../2d/graphics.md#sprite-benchmark) |
 | `core` | `haylen-core-benchmark` | On the headless host, the average time of: a frame of an app at rest and with a Lua scene, events and signals with C++ and Lua listeners, owners that end what they hold, timers that wait and timers that fire every frame, tweens of native values and of Lua tables with and without an owner, jobs that go to a worker and back, `parallelFor`, and JSON assets loaded in the background and on the frame thread. | [Architecture guide](../core/architecture.md#what-the-base-costs) |
 | `algorithms` | `haylen-algorithm-benchmark` | The average time of: A\*, weighted A\*, jump point search, flow fields and hierarchical path finding on a 512 by 512 grid, navigation mesh builds and funnel paths, ORCA crowd steps on one thread, on the job system and on the job system while navigation mesh builds keep every worker busy, with the slowest of those steps, the bake of a 3D navigation mesh with 300 boxes, its funnel paths, 3D crowd steps of 2000 agents on one thread and on the job system and the tile rebuilds of an obstacle that moves, AABB and k-d tree queries, batches of physics ray casts on one thread and on the job system, and the batches of matrices, points and frustum culling of `haylen.math` next to the same work done one value at a time, with the vector instructions they ran on. | The output |
 | `procedural` | `haylen-procedural-benchmark` | The average time of: wave function collapse, Poisson disk sampling with a fixed and a varying distance, random scattering, marching squares, the Delaunay triangulation of 100 thousand points and carving destructible terrain. | The output |
 | `physics` | `haylen-physics-benchmark` | On the headless host, the average time of: the step of a pile of falling boxes on one, two, four and eight threads, a settled pile with sleeping on and off, a pyramid on one and four threads and with two, four and eight sub-steps, a chain of 300 links, ragdolls that tumble down stairs, fluids of three sizes with the fluid pass alone and the whole step, ray casts and circle queries in a pile, reading the transforms of 5000 bodies with and without interpolation, the debug drawing of a pile, and a pile stepped from Lua with and without its contact and hit callbacks. | [Physics guide](../2d/physics.md#the-physics-benchmark) |
 | `ui` | `haylen-ui-benchmark` | On the headless host, collections of a hundred thousand items of three types, flung in a list and in a grid: the CPU time of a frame with the items bound, the binder calls and the cells created while flinging and at rest. | [UI guide](../ui/ui.md#what-a-long-list-costs) |
-| `render` | `haylen-render-benchmark` | On the headless host, whole frames of sprites, shapes, text, rich text and interface components, with the draw calls, instances, uploads and allocations of each frame. | [Rendering guide](../graphics/rendering.md#render-benchmark) |
+| `render` | `haylen-render-benchmark` | On the headless host, whole frames of sprites, shapes, text, rich text and interface components, with the draw calls, instances, uploads and allocations of each frame. | [Rendering guide](../2d/graphics.md#render-benchmark) |
 | `particles` | `haylen-particle-benchmark` | On the headless host, the average time of: one emitter of 100 thousand particles on one thread and on the job system, a thousand emitters of a hundred particles, spawning 200 thousand particles per second, the draw calls of both kinds of emitter, and 500 emitters updated from Lua. | [Particles guide](../2d/particles.md#the-particle-benchmark) |
 | `content` | `haylen-content-benchmark` | An app of 64 MiB of data that does not compress, 16 MiB of text, 2000 small files, a Lua module of 2 MiB, a JSON map and a picture, written to the temporary folder of the system. It times building the protected release, opening it, reading the large files in order and on four threads, reading the data in order from the app folder too, 2000 random reads of 4 KiB, and finding every small file in the catalog. It times compressing, decompressing, encrypting and decrypting chunks alone. It loads the module from its text in the app folder and as bytecode from the release, and the map, the picture and its raw pixels from the folder and from the release, so the pairs show what protection adds. It also loads the map cooked as CBOR, builds an update of two changed files with the bytes it stores and reuses, plans the download ranges of 100 thousand records, adds 256 records to a local store, and builds, opens and reads a release of 20 thousand files. Each line shows the throughput or the time, with the largest single allocation, so a reader that starts to hold whole files shows. | [Content guide](../content/content.md#performance) |
 | `models` | `haylen-model-benchmark` | A skinned grid of a million vertices and two million triangles in a GLB file in memory, read through each step of the glTF reader: opening it, loading its buffers, the pass of the rules of its data on its own and reading its positions. | [glTF guide](../3d/gltf.md#performance) |
@@ -335,7 +477,7 @@ The tooling sets these cache variables for you. A project that adds the engine i
 | `HAYLEN_LINK_JOBS` | empty | The links that a Ninja build runs at once. Empty, the configure divides the memory of the machine by the memory that one link of the kind of build takes, as [links of large programs](#links-of-large-programs) explains, with one link at least. A whole number sets the count, such as `1` on a machine whose memory other work shares. |
 | `HAYLEN_BUILD_FUZZERS` | off | Builds the fuzzers `haylen-bitmap-font-fuzzer`, `haylen-content-fuzzer`, `haylen-font-fuzzer`, `haylen-gltf-fuzzer`, `haylen-image-fuzzer`, `haylen-input-fuzzer`, `haylen-messagepack-fuzzer`, `haylen-navmesh-fuzzer`, `haylen-ogg-fuzzer`, `haylen-physics-shape-fuzzer`, `haylen-placeholder-fuzzer` and `haylen-vector-image-fuzzer`, and instruments every target for libFuzzer and AddressSanitizer. It needs a Clang that links libFuzzer, which Apple Clang does not ship. |
 
-The workspace `CMakeLists.txt` at the root of the repository is the project `haylen-workspace`. It adds `engine/` and turns the player, the tests, the benchmarks and the content tool on. The function [`haylen_add_app`](#haylen_add_app) builds the binaries of apps.
+The workspace `CMakeLists.txt` at the root of the repository is the project `haylen-workspace`. It adds `engine/` and turns the player, the tests, the benchmarks and the content tool on. The function [`haylen_add_app`](embedding.md#haylen_add_app) builds the binaries of apps.
 
 ### Names of targets and files
 
@@ -617,16 +759,6 @@ The Vulkan Memory Allocator keeps one empty memory block of each memory type onc
 - The Android runtime asks EGL for the newest OpenGL ES version that the device declares in `ro.opengles.version`. The emulator creates a context of exactly the version an app asks for, while every context reports the newest version of the device. So a context of an older version would report features, such as the limits of OpenGL ES 3.1, that it rejects.
 - The SDL platform layer enters the main callbacks of SDL with `SDL_RunApp` and `SDL_EnterAppMainCallbacks`, without the `SDL_main.h` header that renames `main`. So its entry points, `WinMain` on Windows and `main` on Linux and the web, return the exit status of the app, and the runtime never defines `main` on Apple platforms. The app calls `haylen_main` there, from the `main.m` of the Apple template of the backend.
 
-## haylen_add_app
-
-The file `engine/cmake/haylen-app.cmake` defines the one CMake function that builds the binary of an app, Lua or C++, against the engine of an installed SDK or of a source tree:
-
-```cmake
-haylen_add_app(<target> LUA|CPP [WITH_LUA] [CONSOLE] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
-```
-
-The option `LUA` links the Lua player `haylen::player`, and `CPP` compiles the `SOURCES` that define `haylen::core::Application::create`, with the Lua layer `haylen::lua` only when `WITH_LUA` names it. The folder `CONTENT` is what the app ships, which the tooling prepares, and `BOOTSTRAP` is the release bootstrap that the content tool writes. The function builds an executable on desktops, the shared library of the activity on Android and a page on the web, and calls the `APP_FUNCTION` of a port, while Xcode builds the apps of Apple platforms. The generated projects of the desktop, Android and web backends call it, and the [embedding guide](embedding.md#haylen_add_app) describes every argument and what it makes on each platform.
-
 ## The desktop player
 
 The `haylen` player is the runtime without a bundled app. It runs any package that its command line names, a folder or a zip:
@@ -644,7 +776,7 @@ The desktop SDK carries the player of apps as a host tool, which `haylen sdk bui
 
 ## Web builds
 
-Web builds run on one thread, like Varn. So they need no `SharedArrayBuffer` and no cross-origin isolation. The command `serve` sends an opener policy only when `--coop` asks for one, as [serve](commands.md#serve) explains.
+Web builds run on one thread, like Varn. So they need no `SharedArrayBuffer` and no cross-origin isolation. The command `serve` sends an opener policy only when `--coop` asks for one, as [serve](../reference/commands.md#serve) explains.
 
 Audio reaches the browser through an `AudioWorkletNode`, which the page feeds over its message port, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. Browsers offer `AudioWorklet` only to pages served over https or from localhost. The commands `serve` and `app run --target web` serve on `127.0.0.1` by default, so their pages play sound. Apps run on any other page too, without sound, as the [audio guide](../audio/audio.md#without-an-audio-output) explains.
 
@@ -897,7 +1029,7 @@ haylen sdk build --target android --architecture arm64-v8a --config Debug
 
 Every Android build uses the pinned NDK, `ndk/30.0.16248370` inside the SDK that `ANDROID_HOME` or `ANDROID_SDK_ROOT` names, with `ANDROID_PLATFORM=android-27`, the static C++ library and `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES`. This holds even when the environment names another NDK, because the engine and its dependencies build against its headers.
 
-The Android backend generates the Gradle project of every app from `tools/haylen/platforms/android/template`. Gradle owns the build of the app, and its external native build compiles the native code of the app for each ABI against the SDK of that ABI. Gradle finds the Android SDK through the `local.properties` file that the backend writes from `ANDROID_HOME`. R8 minifies the release builds of apps, and the upload key of the app signs them, which `haylen app sign --target android` creates.
+The Android backend builds the apps against this SDK, as [the Android project](distribution.md#the-android-project) describes.
 
 ## Apple platforms
 
@@ -908,4 +1040,4 @@ haylen sdk build --target ios --target ios-simulator
 haylen sdk build --target macos --target catalyst --architecture arm64 --architecture x86_64
 ```
 
-Slices of the same engine sources and configuration stay in the frameworks, so building the slices of another family later adds them. The Apple backend generates the XcodeGen project of every app, Lua or C++, from `tools/haylen/platforms/apple/template`, which links the frameworks of the SDK, as the [distribution guide](distribution.md) describes. To debug the engine itself in Xcode, configure the tree of this Mac with `haylen engine configure --xcode`.
+Slices of the same engine sources and configuration stay in the frameworks, so building the slices of another family later adds them. The Apple backend builds the apps against these frameworks, as [the Apple project](distribution.md#the-apple-project) describes. To debug the engine itself in Xcode, configure the tree of this Mac with `haylen engine configure --xcode`.

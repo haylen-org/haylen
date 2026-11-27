@@ -35,7 +35,7 @@ When the app stops, the engine does these steps in order:
 3. It stops the autoloads from the last to the first.
 4. It stops the plugins in reverse order.
 
-A restart stops the app the same way, even in the middle of a load. Then it creates a new engine with a fresh Lua state that runs the whole start again. A hot reload of an edited `haylen.json` is such a restart. A hot reload of an edited Lua module runs none of this: the module reloads in place, and the modules that require it, the autoloads, the scenes of the stack and the objects of its classes hear the `reloaded` hook, as [`haylen.hotReload`](../lua-api/hotReload.md) describes.
+A restart stops the app the same way, even in the middle of a load. Then it creates a new engine with a fresh Lua state that runs the whole start again. A hot reload of an edited `haylen.json` is such a restart. A hot reload of an edited Lua module runs none of this: the module reloads in place, and the modules that require it, the autoloads, the scenes of the stack and the objects of its classes hear the `reloaded` hook, as [`haylen.hotReload`](../lua-api/hot-reload.md) describes.
 
 An app restarts in the state that the platform holds it in:
 
@@ -65,7 +65,7 @@ scene.push({
 
 ### Launching another app
 
-An app can launch another app package with [`haylen.launch(path, options)`](../lua-api/haylen.md#haylenlaunchpath-options), such as one that it downloaded. Once the frame ends, the app stops the way a restart does, and the launched package starts with a new engine. The launched app may stop through `haylen.quit()`, through the Close button of its error screen, through the back button at its root on Android and Apple TV, or through a hold of Escape, of play and pause of a TV remote, of the back button of Android or a gamepad, or of three still fingers, which the launched app cannot take, as [`haylen.launch`](../lua-api/haylen.md#haylenlaunchpath-options) lists. Then the launcher starts again from its own package, as a new run of the whole start. The function [`haylen.launched()`](../lua-api/haylen.md#haylenlaunched) tells an app which way it started. A launched app plays in development when the app that launches it names a development server, such as the one that [`haylen app serve`](../tools/commands.md) runs for an app, and the launcher keeps its own development session for its return.
+An app can launch another app package with [`haylen.launch(path, options)`](../lua-api/haylen.md#haylenlaunchpath-options), such as one that it downloaded. Once the frame ends, the app stops the way a restart does, and the launched package starts with a new engine. The launched app may stop through `haylen.quit()`, through the Close button of its error screen, through the back button at its root on Android and Apple TV, or through a hold of Escape, of play and pause of a TV remote, of the back button of Android or a gamepad, or of three still fingers, which the launched app cannot take, as [`haylen.launch`](../lua-api/haylen.md#haylenlaunchpath-options) lists. Then the launcher starts again from its own package, as a new run of the whole start. The function [`haylen.launched()`](../lua-api/haylen.md#haylenlaunched) tells an app which way it started. A launched app plays in development when the app that launches it names a development server, such as the one that [`haylen app serve`](../reference/commands.md) runs for an app, and the launcher keeps its own development session for its return.
 
 ## The whole lifecycle
 

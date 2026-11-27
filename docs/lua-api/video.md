@@ -1,6 +1,6 @@
 # 📖 `haylen.video`
 
-The module `haylen.video` plays video files of the package into a texture, with their sound through the mixer and a bus of [`haylen.audio`](audio.md). Sprites, UI images, materials and anything else that draws a texture show the picture. Use it for intros, cutscenes, tutorials, animated backgrounds and menus.
+The module `haylen.video` plays video files of the package into a texture, with their sound through the mixer and a bus of [`haylen.audio`](audio.md). Sprites, UI images, materials and anything else that draws a texture show the picture. Use it for intros, cutscenes, tutorials, animated backgrounds and menus. The [video guide](../graphics/video.md) explains how a video reaches the screen and what each platform plays.
 
 ```lua
 local video = require('haylen.video')

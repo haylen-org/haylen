@@ -8,6 +8,17 @@ local nodes3d = require('haylen.nodes3d')
 
 ## Functions
 
+The module has these functions. Each one is described in the section of what it makes.
+
+| Function | Returns | Section |
+| --- | --- | --- |
+| [`nodes3d.newTree()`](#nodes3dnewtree) | An empty tree of nodes | [NodeTree3D](#nodetree3d) |
+| [`nodes3d.componentTypes()`](#nodes3dcomponenttypes) | The registered component types | [Component3D](#component3d) |
+
+## NodeTree3D
+
+A `NodeTree3D` holds nodes, which `nodes3d.newTree` creates. Two tree values compare equal with `==` when they refer to the same tree.
+
 ### nodes3d.newTree()
 
 Creates an empty [`NodeTree3D`](#nodetree3d).
@@ -27,22 +38,6 @@ scene.push({
     end,
 })
 ```
-
-### nodes3d.componentTypes()
-
-Returns a list of the registered [component types](#component3d), each a table with `name`, `phases`, a list of `'fixedUpdate'`, `'update'` and `'lateUpdate'`, and `properties`, a list of tables with the `name`, the `kind` (`'boolean'`, `'number'`, `'integer'`, `'string'`, `'vec3'`, `'quat'` or `'json'`), the `default` and the `description` of each property.
-
-```lua
-local nodes3d = require('haylen.nodes3d')
-
-for _, type in ipairs(nodes3d.componentTypes()) do
-    print(type.name, #type.properties)
-end
-```
-
-## NodeTree3D
-
-A `NodeTree3D` holds nodes, which `nodes3d.newTree` creates. Two tree values compare equal with `==` when they refer to the same tree.
 
 ### Properties
 
@@ -371,6 +366,18 @@ scene.push({
 ## Component3D
 
 A `Component3D` is a handle to the component of one type that a node holds, which `node:addComponent`, `node:component` and `node:components` return. The types come from the registry of the 3D nodes plugin, where the engine and the plugins of the app register them, as the [3D nodes guide](../3d/nodes.md#components) explains. Two component values compare equal with `==` when they name the component of one type of the same node.
+
+### nodes3d.componentTypes()
+
+Returns a list of the registered [component types](#component3d), each a table with `name`, `phases`, a list of `'fixedUpdate'`, `'update'` and `'lateUpdate'`, and `properties`, a list of tables with the `name`, the `kind` (`'boolean'`, `'number'`, `'integer'`, `'string'`, `'vec3'`, `'quat'` or `'json'`), the `default` and the `description` of each property.
+
+```lua
+local nodes3d = require('haylen.nodes3d')
+
+for _, type in ipairs(nodes3d.componentTypes()) do
+    print(type.name, #type.properties)
+end
+```
 
 ### Properties
 

@@ -98,7 +98,7 @@ Every tween and timeline takes an optional `options` table as its last argument.
 | `autoKill` | boolean | `true` | Makes the tween leave the engine when it completes. Turn it off to replay, reverse or seek a finished tween. |
 | `paused` | boolean | `false` | Creates the tween paused, so it waits for `play`. |
 
-Without an `owner`, a tween that a module creates at its top level in development belongs to that module, so a [reload](hotReload.md) of the module kills it.
+Without an `owner`, a tween that a module creates at its top level in development belongs to that module, so a [reload](hot-reload.md) of the module kills it.
 
 The callbacks are options too. Each one is a function, and another value raises `The tween option "<name>" must be a function.`.
 

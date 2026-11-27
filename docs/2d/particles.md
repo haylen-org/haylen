@@ -198,7 +198,7 @@ Pixel art effects keep to the grid of their art:
 - The `rotationStep` turns particles only by steps, such as quarter turns.
 - The value `'steps'` of `colorBlend` holds each color until the next one instead of blending, which keeps the effect inside its palette.
 
-An emitter draws with the [draw order](../graphics/rendering.md#draw-order) of its options, such as its `layer` and `blend`. An `'additive'` blend suits fire, sparks and magic, which brighten what lies behind them.
+An emitter draws with the [draw order](graphics.md#draw-order) of its options, such as its `layer` and `blend`. An `'additive'` blend suits fire, sparks and magic, which brighten what lies behind them.
 
 ```lua
 local assets = require('haylen.assets')
@@ -292,7 +292,7 @@ scene.push({
 
 Particles can light the scene in a lit canvas of the [lighting guide](lighting.md). The `light` option puts one light at the emitter, which can flicker and fade with the particles. The `particleLights` option puts a small light on some particles in their own colors. Lights draw only in lit canvases, so the same emitter works in every canvas. The `emission` option makes particles glow at night.
 
-The `distortion` option makes particles bend the image behind them instead of drawing colors, for heat haze and shock rings. It shows only in canvases with lighting or post-processing, as the [distortion section](../graphics/rendering.md#distortion) explains.
+The `distortion` option makes particles bend the image behind them instead of drawing colors, for heat haze and shock rings. It shows only in canvases with lighting or post-processing, as the [distortion section](graphics.md#distortion) explains.
 
 ```lua
 local graphics = require('haylen.graphics')

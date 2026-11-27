@@ -19,10 +19,10 @@ Generators never draw anything. They return data, and the app turns the data int
 Every generator draws its random numbers from a `Random` of [`haylen.math`](../lua-api/math.md#random), a generator of numbers that always repeats the same sequence for the same seed. Pass the seed in the `seed` option, and the function makes its own generator from it.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local first = procedural.dungeon({seed = 42})
-local again = procedural.dungeon({seed = 42})
+local first = procedural2d.dungeon({seed = 42})
+local again = procedural2d.dungeon({seed = 42})
 print(#first.rooms == #again.rooms) -- true
 ```
 
@@ -30,23 +30,23 @@ A level often runs several generators in a row: the rooms, then the enemies, the
 
 ```lua
 local m = require('haylen.math')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 local random = m.random(7)
-local dungeon = procedural.dungeon({width = 80, height = 50, random = random})
+local dungeon = procedural2d.dungeon({width = 80, height = 50, random = random})
 local room = dungeon.rooms[2]
-local enemies = procedural.scatter({region = {room.x, room.y, room.width, room.height}, density = 0.1, random = random})
+local enemies = procedural2d.scatter({region = {room.x, room.y, room.width, room.height}, density = 0.1, random = random})
 print(#dungeon.rooms, #enemies)
 ```
 
 For a daily challenge that is the same for every player, make the seed from the date.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 local today = os.date('!*t')
 local seed = today.year * 10000 + today.month * 100 + today.day
-local maze = procedural.maze({width = 30, height = 20, seed = seed})
+local maze = procedural2d.maze({width = 30, height = 20, seed = seed})
 print('The maze of today has ' .. maze.passageCount .. ' passages.')
 ```
 
@@ -56,16 +56,16 @@ The asynchronous generators work on a copy of the `random` option, so the `Rando
 
 | You want | Use |
 | --- | --- |
-| Trees, rocks, loot and spawn points spread naturally over an area | [`procedural.scatter`](../lua-api/procedural2d.md#proceduralscatteroptions), at random, on a shaken grid or with Poisson spacing. |
-| A set count of each kind of object, such as trees, rocks and houses, kept apart by the shapes they occupy, with what did not fit | [`procedural.place`](../lua-api/procedural2d.md#proceduralplaceoptions), as the [placement recipe](#recipe-trees-rocks-and-houses-that-never-overlap) shows. |
+| Trees, rocks, loot and spawn points spread naturally over an area | [`procedural2d.scatter`](../lua-api/procedural2d.md#procedural2dscatteroptions), at random, on a shaken grid or with Poisson spacing. |
+| A set count of each kind of object, such as trees, rocks and houses, kept apart by the shapes they occupy, with what did not fit | [`procedural2d.place`](../lua-api/procedural2d.md#procedural2dplaceoptions), as the [placement recipe](#recipe-trees-rocks-and-houses-that-never-overlap) shows. |
 | Points that never sit closer than a distance, without regions or types | [`m.poissonDisk2d`](../lua-api/math.md#mpoissondisk2doptions) of `haylen.math`. |
-| Organic caves and islands | [`procedural.cellularAutomaton`](../lua-api/procedural2d.md#proceduralcellularautomatonoptions). |
-| Long winding tunnels and mines | [`procedural.drunkardWalk`](../lua-api/procedural2d.md#proceduraldrunkardwalkoptions). |
-| Rooms joined by corridors | [`procedural.dungeon`](../lua-api/procedural2d.md#proceduraldungeonoptions). |
-| A labyrinth with exactly one path between any two places | [`procedural.maze`](../lua-api/procedural2d.md#proceduralmazeoptions). |
-| Maps and patterns whose tiles follow rules of what may touch what | [`procedural.waveFunctionCollapse`](../lua-api/procedural2d.md#proceduralwavefunctioncollapseoptions). |
-| Territories, regions of a map and roads between towns | [`procedural.voronoi`](../lua-api/procedural2d.md#proceduralvoronoipoints-bounds) and [`procedural.delaunay`](../lua-api/procedural2d.md#proceduraldelaunaypoints). |
-| Points spread evenly but still random | [`procedural.relax`](../lua-api/procedural2d.md#proceduralrelaxpoints-bounds-iterations). |
+| Organic caves and islands | [`procedural2d.cellularAutomaton`](../lua-api/procedural2d.md#procedural2dcellularautomatonoptions). |
+| Long winding tunnels and mines | [`procedural2d.drunkardWalk`](../lua-api/procedural2d.md#procedural2ddrunkardwalkoptions). |
+| Rooms joined by corridors | [`procedural2d.dungeon`](../lua-api/procedural2d.md#procedural2ddungeonoptions). |
+| A labyrinth with exactly one path between any two places | [`procedural2d.maze`](../lua-api/procedural2d.md#procedural2dmazeoptions). |
+| Maps and patterns whose tiles follow rules of what may touch what | [`procedural2d.waveFunctionCollapse`](../lua-api/procedural2d.md#procedural2dwavefunctioncollapseoptions). |
+| Territories, regions of a map and roads between towns | [`procedural2d.voronoi`](../lua-api/procedural2d.md#procedural2dvoronoipoints-bounds) and [`procedural2d.delaunay`](../lua-api/procedural2d.md#procedural2ddelaunaypoints). |
+| Points spread evenly but still random | [`procedural2d.relax`](../lua-api/procedural2d.md#procedural2drelaxpoints-bounds-iterations). |
 | The borders and corners of a painted or generated map | [Autotiling](#autotiling). |
 | Smooth height maps, clouds and terrain | The noise of [`haylen.math`](../lua-api/math.md#noise2d), with `noise:sampleGrid` for a whole map in one call. |
 
@@ -87,12 +87,12 @@ This recipe lays out a dungeon, puts the start in the first room and the exit in
 ```lua
 local m = require('haylen.math')
 local navigation2d = require('haylen.navigation2d')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local tiled = require('haylen.tiled')
 
 local width, height = 80, 50
 local random = m.random(2026)
-local dungeon = procedural.dungeon({width = width, height = height, minimumRoomSize = 5, random = random})
+local dungeon = procedural2d.dungeon({width = width, height = height, minimumRoomSize = 5, random = random})
 
 -- The walls of the dungeon become the blocked cells of a navigation grid.
 local grid = navigation2d.newGrid(width, height)
@@ -122,7 +122,7 @@ end
 local enemies = {}
 for index, room in ipairs(dungeon.rooms) do
     if index ~= 1 and index ~= exit then
-        local spots = procedural.scatter({region = {room.x, room.y, room.width, room.height}, method = 'poisson', spacing = 3, random = random})
+        local spots = procedural2d.scatter({region = {room.x, room.y, room.width, room.height}, method = 'poisson', spacing = 3, random = random})
         for _, spot in ipairs(spots) do
             enemies[#enemies + 1] = {x = math.floor(spot.x), y = math.floor(spot.y)}
         end
@@ -133,7 +133,7 @@ end
 local map = tiled.newMapRenderer(tiled.newMap({width = width, height = height, tileWidth = 16, tileHeight = 16}))
 local firstWall = map:addTileset({name = 'walls', image = 'tiles/walls.png', tileWidth = 16, tileHeight = 16})
 map:addLayer({name = 'walls'})
-map:fill('walls', procedural.autotile4(dungeon.grid, 1), firstWall)
+map:fill('walls', procedural2d.autotile4(dungeon.grid, 1), firstWall)
 
 print(#dungeon.rooms .. ' rooms, ' .. #enemies .. ' enemies, the exit in room ' .. exit .. '.')
 ```
@@ -147,10 +147,10 @@ A cellular automaton makes caves that look carved by water. It can leave small p
 ```lua
 local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
-local cave = procedural.cellularAutomaton({width = 120, height = 80, fillChance = 0.46, seed = 9})
+local cave = procedural2d.cellularAutomaton({width = 120, height = 80, fillChance = 0.46, seed = 9})
 
 -- Count the cells of each open region, then fill every region but the largest with wall.
 local labels, count = spatial2d.components(cave, {background = 1})
@@ -196,14 +196,14 @@ end
 
 The open floor is a hole in the outlines of the walls, so its outline winds the other way, and its chain holds the player inside. Pass an outline through [`m.polygon.simplify`](../lua-api/math.md#mpolygonsimplifypoints-tolerance-closed) first to drop the points of long straight walls.
 
-Tune the cave with a few numbers. A higher `fillChance` gives narrower caves with more walls. More `steps` give smoother walls. A grid painted by hand or cut from noise smooths the same way with [`procedural.cellularAutomatonStep`](../lua-api/procedural2d.md#proceduralcellularautomatonstepgrid-options), one step at a time.
+Tune the cave with a few numbers. A higher `fillChance` gives narrower caves with more walls. More `steps` give smoother walls. A grid painted by hand or cut from noise smooths the same way with [`procedural2d.cellularAutomatonStep`](../lua-api/procedural2d.md#procedural2dcellularautomatonstepgrid-options), one step at a time.
 
 For mines and tunnels instead of open caves, use a drunkard walk. Its tunnels always connect, because every walker digs from the center.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local mine = procedural.drunkardWalk({width = 100, height = 60, coverage = 0.3, walkers = 3, seed = 4})
+local mine = procedural2d.drunkardWalk({width = 100, height = 60, coverage = 0.3, walkers = 3, seed = 4})
 print(mine:get(50, 30)) -- 0
 ```
 
@@ -212,12 +212,12 @@ print(mine:get(50, 30)) -- 0
 A scatter spreads objects over an area and gives each one a type. Poisson spacing keeps trees from growing into each other. A density map, made from noise, thins them into clearings. Exclusions keep them off roads and out of the village.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 local village = {center = {1200, 900}, radius = 260}
 local road = {polygon = {{0, 860}, {2400, 860}, {2400, 940}, {0, 940}}}
 
-local forest = procedural.scatter({
+local forest = procedural2d.scatter({
     region = {0, 0, 2400, 1800},
     method = 'poisson',
     spacing = 40,
@@ -235,19 +235,19 @@ end
 print(#forest .. ' trees.')
 ```
 
-A biome map picks different weights in different places. Give `scatter` a `biome` noise and a list of `layers`, each with a range of the noise and its own weights, such as only pines in the cold north and only palms near the sea. The [scatter reference](../lua-api/procedural2d.md#proceduralscatteroptions) shows the layers.
+A biome map picks different weights in different places. Give `scatter` a `biome` noise and a list of `layers`, each with a range of the noise and its own weights, such as only pines in the cold north and only palms near the sea. The [scatter reference](../lua-api/procedural2d.md#procedural2dscatteroptions) shows the layers.
 
 ## Recipe: trees, rocks and houses that never overlap
 
 A scatter spreads points, and each point stands for an object of any size. Some maps need more: a set count of each kind, objects that never overlap by the ground they really occupy, and a report when the map is too small. A placement does that. Each kind has a count and a footprint, the shape the object occupies on the ground, which is often much smaller than its image. A tree occupies the circle of its trunk at the foot of its crown, a house its rectangle, and a rock the polygon of its outline. The image of the tree can then hang over the rock behind it, as it would in a picture, while their trunks and outlines never touch.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
 local lake = {kind = 'circle', center = {800, 600}, radius = 180}
 local road = {kind = 'rectangle', center = {800, 1100}, width = 1600, height = 60}
 
-local map = procedural.place({
+local map = procedural2d.place({
     area = {0, 0, 1600, 1200},
     kinds = {
         {count = 4, shape = {kind = 'rectangle', width = 160, height = 110}, spacing = 60, margin = 40},
@@ -272,18 +272,18 @@ This is how a placement works:
 - Every entity tries random positions in the area, up to `attempts` of them, and takes the first one where its footprint lies inside the area, keeps its `margin` from every forbidden area and keeps the larger `spacing` of the two kinds from every placed entity. An entity that finds no room is left out and counted in `missing`.
 - Circles, rectangles and polygons are measured by their real shapes, also when `rotate` turns them, so two long planks can lie side by side where the circles around them would collide.
 - The order `'shuffled'` mixes the entities of every kind, so the kinds share what does not fit. The order `'listed'` places the kinds one after another, so the large or important ones, listed first, take the room before the small ones fill the gaps.
-- A grid of cells holds the placed entities, so every try measures only against the entities around it. The cost grows with the entities times their attempts, and `procedural.placeAsync` does the same work on a worker thread for large maps.
+- A grid of cells holds the placed entities, so every try measures only against the entities around it. The cost grows with the entities times their attempts, and `procedural2d.placeAsync` does the same work on a worker thread for large maps.
 
-Forbidden areas take the same shapes in map coordinates. A polygon can come from the outlines of a [path](../graphics/rendering.md#paths) or from a shape of [`m.polygon`](../lua-api/math.md#polygon-operations), one outline at a time. The [placement reference](../lua-api/procedural2d.md#proceduralplaceoptions) lists every option.
+Forbidden areas take the same shapes in map coordinates. A polygon can come from the outlines of a [path](graphics.md#paths) or from a shape of [`m.polygon`](../lua-api/math.md#polygon-operations), one outline at a time. The [placement reference](../lua-api/procedural2d.md#procedural2dplaceoptions) lists every option.
 
 ## Recipe: a maze
 
 A maze generator returns a `Maze`, a grid of cells with walls between them. Draw it as tiles with `maze:toGrid`, which puts each cell and each wall on a tile of its own.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 
-local maze = procedural.maze({width = 20, height = 15, algorithm = 'backtracker', seed = 31})
+local maze = procedural2d.maze({width = 20, height = 15, algorithm = 'backtracker', seed = 31})
 local tiles = maze:toGrid()
 
 -- Open the outer wall at the top left and at the bottom right for the entrance and the exit.
@@ -299,7 +299,7 @@ The algorithm changes how the maze feels. The `'backtracker'` makes long corrido
 Wave Function Collapse fills a map with tiles so that every pair of neighbors is allowed. The rules come from a small sample map that an artist paints, or from a list of pairs. A sample teaches both the rules and how often each tile appears.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local spatial2d = require('haylen.spatial2d')
 
 -- A sample of grass (0), path (1) and water (2), where paths never touch water.
@@ -318,7 +318,7 @@ for y, row in ipairs(rows) do
 end
 
 local function generate(seed)
-    return procedural.waveFunctionCollapse({sample = sample, width = 64, height = 40, attempts = 20, seed = seed})
+    return procedural2d.waveFunctionCollapse({sample = sample, width = 64, height = 40, attempts = 20, seed = seed})
 end
 
 local seed = 1
@@ -332,7 +332,7 @@ print(land and 'The land is ready.' or 'Every seed ran into a contradiction.')
 
 The generator settles the cell with the fewest choices first. Sometimes a cell runs out of tiles, a contradiction, and the generator starts over, up to `attempts` times. It returns `nil` when every attempt failed, so the app tries another seed or loosens the rules. Rules with more allowed pairs fail less often. Use `fixed` to force tiles in some cells, such as a castle in the middle of the map, and `periodic` for a map that repeats without a seam.
 
-To check a map painted by hand, read the rules with [`procedural.waveFunctionCollapseRules`](../lua-api/procedural2d.md#proceduralwavefunctioncollapserulesoptions) and call `rules:valid`. A level editor can then mark the cells that break the rules.
+To check a map painted by hand, read the rules with [`procedural2d.waveFunctionCollapseRules`](../lua-api/procedural2d.md#procedural2dwavefunctioncollapserulesoptions) and call `rules:valid`. A level editor can then mark the cells that break the rules.
 
 ## Recipe: territories and roads
 
@@ -342,7 +342,7 @@ A Voronoi diagram splits an area into cells, one per point, where each cell hold
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')
 local m = require('haylen.math')
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local scene = require('haylen.scene')
 
 local bounds = {0, 0, 1600, 900}
@@ -351,10 +351,10 @@ local towns = {}
 for index = 1, 24 do
     towns[index] = {rng:range(0, 1600), rng:range(0, 900)}
 end
-towns = procedural.relax(towns, bounds, 2)
+towns = procedural2d.relax(towns, bounds, 2)
 
-local kingdoms = procedural.voronoi(towns, bounds)
-local roads = procedural.delaunay(towns)
+local kingdoms = procedural2d.voronoi(towns, bounds)
+local roads = procedural2d.delaunay(towns)
 local camera = graphics2d.newCamera()
 local hovered = 1
 
@@ -387,21 +387,21 @@ The point that `mesh:findNearest` returns is also the Voronoi cell under the cur
 
 A tile map looks right when each tile matches its neighbors: a wall tile shows an edge where it meets the floor and a corner where two edges meet. Autotiling picks those tiles from the map itself.
 
-- A 4-neighbor mask records which of the four sides share the value of the cell. It has 16 values, so a tile set of 16 tiles covers every case. Use [`procedural.autotile4`](../lua-api/procedural2d.md#proceduralautotile4grid-value-edgesmatch) for walls, fences and pipes.
-- An 8-neighbor mask also records the corners. Corners count only when both sides next to them match, which leaves 47 cases, the blob tile set. Use [`procedural.autotile8`](../lua-api/procedural2d.md#proceduralautotile8grid-value-edgesmatch) for terrain with inner and outer corners, such as cliffs and shores.
-- A Wang set of Tiled gives each tile colors on its corners or edges. Use [`procedural.autotileWang`](../lua-api/procedural2d.md#proceduralautotilewangcolors-wangset-seed) when the tiles were set up as terrain in the Tiled editor.
+- A 4-neighbor mask records which of the four sides share the value of the cell. It has 16 values, so a tile set of 16 tiles covers every case. Use [`procedural2d.autotile4`](../lua-api/procedural2d.md#procedural2dautotile4grid-value-edgesmatch) for walls, fences and pipes.
+- An 8-neighbor mask also records the corners. Corners count only when both sides next to them match, which leaves 47 cases, the blob tile set. Use [`procedural2d.autotile8`](../lua-api/procedural2d.md#procedural2dautotile8grid-value-edgesmatch) for terrain with inner and outer corners, such as cliffs and shores.
+- A Wang set of Tiled gives each tile colors on its corners or edges. Use [`procedural2d.autotileWang`](../lua-api/procedural2d.md#procedural2dautotilewangcolors-wangset-seed) when the tiles were set up as terrain in the Tiled editor.
 
-Lay the tiles of a 16 tile set out in the order of the mask, and the tiles of a blob set in the order of [`procedural.blobIndex`](../lua-api/procedural2d.md#proceduralblobindexmask). The value of each cell is then the local id of its tile, ready for `map:fill`.
+Lay the tiles of a 16 tile set out in the order of the mask, and the tiles of a blob set in the order of [`procedural2d.blobIndex`](../lua-api/procedural2d.md#procedural2dblobindexmask). The value of each cell is then the local id of its tile, ready for `map:fill`.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local tiled = require('haylen.tiled')
 
-local cave = procedural.cellularAutomaton({width = 64, height = 64, seed = 3})
+local cave = procedural2d.cellularAutomaton({width = 64, height = 64, seed = 3})
 local map = tiled.newMapRenderer(tiled.newMap({width = 64, height = 64, tileWidth = 32, tileHeight = 32}))
 local firstGid = map:addTileset({name = 'cliffs', image = 'tiles/cliffs-blob.png', tileWidth = 32, tileHeight = 32})
 map:addLayer({name = 'cliffs'})
-map:fill('cliffs', procedural.autotile8(cave, 1), firstGid)
+map:fill('cliffs', procedural2d.autotile8(cave, 1), firstGid)
 ```
 
 A map that the player paints while the app runs can call [`map:paintTerrain`](../lua-api/tiled.md#mappaintterrainlayer-wangset-column-row-color) of `haylen.tiled` instead, which updates one cell and its neighbors.
@@ -413,16 +413,16 @@ A frame lasts a few milliseconds, and a large generation can take much longer. E
 The `load` hook of a scene is the natural place for it. The scene enters once the hook finishes, and a [loading view](../lua-api/scene.md#loading-views) shows the progress meanwhile.
 
 ```lua
-local procedural = require('haylen.procedural2d')
+local procedural2d = require('haylen.procedural2d')
 local scene = require('haylen.scene')
 
 local world = {}
 
 function world:load(context)
     context:progress(0, 'Carving the caves')
-    self.caves = procedural.cellularAutomatonAsync({width = 1024, height = 1024, seed = context.params.seed}):await()
+    self.caves = procedural2d.cellularAutomatonAsync({width = 1024, height = 1024, seed = context.params.seed}):await()
     context:progress(0.5, 'Laying out the dungeon')
-    self.dungeon = procedural.dungeonAsync({width = 400, height = 300, seed = context.params.seed + 1}):await()
+    self.dungeon = procedural2d.dungeonAsync({width = 400, height = 300, seed = context.params.seed + 1}):await()
 end
 
 function world:enter()
