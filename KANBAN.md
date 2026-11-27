@@ -9616,7 +9616,7 @@ Desenho:
 - `core::Lifetime` é um token barato com o estado de fim, que toda API de C++ que registra algo aceita: jobs, retornos de assets, timers, tweens, ouvintes do barramento e de sinais e leituras da GPU. Todo registro devolve uma `core::Connection` que o cancela.
 - O `Lifetime` troca as flags de vida, e `lua::Owners` liga o dono do Lua a um `Lifetime`. As vozes do mixer continuam com `VoiceId`, porque são valores do mixer.
 - `core::TaskHandle` com dependências (`JobSystem::schedule(work, {after})`, `wait`, `isDone` e o cancelamento pelo `Lifetime`), funções pequenas sem alocação para os jobs quentes, `core::SerialQueue` no pool de I/O e o `parallelFor` chamado de qualquer tarefa. Na web tudo continua em linha.
-- O armazenamento e o conteúdo usam a `SerialQueue`. O renderizador 3D, a animação 3D, os nós e a física usam os handles, e o [KB-037](#kb-037) adota o mesmo token.
+- O armazenamento usa a `SerialQueue`. O repositório de conteúdo guarda os seus dados com um mutex em volta de gravações síncronas, que os chamadores precisam acabadas, então não é uma fila de trabalho e fica como está. O renderizador 3D, a animação 3D, os nós e a física usam os handles, e o [KB-037](#kb-037) adota o mesmo token.
 
 Achados cobertos: S-009 e S-010.
 
@@ -9626,7 +9626,7 @@ Achados cobertos: S-009 e S-010.
 - [ ] Tarefas com dependências e filas em série funcionam em todas as plataformas, com testes do sanitizer de threads.
 - [ ] O código antigo saiu: as flags de vida, o alvo `const void*` dos tweens e as filas feitas à mão.
 - [ ] Os docs e o `AGENTS.md` descrevem o estado novo, no presente.
-- [ ] Um teste do repositório falha num `std::shared_ptr<bool>` de vida ou numa fila com mutex fora do `core::SerialQueue`.
+- [ ] Um teste do repositório falha num `std::shared_ptr<bool>` de vida ou numa fila de funções com mutex fora do `core::SerialQueue` e do job system.
 
 #### Attachments
 
