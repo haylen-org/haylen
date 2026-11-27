@@ -4,7 +4,7 @@ Only the coordinator writes this file. The title and the section titles stay exa
 
 Times are UTC. Each cost says `estimate` (price seen × time) until the billing data arrives, and then `billed`. This file never holds sensitive data: no credentials, keys, tokens, passwords, connection strings, IP addresses, host names, presigned URLs, device serials or UDIDs, personal or customer data, e-mail addresses, account or subscription ids, or private absolute paths. Devices are named by role, accounts by provider and credentials by variable name.
 
-Last updated: 2026-11-27 04:40 UTC
+Last updated: 2026-11-27 04:50 UTC
 
 ## 🚦 Legend
 
@@ -32,7 +32,7 @@ Services: ☁️ AWS EC2, 🔷 Azure, 🏠 Own Machines, 📱 AWS Device Farm, �
 | Status | Service | Running now | This month | Share | Cost status |
 | --- | --- | --- | --- | --- | --- |
 | 🟢 | ☁️ AWS EC2 | batch4 (spot) | US$28.30 (estimate) | US$110 | 🟢 |
-| 🟡 | 🔷 Azure | The Windows GPU VM, a KB-055 rerun after a failed configure | US$4.50 (estimate) | US$10 | 🟡 |
+| ⚪ | 🔷 Azure | None | US$4.60 (estimate) | US$10 | 🟡 |
 | 🟢 | 🏠 Own Machines | The Mac, with incremental test builds of physics3d | No cost | No cost | 🟢 |
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
@@ -54,7 +54,7 @@ The latest result of each platform, so a broken platform shows even when nothing
 | 🟢 | 🤖 Android | 2026-11-27 03:30 | batch3, the emulator image of CI | KB-055 `304b884d8` | ✅ GPU tests on Vulkan and OpenGL ES | |
 | 🟢 | 🌐 Web | 2026-11-27 03:00 | batch3, headless browsers | KB-055 `304b884d8` | ✅ WebGPU and WebGL2, ✅ web SDK | |
 | 🟢 | 🎮 GPU on Linux | 2026-11-27 03:00 | batch3, lavapipe and llvmpipe | KB-055 `304b884d8` | ✅ Vulkan, ✅ OpenGL | |
-| 🟡 | 🎮 GPU on Windows | 2026-11-26 | Windows laptop | KB-055 `189417281` | ✅ Direct3D 11 and 12 on three GPUs over SSH, ⏭️ the surface readback test, which needs a desktop session | The Azure desktop run of that test is running |
+| 🟡 | 🎮 GPU on Windows | 2026-11-26 | Windows laptop | KB-055 `189417281` | ✅ Direct3D 11 and 12 on three GPUs over SSH, ⏭️ the surface readback test, which needs a desktop session | The Azure desktop run waits for a batch that builds OpenSSL in the tree (KB-354) |
 
 ## 🏃 Running Now
 
@@ -70,7 +70,7 @@ The latest result of each platform, so a broken platform shows even when nothing
 
 | Status | Session | Platform | Machine type | Market | Region | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟡 | windows-kb055 | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 (AMD V620) | regular, deallocated between batches | eastus2 | 2026-11-27 04:30 | Auto-shutdown within 3 hours | The fix of the OpenSSL package that stopped configure, then KB-055 on main: Direct3D 11 and 12, Vulkan, OpenGL and WARP in the desktop session | US$0.64 | US$0.10 (estimate) |
+| ⚪ | None | | | | | | | | | |
 
 ### 🏠 Own Machines
 
@@ -96,7 +96,7 @@ The latest result of each platform, so a broken platform shows even when nothing
 | Status | Service | Resource | Kind | Region | Why it is kept | Monthly cost |
 | --- | --- | --- | --- | --- | --- | --- |
 | ⚪ | ☁️ AWS EC2 | haylen-batch-linux-20261126-2037 and its snapshot | Prepared image | us-east-1 | The Linux batch machines start warm from it | US$1 |
-| 🟢 | 🔷 Azure | haylen-batch-windows with its OS disk, NIC, NSG and VNet | Deallocated VM | eastus2 | The Windows GPU batch machine with its toolchains | US$5.90 (the disk) |
+| ⚪ | 🔷 Azure | haylen-batch-windows with its OS disk, NIC, NSG and VNet | Deallocated VM | eastus2 | The Windows GPU batch machine with its toolchains | US$5.90 (the disk) |
 | ⚪ | Cache bucket | haylen-ci on Cloudflare R2 | Bucket | ENAM | The compiler cache and the dependency caches, objects expire after 30 days | Storage plus operations |
 
 ## 💰 Budget
@@ -106,7 +106,7 @@ Monthly limit: US$120. Month: 2026-11. Days left in the month: 4.
 | Cost status | Service | Share | Spent this month | Figure from | Left | Daily allowance | Projected month end |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 🟢 | ☁️ AWS EC2 | US$110 (Linux batches US$75, the monthly cloud Mac day US$30, the image US$5) | US$28.30 | Billing data of 2026-11-26 (US$23.85), plus estimates after it | US$81.70 | US$20.40 | US$50 |
-| 🟡 | 🔷 Azure | US$10 | US$4.50 | Estimate, since the usage listing of this subscription returns nothing | US$5.50 | US$1.40 | US$7 |
+| 🟡 | 🔷 Azure | US$10 | US$4.60 | Estimate, since the usage listing of this subscription returns nothing | US$5.40 | US$1.35 | US$7 |
 | 🟢 | 📱 AWS Device Farm | US$0, any run needs a go | US$0 | | | | US$0 |
 | 🟢 | ⚙️ CI | Public repository | Not measured | | | | |
 | 🟢 | Cache bucket | Inside the shares above | Not measured | | | | |
@@ -140,6 +140,7 @@ One row per finished batch, run or build, from every service, own machines inclu
 
 | Status | Date (UTC) | Service | Platforms | Machine or devices | Duration | Cost | Jobs and results | Cache hit rate | Deleted and proven |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 🟢 | 2026-11-27 04:33 | 🔷 Azure | 🪟 Windows | Standard_NG8ads_V620_v1 | 10 min | US$0.11 (estimate) | ✅ Diagnosis: the prebuilt OpenSSL package of Varn is not found by `find_package` under MSVC (KB-354), proven with a probe project | | ✅ deallocated, IP and rule removed |
 | 🔴 | 2026-11-27 04:25 | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 4 min, plus an earlier start whose bundle upload failed | US$0.30 (estimate) | ❌ KB-055 gpu-build: configure found no OpenSSL crypto library in the package cache, so no test ran | | ✅ deallocated, IP and rule removed |
 | 🟠 | 2026-11-27 01:32 | ☁️ AWS EC2 | 🐧 Linux, 🤖 Android, 🌐 Web, 🎮 GPU | c8i.8xlarge on-demand, because the spot quota was full | 168 min | US$4.20 (estimate) | ✅ KB-055, ✅ nodes3d, ✅ test-hygiene (short), ❌ animation3d head TSan (the navigation race, KB-352), ❌ old physics3d bundle (three defects, fixed for batch4) | 39 % | ✅ |
 | 🟢 | 2026-11-27 00:00 | 🏠 Own Machines | 🪟 Windows | Windows laptop | 56 min | US$0 | ✅ test-hygiene `6e09a22b7`, MSVC, 3330 of 3330 | | not needed |
