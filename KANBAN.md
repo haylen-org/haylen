@@ -4199,7 +4199,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
-- **Progress:** Pronto no branch do stream e verde no lote 3 do Linux: os cinco commits com clang e GCC, o sanitizer de endereços, o fuzzer de glTF, o build web e o benchmark. O sanitizer de threads achou uma corrida na navegação 3D que já está na `main` (KB-352), não no código de animação. O stream está fazendo o rebase e o push.
+- **Progress:** A parte de CPU está na `main` (`b434b53ab`): clipes, trilhas de todos os tipos, interpolações, eventos com dono, clipes editados em C++ e Lua e players de clipe, com testes e docs. Passou no lote 3 com clang, GCC, o sanitizer de endereços, o fuzzer de glTF e o build web. Falta o componente de animador da árvore de nós, que a API de componentes do KB-144 já permite, e os canais do `KHR_animation_pointer`, no cartão das extensões do glTF.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4227,7 +4227,7 @@ Este cartão traz também o componente de nós 3D de animador, registrado pela A
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
-- **Progress:** Esqueletos e skin estão no mesmo branch do KB-156, verdes no lote 3. O nome de um osso dos dados de teste, trocado por engano na renomeação, voltou a ser `Skeleton`. O stream está fazendo o rebase e o push.
+- **Progress:** A parte de CPU está na `main` (`10ccc6fb2`): esqueletos, poses, skins, pesos por vértice, quaternion dual e multidões de personagens no job system, com o caminho de referência na CPU, testes e docs. Faltam o skinning na GPU e o pré-skinning em compute, que esperam o renderer 3D do [KB-076](#kb-076), o clone de modelo com skin e os componentes de malha com skin e de anexo a um osso da árvore de nós.
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
@@ -4255,7 +4255,7 @@ Este cartão traz também o componente de nós 3D de malha com skin e anexo a um
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 3
-- **Progress:** Alvos de morph estão no mesmo branch do KB-156, verdes no lote 3. O stream está fazendo o rebase e o push.
+- **Progress:** A parte de CPU está na `main` (`b1bc0d93c`): alvos de morph com posição, normal e tangente, pesos animados e por nome e os nomes padrão de expressões faciais, com testes e docs. Falta empacotar os alvos em textura ou storage para a GPU, que espera o renderer 3D do [KB-076](#kb-076).
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
