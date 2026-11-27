@@ -10024,6 +10024,8 @@ Desenho:
 
 O `shellcheck disable=SC2086` de `.github/actions/caches/caches.sh` também sai, com a lista de argumentos num array.
 
+O aviso `-Wmissing-designated-field-initializers` entra nos avisos da engine em todo compilador que o tem, e os inicializadores do `engine/src/gpu/metal/Device.mm` que deixam o campo `views` de fora dão todos os campos.
+
 Achados cobertos: P5, P11 e P12 (regras), A-022, a parte do `.clang-tidy` de T-025, as linhas 1, 2, 3 (a parte que não é Python), 15, 32, 48 a 51, 85, 116, 127 e 128 das regras e as partes do `EngineMessagesTest` e do `MessagePathsTest` de "Weak tests".
 
 #### Acceptance criteria
