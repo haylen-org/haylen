@@ -4,13 +4,13 @@
 
 | Status | Service | Running now | This month | Share | Cost status |
 | --- | --- | --- | --- | --- | --- |
-| 🟢 | 🔶 AWS EC2 | batch4 (spot) | US$28.30 (estimate) | US$110 | 🟢 |
+| ⚪ | 🔶 AWS EC2 | None | US$29.10 (estimate) | US$110 | 🟢 |
 | 🟢 | 🔷 Azure | windows-varn-repin | US$5.00 (estimate) | US$10 | 🟡 |
 | 🟢 | 🏠 Own Machines | The Mac, with incremental test builds of physics3d | No cost | No cost | 🟢 |
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 05:20 UTC
+Last updated: 2026-11-27 05:30 UTC
 
 ## 🏃 Running Now
 
@@ -18,7 +18,7 @@ Last updated: 2026-11-27 05:20 UTC
 
 | Status | Session | Platform | Machine type | Market | Zone | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | batch4 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | spot | us-east-1c | 2026-11-27 04:16 | 2026-11-27 10:16 | physics3d (8 commits with clang and GCC, sanitizers, fuzzers, web, bench), the navigation3d bake fix `9bfd40dd1` (clang, GCC, both sanitizers) and the animation3d node components `a514fc298` (3 commits with clang and GCC, sanitizers, web SDK), attached 05:14 | US$0.67 | US$0.65 (estimate) |
+| ⚪ | None | | | | | | | | | |
 
 ### 🔷 Azure
 
@@ -57,7 +57,7 @@ Monthly limit: US$120. Month: 2026-11. Days left in the month: 4.
 
 | Cost status | Service | Share | Spent this month | Figure from | Left | Daily allowance | Projected month end |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | 🔶 AWS EC2 | US$110 (Linux batches US$75, the monthly cloud Mac day US$30, the image US$5) | US$28.30 | Billing data of 2026-11-26 (US$23.85), plus estimates after it | US$81.70 | US$20.40 | US$50 |
+| 🟢 | 🔶 AWS EC2 | US$110 (Linux batches US$75, the monthly cloud Mac day US$30, the image US$5) | US$29.10 | Billing data of 2026-11-26 (US$23.85), plus estimates after it | US$80.90 | US$20.20 | US$50 |
 | 🟡 | 🔷 Azure | US$10 | US$4.60 | Estimate, since the usage listing of this subscription returns nothing | US$5.40 | US$1.35 | US$7 |
 | 🟢 | 📱 AWS Device Farm | US$0, any run needs a go | US$0 | | | | US$0 |
 | 🟢 | ⚙️ CI | Public repository | Not measured | | | | |
@@ -93,6 +93,7 @@ Next cloud Mac day: not planned. Card KB-346 prepares it.
 
 | Status | Date (UTC) | Session | Service | Platforms | Machine or devices | Duration | Cost | Jobs and results | Cache hit rate | Deleted and proven |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 🔴 | 2026-11-27 04:16 | batch4 | 🔶 AWS EC2 | 🐧 Linux | c8i.8xlarge spot | 65 min, reclaimed by AWS | US$0.73 (estimate) | ✅ physics3d commits 1 to 7 (clang and gcc), ❌ navigation3d: its new regression test fails on all 32 bakes (clang, gcc, asan), ⏳ lost: physics3d commit 8 and heads, navigation3d tsan, animation3d node components | | ✅ |
 | 🟠 | 2026-11-27 05:10 | windows-kb055-2 | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 25 min | US$0.27 (estimate) | ✅ GpuSurfaceTest.ReadsTheInputOfAFrameBehindOneFrameAtMost on Direct3D 11, Direct3D 12, WARP, Vulkan and OpenGL, ❌ 11 reference scenes per API (a cached object with another job's data path, KB-355), ❌ one OpenGL readback on the first run after boot (KB-356) | | ✅ deallocated, IP and rule removed |
 | 🟢 | 2026-11-27 04:33 | windows-diagnosis | 🔷 Azure | 🪟 Windows | Standard_NG8ads_V620_v1 | 10 min | US$0.11 (estimate) | ✅ Diagnosis: the prebuilt OpenSSL package of Varn is not found by `find_package` under MSVC (KB-354), proven with a probe project | | ✅ deallocated, IP and rule removed |
 | 🔴 | 2026-11-27 04:25 | windows-kb055 | 🔷 Azure | 🪟 Windows, 🎮 GPU | Standard_NG8ads_V620_v1 | 4 min, plus an earlier start whose bundle upload failed | US$0.30 (estimate) | ❌ KB-055 gpu-build: configure found no OpenSSL crypto library in the package cache, so no test ran | | ✅ deallocated, IP and rule removed |
