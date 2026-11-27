@@ -2,7 +2,7 @@
 
 This file tracks the rented machines of the batch line, the persistent cloud resources, the budget, the quotas and the batches, and the coordinator keeps it current at every launch, extension, finish and deletion. Times are UTC. Costs are estimates (price seen at launch × hours) until the billing data arrives, and then they are marked as billed. This file never holds a credential, a key, an IP address or a presigned URL.
 
-Last updated: 2026-11-27 04:25 UTC
+Last updated: 2026-11-27 04:35 UTC
 
 ## Running now
 
@@ -11,13 +11,13 @@ Last updated: 2026-11-27 04:25 UTC
 | Session | Machine type | Market | Region or zone | Started (UTC) | Shuts down at (UTC) | What it runs | Price per hour | Cost so far | State |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | batch3 | c8i.8xlarge (32 vCPU, 64 GB) | on-demand (the spot quota was full when it started) | us-east-1d | 2026-11-27 01:32 | 2026-11-27 07:32 (timer) | nodes3d (heads); animation3d, KB-055 and the old physics3d bundle ended | US$1.50 | about US$4.20 (estimate) | running, deleted when its jobs end |
-| batch4 | c8i.8xlarge (32 vCPU, 64 GB) | spot | us-east-1c | 2026-11-27 04:25 | 2026-11-27 10:25 (timer) | physics3d (8 commits with clang and GCC, sanitizers, fuzzers, web, bench); the navigation3d fix joins when ready | about US$0.67 | starting | running, deleted when its last run ends |
+| batch4 | c8i.8xlarge (32 vCPU, 64 GB) | spot | us-east-1c | 2026-11-27 04:25 | 2026-11-27 10:25 (timer) | physics3d (8 commits with clang and GCC, sanitizers, fuzzers, web, bench) and the navigation3d bake fix (clang, GCC, both sanitizers) | about US$0.67 | starting | running, deleted when its last run ends |
 
 ### Azure
 
 | Session | Machine type | Market | Region or zone | Started (UTC) | Shuts down at (UTC) | What it runs | Price per hour | Cost so far | State |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| None | | | | | | | | | |
+| windows-kb055 | Standard_NG8ads_V620_v1 (AMD V620) | regular, deallocated after the batch | eastus2 | 2026-11-27 04:35 | 2026-11-27 07:35 (auto-shutdown) | KB-055 on main: the GPU tests on Direct3D 11 and 12, Vulkan, OpenGL and WARP in the desktop session | about US$0.64 | starting | running |
 
 ### Google Cloud
 
