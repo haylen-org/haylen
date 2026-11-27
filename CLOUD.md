@@ -2,7 +2,7 @@
 
 This file tracks the rented machines of the batch line, the persistent cloud resources, the budget, the quotas and the batches, and the coordinator keeps it current at every launch, extension, finish and deletion. Times are UTC. Costs are estimates (price seen at launch × hours) until the billing data arrives, and then they are marked as billed. This file never holds a credential, a key, an IP address or a presigned URL.
 
-Last updated: 2026-11-27 04:35 UTC
+Last updated: 2026-11-27 04:40 UTC
 
 ## Running now
 
@@ -10,7 +10,6 @@ Last updated: 2026-11-27 04:35 UTC
 
 | Session | Machine type | Market | Region or zone | Started (UTC) | Shuts down at (UTC) | What it runs | Price per hour | Cost so far | State |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| batch3 | c8i.8xlarge (32 vCPU, 64 GB) | on-demand (the spot quota was full when it started) | us-east-1d | 2026-11-27 01:32 | 2026-11-27 07:32 (timer) | nodes3d (heads); animation3d, KB-055 and the old physics3d bundle ended | US$1.50 | about US$4.20 (estimate) | running, deleted when its jobs end |
 | batch4 | c8i.8xlarge (32 vCPU, 64 GB) | spot | us-east-1c | 2026-11-27 04:25 | 2026-11-27 10:25 (timer) | physics3d (8 commits with clang and GCC, sanitizers, fuzzers, web, bench) and the navigation3d bake fix (clang, GCC, both sanitizers) | about US$0.67 | starting | running, deleted when its last run ends |
 
 ### Azure
@@ -77,6 +76,7 @@ Market is spot, on-demand, deallocated or own. "What it runs" names the lines of
 | Date (UTC) | Machine | Duration | Cost | Jobs | Result per job | Cache hit rate | Deletion confirmed |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-26 22:10 | c8i.8xlarge spot, batch2 | 200 min | about US$2.20 (estimate) | hygiene, physics, nodes3d, animation, KB-051 GLES, KB-055 and late attaches | hygiene passed; physics, animation and nodes3d found defects; KB-051 GLES passed; four late attaches were lost when the machine was deleted | 10 % | Yes |
+| 2026-11-27 01:32 | c8i.8xlarge on-demand, batch3 | 168 min | about US$4.20 (estimate) | animation3d, KB-055, nodes3d, old physics3d bundle, test-hygiene short run | KB-055, nodes3d and test-hygiene passed; animation3d passed except a navigation race on main (KB-352); the old physics bundle showed three defects, fixed for batch4 | 39 % | Yes |
 | 2026-11-26 | Windows laptop | about 1 h each | free | KB-055 and test-hygiene on MSVC | both passed | | not needed |
 
 ## Open cleanup items
