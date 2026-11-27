@@ -59,7 +59,7 @@ class SdkManifest:
     @staticmethod
     def matches(document: object) -> bool:
         """Tells whether a manifest has the layout that this tooling writes, which one of an older version of Haylen lacks."""
-        return not SchemaValidator.of("sdk.schema.json").problems(document)
+        return not SchemaValidator.of("haylen-sdk.schema.json").problems(document)
 
     @staticmethod
     def older(folder: Path) -> str:

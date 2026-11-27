@@ -1,4 +1,4 @@
-#include "haylen/platform/NativeLibraries.hpp"
+#include "haylen/platform/native/NativeLibraries.hpp"
 
 #include <algorithm>
 #include <stdexcept>

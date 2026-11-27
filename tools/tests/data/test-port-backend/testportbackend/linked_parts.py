@@ -77,7 +77,7 @@ class LinkedParts:
             calls.append(f'        haylen::platform::NativeLibraries::registerLinked("{part.owner}", {{{entries}}});')
         lines = [
             "// Written by the backend of the test port from the parts of the plugins that the app links.",
-            '#include "haylen/platform/NativeLibraries.hpp"',
+            '#include "haylen/platform/native/NativeLibraries.hpp"',
             "",
             *declarations,
             "",

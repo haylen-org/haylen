@@ -132,7 +132,7 @@ class AppleNativeLibraries:
             "// Written by the Apple backend from the native libraries of `haylen.json` and its plugins that the app links statically.",
             "#import <Foundation/Foundation.h>",
             "",
-            '#include "haylen/platform/NativeLibraries.hpp"',
+            '#include "haylen/platform/native/NativeLibraries.hpp"',
             "",
             *declarations,
             "",

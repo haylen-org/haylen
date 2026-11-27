@@ -1,5 +1,5 @@
 // Opens the page of the memory check of the web in a headless browser over its debugging protocol, follows the page and its workers until the app logs that it downloaded the large file or failed, and prints what it measured as JSON: the bytes that the page and its workers received, whether the medium file came down, the peak of the memory of WebAssembly, and the memory behind the array buffers of the page and its workers once the browser collected their garbage. With "memory" the page runs as in a browser that keeps no files for it, and with "missing" as on a site whose worker of the content store does not load.
-// Run it with Node: node memory-check.mjs <debugging port> <page address> <seconds> <files|memory|missing>
+// Run it with Node: `node memory-check.mjs <debugging port> <page address> <seconds> <files|memory|missing>`.
 const [port, url, seconds, store] = process.argv.slice(2);
 const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" })).json();
 const socket = new WebSocket(target.webSocketDebuggerUrl);

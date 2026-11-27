@@ -1,5 +1,5 @@
 // Opens the page of the GPU tests in a headless browser over its debugging protocol, prints what the tests print, writes the images of the scenes that differ from their references, which the page kept, into the output folder, and writes the report of the page as JSON: the status that the tests finished with, or null when they did not finish within the time, and every stop and uncaught exception of the page, whenever it came.
-// Run it with Node: node gpu-tests.mjs <debugging port> <page address> <seconds> <output folder> <report file>
+// Run it with Node: `node gpu-tests.mjs <debugging port> <page address> <seconds> <output folder> <report file>`.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 

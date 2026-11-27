@@ -1,5 +1,5 @@
 // Opens the page of the text input check in a headless browser over its debugging protocol, taps or clicks each field of the sheet of the app with a press and a release that arrive at once and types right after, then prints what happened as JSON. Each field must take the keys typed after its press, also the second field while the first one edits. With "touch" the browser emulates a phone with a touch screen, and with "mouse" a desktop window whose mouse rests on the surface of the sheet before each click.
-// Run it with Node: node text-input-check.mjs <debugging port> <page address> <touch|mouse>
+// Run it with Node: `node text-input-check.mjs <debugging port> <page address> <touch|mouse>`.
 const [port, url, mode] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);

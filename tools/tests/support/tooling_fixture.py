@@ -6,6 +6,7 @@ from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.product_request import ProductRequest
 from haylen.core.project_resolver import ProjectResolver
+from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
 from haylen.core.tooling_context import ToolingContext
 from haylen.platforms.backend_registry import BackendRegistry
@@ -92,7 +93,7 @@ class ToolingFixture:
             "format": 1,
             "port": "fake",
             "portVersion": "1.0.0",
-            "engineVersion": "0.0.1",
+            "engineVersion": Repository.engine_version(),
             "revision": revision,
             "configuration": configuration,
             "slices": slices,
@@ -120,7 +121,7 @@ class ToolingFixture:
                 "capabilities": [],
             }
         ]
-        document = {"format": 1, "port": "fake", "portVersion": "1.0.0", "engineVersion": "0.0.1", "revision": "c" * 64, "configuration": "Release", "slices": slices}
+        document = {"format": 1, "port": "fake", "portVersion": "1.0.0", "engineVersion": Repository.engine_version(), "revision": "c" * 64, "configuration": "Release", "slices": slices}
         text = '{"format": 1, "port":' if damaged else json.dumps(document)
         (folder / SdkManifest.FILE).write_text(text, encoding="utf-8")
         return folder

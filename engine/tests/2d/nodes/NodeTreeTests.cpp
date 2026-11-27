@@ -282,6 +282,7 @@ TEST_F(NodeSerializerTest, InstantiatesPrefabsAndSavesSubtrees) {
         .particles = {},
     };
     // clang-format on
+    // clang-format off
     const Prefab prefab = Prefab::parse(haylen::core::Json::parse(R"({
         "name": "tank", "x": 10, "color": "#FF808080",
         "sprite": {"texture": "units/tank.png", "filter": "linear", "source": [0, 0, 16, 16], "pivotY": 1},
@@ -290,6 +291,7 @@ TEST_F(NodeSerializerTest, InstantiatesPrefabsAndSavesSubtrees) {
             {"name": "turret", "rotation": 0.5, "layer": 1}
         ]
     })"));
+    // clang-format on
 
     const std::shared_ptr<NodeTree> tree = NodeTree::create();
     const Node tank = prefab.instantiate(*tree, {}, haylen::core::Json::parse(R"({"x": 300, "y": 40, "name": "first"})"), assets);

@@ -25,6 +25,7 @@ class ThemeSoundTest : public ::testing::Test, public test::LuaUiFixture {
     static constexpr std::uint32_t kRate = 48000;
 
     ThemeSoundTest() : LuaUiFixture(makeFiles()) {
+        // clang-format off
         getFixture().runLua(R"(
             audio = require('haylen.audio')
             ui = require('haylen.ui')
@@ -33,6 +34,7 @@ class ThemeSoundTest : public ::testing::Test, public test::LuaUiFixture {
                 audio.createBus(bus, 'ui')
             end
         )");
+        // clang-format on
     }
 
     // A WAV file of a steady tone that lasts the frames.
@@ -72,12 +74,14 @@ class ThemeSoundTest : public ::testing::Test, public test::LuaUiFixture {
 };
 
 TEST_F(ThemeSoundTest, PlaysTheSoundOfEachInteractionThroughItsBus) {
+    // clang-format off
     useTheme(R"({name = 'sounding', sounds = {
         press = {sound = 'ui/short.wav', bus = 'press'},
         toggle = {sound = 'ui/short.wav', bus = 'toggle', volume = 0.5},
         step = {sound = 'ui/short.wav', bus = 'step'},
         type = {sound = 'ui/short.wav', bus = 'typing', interval = 0},
     }})");
+    // clang-format on
     // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
         {"kind": "button", "id": "play", "text": "Play"},

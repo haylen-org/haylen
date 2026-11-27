@@ -1,4 +1,6 @@
+import ast
 import re
+from pathlib import PurePosixPath
 
 from haylen.core.repository import Repository
 from tests.support.engine_sources import EngineSources
@@ -7,13 +9,22 @@ from tests.support.tracked_files import TrackedFiles
 
 
 class TestDiscoveryTest:
-    """The discovery of the GoogleTest programs runs in the build tree, since some versions of CMake write the list of the tests that a program reports into the working directory of the discovery and leave it there. A test never takes the printed value of its parameter as its name, which holds the raw bytes of an object on some compilers and changes with every build: a value-parameterized suite names its runs with a name generator, and a typed suite keeps the numbers that GoogleTest gives its types, since the versions of CMake before 4.2 cannot read the name of a typed suite that a generator names."""
+    """The discovery of the GoogleTest programs runs in the build tree, since some versions of CMake write the list of the tests that a program reports into the working directory of the discovery and leave it there. A test never takes the printed value of its parameter as its name, which holds the raw bytes of an object on some compilers and changes with every build: a value-parameterized suite names its runs with a name generator, and a typed suite keeps the numbers that GoogleTest gives its types, since the versions of CMake before 4.2 cannot read the name of a typed suite that a generator names. Every class of tests that pytest runs takes the suffix that its settings discover, `Test` for the tests of the tooling and `Tests` for the UI tests of Windows, so no class of tests goes unseen."""
 
     CALL = re.compile(r"\bgtest_discover_tests\s*\(([^)]*)\)")
     SUITE = re.compile(r"\b(INSTANTIATE_TEST_SUITE_P|INSTANTIATE_TYPED_TEST_SUITE_P|TYPED_TEST_SUITE)\s*\(")
     # The count of the arguments of each macro that makes the runs of a suite with a name generator.
     NAMED_ARGUMENTS = {"INSTANTIATE_TEST_SUITE_P": 4, "INSTANTIATE_TYPED_TEST_SUITE_P": 4, "TYPED_TEST_SUITE": 3}
     KEPT_NAMES = ("NO_PRETTY_TYPES", "NO_PRETTY_VALUES")
+    # The suffix of the classes that each folder of pytest tests discovers, from its settings.
+    PYTEST_SUFFIXES = {"tools/tests/": "Test", "ui-tests/windows/": "Tests"}
+
+    @staticmethod
+    def undiscovered_classes(text: str, suffix: str) -> list[str]:
+        """The classes of a test file that define tests and lack the suffix that pytest discovers."""
+        classes = [node for node in ast.parse(text).body if isinstance(node, ast.ClassDef)]
+        testing = [node.name for node in classes if any(isinstance(item, ast.FunctionDef) and item.name.startswith("test_") for item in node.body)]
+        return [name for name in testing if not name.endswith(suffix)]
 
     @staticmethod
     def arguments(code: str, start: int) -> list[str]:
@@ -97,3 +108,15 @@ class TestDiscoveryTest:
             "TYPED_TEST_SUITE of TreeTest",
             "INSTANTIATE_TYPED_TEST_SUITE_P of NamedTreeSuite",
         ]
+
+    def test_every_class_of_pytest_tests_takes_the_suffix_that_pytest_discovers(self):
+        assert TestDiscoveryTest.undiscovered_classes("class DriftChecks:\n    def test_drift(self):\n        pass\n\nclass Helper:\n    pass\n", "Test") == ["DriftChecks"]
+        undiscovered = []
+        for name in TrackedFiles.names("*.py"):
+            if not PurePosixPath(name).name.startswith("test_"):
+                continue
+            suffixes = [suffix for folder, suffix in TestDiscoveryTest.PYTEST_SUFFIXES.items() if folder in name]
+            assert len(suffixes) == 1, f"The test file {name} lies outside every folder that pytest runs."
+            text = (Repository.ROOT / name).read_text(encoding="utf-8")
+            undiscovered += [f"{name}: {found}" for found in TestDiscoveryTest.undiscovered_classes(text, suffixes[0])]
+        assert undiscovered == []

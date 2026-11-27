@@ -100,11 +100,13 @@ TEST_F(RightToLeftTest, MovesTheCaretOfARightToLeftFieldOnScreen) {
 
 // A right-to-left UI places rows from the right, lines start and end up on the other sides and grows sliders toward the left, and the automatic direction follows the language.
 TEST_F(RightToLeftTest, MirrorsLayoutsInARightToLeftUi) {
+    // clang-format off
     const std::string tree = R"({"kind": "column", "width": 600, "children": [
         {"kind": "row", "id": "row", "gap": 10, "children": [{"kind": "button", "id": "first", "text": "One"}, {"kind": "button", "id": "second", "text": "Two"}]},
         {"kind": "button", "id": "start", "text": "Start", "align": "start"},
         {"kind": "slider", "id": "slider", "width": 300, "value": 0.2}
     ]})";
+    // clang-format on
     auto plain = ui.mount(tree);
     EXPECT_LT(ui.getBounds(*plain, "first").x, ui.getBounds(*plain, "second").x);
     const float startX = ui.getBounds(*plain, "start").x;

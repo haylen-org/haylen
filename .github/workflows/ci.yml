@@ -29,7 +29,7 @@ env:
   SCCACHE_REGION: auto
   SCCACHE_S3_USE_SSL: "true"
   SCCACHE_IDLE_TIMEOUT: "0"
-  # sccache hashes every path inside the workspace relative to it, the sources of the dependencies in ".cache/cpm" included, so an object hashes the same in any folder, such as the clone of a batch machine.
+  # The compiler cache sccache hashes every path inside the workspace relative to it, the sources of the dependencies in ".cache/cpm" included, so an object hashes the same in any folder, such as the clone of a batch machine.
   SCCACHE_BASEDIRS: ${{ github.workspace }}
   SCCACHE_ENDPOINT: ${{ secrets.HAYLEN_R2_ENDPOINT }}
   AWS_ACCESS_KEY_ID: ${{ secrets.HAYLEN_R2_KEY_ID }}

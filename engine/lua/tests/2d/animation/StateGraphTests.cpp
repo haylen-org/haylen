@@ -20,6 +20,7 @@ namespace haylen::lua::animation2d {
 
 class StateGraphTest : public ::testing::Test {
   protected:
+    // clang-format off
     static constexpr const char* kGraph = R"json({
         "parameters": {"speed": 0, "grounded": true, "attack": "trigger", "facing": [0, 1]},
         "initial": "idle",
@@ -38,6 +39,7 @@ class StateGraphTest : public ::testing::Test {
             {"from": "run", "to": "idle", "when": "speed <= 0.1 or (facing.x == 0 and facing.y == 0)"}
         ]
     })json";
+    // clang-format on
 
     // An animator with every animation of the graph, the slash once and the others looping.
     [[nodiscard]] static std::shared_ptr<haylen::animation2d::Animator> makeAnimator(const haylen::graphics::Texture& texture) {

@@ -1,5 +1,5 @@
 // Opens the page of an app in a headless browser over its debugging protocol and follows its start, then prints what happened as JSON: the graphics API that the app logged it draws through, whether the splash ended, which it does only after the first complete frame of the app, the failure that the splash shows, the errors that the page threw, every line of its console with its level, every state that the splash went through and when each file of the page downloaded. The check ends at the first error, once the app drew its first frames for a few more seconds without one, or once the seconds pass.
-// Run it with Node: node app-start-check.mjs <debugging port> <page address> <seconds>
+// Run it with Node: `node app-start-check.mjs <debugging port> <page address> <seconds>`.
 const [port, url, seconds] = process.argv.slice(2);
 const result = { drawsThrough: null, firstFrame: false, splashFailure: null, exceptions: [], log: [], splash: [], resources: [], expired: false, stalled: false };
 // The app goes on drawing for these seconds after its first complete frame, so an error of its first frames still reaches the report.

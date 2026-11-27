@@ -43,6 +43,7 @@ class AppConfigTest : public ::testing::Test {
 };
 
 TEST_F(AppConfigTest, ReadsEveryField) {
+    // clang-format off
     const AppConfig config = AppConfig::fromJson(Json::parse(R"({
         "name": "Tiny Island",
         "identifier": "com.haylen.tinyisland",
@@ -59,6 +60,7 @@ TEST_F(AppConfigTest, ReadsEveryField) {
         "ui": {"scaleMode": "physical", "scale": 1.25},
         "native": {"game_platform": {"files": {"macos": "platform/apple/libgame_platform.dylib"}}}
     })"));
+    // clang-format on
 
     EXPECT_EQ(config.name, "Tiny Island");
     EXPECT_EQ(config.identifier, "com.haylen.tinyisland");

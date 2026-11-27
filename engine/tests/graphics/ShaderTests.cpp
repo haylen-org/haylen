@@ -30,6 +30,7 @@ namespace haylen::graphics {
 class ShaderTest : public ::testing::Test {
   protected:
     // A small shader package with a block, a texture and one program for the desktop GLSL and Metal, which the malformed cases change field by field.
+    // clang-format off
     static constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 5, "name": "small", "sources": ["void main() {}"],
     "programs": {"sprite": {
         "attributes": [{"location": 0, "name": "corner", "type": "vec2"}],
@@ -41,6 +42,7 @@ class ShaderTest : public ::testing::Test {
         "targets": {
             "glsl430": {"vertex": {"source": 0, "entry": "main"}, "fragment": {"source": 0, "entry": "main"}, "blocks": {"1": "params"}},
             "msl-macos": {"vertex": {"source": 0, "entry": "main0"}, "fragment": {"source": 0, "entry": "main0"}, "blocks": {"1": 1}, "textures": {"1": 1}, "samplers": {"1": 1}}}}}})";
+    // clang-format on
 
     using Problem = graphics::ShaderPackageError::Problem;
 
@@ -253,8 +255,10 @@ TEST_F(ShaderTest, DecodesTheSpirvModulesAndTheirDescriptorSets) {
     const std::string program = "/programs/sprite";
     core::Json document = core::Json::parse(kSmallShader);
     document["sources"].push_back("AwIjBwAAAQA=");
+    // clang-format off
     document[core::Json::json_pointer(program + "/targets/spirv")] = core::Json::parse(R"({"vertex": {"source": 1, "entry": "main"}, "fragment": {"source": 1, "entry": "main"},
         "blocks": {"1": {"set": 0, "binding": 1}}, "textures": {"1": {"set": 1, "binding": 1}}, "samplers": {"1": {"set": 1, "binding": 65}}})");
+    // clang-format on
     const graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
 
     gpu::NullDevice vulkan(gpu::Device::Language::Spirv);
@@ -286,8 +290,10 @@ TEST_F(ShaderTest, ReplacesTheSpirvModulesWhenItReloads) {
     const std::string program = "/programs/sprite";
     core::Json document = core::Json::parse(kSmallShader);
     document["sources"].push_back("AwIjBwAAAQA=");
+    // clang-format off
     document[core::Json::json_pointer(program + "/targets/spirv")] = core::Json::parse(R"({"vertex": {"source": 1, "entry": "main"}, "fragment": {"source": 1, "entry": "main"},
         "blocks": {"1": {"set": 0, "binding": 1}}, "textures": {"1": {"set": 1, "binding": 1}}, "samplers": {"1": {"set": 1, "binding": 65}}})");
+    // clang-format on
     graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
     document["sources"][1] = "AwIjBwAAAQAAAAAA";
     shader.replace(graphics::Shader::parse(test::TestFiles::bytes(document.dump())));
@@ -303,8 +309,10 @@ TEST_F(ShaderTest, DecodesTheCodeOfAPortAndItsBindings) {
     const std::string program = "/programs/sprite";
     core::Json document = core::Json::parse(kSmallShader);
     document["sources"].push_back("UE9SVA==");
+    // clang-format off
     document[core::Json::json_pointer(program + "/targets/port")] = core::Json::parse(R"({"vertex": {"source": 1, "entry": "main"}, "fragment": {"source": 1, "entry": "main"},
         "blocks": {"1": {"set": 2, "binding": 3}}, "textures": {"1": {"set": 4, "binding": 5}}, "samplers": {"1": {"set": 4, "binding": 6}}})");
+    // clang-format on
     const graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
 
     gpu::NullDevice port(gpu::Device::Language::Port, gpu::NullDevice::getDefaultCapabilities(), gpu::Device::Api::Port);

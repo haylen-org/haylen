@@ -5,6 +5,7 @@ namespace haylen::test {
 // The document of a sprite atlas with frames, tags and slices, which the tests of atlases in C++ and in Lua load.
 class SpriteAtlasFiles final {
   public:
+    // clang-format off
     static constexpr const char* kTaggedAtlas = R"({
         "frames": [
             {"filename": "hero 0", "frame": {"x": 0, "y": 0, "w": 8, "h": 16}, "rotated": false, "trimmed": true, "spriteSourceSize": {"x": 4, "y": 0, "w": 8, "h": 16}, "sourceSize": {"w": 16, "h": 16}, "duration": 100},
@@ -26,6 +27,7 @@ class SpriteAtlasFiles final {
             ]
         }
     })";
+    // clang-format on
 };
 
 } // namespace haylen::test

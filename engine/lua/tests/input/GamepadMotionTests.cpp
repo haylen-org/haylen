@@ -125,11 +125,13 @@ TEST_F(GamepadMotionTest, ReadTheTiltAsBindingsOfTheActionMap) {
     }
 
     haylen::input::ActionMap map;
+    // clang-format off
     map.load(haylen::core::Json::parse(R"({"actions": [
         {"name": "steer", "type": "axis", "positive": ["tilt:x+"], "negative": ["tilt:x-"]},
         {"name": "roll", "type": "vector", "bindings": ["stick:tilt"]},
         {"name": "dive", "type": "button", "bindings": ["tilt:y+"]}
     ]})"));
+    // clang-format on
     haylen::input::Input input;
     const haylen::input::VirtualInput virtualInput;
     input.updateGamepads(std::array<haylen::input::GamepadState, 2>{makeLeaning(-30.0F, 0.0F), makeLeaning(10.0F, 0.0F)});

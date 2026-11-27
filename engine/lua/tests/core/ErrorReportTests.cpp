@@ -15,6 +15,7 @@ namespace haylen::lua::core {
 // Every kind of code that runs on behalf of the app reports its error the same way: the error screen, the host, which hands it to the web page, and `appError` get the message, the file, the line and a stack through the failing line, and the app runs on after `haylen.recover()`.
 class ErrorReportTest : public ::testing::TestWithParam<FailingCode> {
   protected:
+    // clang-format off
     static constexpr std::string_view kMain = R"(local events = require('haylen.events')
 local haylen = require('haylen')
 local scene = require('haylen.scene')
@@ -31,6 +32,7 @@ end)
 scene.push(Counter)
 require('fault')
 )";
+    // clang-format on
 };
 
 TEST_P(ErrorReportTest, ShowsTheErrorWithItsStackAndRecovers) {

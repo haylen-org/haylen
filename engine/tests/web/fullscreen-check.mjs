@@ -1,5 +1,5 @@
 // Opens the page of the fullscreen check in a headless browser over its debugging protocol, presses the keys of the app that change fullscreen and follows the log of the page, then prints what happened as JSON. Each promise of the app must settle once the window reports the mode it asked for, and a change that a newer one replaces must fail with the code "denied" while the page ends in the mode of the newer change.
-// Run it with Node: node fullscreen-check.mjs <debugging port> <page address>
+// Run it with Node: `node fullscreen-check.mjs <debugging port> <page address>`.
 const [port, url] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);

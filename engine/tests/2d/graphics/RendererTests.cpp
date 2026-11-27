@@ -409,8 +409,10 @@ TEST(RendererTest, RejectsDrawsThatSampleTheirOwnTarget) {
 // A material compiled with another version of the shader library fails when a pass first draws with it, and the pass ends with the frame, so the next frames draw normally.
 TEST(RendererTest, EndsTheFrameWhenAMaterialFailsInsideAPass) {
     test::EngineFixture fixture;
+    // clang-format off
     const core::Json program = core::Json::parse(R"({"attributes": [], "textures": [], "samplers": [], "pairs": [], "outputs": 1, "targets": {},
         "blocks": [{"name": "haylen_vs_params", "stage": "vertex", "slot": 0, "size": 64, "members": [{"name": "view_projection", "type": "mat4", "count": 1, "offset": 0}]}]})");
+    // clang-format on
     core::Json document{{"format", "haylen-shader"}, {"version", 5}, {"name", "stale"}, {"sources", core::Json::array()}, {"programs", core::Json::object()}};
     for (const std::string_view name : Material::kPrograms) {
         document["programs"][std::string(name)] = program;

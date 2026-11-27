@@ -1,5 +1,5 @@
 // Opens the page of the gamepads check in a headless browser over its debugging protocol, gives the page a Gamepad API whose gamepads the driver connects, presses, disconnects and connects again the way a browser reports them, and follows the log of the page, then prints what happened as JSON. Two gamepads press different face buttons, so the app must see each one in its own slot, keep the second one in its slot while the first one is gone and see the first one back in its slot once it connects again.
-// Run it with Node: node gamepads-check.mjs <debugging port> <page address>
+// Run it with Node: `node gamepads-check.mjs <debugging port> <page address>`.
 const [port, url] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);

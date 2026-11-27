@@ -42,9 +42,11 @@ class ComponentAssetTest : public ::testing::Test, public test::ComponentFixture
               {"content/ui/panel.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
               {"content/ui/fill.png", test::TestFiles::toText(test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU))},
               {"content/fonts/ui.ttf", test::TestFiles::toText(core::EmbeddedFiles::getDefaultFont())},
+              // clang-format off
               {"content/themes/wood.json", R"({"name": "wood", "fontFiles": {"ui": "fonts/ui.ttf"}, "fonts": {"title": {"font": "ui", "size": 64}},
                   "surfaces": {"panel": {"image": "ui/panel.png", "slice": 8}, "button": {"image": "ui/panel.png", "slice": 8, "padding": 4}, "track": {"image": "ui/panel.png", "slice": 4, "padding": 4},
                       "trackFill": {"image": "ui/fill.png", "slice": 2, "colorize": true}, "stickBase": {"image": "ui/panel.png", "slice": 8, "colorize": true}, "tooltip": {"image": "ui/panel.png", "slice": 8, "padding": 6}}})"},
+              // clang-format on
               {"content/ui/mark.png", test::TestFiles::toText(test::TestFiles::pngImage(16, 16, 0xFFFFFFFFU))},
               {"content/ui/dot.png", test::TestFiles::toText(test::TestFiles::pngImage(16, 16, 0xFFFFFFFFU))},
               {"content/ui/row.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
@@ -53,9 +55,11 @@ class ComponentAssetTest : public ::testing::Test, public test::ComponentFixture
               {"content/ui/body.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
               {"content/ui/close.png", test::TestFiles::toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
               {"content/ui/closing.png", test::TestFiles::toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
+              // clang-format off
               {"content/themes/plates.json", R"({"name": "plates", "surfaces": {"radio": {"image": "ui/mark.png"}, "radioSelected": {"image": "ui/dot.png"}, "cellSelected": {"image": "ui/row.png", "slice": 8},
                   "cellHover": {"image": "ui/hover.png", "slice": 8}, "titleBar": {"image": "ui/bar.png", "slice": 8, "padding": [10, 16, 12, 16]}, "toast": {"image": "ui/panel.png", "slice": 8, "padding": 20},
                   "window": {"image": "ui/body.png", "slice": 8}, "close": {"image": "ui/close.png"}, "closeHover": {"image": "ui/closing.png"}}})"},
+              // clang-format on
               {"content/themes/broken.json", R"({"name": "broken", "fonts": {"body": {"font": "missing"}}})"},
               {"content/themes/smooth.json", R"({"name": "smooth", "imageFilter": "linear"})"},
               {"content/i18n/en.json", R"({"menu": {"play": "Play {n}"}})"},

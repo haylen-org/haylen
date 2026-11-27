@@ -629,8 +629,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/choices/Toggle.cpp
   src/ui/components/collections/CellTemplate.cpp
   src/ui/components/collections/CellTypes.cpp
-  src/ui/components/collections/CollectionDiff.cpp
-  src/ui/components/collections/CollectionIds.cpp
   src/ui/components/collections/GridLayout.cpp
   src/ui/components/collections/LinearLayout.cpp
   src/ui/components/collections/List.cpp
@@ -691,6 +689,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/ClampedScroll.cpp
   src/ui/Collection.cpp
   src/ui/CollectionCell.cpp
+  src/ui/CollectionDiff.cpp
+  src/ui/CollectionIds.cpp
   src/ui/CollectionItems.cpp
   src/ui/Context.cpp
   src/ui/FocusNavigator.cpp

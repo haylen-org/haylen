@@ -10,10 +10,12 @@
 namespace haylen::platform {
 
 TEST(WindowConfigTest, ReadsTheDesktopOptionsOfHaylenJson) {
+    // clang-format off
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({
         "window": {"decorated": false, "transparent": true, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true, "keepScreenOn": true,
                    "position": {"anchor": "bottom", "area": "work", "display": "primary", "offset": [0, -8], "fill": "width"}}
     })"));
+    // clang-format on
     EXPECT_FALSE(config.window.decorated);
     EXPECT_TRUE(config.window.transparent);
     EXPECT_TRUE(config.window.alwaysOnTop);

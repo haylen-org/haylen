@@ -928,12 +928,15 @@ TEST_F(ParticlesTest, SystemsMoveScaleAndRestartTheirEmitters) {
 TEST(EffectTest, LoadsEffectFilesAsAssets) {
     const std::vector<std::uint8_t> png = test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU);
     test::EngineFixture loaded({
+        // clang-format off
         {"content/effects/sparks.particles", R"({
             "texture": "../images/spark.png", "frames": [[0, 0, 4, 4], [4, 0, 4, 4]], "rate": 0, "bursts": [{"time": 0, "count": 12}],
             "duration": 0.5, "loop": true, "prewarm": 0, "maxParticles": 64, "lifetime": [0.4, 0.6], "speed": 80, "direction": -1.57, "spread": 1,
             "gravity": [0, 200], "radialAcceleration": 10, "tangentialAcceleration": [0, 5], "damping": 0.1, "startSize": [4, 6], "endSize": 0,
             "spin": [-2, 2], "colors": ["#FFFFE080", "#00FF4000"], "shape": "cone", "shapeSize": [6, 0], "localSpace": true, "layer": 4, "depth": 0.5, "blend": "additive"
         })"},
+        // clang-format on
+        // clang-format off
         {"content/effects/everything.particles", R"({
             "texture": "../images/spark.png", "filter": "linear", "wrap": "repeat", "frameGrid": {"columns": 2, "rows": 2, "count": 3}, "frameMode": "loopRandomStart", "frameRate": 12,
             "rateOverDistance": 0.5, "bursts": [{"time": 0.1, "count": [2, 5], "cycles": 3, "interval": 0.1, "probability": 0.5}], "delay": 0.25, "duration": 1,
@@ -948,11 +951,14 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
             "particleLights": {"radius": 20, "intensity": 0.4, "max": 8}, "sortOffset": 3, "visibility": 2, "emission": 1, "unshaded": true, "lightMask": 3, "distortion": 0.25,
             "subEmitters": [{"effect": "sparks.particles", "trigger": "collision", "count": [1, 2], "probability": 0.5, "inheritVelocity": 0.2, "inheritColor": true, "overrides": {"localSpace": false, "texture": "../images/line.png"}}]
         })"},
+        // clang-format on
         {"content/effects/outline.particles", R"({"texture": "../images/spark.png", "shape": "image", "shapeImage": {"path": "../images/spark.png", "source": [0, 0, 4, 4]}, "colorFromImage": true, "shapePoints": [[0, 0], [1, 1]]})"},
+        // clang-format off
         {"content/effects/explosion.particles", R"({"emitters": [
             {"name": "flash", "effect": "sparks.particles", "offset": [0, -10], "scale": 2, "delay": 0.1, "layerOffset": 2, "overrides": {"rate": 5}},
             {"name": "smoke", "texture": "../images/spark.png", "rate": 3, "delay": 0.2}
         ]})"},
+        // clang-format on
         {"content/effects/loop.particles", R"({"texture": "../images/spark.png", "subEmitters": [{"effect": "loop.particles"}]})"},
         {"content/effects/nested.particles", R"({"texture": "../images/spark.png", "subEmitters": [{"effect": "explosion.particles"}]})"},
         {"content/effects/broken.particles", R"({"texture": "../images/spark.png", "sped": 3})"},

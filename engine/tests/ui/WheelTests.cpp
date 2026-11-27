@@ -23,12 +23,14 @@ class WheelTest : public ::testing::Test, public test::UiFixture {
 
 TEST_F(WheelTest, WheelsScrollByLinesOfTheThemeAndTrackpadsByTheirPoints) {
     // A step of a wheel scrolls by `scrollLine` of the theme or the style of the area, and a trackpad by the points it moved, which are UI units on this screen.
+    // clang-format off
     auto gui = mount(R"({"kind": "row", "children": [
         {"kind": "scroll", "id": "plain", "width": 400, "height": 300, "children": [{"kind": "column", "id": "plainContent", "children": [)" +
                      labels(60) + R"(]}]},
         {"kind": "scroll", "id": "styled", "width": 400, "height": 300, "style": {"metrics": {"scrollLine": 20}}, "children": [{"kind": "column", "id": "styledContent", "children": [)" +
                      labels(60) + R"(]}]}
     ]})");
+    // clang-format on
     ASSERT_FLOAT_EQ(getUi().getBackend().getPointsPerUnit(), 1.0F);
     EXPECT_NEAR(scrolled(*gui, "plain", "plainContent", -1.0F, false), 64.0F, 0.5F);
     EXPECT_NEAR(scrolled(*gui, "plain", "plainContent", -30.0F, true), 30.0F, 0.5F);
@@ -43,6 +45,7 @@ TEST_F(WheelTest, WheelsScrollByLinesOfTheThemeAndTrackpadsByTheirPoints) {
 
 TEST_F(WheelTest, TheInnermostAreaThatCanScrollTakesTheWheel) {
     // An area inside another takes the wheel while it has more to show, and one that shows all it holds leaves the wheel to the area around it.
+    // clang-format off
     auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "pageContent", "children": [
         {"kind": "scroll", "id": "long", "width": 500, "height": 200, "children": [{"kind": "column", "id": "longContent", "children": [)" +
                      labels(40) + R"(]}]},
@@ -51,6 +54,7 @@ TEST_F(WheelTest, TheInnermostAreaThatCanScrollTakesTheWheel) {
         )" + labels(30) +
                      R"(
     ]}]})");
+    // clang-format on
     const float page = getBounds(*gui, "pageContent").y;
     EXPECT_NEAR(scrolled(*gui, "long", "longContent", -1.0F, false), 64.0F, 0.5F);
     EXPECT_EQ(getBounds(*gui, "pageContent").y, page);

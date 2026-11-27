@@ -32,7 +32,7 @@ hb_draw_funcs_t* DistanceField::makeOutlineFuncs() {
 }
 
 // A move starts a contour, unless the contour before it has no edge yet, and HarfBuzz closes every contour with a line back to its start.
-void DistanceField::moveTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_state_t* /*state*/, float toX, float toY, void* /*user*/) {
+void DistanceField::moveTo(hb_draw_funcs_t*, void* outline, hb_draw_state_t*, float toX, float toY, void*) {
     auto& reading = *static_cast<Outline*>(outline);
     if (reading.contour == nullptr || !reading.contour->edges.empty()) {
         reading.contour = &reading.shape.addContour();
@@ -42,7 +42,7 @@ void DistanceField::moveTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_st
     reading.penY = -toY * reading.scale;
 }
 
-void DistanceField::lineTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_state_t* /*state*/, float toX, float toY, void* /*user*/) {
+void DistanceField::lineTo(hb_draw_funcs_t*, void* outline, hb_draw_state_t*, float toX, float toY, void*) {
     auto& reading = *static_cast<Outline*>(outline);
     const msdfgen::Point2 pen(reading.penX, reading.penY);
     const msdfgen::Point2 end(toX * reading.scale, -toY * reading.scale);
@@ -54,7 +54,7 @@ void DistanceField::lineTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_st
     reading.penY = end.y;
 }
 
-void DistanceField::quadraticTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_state_t* /*state*/, float controlX, float controlY, float toX, float toY, void* /*user*/) {
+void DistanceField::quadraticTo(hb_draw_funcs_t*, void* outline, hb_draw_state_t*, float controlX, float controlY, float toX, float toY, void*) {
     auto& reading = *static_cast<Outline*>(outline);
     const msdfgen::Point2 control(controlX * reading.scale, -controlY * reading.scale);
     const msdfgen::Point2 end(toX * reading.scale, -toY * reading.scale);
@@ -63,7 +63,7 @@ void DistanceField::quadraticTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_dr
     reading.penY = end.y;
 }
 
-void DistanceField::cubicTo(hb_draw_funcs_t* /*funcs*/, void* outline, hb_draw_state_t* /*state*/, float firstX, float firstY, float secondX, float secondY, float toX, float toY, void* /*user*/) {
+void DistanceField::cubicTo(hb_draw_funcs_t*, void* outline, hb_draw_state_t*, float firstX, float firstY, float secondX, float secondY, float toX, float toY, void*) {
     auto& reading = *static_cast<Outline*>(outline);
     const msdfgen::Point2 first(firstX * reading.scale, -firstY * reading.scale);
     const msdfgen::Point2 second(secondX * reading.scale, -secondY * reading.scale);

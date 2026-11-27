@@ -5,7 +5,7 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/ScriptPlugin.hpp"
-#include "haylen/platform/NativeLibraries.hpp"
+#include "haylen/platform/native/NativeLibraries.hpp"
 #include "platform/native/NativeBinding.hpp"
 #include "platform/native/NativeCallbacks.hpp"
 #include "varn/runtime/Runtime.h"

@@ -336,10 +336,12 @@ TEST_F(FocusTest, FocusesLongNamesAndEditsLongTextsWithoutAllocating) {
     };
     // clang-format on
     const std::size_t empty = measure();
+    // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
         {"kind": "button", "id": "the-button-with-a-name-longer-than-a-short-string", "text": "Play", "focusDown": "the-field-with-a-name-longer-than-a-short-string"},
         {"kind": "textField", "id": "the-field-with-a-name-longer-than-a-short-string", "value": "A typed text that is longer than a short string"}
     ]})");
+    // clang-format on
     click(*gui, "the-field-with-a-name-longer-than-a-short-string");
     ASSERT_TRUE(isFocused(*gui, "the-field-with-a-name-longer-than-a-short-string"));
     frames(30);

@@ -330,7 +330,7 @@ class CommandsTest:
     def test_a_record_that_an_older_haylen_wrote_is_prepared_again_or_named_in_plain_words(self, tmp_path: Path):
         folders = ProductFolders(tmp_path)
         folders.project.mkdir()
-        (folders.project / PreparationState.FILE).write_text(json.dumps({"generator": "0.0.1"}), encoding="utf-8")
+        (folders.project / PreparationState.FILE).write_text(json.dumps({"generator": "0.0.0"}), encoding="utf-8")
         assert PreparationState.read(folders) is None
 
         (tmp_path / PluginLock.FILE).write_text(json.dumps({"plugins": []}), encoding="utf-8")

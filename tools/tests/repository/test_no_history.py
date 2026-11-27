@@ -21,6 +21,14 @@ class NoHistoryTest:
         r"\bcompatibility alias(?:es)?\b",
         r"`[^`\n]+`[^.`\n]{0,20}\b(?:no|without an?) alias\b",
         r"`[^`\n]+` (?:became|was replaced by) `[^`\n]+`",
+        r"\brenamed to `",
+        r"\b(?:was|were|has been|have been) replaced (?:by|with) `",
+        r"`[^`\n]+` (?:is|are) now `",
+        r"\b(?:is|are) now (?:called|named|known as|spelled)\b",
+        # A phrase in quotes is the mention of its words, such as the list of the phrases that this test finds.
+        r"(?<!\")\b(?:the|its|their) new (?:name|names|spelling)\b",
+        r"\buntil now\b",
+        r"\binstead of the (?:old|former|earlier|previous)\b",
     )
     # The wording that tells of history in Portuguese, which only the plan of the owner is written in.
     PORTUGUESE = (
@@ -84,6 +92,13 @@ class NoHistoryTest:
             "The type `Meter` became `Gauge`.",
             "The option is kept for backward compatibility.",
             "Its old name still works.",
+            "The module is renamed to `haylen.gauge`.",
+            "The option was replaced by `scale`.",
+            "The function `ui.meter` is now `ui.gauge`.",
+            "The component is now called a gauge.",
+            "Apps take the new name of the module.",
+            "Until now the renderer drew every layer.",
+            "The guide keeps this format instead of the earlier one.",
         )
         present = (
             "No shortcuts, dead or obsolete code, legacy compatibility paths or backward-compatibility shims.",
@@ -93,6 +108,11 @@ class NoHistoryTest:
             "Every write replaces the old file.",
             "Enums keep their names, so old names keep their meaning.",
             "public boolean requestFocus(int direction, Rect previouslyFocusedRect)",
+            "A plugin named after a verb is renamed to the thing it owns.",
+            "The module file was removed, and no code of the app requires it.",
+            "A swapchain that was replaced by a new one presents nothing.",
+            "The window is now visible, so its first frame shows.",
+            'The test finds "the new name" and "renamed to".',
         )
         history_pt = (
             "- [x] O `ui::Meter` virou `ui::Gauge`, sem alias.",

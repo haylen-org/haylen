@@ -77,6 +77,7 @@ class TiledMaps final {
     // A 4 by 3 orthogonal map exercising every layer type, both tileset kinds, templates and all tile data encodings.
     [[nodiscard]] static haylen::core::Json orthogonalMap() {
         const std::vector<std::uint32_t> ground{1, 2, 1, 2, 3, 3, 3, 3, 5, 0, 5, 5};
+        // clang-format off
         return haylen::core::Json::parse(R"({
         "type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 4, "height": 3,
         "tilewidth": 16, "tileheight": 16, "infinite": false, "class": "level", "backgroundcolor": "#FF102030",
@@ -132,9 +133,11 @@ class TiledMaps final {
             ]}
         ]
     })");
+        // clang-format on
     }
 
     [[nodiscard]] static haylen::core::Json terrainTileset() {
+        // clang-format off
         return haylen::core::Json::parse(R"({
         "type": "tileset", "name": "terrain", "tilewidth": 16, "tileheight": 16, "tilecount": 8, "columns": 4,
         "image": "../images/terrain.png", "imagewidth": 64, "imageheight": 32, "margin": 0, "spacing": 0,
@@ -151,19 +154,24 @@ class TiledMaps final {
                       "colors": [{"name": "sand", "class": "ground", "color": "#ffe0c080", "tile": 0, "probability": 0.5, "properties": [{"name": "speed", "type": "float", "value": 0.8}]}],
                       "wangtiles": [{"tileid": 0, "wangid": [0, 1, 0, 1, 0, 1, 0, 1]}]}]
     })");
+        // clang-format on
     }
 
     [[nodiscard]] static haylen::core::Json rockTemplate() {
+        // clang-format off
         return haylen::core::Json::parse(R"({"type": "template", "tileset": {"firstgid": 1, "source": "../tiles/terrain.tsj"},
         "object": {"name": "rock", "type": "rock", "width": 16, "height": 16, "gid": 5, "properties": [{"name": "size", "type": "int", "value": 1}, {"name": "hard", "type": "bool", "value": true}]}})");
+        // clang-format on
     }
 
     // The test map as an infinite map whose ground layer is stored in two chunks, one of them left of the origin.
     [[nodiscard]] static haylen::core::Json infiniteMap() {
         haylen::core::Json map = orthogonalMap();
         map["infinite"] = true;
+        // clang-format off
         map["layers"] = haylen::core::Json::parse(R"([{"id": 1, "name": "ground", "type": "tilelayer", "width": 4, "height": 2, "startx": -2, "starty": 0,
         "chunks": [{"x": -2, "y": 0, "width": 2, "height": 2, "data": [1, 2, 3, 4]}, {"x": 0, "y": 0, "width": 2, "height": 2, "data": [5, 6, 7, 8]}]}])");
+        // clang-format on
         return map;
     }
 
@@ -185,20 +193,24 @@ class TiledMaps final {
 
     // A rule map that shades every ground tile of the island with the terrain tileset of the island, matching with the special tiles of automapping, whose image is an image of the editor that the package lacks.
     [[nodiscard]] static haylen::core::Json automapRules() {
+        // clang-format off
         return haylen::core::Json::parse(R"({"type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 1, "height": 1, "tilewidth": 16, "tileheight": 16,
             "tilesets": [{"firstgid": 1, "source": "tiles/terrain.tsj"}, {"firstgid": 101, "name": "automap", "tilewidth": 16, "tileheight": 16, "tilecount": 1, "columns": 1, "image": ":/automap-tiles.png", "imagewidth": 16, "imageheight": 16,
                 "tiles": [{"id": 0, "properties": [{"name": "MatchType", "type": "string", "value": "NonEmpty"}]}]}],
             "layers": [{"id": 1, "type": "tilelayer", "name": "input_ground", "width": 1, "height": 1, "data": [101]}, {"id": 2, "type": "tilelayer", "name": "output_shade", "width": 1, "height": 1, "data": [3]}]})");
+        // clang-format on
     }
 
     // The classes of the project of the island: the class of the map, the spawn of its properties and the reward each spawn holds, of which the map writes only what differs.
     [[nodiscard]] static haylen::core::Json gameProject() {
+        // clang-format off
         return haylen::core::Json::parse(R"({"propertyTypes": [
             {"id": 1, "name": "level", "type": "class", "useAs": ["map"], "members": [{"name": "difficulty", "type": "int", "value": 1}, {"name": "title", "type": "string", "value": "Untitled"}]},
             {"id": 2, "name": "Spawn", "type": "class", "useAs": ["property"], "members": [{"name": "count", "type": "int", "value": 1}, {"name": "kind", "type": "string", "value": "slime"}, {"name": "reward", "type": "class", "propertyType": "Reward", "value": {}}]},
             {"id": 3, "name": "Reward", "type": "class", "useAs": ["property"], "members": [{"name": "coins", "type": "int", "value": 5}, {"name": "gem", "type": "bool", "value": false}]},
             {"id": 4, "name": "Kind", "type": "enum", "storageType": "string", "values": ["slime", "goblin"]}
         ]})");
+        // clang-format on
     }
 
     [[nodiscard]] static std::map<std::string, std::string> packageFiles() {

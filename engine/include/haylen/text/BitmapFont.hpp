@@ -66,7 +66,7 @@ class BitmapFont final : public Font {
     }
     [[nodiscard]] bool hasGlyph(char32_t codePoint) override;
     // The colors of the pages of a bitmap font take the color of the text, so none of its glyphs draws in its own colors.
-    [[nodiscard]] bool hasColorGlyph(char32_t /*codePoint*/) override {
+    [[nodiscard]] bool hasColorGlyph(char32_t) override {
         return false;
     }
     void shape(const Run& run, std::vector<ShapedGlyph>& shaped) override;

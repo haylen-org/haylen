@@ -23,7 +23,12 @@ class LuaLayerTest:
         assert naming == [], f"These files of the core include or name Lua: {naming}."
 
     def test_the_core_holds_no_file_of_lua(self):
-        files = sorted(name for name in LuaLayerTest.core_sources() if name.startswith("engine/src/") and LuaLayerTest.LUA_FILE.match(Path(name).name))
+        assert [name for name in ("ScriptedScene.hpp", "LuaPlayer.cpp", "SceneLua.hpp", "Scene.hpp", "Lighting2D.hpp") if LuaLayerTest.LUA_FILE.match(name)] == [
+            "ScriptedScene.hpp",
+            "LuaPlayer.cpp",
+            "SceneLua.hpp",
+        ]
+        files = sorted(name for name in LuaLayerTest.core_sources() if LuaLayerTest.LUA_FILE.match(Path(name).name))
         assert files == [], f"These files of the core belong to the Lua layer: {files}."
 
     def test_the_lua_layer_includes_no_private_header_of_the_core(self):

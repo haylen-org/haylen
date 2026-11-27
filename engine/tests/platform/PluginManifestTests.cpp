@@ -13,6 +13,7 @@ namespace haylen::platform {
 
 TEST(PluginManifestTest, ReadsWhatTheRuntimeNeeds) {
     io::MemoryPackage package("manifest");
+    // clang-format off
     package.setFile("plugins/camera/plugin.json", test::TestFiles::bytes(R"({
         "interface": 1, "id": "camera", "name": "Camera", "version": "1.2.0", "description": "Scans codes.",
         "implementations": {"ios": "native", "catalyst": "native", "tvos": "lua", "android": "native"},
@@ -26,6 +27,7 @@ TEST(PluginManifestTest, ReadsWhatTheRuntimeNeeds) {
             {"type": "gradleModule", "platforms": ["android"], "path": "android"}
         ]
     })"));
+    // clang-format on
 
     const PluginManifest manifest = PluginManifest::read(package, "camera");
     EXPECT_EQ(manifest.getVersion(), "1.2.0");

@@ -3,7 +3,7 @@ from haylen.engine.source_format import SourceFormat
 
 
 class FormatTest:
-    """The format check finds multi-line lambdas outside "clang-format off" markers, which the array forms of "operator new" and "operator delete" never are, and leaves the files of the plugin template whose names hold tokens to "haylen plugin new"."""
+    """The format check finds multi-line lambdas outside "clang-format off" markers, which the array forms of "operator new" and "operator delete" never are, finds the multi-line raw strings of the tests outside them, and leaves the files of the plugin template whose names hold tokens to "haylen plugin new"."""
 
     def test_multi_line_lambdas_need_markers_while_the_array_forms_of_new_and_delete_do_not(self, tmp_path):
         source = tmp_path / "Source.cpp"
@@ -23,6 +23,29 @@ class FormatTest:
         findings = SourceFormat.unguarded_lambdas([source])
         assert len(findings) == 1
         assert "Source.cpp:5" in findings[0]
+
+    def test_multi_line_raw_strings_of_the_tests_need_markers(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(Repository, "ROOT", tmp_path)
+        source = tmp_path / "engine" / "tests" / "core" / "ScriptTests.cpp"
+        source.parent.mkdir(parents=True)
+        lines = [
+            'const std::string one = R"(return 1)";',
+            'fixture.lua(R"lua(',
+            "    local value = 1",
+            '    return value)lua");',
+            "// clang-format off",
+            'fixture.lua(R"(',
+            '    return 2)");',
+            "// clang-format on",
+            'const std::string sum = R"({"a": [)" + items() + R"(',
+            '])";',
+        ]
+        source.write_text("\n".join(lines), encoding="utf-8")
+        engine = tmp_path / "engine" / "src" / "Embedded.cpp"
+        engine.parent.mkdir(parents=True)
+        engine.write_text('const char* kScript = R"(\nreturn 1\n)";', encoding="utf-8")
+        findings = SourceFormat.unguarded_raw_strings([source, engine])
+        assert [finding.split(":")[1].split("`")[0] for finding in findings] == ["2", "9"]
 
     def test_the_files_of_the_plugin_template_with_tokens_stay_out(self):
         sources = SourceFormat.sources()

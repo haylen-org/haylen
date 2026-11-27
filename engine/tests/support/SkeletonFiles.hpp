@@ -5,6 +5,7 @@ namespace haylen::test {
 // The documents of a sprite atlas and of a skeleton that its skin draws from, which the tests of skeletons in C++ and in Lua load.
 class SkeletonFiles final {
   public:
+    // clang-format off
     static constexpr const char* kAtlas = R"({
         "frames": {
             "body": {"frame": {"x": 0, "y": 0, "w": 32, "h": 64}},
@@ -14,8 +15,10 @@ class SkeletonFiles final {
         },
         "meta": {"image": "hero.png"}
     })";
+    // clang-format on
 
     // A body with an upper arm and a forearm, a sword skin, a cape mesh, an aim constraint and three animations.
+    // clang-format off
     static constexpr const char* kSkeleton = R"({
         "atlas": "hero.json",
         "bones": [
@@ -47,6 +50,7 @@ class SkeletonFiles final {
             "flap": {"deform": {"cape": {"cape": [{"time": 0, "offsets": [0, 0, 0, 0, 0, 0, 0, 0]}, {"time": 1, "offsets": [0, 0, 4, 0, 4, 0, 0, 0]}]}}, "slots": {"hand": {"attachment": [{"time": 0, "name": "fist"}, {"time": 0.5, "name": ""}]}}}
         }
     })";
+    // clang-format on
 };
 
 } // namespace haylen::test

@@ -1,5 +1,5 @@
 // Opens the page of the canvas check in a headless browser over its debugging protocol as a desktop window of density 2, resizes the page and moves it to a screen of density 1, then prints what happened as JSON. The canvas must fill the page each time, with a framebuffer of the pixels of the page, which the app logs. With "first" the page draws through the first graphics API that starts, with "fallback" the browser offers no WebGPU adapter, so the window of WebGPU closes and the window of WebGL2 opens on the same canvas, with "worker" the page runs the app in the Worker mode, whose canvas the worker draws into, and with "noGraphics" the browser offers no WebGPU adapter and no WebGL2 context on the canvas of the app, so the splash of the page must show that no graphics API started.
-// Run it with Node: node canvas-check.mjs <debugging port> <page address> <first|fallback|worker|noGraphics>
+// Run it with Node: `node canvas-check.mjs <debugging port> <page address> <first|fallback|worker|noGraphics>`.
 const [port, url, mode] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);

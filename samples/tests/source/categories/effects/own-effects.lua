@@ -10,7 +10,7 @@ local Scenery = require('categories.effects.scenery')
 local OwnEffects = haylen.class('OwnEffects', ParticleTest)
 
 OwnEffects.code = [[
--- The file content/shaders/glass-mosaic.glsl, which "haylen app shaders" compiles, reads behind the glass.
+-- The file content/shaders/glass-mosaic.glsl, which "haylen app shaders" compiles, reads behind the glass:
 --   vec2 middle = (floor(haylen_output_point / cell) + 0.5) * cell;
 --   vec4 behind = haylen_backdrop(middle - haylen_output_point);
 local mosaic = graphics2d.newMaterial(assets.shader('shaders/glass-mosaic.shader'), {cell = 32, lines = 0.1})

@@ -2,10 +2,10 @@
 
 The sheet `frames.png` is painted with the "codex" command line in the style of the README of the test project on flat magenta: a wooden frame around plain parchment in the left half and the same frame in near white in the right half. Run it with `python3 samples/tests/tools/nine-slice/build-art.py <folder of frames.png>`. It keys out the magenta, scales each frame to 256 pixels and repaints the straight sides of its border so they meet the corner blocks and repeat without a seam, with their painted grain fading into a plain bar toward both ends, and writes into `content/nine-slice/`:
 
-- `panel.png`, the wooden frame around parchment with diagonal stripes whose period divides the middle, so the middle tiles without a seam while stretching widens its stripes;
-- `parchment.png`, the wooden frame around plain parchment, for the panels that hold text;
-- `pieces.png`, the wooden frame at 384 pixels around the same diagonal stripes, nine periods across its middle, cut into nine pieces apart in a sheet with transparent gaps;
-- `frame-white.png`, the near white frame, which tints to any color;
+- `panel.png`, the wooden frame around parchment with diagonal stripes whose period divides the middle, so the middle tiles without a seam while stretching widens its stripes.
+- `parchment.png`, the wooden frame around plain parchment, for the panels that hold text.
+- `pieces.png`, the wooden frame at 384 pixels around the same diagonal stripes, nine periods across its middle, cut into nine pieces apart in a sheet with transparent gaps.
+- `frame-white.png`, the near white frame, which tints to any color.
 - `cards.png` and `cards.json`, an atlas whose frame `card`, the plain frame at 96 pixels, was trimmed out of a canvas of 128 with a margin of 16 and packed next to a checkered frame, with the bounds of the slice `card` in the coordinates of the whole canvas and its center in the coordinates of its bounds.
 
 Scaling the card down blends a few pixels of its outline toward the magenta it was painted on, so run `python3 tools/check-image-edges.py --clean samples/tests/content/nine-slice/cards.png` after it.

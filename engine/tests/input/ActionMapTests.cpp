@@ -20,6 +20,7 @@ namespace haylen::input {
 class ActionMapTest : public InputFixture {};
 
 TEST_F(ActionMapTest, LoadsSavesAndReportsActions) {
+    // clang-format off
     const core::Json document = core::Json::parse(R"({
         "actions": [
             {"name": "attack", "type": "button", "bindings": ["key:space", "mouse:left", "button:south", "virtual:attack"]},
@@ -27,6 +28,7 @@ TEST_F(ActionMapTest, LoadsSavesAndReportsActions) {
             {"name": "move", "type": "vector", "up": ["key:w"], "down": ["key:s"], "left": ["key:a"], "right": ["key:d"], "bindings": ["stick:left", "virtualStick:move"]}
         ]
     })");
+    // clang-format on
 
     ActionMap actions;
     actions.load(document);

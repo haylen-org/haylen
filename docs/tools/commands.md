@@ -594,9 +594,9 @@ Result: `tree` and `report`, the path of the HTML report.
 haylen engine format [--check]
 ```
 
-Formats the C, C++ and Objective-C sources with `clang-format` and the Python of `tools/` with Ruff. With `--check` it changes nothing and fails on what is not formatted, on a lint problem of Ruff and on a multi-line lambda without its `clang-format off` and `on` markers.
+Formats the C, C++ and Objective-C sources with `clang-format` and the Python of `tools/` with Ruff. With `--check` it changes nothing and fails on what is not formatted, on a lint problem of Ruff, on a multi-line lambda and on a multi-line raw string of the tests without its `clang-format off` and `on` markers.
 
-Result: `files`, `checked` and `lambdas`, the lambdas without markers.
+Result: `files`, `checked`, `lambdas`, the lambdas without markers, and `rawStrings`, the raw strings of the tests without markers.
 
 ### engine clean
 

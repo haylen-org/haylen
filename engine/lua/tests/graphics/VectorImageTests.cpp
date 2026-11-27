@@ -18,12 +18,14 @@ namespace haylen::lua::graphics {
 class VectorImageTest : public ::testing::Test {
   protected:
     // A view box of 20 by 10 units drawn into a document 40 by 20 pixels wide: a red square on the left, a stroked circle in the color of the draw on the right, and a gradient bar along the bottom inside a moved group.
+    // clang-format off
     static constexpr const char* kIcon = R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20" viewBox="0 0 20 10">
         <defs><linearGradient id="fade"><stop offset="0" stop-color="#0000FF"/><stop offset="1" stop-color="#00FF00"/></linearGradient></defs>
         <rect x="0" y="0" width="8" height="8" fill="#FF0000"/>
         <circle cx="15" cy="4" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
         <g transform="translate(0 8)"><rect x="0" y="0" width="20" height="2" fill="url(#fade)"/></g>
     </svg>)svg";
+    // clang-format on
 
     [[nodiscard]] static haylen::graphics::VectorImage parse(const char* text) {
         return haylen::graphics::VectorImage::parse(test::TestFiles::bytes(text));
@@ -65,6 +67,7 @@ TEST_F(VectorImageTest, RasterizesFillsStrokesGradientsAndGroupsAtAScale) {
 
 // A gradient lays itself out in the bounding box of its shape by default, where coordinates without units and percentages are fractions of the box and the gradient transform turns the unit square before the box stretches it.
 TEST_F(VectorImageTest, LaysGradientsOutInTheBoundingBoxOfTheirShape) {
+    // clang-format off
     const haylen::graphics::Image raster = parse(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="40">
         <defs>
             <linearGradient id="across" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0000FF"/><stop offset="1" stop-color="#00FF00"/></linearGradient>
@@ -78,6 +81,7 @@ TEST_F(VectorImageTest, LaysGradientsOutInTheBoundingBoxOfTheirShape) {
         <rect x="40" y="20" width="60" height="20" fill="url(#glow)"/>
     </svg>)svg")
                                                .rasterize(1.0F);
+    // clang-format on
     for (const int left : {20, 60}) {
         EXPECT_GT(raster.getPixel(left, 5).b, 0.9F) << "x " << left;
         EXPECT_GT(raster.getPixel(left + 19, 5).g, 0.9F) << "x " << left;
@@ -96,6 +100,7 @@ TEST_F(VectorImageTest, LaysGradientsOutInTheBoundingBoxOfTheirShape) {
 
 // A drawing program leaves hidden shapes in documents, such as the background of a logo, which stay hidden like the shapes that display none.
 TEST_F(VectorImageTest, LeavesOutTheShapesThatAreHidden) {
+    // clang-format off
     const haylen::graphics::Image raster = parse(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="30" height="10">
         <rect x="0" y="0" width="30" height="10" fill="#FFFFFF" visibility="hidden"/>
         <rect x="10" y="0" width="10" height="10" fill="#FFFFFF" style="visibility: collapse"/>
@@ -103,6 +108,7 @@ TEST_F(VectorImageTest, LeavesOutTheShapesThatAreHidden) {
         <rect x="0" y="0" width="5" height="10" fill="#FF0000"/>
     </svg>)svg")
                                                .rasterize(1.0F);
+    // clang-format on
     EXPECT_EQ(raster.getPixel(2, 5), haylen::math::Color::fromHex(0xFF0000FFU));
 
     for (const int x : {8, 15, 25}) {
@@ -111,12 +117,14 @@ TEST_F(VectorImageTest, LeavesOutTheShapesThatAreHidden) {
 }
 
 TEST_F(VectorImageTest, ReadsStylesWithEmptyDeclarations) {
+    // clang-format off
     const haylen::graphics::Image raster = parse(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10">
         <style>.blank{ } .red{ ; fill: #FF0000 ; }</style>
         <rect x="0" y="0" width="10" height="10" class="blank red"/>
         <rect x="10" y="0" width="10" height="10" style=" ; fill : #00FF00 ;; "/>
     </svg>)svg")
                                                .rasterize(1.0F);
+    // clang-format on
     EXPECT_EQ(raster.getPixel(5, 5), haylen::math::Color::fromHex(0xFF0000FFU));
     EXPECT_EQ(raster.getPixel(15, 5), haylen::math::Color::fromHex(0x00FF00FFU));
 }

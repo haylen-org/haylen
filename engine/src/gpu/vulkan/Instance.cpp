@@ -138,7 +138,7 @@ VkDebugUtilsMessengerCreateInfoEXT Instance::describeMessenger() noexcept {
 }
 
 // Errors and the warnings of the validation of calls break the rules of Vulkan, so they are errors of the engine, which fail the tests, while the other warnings only advise.
-VKAPI_ATTR VkBool32 VKAPI_CALL Instance::report(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types, const VkDebugUtilsMessengerCallbackDataEXT* data, void* /*user*/) {
+VKAPI_ATTR VkBool32 VKAPI_CALL Instance::report(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types, const VkDebugUtilsMessengerCallbackDataEXT* data, void*) {
     const bool error = (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 || (types & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0;
     if (error) {
         core::Log::error("The Vulkan validation layers report: {}", data->pMessage);

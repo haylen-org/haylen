@@ -1,5 +1,5 @@
 // Opens the page of the screens check in a headless browser over its debugging protocol, sets what the browser answers to the Window Management API, presses the key of the app that asks to see every screen and follows the log of the page, then prints what happened as JSON. With "granted" the app must see every screen, with "denied" the request must fail with the code "denied", and with "missing" the browser has no Window Management API and the request must fail with the code "unsupported".
-// Run it with Node: node screens-check.mjs <debugging port> <page address> <granted|denied|missing>
+// Run it with Node: `node screens-check.mjs <debugging port> <page address> <granted|denied|missing>`.
 const [port, url, mode] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);

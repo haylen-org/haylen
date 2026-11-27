@@ -59,7 +59,7 @@ class AppShadersTest:
             "format": 1,
             "port": "test-port",
             "portVersion": "1.0.0",
-            "engineVersion": "0.0.1",
+            "engineVersion": Repository.engine_version(),
             "revision": ToolingFixture.REVISION,
             "configuration": "Debug",
             "slices": [slice_entry],

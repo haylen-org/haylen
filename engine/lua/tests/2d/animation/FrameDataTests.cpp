@@ -22,6 +22,7 @@ namespace haylen::lua::animation2d {
 class FrameDataTest : public ::testing::Test {
   protected:
     // Four frames of 32 by 32, the second trimmed by 8 pixels on its left, with a hitbox from the second frame to the third, a hand point on every frame and a pivot on the feet.
+    // clang-format off
     static constexpr const char* kAtlas = R"({
         "frames": [
             {"filename": "punch 0", "frame": {"x": 0, "y": 0, "w": 32, "h": 32}, "duration": 100},
@@ -38,6 +39,7 @@ class FrameDataTest : public ::testing::Test {
             ]
         }
     })";
+    // clang-format on
 
     [[nodiscard]] static haylen::animation2d::SpriteAtlas parseAtlas(test::LuaFixture& fixture) {
         return haylen::animation2d::SpriteAtlas::parse(nlohmann::ordered_json::parse(kAtlas), fixture.engine().getGraphics().createTexture(haylen::graphics::Image(128, 32)));

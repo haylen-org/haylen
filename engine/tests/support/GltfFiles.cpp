@@ -60,6 +60,7 @@ GltfFiles::File GltfFiles::triangle() {
     const std::uint32_t positions = append(file.binary, kPositions);
     const std::uint32_t normals = append(file.binary, kNormals);
     const std::uint32_t indices = append(file.binary, kIndices);
+    // clang-format off
     file.document = core::Json::parse(R"({
         "asset": {"version": "2.0"},
         "buffers": [{"byteLength": 0}],
@@ -78,6 +79,7 @@ GltfFiles::File GltfFiles::triangle() {
         "scenes": [{"nodes": [0]}],
         "scene": 0
     })");
+    // clang-format on
     file.document["buffers"][0]["byteLength"] = file.binary.size();
     file.document["bufferViews"][0]["byteOffset"] = positions;
     file.document["bufferViews"][1]["byteOffset"] = normals;

@@ -14,10 +14,12 @@ namespace haylen::lua::graphics2d {
 TEST(MaterialLuaTest, SetsUniformsEveryFrameWithoutAllocating) {
     const std::string compiled(test::MaterialShaders::tint().begin(), test::MaterialShaders::tint().end());
     test::LuaFixture fixture({{"content/shaders/tint.shader", compiled}});
+    // clang-format off
     fixture.runLua(R"(
         graphics = require('haylen.graphics') graphics2d = require('haylen.graphics2d') scene = require('haylen.scene') m = require('haylen.math')
         tint = graphics2d.newMaterial(require('haylen.assets').shader('shaders/tint.shader'))
     )");
+    // clang-format on
     // clang-format off
     const auto measure = [&fixture](const std::string& body) {
         fixture.runLua("scene.clear() scene.push({render = function() graphics2d.beginScreen() " + body + " end})");
@@ -35,6 +37,7 @@ TEST(MaterialLuaTest, SetsUniformsEveryFrameWithoutAllocating) {
 TEST(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
     const std::string compiled(test::MaterialShaders::tint().begin(), test::MaterialShaders::tint().end());
     test::LuaFixture fixture({{"content/shaders/tint.shader", compiled}});
+    // clang-format off
     fixture.runLua(R"(
         assets = require('haylen.assets')
         graphics = require('haylen.graphics')
@@ -43,12 +46,14 @@ TEST(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
         shader = assets.shader('shaders/tint.shader')
         tint = graphics2d.newMaterial(shader, {tint = '#FF8040FF', strength = 0.5, offset = {1, 2}, steps = 1, transform = m.identity(), glow = {r = 1, g = 0.5, b = 0}, palette = {1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1}, mask_texture = graphics.whiteTexture()})
     )");
+    // clang-format on
 
     EXPECT_EQ(fixture.lua("return shader.name .. ' ' .. #shader.uniforms .. ' ' .. shader.uniforms[1].name .. ' ' .. shader.uniforms[1].type .. ' ' .. shader.uniforms[5].count .. ' ' .. shader.textures[1]"), "tint 8 tint vec4 3 mask_texture");
     EXPECT_EQ(fixture.lua("return tostring(assets.load('shaders/tint.shader') == shader) .. ' ' .. tostring(tint.shader == shader)"), "true true");
     EXPECT_EQ(fixture.lua("return tint:get('strength') .. ' ' .. tint:get('offset').y .. ' ' .. tint:get('steps') .. ' ' .. string.format('%.2f', tint:get('tint').g) .. ' ' .. #tint:get('glow') .. ' ' .. #tint:get('palette') .. ' ' .. tint:get('mask_texture').width"), "0.5 2.0 1 0.25 3 12 1");
     EXPECT_EQ(fixture.lua("tint:set('offset', m.vec2(5, 6)) tint:set('tint', {1, 1, 1, 0.5}) tint:set('mask_texture', nil) return tint:get('offset').x .. ' ' .. tint:get('tint').a .. ' ' .. tostring(tint:get('mask_texture'))"), "5.0 0.5 nil");
 
+    // clang-format off
     fixture.runLua(R"(
         require('haylen.scene').push({render = function()
             local camera = graphics2d.newCamera()
@@ -60,6 +65,7 @@ TEST(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
             graphics2d.drawText(nil, 'Hi', 0, 0, {material = tint})
         end})
     )");
+    // clang-format on
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(spriteMaterial == tint) .. ' ' .. graphics2d.stats().canvases"), "true 1");
 

@@ -2,45 +2,91 @@ import base64
 import re
 
 from haylen.core.repository import Repository
+from tests.support.source_comments import SourceComments
 from tests.support.tracked_files import TrackedFiles
 
 
 class WritingTest:
     """Comments are sentences that start with a capital letter, the texts that Lua gives the interface start with one too, and no file names another engine or the authors and tools of third-party art."""
 
-    # The comment marker of each kind of source, with the patterns of its files.
-    MARKERS = {
-        "//": ("*.c", "*.cpp", "*.h", "*.hpp", "*.m", "*.mm", "*.js", "*.java", "*.kt", "*.kts", "*.swift", "*.glsl"),
-        "--": ("*.lua",),
-        "#": ("*.py", "*.cmake", "*CMakeLists.txt"),
-    }
     # The markers of tools, which are no sentences.
-    TOOL_MARKERS = ("clang-format", "NOLINT", "MARK:", "noqa", "type:", "pragma", "!", "#")
+    TOOL_MARKERS = ("clang-format", "NOLINT", "MARK:", "noqa", "type:", "pragma", "shellcheck", "#")
+    ENDINGS = '.:!?)`"]'
+    # The comments that clang-format writes after the brace that closes a namespace.
+    NAMESPACE_END = re.compile(r"^\s*namespace [\w:]+\s*$")
 
     @staticmethod
-    def wrong_comment(line: str, marker: str) -> str | None:
-        """The text of a line comment that is no complete sentence, or nothing. A comment that goes on in an indented line, such as a table under its sentence, is no sentence of its own."""
-        stripped = line.lstrip()
-        if not stripped.startswith(marker) or stripped.startswith((marker * 2 if marker != "--" else "---", "--[[")):
-            return None
-        text = stripped[len(marker) :]
-        if not text.strip() or text.startswith(("  ", "\t")) or text.strip().startswith(WritingTest.TOOL_MARKERS):
-            return None
-        if text.strip()[0].islower() or text.rstrip()[-1] not in '.:!?)`"]':
-            return text.strip()
-        return None
+    def wrong_line(text: str) -> bool:
+        stripped = text.strip()
+        return stripped[0].islower() or stripped[-1] not in WritingTest.ENDINGS
 
-    def test_line_comments_are_sentences_that_start_with_a_capital_letter(self):
+    @staticmethod
+    def wrong_lines(comments: list[SourceComments.Comment]) -> list[tuple[int, str]]:
+        """The numbered lines of the comments of a source that are no complete sentences. A line comment that goes on in an indented line, such as a table under its sentence, is no sentence of its own, but only under a comment that ends with a colon. Block comments and docstrings hold a sentence on every line of prose, besides the items of a list and the code between fences."""
         wrong = []
-        for marker, patterns in WritingTest.MARKERS.items():
-            for name in TrackedFiles.names(*patterns):
-                if "/patches/" in name:
+        follows = -1
+        for comment in comments:
+            if not comment.block:
+                text = comment.text
+                continues = comment.line == follows + 1 and text.startswith(("  ", "\t"))
+                if continues or not text.strip():
+                    follows = comment.line if continues else -1
                     continue
-                for number, line in enumerate((Repository.ROOT / name).read_text(encoding="utf-8").splitlines(), 1):
-                    text = WritingTest.wrong_comment(line, marker)
-                    if text is not None:
-                        wrong.append(f"{name}:{number}: {text}")
+                follows = comment.line if text.rstrip().endswith(":") else -1
+                if (comment.alone and text.strip().startswith(WritingTest.TOOL_MARKERS)) or (not comment.alone and WritingTest.NAMESPACE_END.match(text)):
+                    continue
+                if WritingTest.wrong_line(text):
+                    wrong.append((comment.line, text.strip()))
+                continue
+
+            fenced = False
+            listing = False
+            for offset, line in enumerate(comment.text.splitlines()):
+                prose = line.strip().lstrip("*").strip()
+                if prose.startswith("```"):
+                    fenced = not fenced
+                    continue
+                if fenced or not prose or (listing and line.startswith(("  ", "\t")) and not comment.text.startswith(line)):
+                    continue
+                listing = prose.endswith(":")
+                item = prose.startswith(("- ", "* "))
+                if prose[-1] not in WritingTest.ENDINGS or (not item and prose[0].islower()):
+                    wrong.append((comment.line + offset, prose))
+        return wrong
+
+    def test_comments_are_sentences_that_start_with_a_capital_letter(self):
+        wrong = []
+        for name in TrackedFiles.names():
+            if "/patches/" in name or SourceComments.language(name) is None:
+                continue
+            text = (Repository.ROOT / name).read_text(encoding="utf-8")
+            wrong += [f"{name}:{number}: {line}" for number, line in WritingTest.wrong_lines(SourceComments.read(name, text))]
         assert wrong == []
+
+    def test_the_check_reads_every_kind_of_comment(self):
+        cases = {
+            "Source.cpp": 'void draw(void* /*user*/) {\n    /* The middle.\n       half of a sentence */\n    const char* url = "https://example.com/*not*/";\n}  // namespace haylen::ui\n',
+            "build.sh": "# the cache is saved here\n",
+            "ci.yml": "jobs:\n  # Each job runs on Linux\n",
+            "consumer-rules.pro": "# keep the bridge\n",
+            "page.html": "<!-- the look of the splash -->\n",
+            "manifest.xml": "<!-- The activity of the app. -->\n",
+            "style.css": "/* The look of the splash. Change these variables to restyle it\n   with a file of the app. */\n",
+            "script.py": '"""the tools of the art."""\n\n\nclass Tool:\n    """Draws the art.\n\n    - `panel.png`, the frame.\n\n    ```python\n    tool = Tool()\n    ```\n    """\n',
+            "Fake.cpp": "// A sentence that ends.\n//   a fake continuation\n// A table follows:\n//   name   value\n",
+        }
+        found = {name: [line for _, line in WritingTest.wrong_lines(SourceComments.read(name, text))] for name, text in cases.items()}
+        assert found == {
+            "Source.cpp": ["user", "half of a sentence"],
+            "build.sh": ["the cache is saved here"],
+            "ci.yml": ["Each job runs on Linux"],
+            "consumer-rules.pro": ["keep the bridge"],
+            "page.html": ["the look of the splash"],
+            "manifest.xml": [],
+            "style.css": ["The look of the splash. Change these variables to restyle it", "with a file of the app."],
+            "script.py": ["the tools of the art."],
+            "Fake.cpp": ["a fake continuation"],
+        }
 
     def test_texts_that_lua_gives_the_interface_start_with_a_capital_letter(self):
         # A value without a space is data, such as an id, a path or a word that the app echoes, and code shown as code keeps its own form.

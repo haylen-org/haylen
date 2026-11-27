@@ -8,7 +8,7 @@
 #include <system_error>
 #include <vector>
 
-#include "haylen/platform/NativeLibraries.hpp"
+#include "haylen/platform/native/NativeLibraries.hpp"
 
 namespace haylen::platform {
 

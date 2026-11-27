@@ -1,5 +1,5 @@
 // Opens the page of the orientation check in a headless browser that emulates a phone over its debugging protocol, turns the phone and presses the keys of the app that lock the orientation, then prints what happened as JSON. A phone held in portrait shows the turn screen of the page over an app that takes landscape while the app runs on under it, the screen goes away once the phone turns, and the lock of the app replaces the orientation of "haylen.json".
-// Run it with Node: node orientation-check.mjs <debugging port> <page address>
+// Run it with Node: `node orientation-check.mjs <debugging port> <page address>`.
 const [port, url] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);

@@ -63,6 +63,7 @@ class ExecutionBudgetTest : public ::testing::Test {
 };
 
 TEST_F(ExecutionBudgetTest, CancelsAnUpdateThatNeverEnds) {
+    // clang-format off
     start(R"(
 local scene = require('haylen.scene')
 scene.push({update = function()
@@ -72,6 +73,7 @@ scene.push({update = function()
     end
 end})
 )");
+    // clang-format on
     runUntilCancelled();
     EXPECT_EQ(error().getCode(), haylen::core::AppError::Code::ExecutionBudget);
     EXPECT_EQ(error().getCallback(), "update");
@@ -253,6 +255,7 @@ TEST_F(ExecutionBudgetTest, CountsOnlyTheMemoryThatStaysAfterACollection) {
 // The `xpcall` of development hands the handler of the app every other error and lets the function it calls yield.
 // A page cannot halt, so a breakpoint there never gives the code that calls it its whole budget again.
 TEST_F(ExecutionBudgetTest, CancelsCodeThatCallsBreakpointsWhereTheAppCannotHalt) {
+    // clang-format off
     start(R"(
 local scene = require('haylen.scene')
 scene.push({update = function()
@@ -262,6 +265,7 @@ scene.push({update = function()
     end
 end})
 )");
+    // clang-format on
     fixture->host().setHaltable(false);
     test::DebugClient client{fixture->host()};
     client.connect(fixture->engine().getPlugin<lua::ScriptPlugin>().getState());
@@ -271,6 +275,7 @@ end})
 
 // The budget waits while the app halts, so an evaluation that resumes a coroutine of the app after a halt longer than the budget finds the budget whole. The evaluation runs only enough instructions of the app for the budget to look at its clock many times, so it ends far inside the time limit of evaluations on any build, such as under a sanitizer.
 TEST_F(ExecutionBudgetTest, WaitsWhileTheDebuggerHaltsTheApp) {
+    // clang-format off
     start(R"(
 numbers = coroutine.wrap(function() while true do coroutine.yield(1) end end)
 local scene = require('haylen.scene')
@@ -281,6 +286,7 @@ scene.push({update = function()
     end
 end})
 )");
+    // clang-format on
     test::DebugClient client{fixture->host()};
     client.connect(fixture->engine().getPlugin<lua::ScriptPlugin>().getState());
     const int resumes = lua::debug::ExecutionBudget::kCheckInstructions * 5;

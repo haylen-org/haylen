@@ -150,6 +150,7 @@ TEST_F(GuiTest, ReplacesChildrenWithinTheLimitsOfTheGui) {
 }
 
 TEST_F(GuiTest, ReadsPropertyValuesStrictly) {
+    // clang-format off
     Gui sample = gui(R"({"kind": "column", "children": [
         {"kind": "label", "id": "count", "text": 42, "width": "auto", "minWidth": 10, "align": "center", "tooltip": {"key": "hint", "args": {"n": 1}}},
         {"kind": "column", "id": "padded", "padding": [4, 8], "gap": 2, "justify": "spaceBetween"},
@@ -158,6 +159,7 @@ TEST_F(GuiTest, ReadsPropertyValuesStrictly) {
         {"kind": "label", "id": "golden", "gradient": {"colors": ["#FFFFE9A0", "#FFC8861E"]}},
         {"kind": "label", "id": "banded", "gradient": {"stops": [[0, "#FFFFFFFF"], [0.5, "#FF808080"]], "angle": 0}}
     ]})");
+    // clang-format on
     EXPECT_EQ(test::UiFixture::getComponent(sample, "count").getAlignment(), Alignment::Center);
     EXPECT_EQ(test::UiFixture::getComponent(sample, "count").getCommon().tooltip.key, "hint");
     EXPECT_EQ(test::UiFixture::getComponent(sample, "count").getCommon().tooltip.arguments, (core::Json{{"n", 1}}));

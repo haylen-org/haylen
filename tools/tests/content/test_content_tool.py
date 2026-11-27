@@ -6,6 +6,7 @@ import pytest
 from haylen.content.content_tool import ContentTool
 from haylen.core.errors.incompatible_sdk import IncompatibleSdk
 from haylen.core.host import Host
+from haylen.core.repository import Repository
 from haylen.sdk.sdk_manifest import SdkManifest
 
 
@@ -21,7 +22,7 @@ class ContentToolTest:
             "format": 1,
             "port": "desktop",
             "portVersion": "1.0.0",
-            "engineVersion": "0.0.1",
+            "engineVersion": Repository.engine_version(),
             "revision": revision,
             "configuration": configuration,
             "slices": [

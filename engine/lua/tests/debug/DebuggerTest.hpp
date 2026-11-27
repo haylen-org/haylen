@@ -19,6 +19,7 @@ namespace haylen::lua::debug {
 // Drives the debugger with the requests of the protocol, as an editor does, over a headless engine whose code runs through the protected calls of the engine, as its callbacks do.
 class DebuggerTest : public ::testing::Test {
   protected:
+    // clang-format off
     static constexpr const char* kModule = R"(local M = {}
 function M.add(a, b)
     local sum = a + b
@@ -51,7 +52,9 @@ function M.request()
 end
 return M
 )";
+    // clang-format on
 
+    // clang-format off
     static constexpr const char* kTask = R"(local async = require("async")
 return function()
     async.spawn(function()
@@ -62,13 +65,16 @@ return function()
     end)
 end
 )";
+    // clang-format on
 
+    // clang-format off
     static constexpr const char* kGenerator = R"(return function()
     local value = 1
     coroutine.yield(value)
     value = value + 1
 end
 )";
+    // clang-format on
 
     // Runs the source through the message handler of the engine and returns the message of its error, or an empty text.
     static std::string run(lua_State* L, const std::string& source) {

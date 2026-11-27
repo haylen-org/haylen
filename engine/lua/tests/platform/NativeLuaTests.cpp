@@ -14,8 +14,8 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
-#include "haylen/platform/NativeLibraries.hpp"
 #include "haylen/platform/native/NativeApi.hpp"
+#include "haylen/platform/native/NativeLibraries.hpp"
 #include "support/LuaFixture.hpp"
 
 namespace haylen::lua::platform {
@@ -41,6 +41,7 @@ class NativeLuaTest : public ::testing::Test {
         // clang-format on
         lua_setglobal(L, "isTestThread");
 
+        // clang-format off
         fixture.runLua(R"(
             ffi = require('ffi')
             native = require('haylen.native')
@@ -63,6 +64,7 @@ class NativeLuaTest : public ::testing::Test {
             ]]
             lib = native.load('native-test')
         )");
+        // clang-format on
     }
 
     [[nodiscard]] static Reporter pointerOf(test::LuaFixture& fixture, const char* callback) {
@@ -234,11 +236,13 @@ TEST_F(NativeLuaTest, DropsCallsThatArriveAfterTheAppStopped) {
     {
         test::LuaFixture fixture;
         prepare(fixture);
+        // clang-format off
         fixture.runLua(R"(
             received = 0
             queued = native.callback('void (int32_t value, const uint8_t data[size], size_t size)', function() received = received + 1 end)
             immediate = native.callback('void (int32_t value, const uint8_t data[size], size_t size)', function() received = received + 1 end, {thread = 'frame'})
         )");
+        // clang-format on
         queued = pointerOf(fixture, "queued");
         immediate = pointerOf(fixture, "immediate");
         immediate(1, data.data(), data.size());

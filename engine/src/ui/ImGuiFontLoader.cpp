@@ -27,7 +27,7 @@ ImFontLoader ImGuiFontLoader::make() {
 }
 
 // ImGui sizes a font by its height from ascent to descent, and a source merged into a font of another size scales by the ratio of the sizes and by its own extra scale.
-bool ImGuiFontLoader::initSource(ImFontAtlas* /*atlas*/, ImFontConfig* source) {
+bool ImGuiFontLoader::initSource(ImFontAtlas*, ImFontConfig* source) {
     const std::span<const std::uint8_t> bytes(static_cast<const std::uint8_t*>(source->FontData), static_cast<std::size_t>(source->FontDataSize));
     std::optional<text::FontFile> file = text::FontFile::read(bytes, static_cast<unsigned int>(source->FontNo));
     if (!file) {
@@ -57,22 +57,22 @@ bool ImGuiFontLoader::initSource(ImFontAtlas* /*atlas*/, ImFontConfig* source) {
     return true;
 }
 
-void ImGuiFontLoader::destroySource(ImFontAtlas* /*atlas*/, ImFontConfig* source) {
+void ImGuiFontLoader::destroySource(ImFontAtlas*, ImFontConfig* source) {
     const std::unique_ptr<Source> loaded(static_cast<Source*>(source->FontLoaderData));
     source->FontLoaderData = nullptr;
 }
 
-int ImGuiFontLoader::findGlyph(ImFontAtlas* /*atlas*/, ImFontConfig* source, ImWchar codePoint) {
+int ImGuiFontLoader::findGlyph(ImFontAtlas*, ImFontConfig* source, ImWchar codePoint) {
     const Source& loaded = *static_cast<const Source*>(source->FontLoaderData);
     return static_cast<int>(loaded.file.findGlyph(static_cast<char32_t>(codePoint)));
 }
 
-bool ImGuiFontLoader::containsGlyph(ImFontAtlas* /*atlas*/, ImFontConfig* source, int glyph) {
+bool ImGuiFontLoader::containsGlyph(ImFontAtlas*, ImFontConfig* source, int glyph) {
     const Source& loaded = *static_cast<const Source*>(source->FontLoaderData);
     return glyph > 0 && static_cast<unsigned int>(glyph) < loaded.file.getGlyphCount();
 }
 
-bool ImGuiFontLoader::initBaked(ImFontAtlas* /*atlas*/, ImFontConfig* source, ImFontBaked* baked, void* /*loaderData*/) {
+bool ImGuiFontLoader::initBaked(ImFontAtlas*, ImFontConfig* source, ImFontBaked* baked, void*) {
     if (source->MergeMode) {
         return true;
     }
@@ -86,7 +86,7 @@ bool ImGuiFontLoader::initBaked(ImFontAtlas* /*atlas*/, ImFontConfig* source, Im
 }
 
 // A glyph that is too large for the atlas loads as missing, so ImGui draws the fallback glyph in its place.
-bool ImGuiFontLoader::loadGlyph(ImFontAtlas* atlas, ImFontConfig* source, ImFontBaked* baked, void* /*loaderData*/, int glyph, ImFontGlyph* loaded, float* advance) {
+bool ImGuiFontLoader::loadGlyph(ImFontAtlas* atlas, ImFontConfig* source, ImFontBaked* baked, void*, int glyph, ImFontGlyph* loaded, float* advance) {
     Source& font = *static_cast<Source*>(source->FontLoaderData);
     const auto index = static_cast<std::uint32_t>(glyph);
     int oversampleX = 0;

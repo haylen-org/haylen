@@ -99,7 +99,16 @@ class AppleFixture:
             AppleSdkFiles.INCLUDE: "include",
             AppleSdkFiles.CMAKE: "lib/cmake/haylen",
         }
-        document = {"format": 1, "port": "apple", "portVersion": "1.0.0", "engineVersion": "0.0.1", "revision": ToolingFixture.REVISION, "configuration": "Release", "slices": slices, "files": files}
+        document = {
+            "format": 1,
+            "port": "apple",
+            "portVersion": "1.0.0",
+            "engineVersion": Repository.engine_version(),
+            "revision": ToolingFixture.REVISION,
+            "configuration": "Release",
+            "slices": slices,
+            "files": files,
+        }
         (folder / SdkManifest.FILE).write_text(json.dumps(document), encoding="utf-8")
         return SdkManifest.load(folder)
 

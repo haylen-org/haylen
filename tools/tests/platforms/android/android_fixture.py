@@ -5,6 +5,7 @@ from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.product_request import ProductRequest
 from haylen.core.project_resolver import ProjectResolver
+from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
 from haylen.core.tooling_context import ToolingContext
 from haylen.platforms.android.android_backend import AndroidBackend
@@ -26,7 +27,7 @@ from tests.support.tooling_fixture import ToolingFixture
 class AndroidFixture:
     """Resolves and prepares Android apps of the tests in a temporary folder, with the Android backend, an Android SDK folder of its own and an installed engine SDK of every ABI whose files the generated projects name without reading them, besides its Android libraries, whose activity declares one native method of the engine next to a native method of Varn."""
 
-    ENGINE_VERSION = "0.0.1"
+    ENGINE_VERSION = Repository.engine_version()
     # The JNI names that a library of an app defines for the Android libraries of the fixture.
     NATIVES = ("JNI_OnLoad", "Java_dev_haylen_HaylenActivity_nativeTelevision")
 

@@ -73,6 +73,7 @@ TEST_F(DebuggerStepTest, StepsOverTheAwaitOfATaskIntoTheFrameWhereItGoesOn) {
 
 // A coroutine that waited since before the debugger watched anything takes the hooks when the debugger starts to watch, so a pause halts at its next line when native code resumes it.
 TEST_F(DebuggerStepTest, PausesInACoroutineThatWaitedBeforeTheDebuggerWatched) {
+    // clang-format off
     fixture.runLua(R"(
         resumed = 0
         waiting = coroutine.create(function()
@@ -81,6 +82,7 @@ TEST_F(DebuggerStepTest, PausesInACoroutineThatWaitedBeforeTheDebuggerWatched) {
         end)
         coroutine.resume(waiting)
     )");
+    // clang-format on
     client.connect(fixture.lua());
     client.request("pause");
     client.getDebugger().update(fixture.lua());

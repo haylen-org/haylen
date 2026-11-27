@@ -695,10 +695,12 @@ TEST(MapRendererTest, BuildsCollisionBodies) {
 TEST(MapRendererTest, TracesTileCollisionAgainAfterSetTile) {
     // A tileset of a slope and a one-way ledge joins the terrain tiles.
     haylen::core::Json document = test::TiledMaps::orthogonalMap();
+    // clang-format off
     document["tilesets"].push_back(haylen::core::Json::parse(R"({"firstgid": 200, "name": "shapes", "tilewidth": 16, "tileheight": 16, "tilecount": 2, "columns": 0, "tiles": [
         {"id": 0, "image": "props/rock.png", "imagewidth": 16, "imageheight": 16, "objectgroup": {"objects": [{"id": 1, "x": 0, "y": 0, "polygon": [{"x": 0, "y": 16}, {"x": 16, "y": 0}, {"x": 16, "y": 16}]}]}},
         {"id": 1, "image": "props/rock.png", "imagewidth": 16, "imageheight": 16, "objectgroup": {"objects": [{"id": 1, "x": 0, "y": 0, "width": 16, "height": 4, "properties": [{"name": "oneWay", "type": "bool", "value": true}]}]}}
     ]})"));
+    // clang-format on
     MapRenderer map(Map::parse(document, "maps/island.tmj", test::TiledMaps::reader()));
     haylen::physics2d::World world({.gravity = {}});
     const haylen::physics2d::Body ground = map.buildCollision(world).front();
@@ -786,6 +788,7 @@ TEST(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFilte
 
 TEST(MapRendererTest, ScalesTheOffsetsAndCollisionShapesOfGridSizedTiles) {
     // Tiles painted at 32 pixels draw on a grid of 16, so their offset of 8 pixels moves them by 4 and their collision shapes shrink with them, as Tiled draws them.
+    // clang-format off
     const haylen::core::Json document = haylen::core::Json::parse(R"({
         "type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 3, "height": 2, "tilewidth": 16, "tileheight": 16, "infinite": false,
         "tilesets": [{"firstgid": 1, "name": "painted", "tilewidth": 32, "tileheight": 32, "tilecount": 2, "columns": 2, "image": "images/painted.png", "imagewidth": 64, "imageheight": 32,
@@ -795,6 +798,7 @@ TEST(MapRendererTest, ScalesTheOffsetsAndCollisionShapesOfGridSizedTiles) {
             ]}],
         "layers": [{"id": 1, "name": "ground", "type": "tilelayer", "width": 3, "height": 2, "data": [1, 1, 0, 0, 0, 2]}]
     })");
+    // clang-format on
     MapRenderer map(Map::parse(document, "maps/painted.tmj", test::TiledMaps::reader()));
     haylen::physics2d::World world({.gravity = {}});
     const haylen::physics2d::Body ground = map.buildCollision(world).front();

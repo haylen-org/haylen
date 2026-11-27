@@ -1,6 +1,7 @@
 import pytest
 
 from haylen.core.errors.build_failed import BuildFailed
+from haylen.core.repository import Repository
 from haylen.engine import android_app_check
 from haylen.engine.android_app_check import AndroidAppCheck
 from haylen.platforms.android.android_launcher import AndroidLauncher
@@ -11,6 +12,7 @@ from tests.support.recorded_commands import RecordedCommands
 class AndroidAppCheckTest:
     """The start check of an app on Android passes an app that drew through its graphics API and kept running without an error, and names the first reason of a start that went wrong with the end of the log."""
 
+    STARTS = f"I/haylen: Haylen {Repository.engine_version()} starts the app."
     DRAWS = 'I/haylen  : [2026-11-19 02:24:19.878] [info] The app draws through "vulkan".'
 
     class Dumps:
@@ -36,7 +38,7 @@ class AndroidAppCheckTest:
         return AndroidAppCheck(recorded.context, None).follow("emulator-5554", "com.haylen.tests")
 
     def test_an_app_that_draws_and_keeps_running_passes_with_its_graphics_api(self, tmp_path, monkeypatch):
-        logs = [["I/haylen: Haylen 0.0.1 starts the app."], ["I/haylen: Haylen 0.0.1 starts the app.", AndroidAppCheckTest.DRAWS]]
+        logs = [[AndroidAppCheckTest.STARTS], [AndroidAppCheckTest.STARTS, AndroidAppCheckTest.DRAWS]]
         assert AndroidAppCheckTest.follow(tmp_path, monkeypatch, logs) == "vulkan"
 
     def test_a_crash_of_java_an_error_of_the_engine_and_an_ended_process_fail_the_start(self, tmp_path, monkeypatch):
@@ -50,4 +52,4 @@ class AndroidAppCheckTest:
         with pytest.raises(BuildFailed, match="stopped while it started"):
             AndroidAppCheckTest.follow(tmp_path / "ended", monkeypatch, [[AndroidAppCheckTest.DRAWS]], alive=False)
         with pytest.raises(BuildFailed, match="did not log the graphics API it draws through within 180 seconds"):
-            AndroidAppCheckTest.follow(tmp_path / "silent", monkeypatch, [["I/haylen: Haylen 0.0.1 starts the app."]])
+            AndroidAppCheckTest.follow(tmp_path / "silent", monkeypatch, [[AndroidAppCheckTest.STARTS]])

@@ -10,6 +10,7 @@ namespace haylen::test {
 class MaterialShaders final {
   public:
     // A material with uniform blocks of every kind of member, floats and integers in blocks of their own, and a texture of its own.
+    // clang-format off
     static constexpr const char* kTintSource = R"(@include haylen/material.glsl
 
 @fs tint_fs
@@ -41,8 +42,10 @@ void main() {
 
 @program tint haylen_vs tint_fs
 )";
+    // clang-format on
 
     // A material that never samples its texture, so its sprite sampler pairs with no texture in any program.
+    // clang-format off
     static constexpr const char* kGlowSource = R"(@include haylen/material.glsl
 
 @fs glow_fs
@@ -58,8 +61,10 @@ void main() {
 
 @program glow haylen_vs glow_fs
 )";
+    // clang-format on
 
     // A material that samples a cube texture of its own in the direction of its texture coordinates.
+    // clang-format off
     static constexpr const char* kSkySource = R"(@include haylen/material.glsl
 
 @fs sky_fs
@@ -75,8 +80,10 @@ void main() {
 
 @program sky haylen_vs sky_fs
 )";
+    // clang-format on
 
     // A material that darkens what lies behind the depth of a render target, through a texture of the sample type depth.
+    // clang-format off
     static constexpr const char* kFogSource = R"(@include haylen/material.glsl
 
 @fs fog_fs
@@ -93,6 +100,7 @@ void main() {
 
 @program fog haylen_vs fog_fs
 )";
+    // clang-format on
 
     [[nodiscard]] static std::vector<std::uint8_t> compile(const std::string& name, const char* source);
     [[nodiscard]] static const std::vector<std::uint8_t>& tint();

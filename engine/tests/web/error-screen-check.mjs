@@ -1,5 +1,5 @@
 // Opens the page of the error screen check in a headless browser over its debugging protocol, stops the app with an error, copies the report of the error screen and restarts the app from it, then prints what happened as JSON. The page address names the graphics API with `?graphicsApi=`, which the app must draw through, since a restart makes a new GPU device. With "granted" the browser lets the page write the clipboard, and the check expects the app drawn on after the page draws into a canvas of its own, the report on the clipboard, and the app drawn again after the key R and after a click on the restart button. With "refused" the browser refuses every write and with "missing" it has no clipboard API, and the check expects a warning in the log of the page, an untouched clipboard and the app drawn again after the key R. With "unknownApi" the address names a graphics API that the engine does not know, and the check expects its reason in the log of the page and in the failure that the page shows, and no exception.
-// Run it with Node: node error-screen-check.mjs <debugging port> <page address> <granted|refused|missing|unknownApi>
+// Run it with Node: `node error-screen-check.mjs <debugging port> <page address> <granted|refused|missing|unknownApi>`.
 import { inflateSync } from "node:zlib";
 
 const [port, url, mode] = process.argv.slice(2);

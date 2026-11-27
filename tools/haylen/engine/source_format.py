@@ -9,7 +9,7 @@ from haylen.toolchains.build_tools import BuildTools
 
 
 class SourceFormat:
-    """Formats the sources of the repository, or checks them with `check`: clang-format on the C, C++, Objective-C and Objective-C++ files of the engine, the samples, the app scaffolds and the templates of the backends, the rule that multi-line lambdas stand between `clang-format off` and `on` markers, since clang-format cannot lay them out, and Ruff on the Python of `tools`."""
+    """Formats the sources of the repository, or checks them with `check`: clang-format on the C, C++, Objective-C and Objective-C++ files of the engine, the samples, the app scaffolds and the templates of the backends, the rule that multi-line lambdas, and the multi-line raw strings of the tests, such as their Lua and JSON sources, stand between `clang-format off` and `on` markers, since clang-format cannot lay them out, and Ruff on the Python of `tools`."""
 
     EXTENSIONS = frozenset({".h", ".hpp", ".c", ".cpp", ".m", ".mm"})
     ROOTS = ("engine/include", "engine/src", "engine/lua", "engine/tests", "engine/tools", "samples", "templates", "tools/haylen")
@@ -20,6 +20,11 @@ class SourceFormat:
     GROUP = 200
     # The opening line of a lambda whose body goes on below, which the brackets of the array forms of "operator new" and "operator delete" never are.
     LAMBDA_START = re.compile(r"(?<!operator new\[)(?<!operator delete\[)\]\s*(\([^)]*\))?\s*(mutable\s*)?(noexcept\s*)?(->\s*[\w:<>]+\s*)?\{\s*$")
+
+    # The tests, whose sources hold Lua, JSON and other files as raw strings.
+    TESTS = ("engine/tests", "engine/lua/tests")
+    # The opening of a raw string of C++, such as `R"(` or `R"lua(`, whose delimiter its end repeats.
+    RAW_STRING = re.compile(r'(?<![\w])(?:u8|[uUL])?R"([^(\s"\\]{0,16})\(')
 
     def __init__(self, context: ToolingContext) -> None:
         self.context = context
@@ -53,10 +58,52 @@ class SourceFormat:
                     findings.append(f'The file `{Repository.shown(path)}:{number}` has a multi-line lambda outside "clang-format off".')
         return findings
 
+    @staticmethod
+    def open_raw_string(line: str, closing: str | None) -> str | None:
+        """The end of the raw string that is still open at the end of a line, or nothing, from the end of the one that is open where the line starts."""
+        position = 0
+        while True:
+            if closing is not None:
+                found = line.find(closing, position)
+                if found < 0:
+                    return closing
+                position = found + len(closing)
+                closing = None
+                continue
+            opening = SourceFormat.RAW_STRING.search(line, position)
+            if not opening:
+                return None
+            closing = f'){opening.group(1)}"'
+            position = opening.end()
+
+    @staticmethod
+    def unguarded_raw_strings(files: list[Path]) -> list[str]:
+        """Lists the raw strings of the tests that span lines outside `clang-format off` regions."""
+        findings: list[str] = []
+        for path in files:
+            if not any(path.is_relative_to(Repository.ROOT / root) for root in SourceFormat.TESTS):
+                continue
+            guarded = False
+            closing = None
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                stripped = line.strip()
+                if closing is None and stripped == "// clang-format off":
+                    guarded = True
+                elif closing is None and stripped == "// clang-format on":
+                    guarded = False
+                elif closing is not None or not stripped.startswith("//"):
+                    opened = closing is None
+                    closing = SourceFormat.open_raw_string(line, closing)
+                    if closing is not None and opened and not guarded:
+                        findings.append(f'The file `{Repository.shown(path)}:{number}` has a multi-line raw string outside "clang-format off".')
+        return findings
+
     def run(self, check: bool) -> dict[str, object]:
         files = SourceFormat.sources()
         clang_failed = self.clang_format(files, check)
-        findings = SourceFormat.unguarded_lambdas(files)
+        lambdas = SourceFormat.unguarded_lambdas(files)
+        raw_strings = SourceFormat.unguarded_raw_strings(files)
+        findings = lambdas + raw_strings
         for finding in findings:
             self.context.terminal.warning(finding)
         python_failed = self.ruff(check)
@@ -66,12 +113,12 @@ class SourceFormat:
         if clang_failed:
             raise BuildFailed('The command "clang-format" could not format some files, and its output above shows why.')
         if findings and check:
-            raise BuildFailed(f'The {len(findings)} multi-line lambdas above need "// clang-format off" and "// clang-format on" markers around them.')
+            raise BuildFailed(f'The {len(findings)} multi-line lambdas and raw strings above need "// clang-format off" and "// clang-format on" markers around them.')
         if python_failed:
             verb = "check" if check else "fix"
             raise BuildFailed(f'Ruff found problems in the Python of `tools` that it cannot {verb}, as its output above shows. Format with "haylen engine format" and fix what stays.')
         self.context.terminal.success(f"The {len(files)} C-family files and the Python of `tools` are formatted." if check else f"Formatted {len(files)} C-family files and the Python of `tools`.")
-        return {"files": len(files), "checked": check, "lambdas": findings}
+        return {"files": len(files), "checked": check, "lambdas": lambdas, "rawStrings": raw_strings}
 
     def clang_format(self, files: list[Path], check: bool) -> bool:
         """Runs clang-format on the files and tells whether it failed on any of them."""

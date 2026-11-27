@@ -177,10 +177,12 @@ TEST_F(CollectionTest, ScrollsTheItemsThatTheKeyboardCoversAboveIt) {
 }
 
 TEST_F(CollectionTest, RecyclesCellsOfTheRightType) {
+    // clang-format off
     auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "poolSize": 2, "types": {
         "header": {"template": {"kind": "sectionTitle", "part": "heading", "bind": {"text": "title"}}},
         "row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}}
     }})");
+    // clang-format on
     Collection& list = gui->getCollection("list");
     std::vector<CollectionItems::Item> items = makeItems(1000, 1, "row");
     for (std::size_t index = 0; index < items.size(); index += 10) {
@@ -386,10 +388,12 @@ TEST_F(CollectionTest, AnimatesScrollsAndSettlesOnTheTarget) {
 }
 
 TEST_F(CollectionTest, PlacesGridSpansAndFullWidthHeaders) {
+    // clang-format off
     auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "layout": "grid", "lanes": 3, "gap": 10, "types": {
         "header": {"template": {"kind": "label", "part": "heading", "bind": {"text": "title"}, "height": 40}, "span": "full"},
         "cell": {"template": {"kind": "label", "part": "title", "bind": {"text": "title", "height": "size"}}}
     }})");
+    // clang-format on
     Collection& list = gui->getCollection("list");
     std::vector<CollectionItems::Item> items = makeItems(30, 1, "cell");
     for (std::size_t index = 0; index < items.size(); ++index) {
@@ -420,10 +424,12 @@ TEST_F(CollectionTest, PlacesGridSpansAndFullWidthHeaders) {
 }
 
 TEST_F(CollectionTest, PinsTheCurrentSectionHeader) {
+    // clang-format off
     auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "types": {
         "header": {"template": {"kind": "label", "part": "heading", "bind": {"text": "title"}, "height": 40}, "sticky": true, "estimatedSize": 40},
         "row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}, "estimatedSize": 60}
     }})");
+    // clang-format on
     Collection& list = gui->getCollection("list");
     std::vector<CollectionItems::Item> items = makeItems(200, 1, "row");
     for (std::size_t index = 0; index < items.size(); index += 20) {
@@ -646,12 +652,14 @@ TEST_F(CollectionTest, WaitsForTheItemsThatLeaveThePlaceOfANewItem) {
 }
 
 TEST_F(CollectionTest, ReportsPartEventsWithTheirCell) {
+    // clang-format off
     auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "layout": "grid", "lanes": 3, "types": {
         "product": {"template": {"kind": "column", "children": [
             {"kind": "label", "part": "name", "bind": {"text": "title"}},
             {"kind": "button", "part": "buy", "text": "Buy"}
         ]}}
     }})");
+    // clang-format on
     Collection& list = gui->getCollection("list");
     show(list, makeItems(30));
     const CollectionCell* cell = list.findCell(2);
@@ -1016,8 +1024,10 @@ TEST_F(CollectionTest, ScrollsWithTheThumbAndTheTrackOfItsScrollbar) {
 }
 
 TEST_F(CollectionTest, RemembersTheLastFocusedItemWhenTheFocusEntersAgain) {
+    // clang-format off
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "top", "text": "Top"},
         {"kind": "collection", "id": "list", "height": 600, "gap": 0, "rememberFocus": true, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}}}}]})");
+    // clang-format on
     Collection& list = gui->getCollection("list");
     show(list, makeItems(100));
     list.focusItem(4);
@@ -1032,8 +1042,10 @@ TEST_F(CollectionTest, RemembersTheLastFocusedItemWhenTheFocusEntersAgain) {
 }
 
 TEST_F(CollectionTest, FocusesTheFirstItemInViewOnTheFocusCommand) {
+    // clang-format off
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "top", "text": "Top"},
         {"kind": "collection", "id": "list", "height": 600, "gap": 0, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}}}}]})");
+    // clang-format on
     Collection& list = gui->getCollection("list");
     show(list, makeItems(100));
     list.scrollTo(10, {.align = Collection::ScrollAlign::Start, .offset = 0.0F, .animated = false});
@@ -1105,8 +1117,10 @@ TEST_F(CollectionTest, SticksToTheEndAsItemsArrive) {
 }
 
 TEST_F(CollectionTest, ShowsItsChildWhileItHasNoItems) {
+    // clang-format off
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "collection", "id": "list", "height": 600, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}}}},
         "children": [{"kind": "emptyState", "id": "empty", "title": "Nothing here"}]}]})");
+    // clang-format on
     EXPECT_FALSE(getBounds(*gui, "empty").isEmpty());
     Collection& list = gui->getCollection("list");
     show(list, makeItems(3));

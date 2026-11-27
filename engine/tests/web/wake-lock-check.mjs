@@ -1,5 +1,5 @@
 // Opens the page of the wake lock check in a headless browser over its debugging protocol and follows the wake lock of the page through its steps, then prints what happened as JSON. With "granted" the browser grants the lock, and the check expects the lock while the app keeps the screen on, its release when the page hides, a new lock when the page shows again and its release when the app lets the screen sleep. With "refused" the browser refuses every request and with "missing" it has no Screen Wake Lock API, and the check expects a warning in the log of the page while the app runs on.
-// Run it with Node: node wake-lock-check.mjs <debugging port> <page address> <granted|refused|missing>
+// Run it with Node: `node wake-lock-check.mjs <debugging port> <page address> <granted|refused|missing>`.
 const [port, url, mode] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);

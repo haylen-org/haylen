@@ -4,7 +4,7 @@ This guide is for people who build the engine itself. It explains the command `h
 
 ## The command haylen
 
-The command `haylen` is the one entry point for every task of the engine and its apps. It is the Python package `tools/haylen`, which [uv](https://docs.astral.sh/uv) runs. The file `pyproject.toml` at the root of the repository declares the package, its one dependency, its entry point and its development tools, `uv.lock` pins every package to an exact version and hash, and `.python-version` names the Python that the package runs on. So uv is the only thing the tooling needs on a machine. It installs that Python and the locked packages into `.venv` the first time a command runs, and never touches the Python of the system.
+The command `haylen` is the one entry point for every task of the engine and its apps. It is the Python package `tools/haylen`, which [uv](https://docs.astral.sh/uv) runs. The file `pyproject.toml` at the root of the repository declares the package, its dependencies, its entry point and its development tools, `uv.lock` pins every package to an exact version and hash, and `.python-version` names the Python that the package runs on. So uv is the only thing the tooling needs on a machine. It installs that Python and the locked packages into `.venv` the first time a command runs, and never touches the Python of the system.
 
 The file `haylen` runs the command on macOS and Linux, and `haylen.cmd` runs it on Windows. Each one only runs `uv run --project <root> --frozen haylen` with every argument, from any folder and through a link, and stops with a sentence that says how to install uv when it is missing. Put the root of the repository on `PATH`, and every command below is `haylen <command>`.
 
@@ -74,10 +74,11 @@ On a terminal, titles are bold after a blue `==>`, commands are dim, successes s
 
 ### The package of the tooling
 
-The package `tools/haylen` holds layers that depend on each other in one direction:
+The package `tools/haylen` holds layers that depend on each other in one direction, over three modules at its top that every layer uses:
 
-| Folder | What it holds |
+| Folder or module | What it holds |
 | --- | --- |
+| `terminal.py`, `process.py`, `clock.py` | The output of every command, the tools that it runs as processes, and the clock that bounds its waits, which the tests replace. |
 | `cli/` | The command line: the tree of commands, their options and the printing of results. |
 | `core/` | The manifest `haylen.json`, the resolution of an app into an immutable project for one target, the pipeline of prepare, build, verify and run, and the typed errors. |
 | `plugins/` | The plugin manifest, the resolver of plugins, their contributions and `haylen.lock`. |
@@ -164,7 +165,7 @@ The option `--target` repeats, and every target it names must belong to one engi
 
 ### What an SDK holds
 
-The engine port writes `haylen-sdk.json` into the folder of the SDK, which the schema `tools/haylen/schemas/sdk.schema.json` checks:
+The engine port writes `haylen-sdk.json` into the folder of the SDK, which the schema `tools/haylen/schemas/haylen-sdk.schema.json` checks:
 
 | Field | Meaning |
 | --- | --- |

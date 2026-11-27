@@ -43,14 +43,18 @@ class Direct3DDeviceTest : public ::testing::TestWithParam<Device::Api> {
   protected:
     static constexpr int kSize = 8;
 
+    // clang-format off
     static constexpr const char* kVertexSource = R"(
 cbuffer params : register(b0) { float4 offset; };
 float4 main(float2 position : TEXCOORD0) : SV_Position { return float4(position + offset.xy, 0.5, 1); }
 )";
+    // clang-format on
+    // clang-format off
     static constexpr const char* kFragmentSource = R"(
 cbuffer params : register(b0) { float4 color; };
 float4 main() : SV_Target0 { return color; }
 )";
+    // clang-format on
 
     void SetUp() override {
         // clang-format off

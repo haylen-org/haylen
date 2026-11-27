@@ -213,12 +213,14 @@ TEST(Particles2DLuaTest, CreatesSystemsTrailsAndImageShapes) {
 TEST(Particles2DLuaTest, LoadsEffectFilesForLua) {
     const std::vector<std::uint8_t> png = test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU);
     test::LuaFixture fixture({
+        // clang-format off
         {"content/effects/sparks.particles", R"({
             "texture": "../images/spark.png", "frames": [[0, 0, 4, 4], [4, 0, 4, 4]], "rate": 0, "bursts": [{"time": 0, "count": 12}],
             "duration": 0.5, "loop": true, "maxParticles": 64, "lifetime": [0.4, 0.6], "speed": 80, "gravity": [0, 200],
             "tangentialAcceleration": [0, 5], "endSize": 0, "colors": ["#FFFFE080", "#00FF4000"], "shape": "cone", "shapeSize": [6, 0],
             "localSpace": true, "layer": 4, "depth": 0.5, "blend": "additive"
         })"},
+        // clang-format on
         {"content/images/spark.png", std::string(png.begin(), png.end())},
     });
     // clang-format off

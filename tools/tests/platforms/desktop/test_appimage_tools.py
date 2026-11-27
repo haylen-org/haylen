@@ -39,7 +39,7 @@ class AppImageToolsTest:
         monkeypatch.setattr(Host, "system", staticmethod(lambda: "linux"))
         monkeypatch.setattr(Host, "architecture", staticmethod(lambda: "x86_64"))
         folder = AppImageTools.folder()
-        for path in (folder / "appimagetool" / "AppRun", folder / f"runtime-{AppImageTools.RUNTIME_VERSION}-x86_64", folder / "patchelf-0.0.1" / "bin" / "patchelf"):
+        for path in (folder / "appimagetool" / "AppRun", folder / f"runtime-{AppImageTools.RUNTIME_VERSION}-x86_64", folder / "patchelf-0.0.0" / "bin" / "patchelf"):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("older", encoding="utf-8")
 

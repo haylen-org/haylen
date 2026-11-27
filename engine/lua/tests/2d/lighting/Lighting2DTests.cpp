@@ -18,11 +18,13 @@ TEST(Lighting2DLuaTest, FlickersFromLua) {
 
 TEST(Lighting2DLuaTest, CreatesLightsAndAsksWhereTheyReach) {
     test::LuaFixture fixture;
+    // clang-format off
     fixture.runLua(R"(
         lighting2d = require('haylen.lighting2d')
         graphics = require('haylen.graphics')
         torch = lighting2d.newLight({type = 'spot', x = 10, y = 20, radius = 200, color = '#FFFF8000', intensity = 2, innerAngle = 0.4, outerAngle = 0.9, height = 30, blend = 'mix', itemMask = 3, layerMin = -2, layerMax = 4, shadows = true, shadowFilter = 'pcf5', shadowColor = '#80000040', shadowSmoothness = 1.5, shadowMask = 6})
     )");
+    // clang-format on
 
     EXPECT_EQ(fixture.lua("return torch.type .. ' ' .. torch.x .. ' ' .. torch.position.y .. ' ' .. torch.radius .. ' ' .. torch.intensity .. ' ' .. torch.blend .. ' ' .. torch.itemMask .. ' ' .. torch.layerMin .. ' ' .. torch.shadowFilter .. ' ' .. torch.shadowMask .. ' ' .. tostring(torch.shadows) .. ' ' .. tostring(torch.enabled) .. ' ' .. tostring(torch.texture)"), "spot 10.0 20.0 200.0 2.0 mix 3 -2 pcf5 6 true true nil");
     EXPECT_EQ(fixture.lua("torch.texture = graphics.whiteTexture() torch.scaleX = 2 torch.rotation = 1 return torch.texture.width .. ' ' .. torch.scaleX .. ' ' .. torch.rotation"), "1 2.0 1.0");
@@ -57,6 +59,7 @@ TEST(Lighting2DLuaTest, CreatesLightsAndAsksWhereTheyReach) {
 
 TEST(Lighting2DLuaTest, BuildsOccludersFromTablesBodiesAndMaps) {
     test::LuaFixture fixture;
+    // clang-format off
     fixture.runLua(R"(
         lighting2d = require('haylen.lighting2d')
         physics2d = require('haylen.physics2d')
@@ -65,6 +68,7 @@ TEST(Lighting2DLuaTest, BuildsOccludersFromTablesBodiesAndMaps) {
         crate = world:createBody({x = 100, y = 50})
         crate:addBox(20, 20)
     )");
+    // clang-format on
 
     EXPECT_EQ(fixture.lua("return #wall.points .. ' ' .. tostring(wall.closed) .. ' ' .. wall.cull .. ' ' .. wall.mask .. ' ' .. wall.x .. ' ' .. wall.scaleX"), "3 true clockwise 3 5.0 2.0");
     EXPECT_EQ(fixture.lua("local points = wall:worldPoints() return points[2].x .. ' ' .. points[2].y"), "25.0 6.0");

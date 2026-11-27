@@ -1,4 +1,5 @@
 import ast
+import re
 import tomllib
 from pathlib import Path
 
@@ -7,7 +8,10 @@ from tests.support.tracked_files import TrackedFiles
 
 
 class FileNameTest:
-    """Files and folders use dashes, and an underscore appears only where a name must be an identifier: Python modules that other files or entry points import, the packages and the tests that pytest discovers by `test_*.py`, Android resources, and the issue templates folder that GitHub reads."""
+    """Files and folders use dashes, and an underscore appears only where a name must be an identifier: Python modules that other files or entry points import, the packages and the tests that pytest discovers by `test_*.py`, Android resources, and the issue templates folder that GitHub reads. Every folder is lowercase, besides the names that a platform gives its folders and the tokens of the plugin template."""
+
+    # The folders whose names a platform gives: the issue templates of GitHub, the source set of the instrumented tests of Gradle, and the asset catalogs of Xcode with their image sets.
+    PLATFORM_FOLDERS = re.compile(r"^(?:ISSUE_TEMPLATE|androidTest|Assets\.xcassets|Content\.imageset|\{\{[A-Z]+\}\})$")
 
     @staticmethod
     def imported(names: list[str]) -> set[str]:
@@ -45,3 +49,8 @@ class FileNameTest:
         names = TrackedFiles.names()
         imported = FileNameTest.imported(names)
         assert [name for name in names if "_" in name and not FileNameTest.allowed(name, imported)] == []
+
+    def test_folders_are_lowercase(self):
+        assert [name for name in ("ISSUE_TEMPLATE", "Assets.xcassets", "{{PACKAGE}}", "Shaders", "myFolder") if not FileNameTest.PLATFORM_FOLDERS.match(name)] == ["Shaders", "myFolder"]
+        folders = {"/".join(Path(name).parts[: depth + 1]) for name in TrackedFiles.names() for depth in range(len(Path(name).parts) - 1)}
+        assert sorted(folder for folder in folders if Path(folder).name != Path(folder).name.lower() and not FileNameTest.PLATFORM_FOLDERS.match(Path(folder).name)) == []
