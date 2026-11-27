@@ -2,7 +2,7 @@
 
 <!-- KANBAN:BOARD:START -->
 
-| TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30 days) |
+| TODO (256 tasks) | DOING (11 tasks) | BLOCKED (1 task) | REVIEW (0 tasks) | TESTING (8 tasks) | DONE (75 tasks, 30 days) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-352 · A navegação 3D tem uma corrida entre threads ao assar a navmesh em segundo plano](#kb-352)**<br>🟠 high · `bug` · 3/10 | **[KB-144 · Componentes de nós 3D](#kb-144)**<br>🟡 medium · `feature` · 5/10 | — | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-143 · Árvore de nós 3D em haylen::nodes3d (engine/src/3d/nodes/, Lua haylen.nodes3d)](#kb-143)**<br>🟡 medium · `feature` · 7/10 |
 | **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-354 · O pacote pronto do OpenSSL que o Varn importa é achado pelo `find_package` no Windows](#kb-354)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-344 · Os testes não deixam pastas temporárias para trás e não engolem o erro de apagá-las](#kb-344)**<br>🟡 medium · `bug` · 3/10 |
@@ -9288,13 +9288,14 @@ Com o cache de pacotes do Varn (`VARN_PACKAGE_CACHE`), um build no Windows com M
 - **Next ID:** KB-355. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
+- **Column counts:** Each column header shows its number of cards on the board, such as `TODO (3 tasks)`, `TODO (1 task)` or `TODO (0 tasks)`. DONE also shows the window, such as `DONE (12 tasks, 30 days)`. Archived cards are not counted. Every edit that changes a column updates its count in the same edit.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
 - **Terms:** Types use common work-item words such as feature, bug, fix or hotfix. Common status and priority words map to the six statuses and four priorities. Canceled or duplicate work is a withdrawal, not done. A word never blocks an edit.
 - **Progress:** Started work may carry a `Progress` field with its current state in one or two sentences, rewritten at each substantial step and never appended.
 - **Column order:** TODO, DOING, BLOCKED, REVIEW and TESTING put the highest priority on top: critical → high → medium → low, then numeric ID ascending.
 - **DONE order:** Most recently finished on top: Finished date descending, then numeric ID descending. `unknown` dates go at the bottom.
 - **Unblock:** A blocked card returns to the column in its Blocked from field, and its blocked fields are removed.
-- **Moves:** Only the affected columns change, plus done-window archiving. Cells below a departing card move up one row, and cells below an inserted card move down one row.
+- **Moves:** Only the affected columns change, with their header counts, plus done-window archiving. Cells below a departing card move up one row, and cells below an inserted card move down one row.
 - **Done window:** 30 calendar days, shown in the DONE header. A card finished on 2026-10-25 stays through 2026-11-24. The first edit on or after 2026-11-25 archives it. Check the window on every edit. An older done card gets `Archived` with the date, loses its cell and moves to the end of the archive. A shorter window archives more cards at once. A longer one does not restore archived cards.
 - **Finished:** Required on every done card, with the actual completion date or `unknown`. A completion reported or observed today uses today's date. Unknown dates keep the card on the board, at the bottom of DONE.
 - **Priority change:** Move the cell to its new priority position within its column. A done card keeps its place.

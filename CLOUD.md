@@ -66,6 +66,8 @@ The latest result of each platform, so a broken platform shows even when nothing
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 🟢 | batch4 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | spot | us-east-1c | 2026-11-27 04:16 | 2026-11-27 10:16 | physics3d (8 commits with clang and GCC, sanitizers, fuzzers, web, bench) and the navigation3d bake fix `9bfd40dd1` (clang, GCC, both sanitizers) | US$0.67 | US$0.20 (estimate) |
 
+Market is spot, on-demand or dedicated host. "Ends at" is the shutdown timer, or for a cloud Mac the planned host release (at least 24 hours after allocation).
+
 ### 🔷 Azure
 
 | Status | Session | Platform | Machine type | Market | Region | Started | Ends at | What it runs | Price per hour | Cost so far |
@@ -98,6 +100,8 @@ The latest result of each platform, so a broken platform shows even when nothing
 | ⚪ | ☁️ AWS EC2 | haylen-batch-linux-20261126-2037 and its snapshot | Prepared image | us-east-1 | The Linux batch machines start warm from it | US$1 |
 | ⚪ | 🔷 Azure | haylen-batch-windows with its OS disk, NIC, NSG and VNet | Deallocated VM | eastus2 | The Windows GPU batch machine with its toolchains | US$5.90 (the disk) |
 | ⚪ | Cache bucket | haylen-ci on Cloudflare R2 | Bucket | ENAM | The compiler cache and the dependency caches, objects expire after 30 days | Storage plus operations |
+
+A persistent VM shows ⚪ while deallocated and 🟢 while a batch uses it.
 
 ## 💰 Budget
 
