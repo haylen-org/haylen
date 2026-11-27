@@ -10,7 +10,7 @@
 | ⚪ | 📱 AWS Device Farm | None | US$0 | US$0, any run needs a go | 🟢 |
 | 🟡 | ⚙️ CI | The push run of `b1bc0d93c` | Not measured | Public repository | 🟢 |
 
-Last updated: 2026-11-27 07:50 UTC
+Last updated: 2026-11-27 08:15 UTC
 
 ## 🏃 Running Now
 
@@ -18,7 +18,7 @@ Last updated: 2026-11-27 07:50 UTC
 
 | Status | Session | Platform | Machine type | Market | Zone | Started | Ends at | What it runs | Price per hour | Cost so far |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 🟢 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 10:55 | physics3d (8 commits, sanitizers, fuzzers, web, bench), the animation3d node components `932f18af5`, the first 3D renderer commits `cd753af65`, the rerun of the shared cache step of KB-355, the first commit of KB-360 and the full rerun of KB-355 and KB-356 at `a4ca5b8e3` | US$1.50 | US$1.65 (estimate) |
+| 🟢 | batch5b | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand, after two spot reclaims in a row | us-east-1 | 2026-11-27 05:55 | 2026-11-27 12:59, extended for the first wave of the organization cards | physics3d (8 commits, sanitizers, fuzzers, web, bench), the animation3d node components `932f18af5`, the first 3D renderer commits `cd753af65`, the rerun of the shared cache step of KB-355, the first commit of KB-360, the full rerun of KB-355 and KB-356 at `a4ca5b8e3`, KB-361 `24cd1dca1` and the second group of KB-363 `23e0be552` | US$1.50 | US$1.65 (estimate) |
 | 🟠 | batch6 | 🐧 Linux | c8i.8xlarge (32 vCPU, 64 GB) | on-demand | us-east-1 | 2026-11-27 06:05 | 2026-11-27 16:18, extended for the physics3d sweep, now about US$15 instead of the US$10.50 of its estimate | KB-345 and KB-347: Clang, thin LTO and lld on Linux, path maps in every object, about 14 builds without the cache and the link memory measurements, KB-350 `fe7b5cf3c`, the 3D navigation `10f67d769`, the first commit of KB-364 `691dc67bc`, the first commit of KB-363 `31a5762a0` and the physics3d vocabulary sweep with KB-173 and KB-176 to KB-178 (12 commits to `379e678a3`) | US$1.50 | US$1.90 (estimate) |
 
 ### 🔷 Azure
