@@ -9314,7 +9314,7 @@ Na VM Windows da Azure com a GPU AMD, no primeiro run depois do boot e com o cac
 - **Type:** refactor
 - **Priority:** high
 - **Complexity:** 9
-- **Progress:** O desenho começa agora. A implementação espera entrarem os componentes de nó da animação 3D e o passo de cópia de componentes.
+- **Progress:** O desenho está aprovado. Um núcleo sem dimensão em `haylen::nodes` guarda a hierarquia, os handles, nomes e caminhos, etiquetas, eventos, modos de processo, os componentes com o passo de cópia, as descrições em JSON e os prefabs. O 2D e o 3D só acrescentam a sua transformação, a propagação em paralelo e os seus componentes. O conteúdo do 2D vira componentes de graphics2d, particles2d e physics2d, com um desenhável por nó. Haverá um só asset `.prefab` com a chave `dimension`, e a API Lua terá a mesma forma nas duas dimensões. A implementação começa quando o passo de cópia estiver na `main`.
 - **Dependencies:** [KB-156](#kb-156) e [KB-157](#kb-157), pelos componentes de nó e pelo passo de cópia que estão no lote 5.
 
 #### Description
